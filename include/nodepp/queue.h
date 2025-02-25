@@ -263,12 +263,21 @@ public:
     }
     
     /*─······································································─*/
-    
-    NODE* next() noexcept { obj->act = obj->act != nullptr ? obj->act->next : first(); return obj->act; }
-    NODE* prev() noexcept { obj->act = obj->act != nullptr ? obj->act->prev : last();  return obj->act; }
 
     NODE* first() const noexcept { return obj->fst == nullptr ? nullptr : obj->fst; }
     NODE* last()  const noexcept { return obj->lst == nullptr ? first() : obj->lst; }
+    
+    /*─······································································─*/
+    
+    NODE* next() noexcept { 
+        obj->act = obj->act      ==nullptr ? obj->fst :
+                   obj->act->next==nullptr ? obj->fst : obj->act->next; 
+    return obj->act; }
+    
+    NODE* prev() noexcept { 
+        obj->act = obj->act      ==nullptr ? obj->lst :
+                   obj->act->prev==nullptr ? obj->lst : obj->act->prev; 
+    return obj->act; }
 
 };}
 
