@@ -76,7 +76,7 @@ public:
     
     /*─······································································─*/
 
-    queue_t<V> sort( function_t<bool,V,V> func ) noexcept {
+    queue_t<V> sort( function_t<bool,V,V> func ) const noexcept {
         queue_t<V> n_buffer;
 
         auto x = this->first(); while( x != nullptr ){
@@ -105,7 +105,7 @@ public:
     
     /*─······································································─*/
 
-    NODE* operator[]( ulong idx ) noexcept { return this->get( idx ); }
+    NODE* operator[]( ulong idx ) const noexcept { return this->get( idx ); }
     
     /*─······································································─*/
 
@@ -178,38 +178,38 @@ public:
 
     /*─······································································─*/
 
-    void unshift( const V& value ) noexcept { insert( first(), value ); }
-    void    push( const V& value ) noexcept { insert( nullptr, value ); }
-    void                   shift() noexcept { erase( first() ); }
-    void                     pop() noexcept { erase( nullptr ); }
+    void unshift( const V& value ) const noexcept { insert( first(), value ); }
+    void    push( const V& value ) const noexcept { insert( nullptr, value ); }
+    void                   shift() const noexcept { erase( first() ); }
+    void                     pop() const noexcept { erase( nullptr ); }
     
     /*─······································································─*/
 
-    void clear() noexcept { while( !empty() ){ shift(); } }
-    void erase() noexcept { while( !empty() ){ shift(); } }
-    void  free() noexcept { while( !empty() ){ shift(); } }
+    void clear() const noexcept { while( !empty() ){ shift(); } }
+    void erase() const noexcept { while( !empty() ){ shift(); } }
+    void  free() const noexcept { while( !empty() ){ shift(); } }
     
     /*─······································································─*/
 
-    void insert( ulong index, const V& value ) noexcept { 
+    void insert( ulong index, const V& value ) const noexcept { 
 	    index = clamp( index, 0UL, size() - 1 );
 	    insert( get(index), value ); 
     }
 
-    void insert( ulong index, V* value, ulong N ) noexcept {
+    void insert( ulong index, V* value, ulong N ) const noexcept {
 	    index = clamp( index, 0UL, size() - 1 );
     	ulong i=index; for( ulong x=0; x<N; x++ )
             { insert( x, value[x] ); }
     }
 
     template< ulong N >
-    void insert( ulong index, const V(&value)[N] ) noexcept {
+    void insert( ulong index, const V(&value)[N] ) const noexcept {
 	    index = clamp( index, 0UL, size() - 1 );
     	ulong i=index; for( ulong x=0; x<N; x++ ) 
             { insert( x, value[x] ); }
     }
 
-    void insert( NODE* n, const V& value ) noexcept {
+    void insert( NODE* n, const V& value ) const noexcept {
         if( empty() ){
             obj->fst = new NODE( value ); obj->lst = first();
         } elif ( is_item(n) ) {
@@ -228,19 +228,19 @@ public:
     
     /*─······································································─*/
 
-    void erase( ulong begin, ulong end ) noexcept {
+    void erase( ulong begin, ulong end ) const noexcept {
         auto r = get_slice_range( begin, end );
            if( r == nullptr ){ return; }
         while( r[2]-->0 ) { erase( r[0] ); }
     }
 
-    void erase( ulong begin ) noexcept { 
+    void erase( ulong begin ) const noexcept { 
         auto r = get_slice_range( begin, size() );
            if( r == nullptr ){ return; }
         erase( get( r[0] ) ); 
     }
 
-    void erase( NODE* n ) noexcept {
+    void erase( NODE* n ) const noexcept {
         if( empty() )                { return; }
         if(!is_item(n) )             { n = last(); }
         if( n->next == nullptr )     { obj->lst= n->prev; }
@@ -253,11 +253,11 @@ public:
 
     /*─······································································─*/
 
-    NODE* get() noexcept { return obj->act==nullptr ? first() : obj->act; }
+    NODE* get() const noexcept { return obj->act==nullptr ? first() : obj->act; }
 
-    void set( NODE* x ) noexcept { if( is_item(x) ) obj->act = x; }
+    void set( NODE* x ) const noexcept { if( is_item(x) ) obj->act = x; }
 
-    NODE* get( ulong x ) noexcept { 
+    NODE* get( ulong x ) const noexcept { 
         if( empty() ){ return nullptr; } auto n = first();
         while( n->next != nullptr && x-->0 ){ n = n->next; } return n;
     }
@@ -269,12 +269,12 @@ public:
     
     /*─······································································─*/
     
-    NODE* next() noexcept { 
+    NODE* next() const noexcept { 
         obj->act = obj->act      ==nullptr ? obj->fst :
                    obj->act->next==nullptr ? obj->fst : obj->act->next; 
     return obj->act; }
     
-    NODE* prev() noexcept { 
+    NODE* prev() const noexcept { 
         obj->act = obj->act      ==nullptr ? obj->lst :
                    obj->act->prev==nullptr ? obj->lst : obj->act->prev; 
     return obj->act; }
