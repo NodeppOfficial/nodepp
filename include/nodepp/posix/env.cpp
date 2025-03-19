@@ -37,7 +37,7 @@ namespace nodepp { namespace process {
             function_t<void> lb([&](){
                 if( env[0].empty() ){ return; }
                 if( env[1].empty() ){ return; }
-                nodepp::SET( env[0], env[1] );
+                    set( env[0], env[1] );
             });
 
             while( !feof(v) ){ int c = fgetc( v );

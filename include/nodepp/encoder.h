@@ -23,13 +23,13 @@
 
 namespace nodepp { namespace encoder { namespace key {
 
-    string_t generate( const string_t& alph, int x=32 ) { 
+    string_t generate( const string_t& alph, int x=32 ) {
         string_t data ( (ulong)x, '\0' ); while( x --> 0 ){
             data[x] = alph[ rand() % ( alph.size() - 1 ) ];
         }   return data;
     }
 
-    string_t generate( int x=32 ) { 
+    string_t generate( int x=32 ) {
         string_t data ( (ulong)x, '\0' ); while( x --> 0 ){
             data[x] = (char)( rand() % 0xFF );
         }   return data;
@@ -40,25 +40,25 @@ namespace nodepp { namespace encoder { namespace key {
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace encoder {
-    
+
     ulong hash( const string_t& key, int tableSize ) {
         ulong hash = 5381; forEach( x, key ) {
               hash = ((hash << 5) + hash) + x;
         }     return hash % tableSize;
     }
-    
+
     /*─······································································─*/
 
-    ulong hash() { int x= sizeof(ulong) * 8; 
+    ulong hash() { int x= sizeof(ulong) * 8;
             ulong  data = 0; while( x --> 0 ){
             data = data <<1 | ( data | rand() % 2 );
         }   return data;
     }
-    
+
     /*─······································································─*/
 
     ulong hash( int key, int tableSize ) { return key % tableSize; }
-    
+
 }}
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -81,6 +81,14 @@ namespace nodepp { namespace encoder { namespace XOR {
         }   return tmp;
     }
 
+    /*─······································································─*/
+
+    template< class... T >
+    string_t atob( T... args ) { return get( args... ); }
+
+    template< class... T >
+    string_t btoa( T... args ) { return set( args... ); }
+
 }}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -101,6 +109,14 @@ namespace nodepp { namespace encoder { namespace bytes {
            out = out << 8 | num[y];
       }    return out;
     }
+
+    /*─······································································─*/
+
+    template< class T >
+    ptr_t<uchar> btoa( T num ) { return set( num ); }
+
+    template< class T >
+    T atob( const ptr_t<uchar>& num ) { return set<T>( num ); }
 
 }}}
 
@@ -124,6 +140,14 @@ namespace nodepp { namespace encoder { namespace bin {
         }     return out;
     }
 
+    /*─······································································─*/
+
+    template< class T >
+    ptr_t<bool> atob( T num ) { return get( num ); }
+
+    template< class T >
+    T btoa( const ptr_t<bool>& num ) { return set<T>( num ); }
+
 }}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -139,15 +163,29 @@ namespace nodepp { namespace encoder { namespace hex {
     }
 
     template< class T, class = typename type::enable_if<type::is_integral<T>::value,T>::type >
-    T set( string_t num ){ if ( num.empty() ){ return 0; } 
+    T set( string_t num ){ if ( num.empty() ){ return 0; }
         T out = 0; for ( auto c: num ){    out  = out<<4;
-              if ( c >= '0' && c <= '9' ){ out |= c - '0'     ; } 
-            elif ( c >= 'a' && c <= 'f' ){ out |= c - 'a' + 10; } 
-            elif ( c >= 'A' && c <= 'F' ){ out |= c - 'A' + 10; } 
+              if ( c >= '0' && c <= '9' ){ out |= c - '0'     ; }
+            elif ( c >= 'a' && c <= 'f' ){ out |= c - 'a' + 10; }
+            elif ( c >= 'A' && c <= 'F' ){ out |= c - 'A' + 10; }
             else { return 0; }
         }   return out;
     }
-    
+
+    /*─······································································─*/
+
+    template< class T, class = typename type::enable_if<type::is_integral<T>::value,T>::type >
+    string_t atob( T num ) { return get( num ); }
+
+    template< class T, class = typename type::enable_if<type::is_integral<T>::value,T>::type >
+    T btoa( string_t num ) { return set<T>( num ); }
+
+}}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace encoder { namespace hex {
+
     string_t get( const ptr_t<uchar>& inp ){
         if ( inp.empty() ){ return nullptr; }
         queue_t<char> out; for( auto x : inp ){
@@ -157,11 +195,17 @@ namespace nodepp { namespace encoder { namespace hex {
 
     ptr_t<uchar> set( string_t x ){
         if ( x.empty() ){ return nullptr; }
-        ulong size = x.size()/2 + ( x.size()%2 != 0?1:0 ); 
+        ulong size = x.size()/2 + ( x.size()%2 != 0?1:0 );
         ptr_t<uchar> out(size,'\0'); for( auto &y : out ){
             y = set<uchar>( x.splice(0,2) );
         }   return out;
     }
+
+    /*─······································································─*/
+
+    ptr_t<uchar> btoa( string_t inp ) { return set( inp ); }
+
+    string_t atob( const ptr_t<uchar>& inp ) { return get( inp ); }
 
 }}}
 
@@ -178,11 +222,17 @@ namespace nodepp { namespace encoder { namespace buffer {
     }
 
     string_t buff2hex( const string_t& inp ){
-        if( inp.empty() ){ return nullptr; } 
+        if( inp.empty() ){ return nullptr; }
         auto raw = ptr_t<uchar>( inp.size() );
         memcpy( &raw, inp.get(), inp.size() );
         return hex::get( raw );
     }
+
+    /*─······································································─*/
+
+    string_t atob( const string_t& inp ) { return buff2hex( inp ); }
+
+    string_t btoa( const string_t& inp ) { return hex2buff( inp ); }
 
 }}}
 
@@ -203,8 +253,8 @@ namespace nodepp { namespace encoder { namespace base64 {
         }
 
         if (pos2>-6) out.push(BASE64[((pos1<<8)>>(pos2+8))&0x3F]);
-        while (out.size()%4){ out.push('='); } 
-        
+        while (out.size()%4){ out.push('='); }
+
         out.push('\0'); return string_t( out.data() );
     }
 
@@ -224,6 +274,12 @@ namespace nodepp { namespace encoder { namespace base64 {
 
         out.push('\0'); return string_t( out.data() );
     }
+
+    /*─······································································─*/
+
+    string_t btoa( const string_t &in ) { return set( in ); }
+
+    string_t atob( const string_t &in ) { return get( in ); }
 
 }}}
 

@@ -42,7 +42,7 @@ namespace nodepp { namespace process { namespace env {
             array_t<string_t> env ( 2 );
             function_t<void> lb([&](){
                 if( !env[0].empty() && !env[1].empty() )
-                     nodepp::SET( env[0], env[1] );
+                     set( env[0], env[1] );
             });
 
             while( !feof(v) ){ int c = fgetc( v );
