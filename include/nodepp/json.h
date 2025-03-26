@@ -52,18 +52,18 @@ protected:
 
     object_t get_data( const string_t& data ) const noexcept {
         ulong x=0; while( x < data.size() && data[x]==' ' ){ x++; }
-          if( data.empty() || data[x] == ',' )       { return nullptr; }
-        elif( data[x] == '"'     )                   { return regex::match(data,"\"[^\"]+\"").slice(1,-1); }
-        elif( data[x] == '{'     )                   { return parse( data ); }
-        elif( data[x] == '['     )                   { return parse( data ); }
-        elif( data.find("false") )                   { return (bool) 0; }
-        elif( data.find("true")  )                   { return (bool) 1; }
-        elif( data.find("null")  )                   { return nullptr;  }
-        elif( regex::test(data,"[a-z]") )            { return (string_t) data; }
+          if( data.empty() || data[x] == ',' )         { return nullptr; }
+        elif( data[x] == '"'     )                     { return regex::match(data,"\"[^\"]+\"").slice(1,-1); }
+        elif( data[x] == '{'     )                     { return parse( data ); }
+        elif( data[x] == '['     )                     { return parse( data ); }
+        elif( data.find("false") )                     { return (bool) 0; }
+        elif( data.find("true")  )                     { return (bool) 1; }
+        elif( data.find("null")  )                     { return nullptr;  }
+        elif( regex::test(data,"[a-z]") )              { return (string_t) data; }
         elif( data.find('.')     ){
             if( regex::match(data,"[.]\\d+").size()>5 ){ return string::to_double(data); }
             else                                       { return string::to_float(data);  }
-        }   elif( data.size() > 9 )                    { return string::to_long(data);   }
+        }   elif( regex::match(data,"\\d+").size()>9 ) { return string::to_long(data);   }
             else                                       { return string::to_int(data);    }
     }
 
