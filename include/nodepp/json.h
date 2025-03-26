@@ -24,7 +24,7 @@ namespace nodepp { class json_t {
 protected:
 
     long get_next_sec( ulong _pos, const string_t& str ) const noexcept {
-        uchar k=0; while( _pos < str.size() ){     
+        uchar k=0; while( _pos < str.size() ){
             switch( str[_pos] ){
                 case ':': k += 6; break; case ',': k -= 6; break;
                 case '{': _pos =get_next_key( _pos, str ); break;
@@ -37,14 +37,14 @@ protected:
     }
 
     long get_next_key( ulong _pos, const string_t& str ) const noexcept {
-        bool x=1; uchar k=0; while( _pos < str.size() ){   
+        bool x=1; uchar k=0; while( _pos < str.size() ){
             switch( str[_pos] ){
-                case '[': k += 1; break; case ']': k -= 1; break; 
+                case '[': k += 1; break; case ']': k -= 1; break;
                 case '{': k += 3; break; case '}': k -= 3; break;
                 case '\\':_pos++; break; case '"':
                     if( x ){ k+=5; x=!x; }
                     else   { k-=5; x=!x; }
-                break; 
+                break;
             }
             if( k == 0 ){ break; } _pos++;
         }   return _pos >= str.size() ? -1 : _pos;
@@ -61,20 +61,20 @@ protected:
         elif( data.find("null")  )                   { return nullptr;  }
         elif( regex::test(data,"[a-z]") )            { return (string_t) data; }
         elif( data.find('.')     ){
-            if( regex::match(data,".\\d+").size()>5 ){ return string::to_double(data); }
-            else                                     { return string::to_float(data);  }
-        }   elif( data.size() > 9 )                  { return string::to_long(data);   }
-            else                                     { return string::to_int(data);    } 
+            if( regex::match(data,"[.]\\d+").size()>5 ){ return string::to_double(data); }
+            else                                       { return string::to_float(data);  }
+        }   elif( data.size() > 9 )                    { return string::to_long(data);   }
+            else                                       { return string::to_int(data);    }
     }
 
     object_t get_object( ulong x, ulong y, const string_t& str ) const {
         object_t result; do { type::pair<string_t,string_t> data;
            if( string::is_space(str[x]) ){ continue; }
            if( str[x] == '"' ){
-               auto z = get_next_sec( x, str ); 
+               auto z = get_next_sec( x, str );
                data.first = str.slice( x+1,z );
             while( str[x]!=':' && x<y ){ x++; }
-               auto w = get_next_sec( x, str ); 
+               auto w = get_next_sec( x, str );
                     w = w<0 ? str.size()-1 : w;
                data.second = str.slice( x+1, w ); x=w;
                result[data.first] = get_data( data.second );
@@ -86,20 +86,20 @@ protected:
         array_t<object_t> data; do {
            if( string::is_space(str[x]) || str[x]==',' ){ continue; }
            if( str[x] == '{' || str[x] == '[' ){
-               auto z = get_next_key( x, str ); 
+               auto z = get_next_key( x, str );
            if( z < 0 ){ process::error("Invalid JSON Format"); }
-               data.push( parse(str.slice( x,z+1 )) ); x=z+1; 
-           } elif( str[x] == '"' ) { 
-               auto z = get_next_sec( x, str ); 
+               data.push( parse(str.slice( x,z+1 )) ); x=z+1;
+           } elif( str[x] == '"' ) {
+               auto z = get_next_sec( x, str );
            if( z < 0 ){ process::error("Invalid JSON Format"); }
                data.push( get_data(str.slice( x,z+1 )) ); x=z+1;
-           } elif( x != y ) { 
+           } elif( x != y ) {
                ulong z=x; while( str[z]!=',' && z<y ){ z++; }
                data.push( get_data(str.slice( x, z )) ); x=z;
            }
         } while( x++<y ); return data;
     }
-    
+
 public: json_t () noexcept = default;
 
     object_t parse( const string_t& str ) const {
@@ -116,10 +116,10 @@ public: json_t () noexcept = default;
                     return get_object( x+1,pos, str );
                 } else {
                     data = str.slice( x+1, pos-1 ); break;
-                }   x = pos + 1;               
+                }   x = pos + 1;
 
-            } elif( str[x] == ']' || str[x] == '}' || str[x] == ')' ){ 
-                process::error("Invalid JSON Format"); 
+            } elif( str[x] == ']' || str[x] == '}' || str[x] == ')' ){
+                process::error("Invalid JSON Format");
             } else {
                 if( string::is_space( str[x] ) )
                   { continue; } data.push( str[x] );
@@ -128,7 +128,7 @@ public: json_t () noexcept = default;
         } while ( x++<str.size() ); return get_data(data);
     }
 
-    string_t stringify( const object_t& obj ) const { 
+    string_t stringify( const object_t& obj ) const {
         if( !obj.has_value() ){ return nullptr; }
         string_t result; /*process::next();*/
 
@@ -174,16 +174,16 @@ public: json_t () noexcept = default;
 
             case 0xfA03: do { result.push('[');
              for( auto &x: obj.as<array_t<bool>>() )
-                { result += string::format("\"%s\",",x ? "true":"false" ); }   
-             if ( result[ result.size()-1 ] == ',' ){ result.pop(); } 
+                { result += string::format("\"%s\",",x ? "true":"false" ); }
+             if ( result[ result.size()-1 ] == ',' ){ result.pop(); }
             result.push(']'); } while(0); break;
 
             case 0xfA04: do { result.push('[');
              for( auto &x: obj.as<array_t<char>>() )
                 { result += string::format("\"%c\",", x ); }
-             if ( result[ result.size()-1 ] == ',' ){ result.pop(); } 
+             if ( result[ result.size()-1 ] == ',' ){ result.pop(); }
             result.push(']'); } while(0); break;
-            
+
             case 0xfA01: return string::format("[%s]",obj.as<array_t<int>>().join().get());      break;
             case 0xfA02: return string::format("[%s]",obj.as<array_t<uint>>().join().get());     break;
             case 0xfA05: return string::format("[%s]",obj.as<array_t<long>>().join().get());     break;
@@ -199,7 +199,7 @@ public: json_t () noexcept = default;
             case 0xfA0f: return string::format("[%s]",obj.as<array_t<float>>().join().get());    break;
             case 0xfA10: return string::format("[%s]",obj.as<array_t<double>>().join().get());   break;
             case 0xfA11: return string::format("[%s]",obj.as<array_t<ldouble>>().join().get());  break;
-            case 0xfA12: return string::format("[%s]",obj.as<array_t<string_t>>().join().get()); break; 
+            case 0xfA12: return string::format("[%s]",obj.as<array_t<string_t>>().join().get()); break;
 
             default: return "{}"; break;
         }
@@ -214,7 +214,7 @@ public: json_t () noexcept = default;
 namespace nodepp { namespace json {
     object_t     parse( const string_t& str ){ json_t json; return json.parse( str );     }
     string_t stringify( const object_t& obj ){ json_t json; return json.stringify( obj ); }
-}} 
+}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
