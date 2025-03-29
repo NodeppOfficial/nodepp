@@ -65,6 +65,14 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#define TIME_SECONDS( VALUE ) VALUE * 1000
+#define TIME_MINUTES( VALUE ) VALUE * 60 * 1000
+#define TIME_HOURS( VALUE )   VALUE * 60 * 60 * 1000
+#define TIME_DAYS( VALUE )    VALUE * 24 * 60 * 60 * 1000
+#define TIME_WEEKS( VALUE )   VALUE * 7 * 24 * 60 * 60 * 1000
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #define GENERATOR(NAME) struct NAME : public generator_t
 #define gnStart { switch(_state_) { case 0:;
 #define coEmit  int operator()
