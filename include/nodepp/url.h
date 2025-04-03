@@ -193,7 +193,7 @@ namespace url {
     
     /*─······································································─*/
 
-    string_t format( url_t& obj ){ string_t _url; 
+    string_t format( const url_t& obj ){ string_t _url; 
 
         if( !obj.href.empty() ){
             _url += obj.href;
