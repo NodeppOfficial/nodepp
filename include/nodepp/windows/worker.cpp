@@ -35,7 +35,7 @@ protected:
     struct NODE {
         DWORD            id;
         function_t<int>* cb;
-        ptr_t<int>      out;
+        ptr_t<bool>     out;
         HANDLE       thread;
         bool        state=0;
     };  ptr_t<NODE> obj;
