@@ -61,7 +61,6 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 #define CHUNK_GB( VALUE ) ( 1024 * 1024 * 1024 * VALUE )
 #define CHUNK_MB( VALUE ) ( 1024 * 1024 * VALUE )
 #define CHUNK_KB( VALUE ) ( 1024 * VALUE )
-#define CHUNK_B ( VALUE ) ( VALUE )
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -282,7 +281,7 @@ struct generator_t { protected: int _state_ = 0; };
 
 #define ullong  unsigned long long int
 #define ulong   unsigned long int
-          
+
 #define uint8   unsigned char
 #define uint16  unsigned int
 #define uint32  unsigned long int

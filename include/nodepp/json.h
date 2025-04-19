@@ -184,6 +184,12 @@ public: json_t () noexcept = default;
              if ( result[ result.size()-1 ] == ',' ){ result.pop(); }
             result.push(']'); } while(0); break;
 
+            case 0xfA12: do { result.push('[');
+             for( auto &x: obj.as<array_t<string_t>>() )
+                { result += string::format("\"%s\",", x.get() ); }
+             if ( result[ result.size()-1 ] == ',' ){ result.pop(); }
+            result.push(']'); } while(0); break;
+
             case 0xfA01: return string::format("[%s]",obj.as<array_t<int>>().join().get());      break;
             case 0xfA02: return string::format("[%s]",obj.as<array_t<uint>>().join().get());     break;
             case 0xfA05: return string::format("[%s]",obj.as<array_t<long>>().join().get());     break;
@@ -199,7 +205,6 @@ public: json_t () noexcept = default;
             case 0xfA0f: return string::format("[%s]",obj.as<array_t<float>>().join().get());    break;
             case 0xfA10: return string::format("[%s]",obj.as<array_t<double>>().join().get());   break;
             case 0xfA11: return string::format("[%s]",obj.as<array_t<ldouble>>().join().get());  break;
-            case 0xfA12: return string::format("[%s]",obj.as<array_t<string_t>>().join().get()); break;
 
             default: return "{}"; break;
         }
