@@ -14,7 +14,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { class cluster_t { 
+namespace nodepp { class cluster_t {
 protected:
 
     ptr_t<_file_::read> _read1 = new _file_::read;
@@ -31,16 +31,16 @@ protected:
     template< class T >
     void _init_( T& arg, T& env ) {
 
-        if( process::is_child() ){ 
+        if( process::is_child() ){
             int fd[2] = { 0, 0 }; string_t ch = process::env::get("CHILD");
             string::parse( ch.data(), "%d|%d", &fd[0], &fd[1] );
             obj->error  = { STDERR_FILENO };
             obj->output = { fd[0] };
-            obj->input  = { fd[1] }; return; 
+            obj->input  = { fd[1] }; return;
         }
 
-        int fda[2]; ::pipe( fda ); 
-        int fdb[2]; ::pipe( fdb ); 
+        int fda[2]; ::pipe( fda );
+        int fdb[2]; ::pipe( fdb );
         int fdc[2]; ::pipe( fdc ); obj->fd = ::fork();
 
         if( obj->fd == 0 ){
@@ -54,10 +54,12 @@ protected:
             obj->input  = { fda[1] }; ::close( fda[0] );
             obj->output = { fdb[0] }; ::close( fdb[1] );
             obj->error  = { fdc[0] }; ::close( fdc[1] );
+            obj->state      = 1;
         } else {
             ::close( fda[0] ); ::close( fda[1] );
             ::close( fdb[0] ); ::close( fdb[1] );
             ::close( fdc[0] ); ::close( fdc[1] );
+            obj->state      = 0;
         }
 
     }
@@ -74,9 +76,9 @@ public:
     event_t<string_t>  onData;
     event_t<string_t>  onDout;
     event_t<string_t>  onDerr;
-    
-    virtual ~cluster_t() noexcept { 
-        if( obj.count() > 1 ){ return; } 
+
+    virtual ~cluster_t() noexcept {
+        if( obj.count() > 1 ){ return; }
         if( obj->state == 0 ){ return; } free();
     }
 
@@ -85,70 +87,64 @@ public:
 
         for ( auto x : args ) {
           if( x != nullptr && !y ) arg.push( x.c_str() );
-        elif( x != nullptr &&  y ) env.push( x.c_str() );
-        else  y =! y;
-        }
-        
+        elif( x != nullptr &&  y ) env.push( x.c_str() ); else y =! y; }
+
         _init_( arg, env );
     }
 
-    cluster_t() : obj( new NODE() ){ 
+    cluster_t() : obj( new NODE() ){
         array_t<const char*> arg; array_t<const char*> env;
-        _init_( arg, env ); 
+        _init_( arg, env );
     }
-    
+
     /*─······································································─*/
 
     bool is_alive()     const noexcept { return ::kill( obj->fd, 0 ) == 0; }
-
     bool is_available() const noexcept { return is_closed() == false; }
-
     bool is_closed()    const noexcept { return obj->state <= 0; }
-
-    int get_fd()        const noexcept { return obj->fd; }
+    int  get_fd()       const noexcept { return obj->fd; }
 
     /*─······································································─*/
 
     virtual void free() const noexcept {
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
-        if( obj->state == -2 ){ return; } obj->state = -2;
-        obj->input .close(); 
-        obj->output.close(); close(); 
-        obj->error .close(); onClose.emit(); // kill();
+        if( obj->state == -2 ){ return; } close(); obj->state = -2;
+        obj->input .close(); obj->output.close();
+        obj->error .close(); onClose.emit();
     }
 
     /*─······································································─*/
-    
+
     void resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume.emit(); }
     void  close() const noexcept { if(obj->state < 0) { return; } obj->state=-1; onDrain.emit(); }
     void   stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop.emit(); }
     void  flush() const noexcept { writable().flush(); readable().flush(); std_error().flush(); }
     void   kill() const noexcept { ::kill( obj->fd, SIGKILL ); }
-    
+
     /*─······································································─*/
 
-    int next() const noexcept { 
-        if( !writable() .is_available() ){ close(); return -1; }
-        if( !readable() .is_available() ){ close(); return -1; }
-        if( !std_error().is_available() ){ close(); return -1; }
-        if( obj->state == 0 )            { close(); return -1; }
-    coStart; onOpen.emit(); coYield(1); 
+    int next() const noexcept {
+        if( readable() .is_closed() ){ free(); return -1; }
+        if( writable() .is_closed() ){ free(); return -1; }
+        if( std_error().is_closed() ){ free(); return -1; }
+        if( obj->state <= 0 )        { free(); return -1; }
+    coStart; onOpen.emit(); coYield(1);
 
         if((*_read1)(&readable())==1 )       { coGoto(2); }
         if(  _read1->state <= 0 )            { coGoto(2); }
-        onData.emit(_read1->data);    
+        onData.emit(_read1->data);
         onDout.emit(_read1->data);             coGoto(2);
 
         coYield(2); if( process::is_child() ){ coGoto(1); }
 
         if((*_read2)(&std_error())==1 )      { coGoto(1); }
         if(  _read2->state <= 0 )            { coGoto(1); }
-        onData.emit(_read2->data);   
+        onData.emit(_read2->data);
         onDerr.emit(_read2->data);             coGoto(1);
 
     coStop
     }
-    
+
     /*─······································································─*/
 
     template< class... T >
@@ -159,7 +155,7 @@ public:
 
     template< class... T >
     string_t read( const T&... args ) const noexcept { return readable().read( args... ); }
-    
+
     /*─······································································─*/
 
     template< class... T >
@@ -170,9 +166,9 @@ public:
 
     template< class... T >
     int _read( const T&... args )  const noexcept { return readable()._read( args... ); }
-    
+
     /*─······································································─*/
-    
+
     file_t& readable()  const noexcept { return obj->output; }
     file_t& writable()  const noexcept { return obj->input;  }
     file_t& std_error() const noexcept { return obj->error;  }

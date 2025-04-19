@@ -14,7 +14,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { class popen_t { 
+namespace nodepp { class popen_t {
 protected:
 
     ptr_t<_file_::read> _read1 = new _file_::read;
@@ -31,7 +31,7 @@ protected:
     template< class T >
     void _init_( const string_t& path, T& arg, T& env ) {
 
-        int fda[2]; ::pipe( fda ); 
+        int fda[2]; ::pipe( fda );
         int fdb[2]; ::pipe( fdb );
         int fdc[2]; ::pipe( fdc ); obj->fd = ::fork();
 
@@ -45,10 +45,12 @@ protected:
             obj->std_input  = { fda[1] }; ::close( fda[0] );
             obj->std_output = { fdb[0] }; ::close( fdb[1] );
             obj->std_error  = { fdc[0] }; ::close( fdc[1] );
+            obj->state      = 1;
         } else {
             ::close( fda[0] ); ::close( fda[1] );
             ::close( fdb[0] ); ::close( fdb[1] );
             ::close( fdc[0] ); ::close( fdc[1] );
+            obj->state      = 0;
         }
 
     }
@@ -59,7 +61,7 @@ public:
     event_t<except_t>  onError;
     event_t<>          onClose;
     event_t<>          onStop;
-    event_t<>          onExit;
+    event_t<>          onDrain;
     event_t<>          onOpen;
 
     event_t<string_t>  onData;
@@ -67,7 +69,7 @@ public:
     event_t<string_t>  onDerr;
 
     virtual ~popen_t() noexcept {
-        if( obj.count() > 1 ){ return; } 
+        if( obj.count() > 1 ){ return; }
         if( obj->state == 0 ){ return; } free();
     }
 
@@ -77,67 +79,63 @@ public:
 
         for ( auto x : args ) {
           if( x != nullptr && !y ) arg.push( x.c_str() );
-        elif( x != nullptr &&  y ) env.push( x.c_str() );
-        else  y =! y;
-        }
-        
-        _init_( path, arg, env ); obj->state = 1;
+        elif( x != nullptr &&  y ) env.push( x.c_str() ); else y =! y; }
+
+        _init_( path, arg, env );
     }
 
     popen_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    bool is_alive() const noexcept { return ::kill( obj->fd, 0 ) == 0; }
-
+    bool is_alive()     const noexcept { return ::kill( obj->fd, 0 ) == 0; }
     bool is_available() const noexcept { return is_closed() == false; }
-
-    bool is_closed() const noexcept { return obj->state <= 0; }
-
-    int get_fd()    const noexcept { return obj->fd; }
+    bool is_closed()    const noexcept { return obj->state <= 0; }
+    int  get_fd()       const noexcept { return obj->fd; }
 
     /*─······································································─*/
 
     virtual void free() const noexcept {
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
-        if( obj->state == -2 ){ return; } obj->state = -2;
-            obj->std_output.close(); 
-            obj->std_error .close(); close();
-            obj->std_input .close(); onClose.emit(); // kill();
+        if( obj->state == -2 ){ return; } close(); obj->state = -2;
+            obj->std_output.close(); obj->std_error.close();
+            obj->std_input .close(); onClose.emit();
     }
 
     /*─······································································─*/
-    
+
     void  flush() const noexcept { std_input().flush(); std_output().flush(); std_error().flush(); }
     void resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume.emit(); }
-    void  close() const noexcept { if(obj->state < 0) { return; } obj->state=-1; onExit.emit(); }
+    void  close() const noexcept { if(obj->state < 0) { return; } obj->state=-1; onDrain.emit(); }
     void   stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop.emit(); }
     void   kill() const noexcept { ::kill( obj->fd, SIGKILL ); }
-    
+
     /*─······································································─*/
 
-    int next() const noexcept { 
-        if( !std_output().is_available() ){ close(); return -1; }
-        if( !std_input() .is_available() ){ close(); return -1; }
-        if( !std_error() .is_available() ){ close(); return -1; }
-        if( obj->state == 0 )             { close(); return -1; }
-    coStart; onOpen.emit(); coYield(1); 
+    int next() const noexcept {
+        if( std_output().is_closed() ){ free(); return -1; }
+        if( std_error() .is_closed() ){ free(); return -1; }
+        if( std_input() .is_closed() ){ free(); return -1; }
+        if( obj->state <= 0 )         { free(); return -1; }
+    coStart
+
+        onOpen.emit(); coYield(1);
 
         if((*_read1)(&std_output())==1 )  { coGoto(2); }
         if(  _read1->state <= 0 )         { coGoto(2); }
-        onData.emit(_read1->data);    
+        onData.emit(_read1->data);
         onDout.emit(_read1->data);          coGoto(2);
 
         coYield(2);
-        
+
         if((*_read2)(&std_error())==1 )   { coGoto(1); }
         if(  _read2->state <= 0 )         { coGoto(1); }
-        onData.emit(_read2->data);   
+        onData.emit(_read2->data);
         onDerr.emit(_read2->data);          coGoto(1);
 
     coStop
     }
-    
+
     /*─······································································─*/
 
     template< class... T >
@@ -145,7 +143,7 @@ public:
 
     template< class... T >
     string_t read( const T&... args ) const noexcept { return std_output().read( args... ); }
-    
+
     /*─······································································─*/
 
     template< class... T >
@@ -153,7 +151,7 @@ public:
 
     template< class... T >
     int _read( const T&... args )  const noexcept { return std_output()._read( args... ); }
-    
+
     /*─······································································─*/
 
     file_t& std_error()  const noexcept { return obj->std_error;  }

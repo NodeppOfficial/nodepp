@@ -28,7 +28,7 @@ protected:
         ptr_t<char>  buffer;
         string_t     borrow;
     };  ptr_t<NODE> obj = new NODE();
-    
+
     /*─······································································─*/
 
     virtual bool is_blocked( int& c ) const noexcept {
@@ -36,14 +36,14 @@ protected:
              error == EWOULDBLOCK || error == EINPROGRESS ||
              error == EALREADY    || error == EAGAIN
     ); } return 0; }
-    
+
     /*─······································································─*/
-    
+
     virtual int set_nonbloking_mode() const noexcept {
             int flags = fcntl( obj->fd, F_GETFL, 0 );
         return fcntl( obj->fd, F_SETFL, flags | O_NONBLOCK );
     }
-    
+
     /*─······································································─*/
 
     uint get_fd_flag( const string_t& flag ){ uint _flag = O_NONBLOCK;
@@ -68,24 +68,24 @@ public: file_t() noexcept {}
     event_t<>          onOpen;
     event_t<>          onPipe;
     event_t<string_t>  onData;
-    
+
     /*─······································································─*/
-    
+
     virtual ~file_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
-    
+
     /*─······································································─*/
 
     file_t( const string_t& path, const string_t& mode, const ulong& _size=CHUNK_SIZE ){
             obj->fd = open( path.data(), get_fd_flag( mode ), 0644 );
         if( obj->fd < 0 ){
             process::error("such file or directory does not exist");
-        }   set_nonbloking_mode(); set_buffer_size( _size ); 
+        }   set_nonbloking_mode(); set_buffer_size( _size );
     }
 
     file_t( const int& fd, const ulong& _size=CHUNK_SIZE ){
         if( fd < 0 ){
             process::error("such file or directory does not exist");
-        }   obj->fd = fd; set_nonbloking_mode(); set_buffer_size( _size ); 
+        }   obj->fd = fd; set_nonbloking_mode(); set_buffer_size( _size );
     }
 
     /*─······································································─*/
@@ -95,20 +95,20 @@ public: file_t() noexcept {}
     bool is_available() const noexcept { return obj->state >= 0 && !is_closed(); }
 
     /*─······································································─*/
-    
+
     void resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume.emit(); }
     void  close() const noexcept { if(obj->state < 0) { return; } obj->state=-1; onDrain.emit();  }
     void   stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop.emit();   }
     void  reset() const noexcept { if(obj->state!=-2) { return; } resume(); pos(0); }
     void  flush() const noexcept { obj->buffer.fill(0); }
-    
+
     /*─······································································─*/
 
     void set_range( ulong x, ulong y ) const noexcept { obj->range[0] = x; obj->range[1] = y; }
     ulong* get_range() const noexcept { return obj == nullptr ? nullptr : obj->range; }
     int    get_state() const noexcept { return obj == nullptr ?      -1 : obj->state; }
     int       get_fd() const noexcept { return obj == nullptr ?      -1 : obj->fd; }
-    
+
     /*─······································································─*/
 
     void   set_borrow( const string_t& brr ) const noexcept { obj->borrow = brr; }
@@ -116,13 +116,13 @@ public: file_t() noexcept {}
     char*  get_borrow_data() const noexcept { return obj->borrow.data(); }
     void        del_borrow() const noexcept { obj->borrow.clear(); }
     string_t&   get_borrow() const noexcept { return obj->borrow; }
-    
+
     /*─······································································─*/
 
     ulong   get_buffer_size() const noexcept { return obj->buffer.size(); }
     char*   get_buffer_data() const noexcept { return obj->buffer.data(); }
     ptr_t<char>& get_buffer() const noexcept { return obj->buffer; }
-    
+
     /*─······································································─*/
 
     ulong size() const noexcept { auto curr = pos();
@@ -130,33 +130,33 @@ public: file_t() noexcept {}
         ulong size = lseek( obj->fd, 0, SEEK_END );
         pos( curr ); return size;
     }
-    
+
     /*─······································································─*/
 
-    virtual ulong set_buffer_size( ulong _size ) const noexcept { 
+    virtual ulong set_buffer_size( ulong _size ) const noexcept {
         obj->buffer = ptr_t<char>( _size ); return _size;
     }
-    
+
     /*─······································································─*/
-    
+
     virtual void free() const noexcept {
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
         if( obj->state == -2 ){ return; } close(); obj->state = -2;
-        if( obj->fd    >=  3 ) ::close( obj->fd ); onClose.emit();
+        if( obj->fd    >=  3 ){ ::close(obj->fd); } onClose.emit();
     }
 
     /*─······································································─*/
 
     ulong pos( ulong _pos ) const noexcept {
-        auto   _npos = lseek( obj->fd, _pos, SEEK_SET ); 
-        return _npos < 0 ? 0 : _npos; 
+        auto   _npos = lseek( obj->fd, _pos, SEEK_SET );
+        return _npos < 0 ? 0 : _npos;
     }
 
     ulong pos() const noexcept {
-        auto   _npos = lseek( obj->fd, 0, SEEK_CUR ); 
-        return _npos < 0 ? 0 : _npos; 
+        auto   _npos = lseek( obj->fd, 0, SEEK_CUR );
+        return _npos < 0 ? 0 : _npos;
     }
-    
+
     /*─······································································─*/
 
     char read_char() const noexcept { return read(1)[0]; }
@@ -174,7 +174,7 @@ public: file_t() noexcept {}
              { process::next(); }
         return gen.data;
     }
-    
+
     /*─······································································─*/
 
     string_t read( ulong size=CHUNK_SIZE ) const noexcept {
@@ -190,13 +190,13 @@ public: file_t() noexcept {}
              { process::next(); }
         return gen.data;
     }
-    
+
     /*─······································································─*/
 
     virtual int _read( char* bf, const ulong& sx )  const noexcept { return __read( bf, sx ); }
 
     virtual int _write( char* bf, const ulong& sx ) const noexcept { return __write( bf, sx ); }
-    
+
     /*─······································································─*/
 
     virtual int __read( char* bf, const ulong& sx ) const noexcept {

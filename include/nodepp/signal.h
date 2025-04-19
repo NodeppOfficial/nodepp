@@ -20,7 +20,7 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace process {
-    
+
     event_t<int> onSIGFPE;  //on Floating Point Exception
     event_t<int> onSIGSEGV; //on Segmentation Violation
     event_t<int> onSIGILL;  //on Illegal Instruction
@@ -38,9 +38,9 @@ namespace nodepp { namespace process {
     namespace signal {
 
         void start() {
-            ::signal( SIGFPE,  []( int param ){ onSIGFPE.emit(param);  onSIGERR.emit(); conio::error("SIGFPE: ");  console::log("Floating Point Exception"); ::exit( param ); });
+            ::signal( SIGFPE,  []( int param ){ onSIGFPE .emit(param); onSIGERR.emit(); conio::error("SIGFPE: ");  console::log("Floating Point Exception"); ::exit( param ); });
             ::signal( SIGSEGV, []( int param ){ onSIGSEGV.emit(param); onSIGERR.emit(); conio::error("SIGSEGV: "); console::log("Segmentation Violation");   ::exit( param ); });
-            ::signal( SIGILL,  []( int param ){  onSIGILL.emit(param); onSIGERR.emit(); conio::error("SIGILL: ");  console::log("Illegal Instruction");      ::exit( param ); });
+            ::signal( SIGILL,  []( int param ){ onSIGILL .emit(param); onSIGERR.emit(); conio::error("SIGILL: ");  console::log("Illegal Instruction");      ::exit( param ); });
             ::signal( SIGTERM, []( int param ){ onSIGTERM.emit(param); onSIGERR.emit(); conio::error("SIGTERM: "); console::log("Process Terminated");       ::exit( param ); });
             ::signal( SIGINT,  []( int param ){ onSIGSINT.emit(param); onSIGERR.emit(); conio::error("SIGINT: ");  console::log("Signal Interrupt");         ::exit( param ); });
     #ifdef SIGPIPE
@@ -49,11 +49,14 @@ namespace nodepp { namespace process {
     #endif
             ::signal( SIGABRT, []( int param ){ onSIGABRT.emit(param); onSIGERR.emit(); conio::error("SIGABRT: "); console::log("Process Abort");            ::exit( param ); });
             ::atexit( /*    */ []( /*     */ ){ onSIGEXIT.emit(     ); });
+    #ifdef SIGPIPE
+            ::signal( SIGPIPE, SIG_IGN );
+    #endif
         }
 
         void unignore( int signal ){ ::signal( signal, SIG_DFL ); }
-        void ignore( int signal )  { ::signal( signal, SIG_IGN ); }
-	    void emit( int signal )    { ::raise( signal );           }
+        void   ignore( int signal ){ ::signal( signal, SIG_IGN ); }
+	    void     emit( int signal ){ ::raise( signal );           }
 
     }
 

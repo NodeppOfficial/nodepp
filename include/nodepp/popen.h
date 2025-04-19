@@ -30,14 +30,14 @@
 
 namespace nodepp { namespace popen {
 
-    popen_t async( const string_t& path, const initializer_t<string_t>& args ){ 
-    popen_t pid( path, args );process::add([=](){ return pid.next(); }); return pid;
+    popen_t async( const string_t& path, const initializer_t<string_t>& args ){
+    popen_t pid( path, args ); process::add([=](){ return pid.next(); }); return pid;
     }
 
     popen_t async( const string_t& path ){ return async( path, { path } ); }
-    
+
     /*─······································································─*/
-    
+
     string_t await( const string_t& path, const initializer_t<string_t>& args ){
         string_t result; auto fp = popen_t( path, args ); _stream_::pipe _read;
         fp.onData([&]( string_t chunk ){ result += chunk; });
