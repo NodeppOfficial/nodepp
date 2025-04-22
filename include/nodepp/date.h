@@ -20,7 +20,7 @@
 
 namespace nodepp { namespace date {
 
-    uint now(){ return (uint)( time( nullptr ) * 1000 ); }
+    uint now(){ return time( nullptr ); }
     
     /*─······································································─*/
 
