@@ -20,7 +20,7 @@
 
 namespace nodepp { namespace date {
 
-    uint now(){ return time( nullptr ); }
+    uint now(){ return type::cast<uint>( time( nullptr ) ); }
     
     /*─······································································─*/
 
