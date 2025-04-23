@@ -64,9 +64,9 @@ protected:
         WaitForSingleObject( obj->pi.hProcess, 0 ); WaitForSingleObject( obj->pi.hThread, 0 );
 
         if ( obj->fd != 0 ){ // Parent process
-            obj->input  = { fda[1] };
-            obj->output = { fdb[0] };
-            obj->error  = { fdc[0] };
+            obj->input  = { fda[1] }; ::CloseHandle( fda[0] );
+            obj->output = { fdb[0] }; ::CloseHandle( fdb[1] );
+            obj->error  = { fdc[0] }; ::CloseHandle( fdc[1] );
             obj->state  = 1;
         } else {
             ::CloseHandle ( fda[0] ); ::CloseHandle ( fda[1] );
