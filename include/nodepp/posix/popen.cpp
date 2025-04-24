@@ -88,27 +88,12 @@ public:
 
     /*─······································································─*/
 
-    bool is_alive()     const noexcept { return ::kill( obj->fd, 0 ) == 0; }
-    bool is_available() const noexcept { return is_closed() == false; }
-    bool is_closed()    const noexcept { return obj->state <= 0; }
-    int  get_fd()       const noexcept { return obj->fd; }
-
-    /*─······································································─*/
-
     virtual void free() const noexcept {
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
         if( obj->state == -2 ){ return; } close(); obj->state = -2;
-            obj->std_output.close(); obj->std_error.close();
-            obj->std_input .close(); onClose.emit();
+            obj->std_error.close(); obj->std_output.close();
+            obj->std_input.close(); onClose.emit();
     }
-
-    /*─······································································─*/
-
-    void  flush() const noexcept { std_input().flush(); std_output().flush(); std_error().flush(); }
-    void resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume.emit(); }
-    void  close() const noexcept { if(obj->state < 0) { return; } obj->state=-1; onDrain.emit(); }
-    void   stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop.emit(); }
-    void   kill() const noexcept { ::kill( obj->fd, SIGKILL ); }
 
     /*─······································································─*/
 
@@ -116,7 +101,6 @@ public:
         if( std_output().is_closed() ){ free(); return -1; }
         if( std_error() .is_closed() ){ free(); return -1; }
         if( std_input() .is_closed() ){ free(); return -1; }
-        if( obj->state <= 0 )         { free(); return -1; }
     coStart
 
         onOpen.emit(); coYield(1);
@@ -135,6 +119,21 @@ public:
 
     coStop
     }
+
+    /*─······································································─*/
+
+    bool is_alive()     const noexcept { return ::kill( obj->fd, 0 ) == 0; }
+    bool is_available() const noexcept { return is_closed() == false; }
+    bool is_closed()    const noexcept { return obj->state <= 0; }
+    int  get_fd()       const noexcept { return obj->fd; }
+
+    /*─······································································─*/
+
+    void  flush() const noexcept { std_input().flush(); std_output().flush(); std_error().flush(); }
+    void resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume.emit(); }
+    void  close() const noexcept { if(obj->state < 0) { return; } obj->state=-1; onDrain.emit(); }
+    void   stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop.emit(); }
+    void   kill() const noexcept { ::kill( obj->fd, SIGKILL ); }
 
     /*─······································································─*/
 

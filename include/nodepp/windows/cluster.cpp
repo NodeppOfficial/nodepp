@@ -112,32 +112,12 @@ public:
 
     /*─······································································─*/
 
-    bool is_alive() const noexcept { DWORD exitCode;
-        if ( GetExitCodeProcess(obj->pi.hProcess,&exitCode) ) {
-        if ( exitCode == STILL_ACTIVE ) { return true; }
-        }    return false;
-    }
-
-    bool is_available() const noexcept { return is_closed() == false; }
-    bool is_closed()    const noexcept { return obj->state <= 0; }
-    int get_fd()        const noexcept { return obj->fd; }
-
-    /*─······································································─*/
-
     virtual void free() const noexcept {
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
         if( obj->state == -2 ){ return; } close(); obj->state = -2;
-            obj->input .close(); obj->output.close();
-            obj->error .close(); onClose.emit();
+            obj->input.close(); obj->output.close();
+            obj->error.close(); onClose.emit();
     }
-
-    /*─······································································─*/
-
-    void   kill() const noexcept { ::CloseHandle( obj->pi.hProcess ); ::CloseHandle( obj->pi.hThread ); }
-    void  flush() const noexcept { readable().flush(); writable().flush(); std_error().flush(); }
-    void resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume.emit(); }
-    void  close() const noexcept { if(obj->state < 0) { return; } obj->state=-1; onDrain.emit(); }
-    void   stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop.emit(); }
 
     /*─······································································─*/
 
@@ -145,7 +125,6 @@ public:
         if( readable() .is_closed() ){ free(); return -1; }
         if( writable() .is_closed() ){ free(); return -1; }
         if( std_error().is_closed() ){ free(); return -1; }
-        if( obj->state <= 0 )        { free(); return -1; }
     coStart; onOpen.emit(); coYield(1);
 
         if((*_read1)(&readable())==1 )       { coGoto(2); }
@@ -162,6 +141,25 @@ public:
 
     coStop
     }
+
+    /*─······································································─*/
+
+    bool is_available() const noexcept { return is_closed() == false; }
+    bool is_closed()    const noexcept { return obj->state <= 0; }
+    int get_fd()        const noexcept { return obj->fd; }
+
+    bool is_alive() const noexcept { DWORD exitCode;
+        if( GetExitCodeProcess(obj->pi.hProcess,&exitCode) ) {
+        if( exitCode == STILL_ACTIVE ) { return true; }      } return false;
+    }
+
+    /*─······································································─*/
+
+    void   kill() const noexcept { ::CloseHandle( obj->pi.hProcess ); ::CloseHandle( obj->pi.hThread ); }
+    void  flush() const noexcept { readable().flush(); writable().flush(); std_error().flush(); }
+    void resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume.emit(); }
+    void  close() const noexcept { if(obj->state < 0) { return; } obj->state=-1; onDrain.emit(); }
+    void   stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop.emit(); }
 
     /*─······································································─*/
 
