@@ -33,16 +33,17 @@ namespace nodepp { namespace process { namespace env {
 
         FILE* v = fopen( path.c_str(), "r" );
         string_t s; bool nr = 0; bool pr = 0;
+        ptr_t<string_t> env ( 2, nullptr );
 
         if( v == nullptr ){
            _ERROR( "such file of directory not found" );
             return -1;
         }
 
-        array_t<string_t> env ( 2 );
         function_t<void> lb([&](){
-            if( !env[0].empty() && !env[1].empty() )
-                 set( env[0], env[1] );
+            if( env[0].empty() ){ return; }
+            if( env[1].empty() ){ return; }
+                set( env[0], env[1] );
         });
 
         while( !feof(v) ){ int c = fgetc( v );
@@ -59,6 +60,7 @@ namespace nodepp { namespace process { namespace env {
 
             if( !nr ) s.push(c);
         }   fclose(v); return  1;
+        
     };
 
 }   /*─······································································─*/

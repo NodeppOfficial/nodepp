@@ -69,7 +69,6 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 #define TIME_MINUTES( VALUE ) ( VALUE * 60 * 1000 )
 #define TIME_HOURS( VALUE )   ( VALUE * 60 * 60 * 1000 )
 #define TIME_DAYS( VALUE )    ( VALUE * 24 * 60 * 60 * 1000 )
-#define TIME_WEEKS( VALUE )   ( VALUE * 7 * 24 * 60 * 60 * 1000 )
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
