@@ -105,6 +105,7 @@ namespace nodepp { struct fetch_t {
 
     file_t    file ;
     string_t  body ;
+    query_t   query;
     
     /*─······································································─*/
 
@@ -242,7 +243,9 @@ namespace nodepp { namespace http {
 
         if( !url::is_valid( gfc->url ) ){ rej(except_t("invalid URL")); return; }
         
-        url_t    uri = url::parse( gfc->url );
+        url_t uri = url::parse( gfc->url );
+        if( !gfc->query.empty() ){ uri.query=gfc->query; }
+
         string_t dir = uri.pathname + uri.search + uri.hash;
         string_t dip = uri.hostname ; gfc->headers["Host"] = dip;
        
