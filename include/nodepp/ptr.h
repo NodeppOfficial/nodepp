@@ -28,16 +28,8 @@ public:
     /*─······································································─*/
 
     ptr_t( ptr_t&& other ) noexcept { mve( type::move(other) ); }
-    ptr_t( const ptr_t& other ) noexcept { cpy(other); }
     
-    /*─······································································─*/
-
-    template < class V, ulong N > 
-    ptr_t& operator=( const V (&value)[N] ) noexcept { 
-        ulong s = 0; this->resize( N ); 
-        for( auto x=begin(); x!=end(); x++ )
-           { (*x) = (T)value[s]; s++; } return *this;
-    }
+    ptr_t( const ptr_t& other ) noexcept { cpy(other); }
 
     template < class V, ulong N > 
     ptr_t ( const V (&value)[N] ) noexcept { 

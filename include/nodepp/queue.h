@@ -65,8 +65,8 @@ public:
 
     /*─······································································─*/
 
-    queue_t( const V* value, const ulong& n=0 ) noexcept : obj( new DONE ) {
-        if( value == nullptr || n == 0 ){ return; } auto i=n;
+    queue_t( const V* value, const ulong& n ) noexcept : obj( new DONE ) {
+        if ( value == nullptr || n == 0 ){ return; } auto i=n;
         while( i-->0 ){ unshift(value[i]); }
     }
 

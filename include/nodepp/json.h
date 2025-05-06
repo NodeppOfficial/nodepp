@@ -21,6 +21,12 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { class json_t {
+private:
+    
+    using T     = type::pair<string_t,object_t>;
+    using QUEUE = map_t<string_t,object_t>;
+    using ARRAY = array_t<object_t>;
+
 protected:
 
     long get_next_sec( ulong _pos, const string_t& str ) const noexcept {
@@ -82,8 +88,8 @@ protected:
         } while( x++<y ); return result.keys().empty() ? nullptr : result;
     }
 
-    array_t<object_t> get_array( ulong x, ulong y, const string_t& str ) const {
-        array_t<object_t> data; do {
+    ARRAY get_array( ulong x, ulong y, const string_t& str ) const {
+        ARRAY data; do {
            if( string::is_space(str[x]) || str[x]==',' ){ continue; }
            if( str[x] == '{' || str[x] == '[' ){
                auto z = get_next_key( x, str );
@@ -128,24 +134,24 @@ public: json_t () noexcept = default;
         } while ( x++<str.size() ); return get_data(data);
     }
 
-    string_t stringify( const object_t& obj ) const {
+    string_t format( const object_t& obj ) const {
         if( !obj.has_value() ){ return nullptr; }
         string_t result; /*process::next();*/
 
         if( obj.get_type_id() == 20 ){
             result.push('{');
 
-            for( auto &item: obj.as<queue_t<type::pair<string_t,object_t>>>().data() ){
+            for( auto &item: obj.as<QUEUE>().data() ){
                  result += string::format("\"%s\":",item.first.get());
-                 result += stringify( item.second ); result.push(',');
+                 result += format( item.second ); result.push(',');
             }    result.pop();
 
             result.push('}'); goto END;
         } elif( obj.get_type_id() == 21 ){
             result.push('[');
 
-            for( auto &item: obj.as<array_t<object_t>>() )
-               { result += stringify( item ); result.push(','); }
+            for( auto &item: obj.as<ARRAY>() )
+               { result += format( item ); result.push(','); }
             if ( result[ result.size()-1 ] == ',' ){ result.pop(); }
 
             result.push(']'); goto END;
@@ -217,8 +223,8 @@ public: json_t () noexcept = default;
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace json {
-    object_t     parse( const string_t& str ){ json_t json; return json.parse( str );     }
-    string_t stringify( const object_t& obj ){ json_t json; return json.stringify( obj ); }
+    object_t  parse( const string_t& str ){ json_t json; return json.parse( str );  }
+    string_t format( const object_t& obj ){ json_t json; return json.format( obj ); }
 }}
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -232,10 +238,10 @@ namespace nodepp { namespace json {
     }
 
     template<class T, class V>
-    string_t stringify( const map_t<T,V>& map ){
+    string_t format( const map_t<T,V>& map ){
         object_t obj; for( auto &x: map.data() ){
             obj[ x.first ] = x.second;
-        }   return stringify( obj );
+        }   return format( obj );
     }
 
 }}
@@ -251,11 +257,20 @@ namespace nodepp { namespace json {
     }
 
     template<class T, class V>
-    string_t stringify( const array_t<map_t<T,V>>& map ){
+    string_t format( const array_t<map_t<T,V>>& map ){
         auto obj = json::parse( map );
-        return json::stringify( obj );
+        return json::format( obj );
     }
 
+}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace json {
+    template< class... T >
+    string_t stringify( const T&... args ){ 
+      return format( args... ); 
+    }
 }}
 
 /*────────────────────────────────────────────────────────────────────────────*/
