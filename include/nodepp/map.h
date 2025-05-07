@@ -49,8 +49,7 @@ public:
 
         auto  key = string::to_string( id );
         uchar idx = 0; for( auto x:key ){ idx+=x; }
-        auto  tbl = obj->table[idx];
-        auto  n   = tbl.first();
+        auto  n   = obj->table[idx].first();
         
         while( n!=nullptr ){
         auto itm = ( decltype(obj->queue.first()) )( n->data );
@@ -80,14 +79,17 @@ public:
     }
 
     bool has( const U& id ) const noexcept {
-        auto x = obj->queue.first(); 
-        
-        while( !id.empty() && x != nullptr ){
-          if ( x->data.first == id )
-             { return true; } 
-        else { x = x->next; } }
 
+        auto  key = string::to_string( id );
+        uchar idx = 0; for( auto x:key ){ idx+=x; }
+        auto  n   = obj->table[idx].first();
+        
+        while( n!=nullptr ){
+        auto itm = ( decltype(obj->queue.first()) )( n->data );
+        if ( itm->data.first==id ){ return true; } n = n->next; } 
+        
         return false;
+
     }
 
     array_t<U> keys() const noexcept {
@@ -138,8 +140,7 @@ public:
 
         auto  key = string::to_string( pair.first );
         uchar idx = 0; for( auto x:key ){ idx+=x; }
-        auto  tbl = obj->table[idx];
-        auto  n   = tbl.first();
+        auto  n   = obj->table[idx].first();
         
         while( n!=nullptr ){
         auto itm = ( decltype(obj->queue.first()) )( n->data );
