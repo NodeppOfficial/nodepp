@@ -139,7 +139,7 @@ public:
     /*─······································································─*/
 
     ulong first() const noexcept { return 0; }
-    bool  empty() const noexcept { return buffer.empty(); }
+    bool  empty() const noexcept { return buffer.size() <= 1; }
     ulong  size() const noexcept { return empty() ? 0 : buffer.size() - 1; }
     ulong  last() const noexcept { return empty() ? 0 : buffer.size() - 2; }
 

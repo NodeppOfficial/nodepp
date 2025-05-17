@@ -26,7 +26,7 @@ protected:
 
     struct NODE {
         z_stream  fd;
-        bool state=1;
+        bool state= 1;
         int  mode = 0;
         int  type = 0;
         ptr_t<char> bff;
@@ -50,7 +50,7 @@ public:
     
     /*─······································································─*/
     
-    virtual ~zlib_t() noexcept { if( obj.count() > 1 || obj->state==0 ){ return; } free(); }
+    virtual ~zlib_t() noexcept { if( obj.count()>1 || obj->state==0 ){ return; } free(); }
 
     zlib_t( int type=0, ulong size=CHUNK_SIZE ) noexcept : obj( new NODE ) { 
         obj->bff  = ptr_t<char>( size ); 
@@ -63,12 +63,12 @@ public:
         if( obj->state == 0 ){ return; } obj->state = 0;
         if( obj->mode  ==-1 ){ inflateEnd( &obj->fd ); }
         if( obj->mode  == 1 ){ deflateEnd( &obj->fd ); }
-        close(); onClose.emit();
+        onDrain.emit(); onClose.emit();
     }
     
     /*─······································································─*/
 
-    void        close() const noexcept { if(!is_closed()){ obj->state=0; onDrain.emit(); } }
+    void        close() const noexcept { free(); }
     bool    is_closed() const noexcept { return obj->state == 0; }
     bool is_available() const noexcept { return obj->state == 1; }
     
@@ -79,7 +79,7 @@ public:
 
         if( obj->mode == 0 ){ if( inflateInit2( &obj->fd, obj->type ) != Z_OK ){ 
             _EERROR( onError, "Failed to initialize zlib for decompression." ); close(); return nullptr;
-        } onOpen.emit(); obj->mode == 1; } string_t output; ulong size =0;
+        } onOpen.emit(); obj->mode = 1; } string_t output; ulong size =0;
         
             obj->fd.avail_in = data.size();
             obj->fd.avail_out= obj->bff.size();

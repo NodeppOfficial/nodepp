@@ -191,8 +191,7 @@ protected:
         if( other.null() ){ return; } 
         length_ = other.length_;
         count_  = other.count_;
-        value_  = other.value_; 
-        ++( *count_ );
+        value_  = other.value_; ++( *count_ );
     }
 
     void mve( ptr_t&& other ) noexcept {
