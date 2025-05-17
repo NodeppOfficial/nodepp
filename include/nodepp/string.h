@@ -85,8 +85,9 @@ protected:
 
         ulong a = clamp( first() + y, 0UL, last() );
         ulong b = clamp( first() + x, 0UL, a );
-        ulong c = a - b + 1; return {{ b, a, c }};
-
+        ulong c = a - b + 1; 
+        
+        return ptr_t<ulong>({ b, a, c });
     }
 
     ptr_t<ulong> get_splice_range( long x, ulong y ) const noexcept {
@@ -99,8 +100,9 @@ protected:
 
         ulong a = clamp( first() + y, 0UL, last() );
         ulong b = clamp( first() + x, 0UL, a );
-        ulong c = a - b + 1; return {{ b, a, c }};
-
+        ulong c = a - b + 1; 
+        
+        return ptr_t<ulong>({ b, a, c });
     }
 
 public:
@@ -137,7 +139,7 @@ public:
     /*─······································································─*/
 
     ulong first() const noexcept { return 0; }
-    bool  empty() const noexcept { return buffer.size() <= 1; }
+    bool  empty() const noexcept { return buffer.empty(); }
     ulong  size() const noexcept { return empty() ? 0 : buffer.size() - 1; }
     ulong  last() const noexcept { return empty() ? 0 : buffer.size() - 2; }
 

@@ -36,7 +36,7 @@ public:
     template< ulong N >
     map_t( const T (&args) [N] ) noexcept : obj(new NODE()) { 
         obj->table = ptr_t<LIST>( sizeof(uchar) );
-        for( auto &x: args ){ append(x); }
+        for( auto &x: args ) { append(x); }
     }
     
     map_t() noexcept : obj(new NODE()) {
@@ -45,21 +45,17 @@ public:
 
     /*─······································································─*/
 
-    V& operator[]( const U& id ) const noexcept { 
+    V& operator[]( const U& id ) const noexcept {
 
-        auto  key = string::to_string( id );
-        uchar idx = 0; for( auto x:key ){ idx+=x; }
-        auto  n   = obj->table[idx].first();
+        auto key = string::to_string( id ); uchar idx=0; 
+        for( auto x:key ){ idx=(idx+x)%sizeof(uchar); }
+        auto n   = obj->table[idx].first();
         
         while( n!=nullptr ){
-        auto itm = ( decltype(obj->queue.first()) )( n->data );
+        auto itm = obj->queue.as(n->data); if( itm==nullptr ){ break; }
         if ( itm->data.first==id ){ return itm->data.second; } 
-        n = n->next; } if( n==nullptr ) { goto ERROR; }
+        n = n->next; } append({ id, V() });
 
-        ERROR:; obj->queue.push({ id, V() }); 
-        auto nid = obj->queue.last();
-        obj->table[idx].push( nid );
-        
         return obj->queue.last()->data.second;
         
     }
@@ -74,32 +70,32 @@ public:
 
     /*─······································································─*/
 
-    void map( function_t<void,T&> callback ) const noexcept {
-         obj->queue.map( callback );
-    }
-
     bool has( const U& id ) const noexcept {
 
-        auto  key = string::to_string( id );
-        uchar idx = 0; for( auto x:key ){ idx+=x; }
-        auto  n   = obj->table[idx].first();
+        auto key = string::to_string( id ); uchar idx = 0; 
+        for( auto x:key ){ idx=(idx+x)%sizeof(uchar); }
+        auto n   = obj->table[idx].first();
         
         while( n!=nullptr ){
-        auto itm = ( decltype(obj->queue.first()) )( n->data );
+        auto itm = obj->queue.as(n->data); if( itm==nullptr ){ break; }
         if ( itm->data.first==id ){ return true; } n = n->next; } 
         
         return false;
 
     }
 
-    array_t<U> keys() const noexcept {
-        array_t<U> result;
+    /*─······································································─*/
 
-        obj->queue.map([&]( T& items ){
-            result.push( items.first );
-        });
+    void map( function_t<void,T&> callback ) const noexcept {
+         obj->queue.map( callback );
+    }
 
-        return result;
+    /*─······································································─*/
+
+    array_t<U> keys() const noexcept { array_t<U> result;
+        auto x = obj->queue.first(); while( x!=nullptr ){
+            result.push( x->data.first ); x=x->next; 
+        }   return result;
     }
     
     /*─······································································─*/
@@ -111,12 +107,12 @@ public:
 
     void erase( const U& id ) const noexcept {
 
-        auto  key = string::to_string( id );
-        uchar idx = 0; for( auto x:key ){ idx+=x; }
-        auto  n   = obj->table[idx].first();
+        auto key = string::to_string( id ); uchar idx = 0; 
+        for( auto x:key ){ idx=(idx+x)%sizeof(uchar); }
+        auto n   = obj->table[idx].first();
         
         while( n!=nullptr ){
-        auto itm = ( decltype(obj->queue.first()) )( n->data );
+        auto itm = obj->queue.as(n->data); if( itm==nullptr ){ return; }
         if ( itm->data.first==id ){ obj->queue.erase(itm); break; }
         n = n->next; } if( n==nullptr ) { return; }
 
@@ -138,19 +134,18 @@ public:
 
     void append( const T& pair ) const noexcept {
 
-        auto  key = string::to_string( pair.first );
-        uchar idx = 0; for( auto x:key ){ idx+=x; }
-        auto  n   = obj->table[idx].first();
+        auto key = string::to_string(pair.first); uchar idx = 0; 
+        for( auto x:key ){ idx=(idx+x)%sizeof(uchar); }
+        auto n   = obj->table[idx].first();
         
         while( n!=nullptr ){
-        auto itm = ( decltype(obj->queue.first()) )( n->data );
+        auto itm = obj->queue.as(n->data); if( itm==nullptr ){ break; }
         if ( itm->data.first == pair.first ){ 
-             itm->data.second = pair.second; return;
-        } n = n->next; } if( n==nullptr ) { goto ERROR; }
+             itm->data.second = pair.second; 
+        return; } n = n->next; }
 
-        ERROR:; obj->queue.push( pair ); 
-        auto nid = obj->queue.last();
-        obj->table[idx].push( nid );
+        obj->queue.push( pair );
+        obj->table[idx].push( obj->queue.last() );
 
     }
 

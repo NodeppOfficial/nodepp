@@ -41,8 +41,9 @@ protected:
 
         ulong a = clamp( (ulong)y, 0UL, size()-1 );
         ulong b = clamp( (ulong)x, 0UL, a );
-        ulong c = a - b + 1; return {{ b, a, c }};
+        ulong c = a - b + 1; 
 
+        return ptr_t<ulong>({ b, a, c });
     }
 
     ptr_t<ulong> get_splice_range( long x, ulong y ) const noexcept {
@@ -55,8 +56,9 @@ protected:
 
         ulong a = clamp( (ulong)y, 0UL, size()-1 );
         ulong b = clamp( (ulong)x, 0UL, a );
-        ulong c = a - b + 1; return {{ b, a, c }};
-
+        ulong c = a - b + 1; 
+        
+        return ptr_t<ulong>({ b, a, c });
     }
 
 public:
@@ -313,11 +315,22 @@ public:
 
     NODE* get() const noexcept { return obj->act==nullptr ? first() : obj->act; }
 
-    void set( NODE* x ) const noexcept { if( is_item(x) ) obj->act = x; }
+    void set( NODE* x ) const noexcept { if( is_item(x) ){ obj->act = x; } }
 
     NODE* get( ulong x ) const noexcept {
         if( empty() ){ return nullptr; } auto n = first();
         while( n->next != nullptr && x-->0 ){ n = n->next; } return n;
+    }
+
+    NODE* get( void* x ) const noexcept { auto n = first();
+        while( n != nullptr && x != nullptr ){ 
+           if( n == type::cast<NODE>(x) ){ break; } 
+        n = n->next; } return n; 
+    }
+
+    NODE* as( void* x ) const noexcept {
+        if( x == nullptr ){ return nullptr; }
+        return type::cast<NODE>(x);
     }
 
     /*─······································································─*/

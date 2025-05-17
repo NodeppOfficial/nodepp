@@ -16,124 +16,133 @@
 
 namespace nodepp { template< class T > class ptr_t { 
 public:
-    
+        
     ptr_t( ulong n, const T& value ) noexcept { resize( n, value ); }
     ptr_t( T* value, ulong n )       noexcept { resize( value, n ); }
-    ptr_t( T* value )                noexcept { resize( value, 0 ); }
+    ptr_t( T* value )                noexcept { resize( value ); }
     ptr_t( ulong n )                 noexcept { resize( n ); }
-    ptr_t()                          noexcept { reset(); }
-
-    virtual ~ptr_t() noexcept { reset(); }
-    
-    /*─······································································─*/
-
-    ptr_t( ptr_t&& other ) noexcept { mve( type::move(other) ); }
-    
-    ptr_t( const ptr_t& other ) noexcept { cpy(other); }
-
+        
     template < class V, ulong N > 
-    ptr_t ( const V (&value)[N] ) noexcept { 
-        ulong s = 0; this->resize( N ); 
+    ptr_t( const V (&value)[N] ) noexcept { 
+        ulong s=0; reset(); resize(N);
         for( auto x=begin(); x!=end(); x++ )
-           { (*x) = (T)value[s]; s++; } 
+           { *x = (T)value[s]; s++; }
     }
-    
-    /*─······································································─*/
 
-    bool operator> ( ptr_t& oth ) const noexcept { return this->value_> oth.value_; }
-    bool operator>=( ptr_t& oth ) const noexcept { return this->value_>=oth.value_; }
-    bool operator< ( ptr_t& oth ) const noexcept { return this->value_< oth.value_; }
-    bool operator<=( ptr_t& oth ) const noexcept { return this->value_<=oth.value_; }
-    bool operator==( ptr_t& oth ) const noexcept { return this->value_==oth.value_; }
-    bool operator!=( ptr_t& oth ) const noexcept { return this->value_!=oth.value_; }
+    ptr_t() noexcept { reset(); }
+   ~ptr_t() noexcept { if( !null() ) { reset(); } }
     
     /*─······································································─*/
-
-    bool operator> ( T* value )   const noexcept { return this->value_> value; }
-    bool operator>=( T* value )   const noexcept { return this->value_>=value; }
-    bool operator< ( T* value )   const noexcept { return this->value_< value; }
-    bool operator<=( T* value )   const noexcept { return this->value_<=value; }
-    bool operator==( T* value )   const noexcept { return this->value_==value; }
-    bool operator!=( T* value )   const noexcept { return this->value_!=value; }
-    
-    /*─······································································─*/
-    
-    void fill( const T& c ) const noexcept {
-        if( size() != 0 ) for( auto x=begin(); x!=end(); x++ ) (*x) = c;
-        else              *value_ = c;
-    }
-    
-    /*─······································································─*/
-
-    T& operator[]( ulong i ) const noexcept { 
-        return size()==0 ? value_[i] : 
-               value_[ i%size() ]; 
-    }
-    
-    /*─······································································─*/
-
-    ptr_t& operator=( const ptr_t& other ) noexcept {
-        if( this->value_ != &other )
-          { reset(); cpy(other); }
-        return *this;
-    }
 
     ptr_t& operator=( ptr_t&& other ) noexcept {
-        if( this->value_ != &other )
-          { reset(); mve(type::move(other)); }
-        return *this;
+       if( data() != &other ){ reset(); mve(type::move(other)); } return *this;
+    }
+
+    ptr_t& operator=( const ptr_t& other ) noexcept {
+       if( data() != &other ){ reset(); cpy(other); } return *this;
+    }
+
+    ptr_t( ptr_t&& other ) noexcept {
+       if( data() != &other ){ reset(); mve(type::move(other)); }
+    }
+
+    ptr_t( const ptr_t& other ) noexcept {
+       if( data() != &other ){ reset(); cpy(other); }
     }
     
     /*─······································································─*/
+
+    bool operator> ( ptr_t& oth ) const noexcept { return data()> oth.data(); }
+    bool operator>=( ptr_t& oth ) const noexcept { return data()>=oth.data(); }
+    bool operator< ( ptr_t& oth ) const noexcept { return data()< oth.data(); }
+    bool operator<=( ptr_t& oth ) const noexcept { return data()<=oth.data(); }
+    bool operator==( ptr_t& oth ) const noexcept { return data()==oth.data(); }
+    bool operator!=( ptr_t& oth ) const noexcept { return data()!=oth.data(); }
+    
+    /*─······································································─*/
+
+    bool operator> ( T* value )   const noexcept { return data()> value; }
+    bool operator>=( T* value )   const noexcept { return data()>=value; }
+    bool operator< ( T* value )   const noexcept { return data()< value; }
+    bool operator<=( T* value )   const noexcept { return data()<=value; }
+    bool operator==( T* value )   const noexcept { return data()==value; }
+    bool operator!=( T* value )   const noexcept { return data()!=value; }
+    
+    /*─······································································─*/
+    
+    T& operator[]( ulong i ) const noexcept { 
+        return size()==0 ?data()[i] :data()[i%size()]; 
+    }
+    
+    /*─······································································─*/
+
+    void fill( const T& c ) const noexcept {
+        if ( size() != 0 ){
+        for( auto x=begin(); x!=end(); x++ )
+           { *x = c; }} else { *data() =c; }              
+    }
 
     ptr_t copy() const noexcept {
-          if( count() > 0 && size() == 0 )
-            { return new T( *value_ ); }
-        elif( count() > 0 && size() > 0 ){
-            auto n_buffer = ptr_t<T>( size() );
-            memcpy( &n_buffer, value_, size() );
-            return n_buffer;
-        }   return nullptr;
+        if  ( count() > 0 && size()==0 )
+            { return new T( *data() ); }
+        elif( count() > 0 && size()> 0 ){
+            auto    n_buffer =ptr_t<T>(size());
+            memcpy(&n_buffer, data(), size() );
+            return  n_buffer;
+        }   return  nullptr;
     }
     
     /*─······································································─*/
 
-    void resize( ulong n, const T& c ) noexcept { reset(); 
+    template < class V, ulong N > 
+    void resize( const V (&value)[N] ) noexcept { 
+        ulong s=0; reset(); resize(N);
+        for( auto x=begin(); x!=end(); x++ )
+           { *x = (T)value[s]; s++; }
+    }
+
+    void resize( ulong n, const T& c ) noexcept { 
+        ulong s=0; reset(); resize(n);
+        for( auto x=begin(); x!=end(); x++ )
+           { *x = (T)c; }
+    }
+    
+    void resize( ulong n ) noexcept { reset(); 
         if( n == 0 ){ 
-            length_= new ulong( 0 ); 
+            length_= new ulong( n ); 
             count_ = new ulong( 1 );
-            value_ = new T(c); return; 
+            value_ = new T();
         } else {
             length_= new ulong( n ); 
             count_ = new ulong( 1 );
             value_ = new T[n];
-        }   while( n-->0 ) value_[n] = c;
+        }
     }
 
-    void resize( T* c, ulong n ) noexcept { reset();
-        if( c == nullptr ){ return; }
+    void resize( T* c, ulong n ) noexcept {
+        if( c == nullptr ){ return; } reset();
         length_= new ulong( n ); 
         count_ = new ulong( 1 );
         value_ = c;
     }
-    
-    void resize( ulong n ) noexcept { reset(); 
-        if( n == 0 ){ return; }
-        length_= new ulong( n ); 
+
+    void resize( T* c ) noexcept {
+        if( c == nullptr ){ return; } reset();
+        length_= new ulong( 0 ); 
         count_ = new ulong( 1 );
-	    value_ = new T[n];
+        value_ = c;
     }
     
     /*─······································································─*/
 
     void reset() noexcept {
-        if( value_ == nullptr ){ return; }
+        if( null() ){ return; }
 
-        if( count() != 0 )      {
-        if( --(*count_) == 0 )  {
-            if(*length_ == 0 )  {
-                     delete    value_;
-            } else { delete [] value_; }
+        if( count() != 0 )  {
+        if( --(*count_)==0 ){
+            if(*length_==0 ){
+                     delete    data();
+            } else { delete [] data(); }
                      delete    count_;
                      delete   length_;
         }}
@@ -145,28 +154,28 @@ public:
 
     /*─······································································─*/
 
+    bool      null() const noexcept { return count_==nullptr || value_==nullptr; }
+    T*         end() const noexcept { return null() ? nullptr : value_ + size(); }
+    T*       begin() const noexcept { return null() ? nullptr : value_; }
+
+    bool     empty() const noexcept { return  null() || size() == 0; }
     bool has_value() const noexcept { return !null() && count()!= 0; }
-    ulong     size() const noexcept { return  null() ? 0 : *length_; }
-    ulong    count() const noexcept { return  null() ? 0 : *count_;  }
-    bool     empty() const noexcept { return  null() || size()==0 ;  }
-    bool      null() const noexcept { return  value_ == nullptr; }
-    T*        data() const noexcept { return  value_; }
-    T*         get() const noexcept { return  value_; }
+    void      free() const noexcept { if( !null() ) { *count_ = 0; } }
+
+    ulong     size() const noexcept { return  null() ? 0 :*length_; }
+    ulong    count() const noexcept { return  null() ? 0 :*count_ ; }
+
+    T*        data() const noexcept { return  begin(); }
+    T*         get() const noexcept { return  begin(); }
     
     /*─······································································─*/
 
-    T*    end() const noexcept { return value_ + size(); }
-    T*  begin() const noexcept { return value_; }
-    void free() const noexcept { *count_ = 0; }
-    
-    /*─······································································─*/
+    explicit operator bool(void) const { return  has_value(); }
+    explicit operator   T*(void) const { return  data(); }
 
-    explicit operator bool(void) const { return has_value(); }
-    explicit operator   T*(void) const { return value_; }
-
-    T* operator->() const noexcept { return  value_; }
-    T& operator*()  const noexcept { return *value_; }
-    T* operator&()  const noexcept { return  value_; }
+    T* operator->()     const noexcept { return  data(); }
+    T& operator* ()     const noexcept { return *data(); }
+    T* operator& ()     const noexcept { return  data(); }
 
     /*─······································································─*/
 
@@ -179,16 +188,15 @@ protected:
     /*─······································································─*/
 
     void cpy( const ptr_t& other ) noexcept {
-        if( other.count() == 0 ){ return; }
-        length_= other.length_;
-        count_ = other.count_;
-        value_ = other.value_; ++(*count_);
+        if( other.null() ){ return; } 
+        length_ = other.length_;
+        count_  = other.count_;
+        value_  = other.value_; 
+        ++( *count_ );
     }
-    
-    /*─······································································─*/
 
     void mve( ptr_t&& other ) noexcept {
-        if( other.count() == 0 ){ return; }
+        if( other.null() ){ return; } 
         length_ = other.length_;
         count_  = other.count_;
         value_  = other.value_;
@@ -196,6 +204,8 @@ protected:
         other.count_ = nullptr;
         other.value_ = nullptr;
     }
+    
+    /*─······································································─*/
 
 };}
 

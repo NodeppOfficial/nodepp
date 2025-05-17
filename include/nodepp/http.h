@@ -170,7 +170,7 @@ public:
             } else { path= init[1]; }
 
                    method= init[0]; if( version.empty() ) version = init[2];
-            string_t host= headers["Host"].empty() ? "localhost" : headers["Host"];
+            string_t host= !headers.has("Host") ? "localhost" : headers["Host"];
                       url= string::format( "http://%s%s%s", (char*)host, (char*)path, (char*)search );
         } else { version = init[0]; status = string::to_uint( init[1] ); }
 
