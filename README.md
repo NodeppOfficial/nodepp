@@ -141,9 +141,9 @@ Check out some articles on [Medium](https://medium.com/@EDBCBlog)
 - 🔗: [JWT](https://github.com/NodeppOfficial/nodepp-jwt)           -> JSON Web Token
 - 🔗: [NmapPP](https://github.com/NodeppOfficial/nodepp-nmap)       -> Scan IPs and Ports
 - 🔗: [Redis](https://github.com/NodeppOfficial/nodepp-redis)       -> Redis Client for Nodepp
-- 🔗: [Sqlite](https://github.com/NodeppOfficial/nodepp-redis)      -> Sqlite Client for Nodepp
-- 🔗: [MariaDB](https://github.com/NodeppOfficial/nodepp-redis)     -> MariaDB Client for Nodepp
-- 🔗: [Postgres](https://github.com/NodeppOfficial/nodepp-redis)    -> Postgres Client for Nodepp
+- 🔗: [Sqlite](https://github.com/NodeppOfficial/nodepp-sqlite)     -> Sqlite Client for Nodepp
+- 🔗: [MariaDB](https://github.com/NodeppOfficial/nodepp-mariadb)   -> MariaDB Client for Nodepp
+- 🔗: [Postgres](https://github.com/NodeppOfficial/nodepp-postgres) -> Postgres Client for Nodepp
   
 ## Contribution
 
