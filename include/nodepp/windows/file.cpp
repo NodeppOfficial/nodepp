@@ -18,8 +18,9 @@ namespace nodepp { class file_t {
 protected:
 
     struct NODE {
-        HANDLE       fd = INVALID_HANDLE_VALUE;
+        HANDLE       fd       = INVALID_HANDLE_VALUE;
         ulong        range[2] = { 0, 0 };
+        bool         keep     = false;
         int          state    =   0;
         int          feof     =   1;
         OVERLAPPED   ov    ;
@@ -89,17 +90,25 @@ public: file_t() noexcept {}
 
     /*─······································································─*/
 
-    bool    is_closed() const noexcept { return obj->state <  0 ||  is_feof() || obj->fd == INVALID_HANDLE_VALUE; }
-    bool      is_feof() const noexcept { return obj->feof  <= 0 && obj->feof  != -2; }
-    bool is_available() const noexcept { return obj->state >= 0 && !is_closed(); }
+    bool     is_closed() const noexcept { return obj->state <  0 ||  is_feof() || obj->fd == INVALID_HANDLE_VALUE; }
+    bool       is_feof() const noexcept { return obj->feof  <= 0 && obj->feof  != -2; }
+    bool  is_available() const noexcept { return obj->state >= 0 && !is_closed(); }
+    bool is_persistent() const noexcept { return obj->keep; }
 
     /*─······································································─*/
     
     void resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume.emit(); }
-    void  close() const noexcept { if(obj->state < 0) { return; } obj->state=-1; onDrain.emit();  }
-    void   stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop.emit();   }
+    void   stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop  .emit(); }
     void  reset() const noexcept { if(obj->state!=-2) { return; } resume(); pos(0); }
     void  flush() const noexcept { obj->buffer.fill(0); }
+
+    /*─······································································─*/
+
+    void  close() const noexcept { 
+        if( obj->state< 0 ){ return; } 
+        if( obj->keep== 1 ){ stop(); goto DONE; }
+            obj->state=-1; DONE:; onDrain.emit();  
+    }
     
     /*─······································································─*/
 
@@ -183,8 +192,7 @@ public: file_t() noexcept {}
     
     /*─······································································─*/
 
-    virtual int _read( char* bf, const ulong& sx )  const noexcept { return __read( bf, sx ); }
-
+    virtual int _read ( char* bf, const ulong& sx ) const noexcept { return __read( bf, sx ); }
     virtual int _write( char* bf, const ulong& sx ) const noexcept { return __write( bf, sx ); }
     
     /*─······································································─*/
@@ -193,7 +201,7 @@ public: file_t() noexcept {}
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; } DWORD c = 0; 
         obj->feof = ReadFile( obj->fd, bf, sx, &c, &obj->ov );
         obj->feof = is_blocked( obj->feof, c ) ? -2 : c;
-        if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+        if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
         return obj->feof;
     }
 
@@ -201,7 +209,7 @@ public: file_t() noexcept {}
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; } DWORD c = 0; 
         obj->feof = WriteFile( obj->fd, bf, sx, &c, &obj->ov );
         obj->feof = is_blocked( obj->feof, c ) ? -2 : c;
-        if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+        if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
         return obj->feof;
     }
 

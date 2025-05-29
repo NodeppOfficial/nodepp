@@ -19,10 +19,8 @@ namespace nodepp { namespace process {
     struct node_time { FILETIME ft; ULARGE_INTEGER time; } _time_;
 
     ulong seconds(){ return _time_.time.QuadPart / 10000000; }
-
-    ulong millis(){ return _time_.time.QuadPart / 10000; }
-
-    ulong micros(){ return _time_.time.QuadPart / 10; }
+    ulong  millis(){ return _time_.time.QuadPart / 10000; }
+    ulong  micros(){ return _time_.time.QuadPart / 10; }
 
 }}
 

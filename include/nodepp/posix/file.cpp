@@ -22,6 +22,7 @@ protected:
 
     struct NODE {
         ulong        range[2] ={ 0, 0 };
+        bool         keep     = false;
         int          state    =  0;
         int          fd       = -1;
         int          feof     =  1;
@@ -53,7 +54,7 @@ protected:
         elif( flag == "r+" ){ _flag |= O_RDWR   | O_APPEND ;          }
         elif( flag == "w+" ){ _flag |= O_RDWR   | O_APPEND | O_CREAT; }
         elif( flag == "a+" ){ _flag |= O_RDWR   | O_APPEND ;          }
-        else                { _flag |= O_RDWR   | O_APPEND ;          }
+        else                { _flag |= O_RDWR   ;                     }
         return  _flag;
     }
 
@@ -70,8 +71,8 @@ public: file_t() noexcept {}
     event_t<string_t>  onData;
 
     /*─······································································─*/
-
-    virtual ~file_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
+    
+    virtual ~file_t() noexcept { if( obj.count() > 1 || obj->fd < 3 ){ return; } free(); }
 
     /*─······································································─*/
 
@@ -90,17 +91,25 @@ public: file_t() noexcept {}
 
     /*─······································································─*/
 
-    bool    is_closed() const noexcept { return obj->state <  0 ||  is_feof() || obj->fd == -1; }
-    bool      is_feof() const noexcept { return obj->feof  <= 0 && obj->feof  != -2; }
-    bool is_available() const noexcept { return obj->state >= 0 && !is_closed(); }
+    bool     is_closed() const noexcept { return obj->state <  0 ||  is_feof() || obj->fd == -1; }
+    bool       is_feof() const noexcept { return obj->feof  <= 0 && obj->feof  != -2; }
+    bool  is_available() const noexcept { return obj->state >= 0 && !is_closed(); }
+    bool is_persistent() const noexcept { return obj->keep; }
 
     /*─······································································─*/
 
     void resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume.emit(); }
-    void  close() const noexcept { if(obj->state < 0) { return; } obj->state=-1; onDrain.emit();  }
-    void   stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop.emit();   }
+    void   stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop  .emit(); }
     void  reset() const noexcept { if(obj->state!=-2) { return; } resume(); pos(0); }
     void  flush() const noexcept { obj->buffer.fill(0); }
+
+    /*─······································································─*/
+
+    void  close() const noexcept {
+        if( obj->state< 0 ){ return; }
+        if( obj->keep== 1 ){ stop(); goto DONE; }
+            obj->state=-1; DONE:; onDrain.emit();
+    }
 
     /*─······································································─*/
 
@@ -126,7 +135,7 @@ public: file_t() noexcept {}
     /*─······································································─*/
 
     ulong size() const noexcept { auto curr = pos();
-        if( lseek( obj->fd, 0 , SEEK_END )<0 ) return 0;
+        if( lseek( obj->fd, 0 , SEEK_END )<0 ){ return 0; }
         ulong size = lseek( obj->fd, 0, SEEK_END );
         pos( curr ); return size;
     }
@@ -193,8 +202,7 @@ public: file_t() noexcept {}
 
     /*─······································································─*/
 
-    virtual int _read( char* bf, const ulong& sx )  const noexcept { return __read( bf, sx ); }
-
+    virtual int _read ( char* bf, const ulong& sx ) const noexcept { return __read( bf, sx ); }
     virtual int _write( char* bf, const ulong& sx ) const noexcept { return __write( bf, sx ); }
 
     /*─······································································─*/
@@ -203,7 +211,7 @@ public: file_t() noexcept {}
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
         obj->feof = ::read( obj->fd, bf, sx );
         obj->feof = is_blocked(obj->feof) ?-2 : obj->feof;
-        if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+        if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
         return obj->feof;
     }
 
@@ -211,7 +219,7 @@ public: file_t() noexcept {}
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
         obj->feof = ::write( obj->fd, bf, sx );
         obj->feof = is_blocked(obj->feof) ?-2 : obj->feof;
-        if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+        if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
         return obj->feof;
     }
 

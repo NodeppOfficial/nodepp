@@ -23,9 +23,7 @@ namespace nodepp { namespace process {
     TIMEVAL _time_;
     
     ulong  millis(){ return _time_.tv_sec * 1000 + _time_.tv_usec / 1000; }
-
     ulong seconds(){ return _time_.tv_sec + _time_.tv_usec / 1000000; }
-
     ulong  micros(){ return _time_.tv_sec * 1000000 + _time_.tv_usec; }
 
 }}
