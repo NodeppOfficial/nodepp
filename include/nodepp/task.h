@@ -31,7 +31,7 @@ namespace task {
 
     template< class T, class... V >
     void* add( T cb, const V&... arg ){
-    //  if( queue.size() >= MAX_TASKS ){ return nullptr; }
+        if( MAX_TASKS!=0 && queue.size()>=MAX_TASKS ){ return nullptr; }
         ptr_t<T>    clb = new T( cb );
         ptr_t<bool> blk = new bool(0);
         ptr_t<bool> out = new bool(1); queue.push([=](){
@@ -70,7 +70,7 @@ namespace loop {
 
     template< class T, class... V >
     void* add( T cb, const V&... arg ){
-    //  if( queue.size() >= MAX_TASKS ){ return nullptr; }
+        if( MAX_TASKS!=0 && queue.size()>=MAX_TASKS ){ return nullptr; }
         ptr_t<T>    clb = new T( cb );
         ptr_t<bool> blk = new bool(0);
         ptr_t<bool> out = new bool(1); queue.push([=](){
@@ -109,7 +109,7 @@ namespace poll {
 
     template< class T, class... V >
     void* add( T cb, const V&... arg ){
-    //  if( queue.size() >= MAX_FILENO ){ return nullptr; }
+        if( MAX_TASKS!=0 && queue.size()>=MAX_TASKS ){ return nullptr; }
         ptr_t<T>    clb = new T( cb );
         ptr_t<bool> blk = new bool(0);
         ptr_t<bool> out = new bool(1); queue.push([=](){

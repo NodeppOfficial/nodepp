@@ -39,8 +39,8 @@ public:
    ~poll_t() noexcept { if( obj.count() > 1 ){ return; } close( obj->pd ); }
 
     poll_t() : obj( new NODE() ) {
-        obj->pd = epoll_create1(0); if( obj->pd == -1 )
-        process::error("Can't open an epoll fd");
+        obj->pd = epoll_create1(0); if( obj->pd==-1 )
+        { process::error("Can't open an epoll fd"); }
         obj->ev.resize( MAX_FILENO );
     }
 

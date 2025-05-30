@@ -52,7 +52,7 @@ public: worker_t() noexcept : obj( new NODE ) {}
 
     template< class T, class... V >
     worker_t( T cb, V&... arg ) noexcept : obj( new NODE() ){
-        if( process::threads >= MAX_WORKERS ){ return; }
+        if( MAX_WORKERS!=0 && process::threads>=MAX_WORKERS ){ return; }
         ptr_t<T>    clb = new T( cb );
         ptr_t<bool> blk = new bool(0);
         ptr_t<bool> out = new bool(1);

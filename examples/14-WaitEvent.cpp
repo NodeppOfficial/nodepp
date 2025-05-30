@@ -1,6 +1,6 @@
 #include <nodepp/nodepp.h>
-#include <nodepp/event.h>
 #include <nodepp/timer.h>
+#include <nodepp/wait.h>
 
 using namespace nodepp;
 

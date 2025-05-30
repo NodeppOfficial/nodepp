@@ -59,13 +59,13 @@ public: poll_t() noexcept : obj( new NODE() ) {}
     virtual ~poll_t() noexcept { 
         if ( obj.count() > 1 ){ return; }
         for( auto x : obj->ev.data() ) 
-             onError.emit( x.md ); 
+           { onError.emit( x.md ); }
     }
 
     /*─······································································─*/
 
     ptr_t<int> get_last_poll() const noexcept { 
-        ptr_t<int> result = obj->ls; return result; 
+    ptr_t<int> result = obj->ls; return result; 
     }
 
     /*─······································································─*/

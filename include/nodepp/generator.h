@@ -19,29 +19,29 @@ namespace nodepp { namespace _timer_ {
 
     GENERATOR( timer ){ public:
 
-        template< class V, class... T > 
+        template< class V, class... T >
         coEmit( V func, ulong time, const T&... args ){
         gnStart
             coDelay( time ); if( func(args...)<0 )
-                   { coEnd; } coGoto(0); 
+                   { coEnd; } coGoto(0);
         gnStop
         }
 
-        template< class V, class... T > 
+        template< class V, class... T >
         coEmit( V func, ulong* time, const T&... args ){
         gnStart
             coDelay( *time ); if( func(args...)<0 )
-                   { coEnd; } coGoto(0); 
+                   { coEnd; } coGoto(0);
         gnStop
         }
 
     };
-    
+
     /*─······································································─*/
 
     GENERATOR( utimer ){ public:
 
-        template< class V, class... T > 
+        template< class V, class... T >
         coEmit( V func, ulong time, const T&... args ){
         gnStart
             coUDelay( time ); if( func(args...)<0 )
@@ -49,7 +49,7 @@ namespace nodepp { namespace _timer_ {
         gnStop
         }
 
-        template< class V, class... T > 
+        template< class V, class... T >
         coEmit( V func, ulong* time, const T&... args ){
         gnStart
             coUDelay( *time ); if( func(args...)<0 )
@@ -59,7 +59,7 @@ namespace nodepp { namespace _timer_ {
 
     };
 
-}}  
+}}
 #undef NODEPP_GENERATOR
 #endif
 
@@ -71,14 +71,14 @@ namespace nodepp { namespace _promise_ {
 
     GENERATOR( resolve ){ public:
 
-        template< class T, class U, class V > 
+        template< class T, class U, class V >
         coEmit( ptr_t<bool> state, const T& func, const U& res, const V& rej ){
-        gnStart 
+        gnStart
             func( res, rej ); coWait( *state==1 );
         gnStop
         }
 
-        template< class T, class U > 
+        template< class T, class U >
         coEmit( ptr_t<bool> state, const T& func, const U& res ){
         gnStart
             func( res ); coWait( *state==1 );
@@ -87,7 +87,7 @@ namespace nodepp { namespace _promise_ {
 
     };
 
-}}  
+}}
 #undef NODEPP_GENERATOR
 #endif
 
@@ -97,14 +97,14 @@ namespace nodepp { namespace _promise_ {
     #define  GENERATOR_FILE
 namespace nodepp { namespace _file_ {
 
-    GENERATOR( read ){ 
-    private:  
-        ulong    d; 
-        ulong*   r; 
-        
-    public: 
+    GENERATOR( read ){
+    private:
+        ulong    d;
+        ulong*   r;
+
+    public:
         string_t data ;
-        int      state; 
+        int      state;
 
     template< class T > coEmit( T* str, ulong size=CHUNK_SIZE ){
         if( str->is_closed() ){ return -1; }
@@ -118,55 +118,52 @@ namespace nodepp { namespace _file_ {
         elif ( pos >=r[1] ){ coEnd; } }
         else { d = str->get_buffer_size(); }
 
-        if( data.empty() ) do { coNext;
-            state=str->_read( str->get_buffer_data(), min(d,size) );
-        } while ( state==-2 );
-        
+        if( data.empty() )
+          { coWait((state=str->_read(str->get_buffer_data(),min(d,size)))==-2); }
+
         if( state > 0 ){
             data  = string_t( str->get_buffer_data(), (ulong) state );
         }   state = min( data.size(), size ); str->del_borrow();
 
         str->set_borrow( data.splice( size, data.size() ) );
-        
+
     gnStop
     }};
-    
+
     /*─······································································─*/
 
-    GENERATOR( write ){ 
+    GENERATOR( write ){
     private:
         string_t b ;
 
     public:
-        ulong    data ; 
+        ulong    data ;
         int      state;
-        
+
     template< class T > coEmit( T* str, const string_t& msg ){
         if( str->is_closed() ){ return -1; }
     gnStart state=0; data=0; str->flush();
 
         if(!str->is_available() || msg.empty() ){ coEnd; }
         if( b.empty() ){ b = msg; }
-        
-        do { /*coNext;*/ do { coNext;
-             state=str->_write( b.data()+data, b.size()-data );
-        } while ( state==-2 ); if( state>0 ){ data += state; }
-        } while ( state>=0 && data<b.size() ); b.clear();
+
+        do{ coWait( (state=str->_write( b.data()+data, b.size()-data ))==-2 );
+        if( state>0 ){ data += state; }} while ( state>=0 && data<b.size() ); b.clear();
 
     gnStop
     }};
 
     /*─······································································─*/
 
-    GENERATOR( until ){ 
+    GENERATOR( until ){
     private:
         _file_::read _read;
         uint sop=0, pos=0;
         string_t    s;
 
-    public: 
-        string_t  data ;  
-        ulong     state; 
+    public:
+        string_t  data ;
+        ulong     state;
 
     template< class T > coEmit( T* str, string_t ch ){
         if( str->is_closed() ){ return -1; }
@@ -195,7 +192,7 @@ namespace nodepp { namespace _file_ {
         } else { data = str->get_borrow().splice( 0, state ); }
 
         state = data.size();
-    
+
     gnStop
     }
 
@@ -205,26 +202,26 @@ namespace nodepp { namespace _file_ {
 
         while( str->is_available() ){
         while( _read(str) == 1 ){ coNext; }
-           if( _read.state<= 0 ){ break; } state=1; s+=_read.data; 
+           if( _read.state<= 0 ){ break; } state=1; s+=_read.data;
           for( auto &x: s )     { if( x == ch ){ break; } state++; }
            if( state<=s.size() ){ break; }
         }      str->set_borrow(s);
 
         data = str->get_borrow().splice( 0, state );
-    
+
     gnStop
     }};
 
     /*─······································································─*/
 
-    GENERATOR( line ){ 
+    GENERATOR( line ){
     private:
         _file_::read _read;
         string_t     s;
 
-    public: 
-        string_t  data ;  
-        ulong     state; 
+    public:
+        string_t  data ;
+        ulong     state;
 
     template< class T > coEmit( T* str ){
         if( str->is_closed() ){ return -1; }
@@ -232,13 +229,13 @@ namespace nodepp { namespace _file_ {
 
         while( str->is_available() ){
         while( _read(str) == 1 ){ coNext; }
-           if( _read.state<= 0 ){ break; } state = 1; s += _read.data; 
+           if( _read.state<= 0 ){ break; } state = 1; s += _read.data;
           for( auto &x: s )     { if( x == '\n' ){ break; } state++; }
            if( state<=s.size() ){ break; }
         }      str->set_borrow(s);
 
         data = str->get_borrow().splice( 0, state );
-    
+
     gnStop
     }};
 
@@ -249,10 +246,10 @@ namespace nodepp { namespace _file_ {
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #if !defined(GENERATOR_STREAM) && defined(NODEPP_STREAM) && defined(NODEPP_GENERATOR)
-    #define  GENERATOR_STREAM 
+    #define  GENERATOR_STREAM
 namespace nodepp { namespace _stream_ {
 
-    GENERATOR( duplex ){ 
+    GENERATOR( duplex ){
     private:
 
         _file_::write _write1, _write2;
@@ -271,7 +268,7 @@ namespace nodepp { namespace _stream_ {
                if( _write1.state<=0 )            { break;  }
                     inp.onData.emit( _read1.data );
             }       inp.close(); out.close();
-            
+
             coEnd; coYield(2);
 
             while( inp.is_available() && out.is_available() ){
@@ -286,10 +283,10 @@ namespace nodepp { namespace _stream_ {
         }
 
     };
-    
+
     /*─······································································─*/
 
-    GENERATOR( pipe ){ 
+    GENERATOR( pipe ){
     private:
 
         _file_::write _write;
@@ -304,7 +301,7 @@ namespace nodepp { namespace _stream_ {
             while( _read(&inp)==1 ){ coNext; }
                if( _read.state<=0 ){ break;  }
                     inp.onData.emit( _read.data );
-            }       inp.close(); 
+            }       inp.close();
         gnStop
         }
 
@@ -322,10 +319,10 @@ namespace nodepp { namespace _stream_ {
         }
 
     };
-    
+
     /*─······································································─*/
 
-    GENERATOR( until ){ 
+    GENERATOR( until ){
     private:
 
         _file_::write _write;
@@ -333,24 +330,24 @@ namespace nodepp { namespace _stream_ {
 
     public:
 
-        template< class T, class U > 
+        template< class T, class U >
         coEmit( const T& inp, const U& val ){
             if( inp.is_closed() ){ return -1; }
         gnStart inp.onPipe.emit();
             while( inp.is_available() ){
-            while( _read(&inp,val)==1 ){ coNext; } 
+            while( _read(&inp,val)==1 ){ coNext; }
                if( _read.state    <=0 ){ break;  }
                    inp.onData.emit( _read.data );
-            }      inp.close(); 
+            }      inp.close();
         gnStop
         }
 
-        template< class T, class V, class U > 
+        template< class T, class V, class U >
         coEmit( const T& inp, const V& out, const U& val ){
             if( inp.is_closed() || out.is_closed() ){ return -1; }
         gnStart inp.onPipe.emit(); out.onPipe.emit();
             while( inp.is_available() && out.is_available() ){
-            while( _read(&inp,val)==1 )        { coNext; } 
+            while( _read(&inp,val)==1 )        { coNext; }
                if( _read.state    <=0 )        { break;  }
             while( _write(&out,_read.data)==1 ){ coNext; }
                if( _write.state<=0 )           { break;  }
@@ -360,10 +357,10 @@ namespace nodepp { namespace _stream_ {
         }
 
     };
-    
+
     /*─······································································─*/
 
-    GENERATOR( line ){ 
+    GENERATOR( line ){
     private:
 
         _file_::write _write;
@@ -375,10 +372,10 @@ namespace nodepp { namespace _stream_ {
             if( inp.is_closed() ){ return -1; }
         gnStart inp.onPipe.emit();
             while( inp.is_available() ){
-            while( _read(&inp)==1 ){ coNext; } 
+            while( _read(&inp)==1 ){ coNext; }
                if( _read.state<=0 ){ break;  }
                    inp.onData.emit( _read.data );
-            }      inp.close(); 
+            }      inp.close();
         gnStop
         }
 
@@ -386,7 +383,7 @@ namespace nodepp { namespace _stream_ {
             if( inp.is_closed() || out.is_closed() ){ return -1; }
         gnStart inp.onPipe.emit(); out.onPipe.emit();
             while( inp.is_available() && out.is_available() ){
-            while( _read(&inp)==1 )            { coNext; } 
+            while( _read(&inp)==1 )            { coNext; }
                if( _read.state<=0 )            { break;  }
             while( _write(&out,_read.data)==1 ){ coNext; }
                if( _write.state<=0 )           { break;  }
@@ -396,7 +393,7 @@ namespace nodepp { namespace _stream_ {
         }
 
     };
-    
+
 }}
 #undef NODEPP_GENERATOR
 #endif
@@ -409,29 +406,29 @@ namespace nodepp { namespace _poll_ {
 
     GENERATOR( poll ){ public:
 
-        template< class V, class T, class U > 
+        template< class V, class T, class U >
         coEmit( V ctx, T str, U cb ){
             if( ctx.is_closed() ){ return -1; }
-        gnStart coNext;
+        gnStart
             str->onSocket.emit( ctx ); cb(ctx);
         gnStop
         }
 
     };
 
-}}  
+}}
 #undef NODEPP_GENERATOR
 #endif
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #if !defined(GENERATOR_ZLIB) && defined(NODEPP_ZLIB) && defined(NODEPP_GENERATOR)
-    #define  GENERATOR_ZLIB 
+    #define  GENERATOR_ZLIB
 namespace nodepp { namespace _zlib_ {
 
-    GENERATOR( inflate ){ 
+    GENERATOR( inflate ){
     private:
-    
+
         ptr_t<z_stream> str = new z_stream;
         int x=0; ulong size; string_t dout;
         _file_::write _write;
@@ -450,7 +447,7 @@ namespace nodepp { namespace _zlib_ {
             str->next_in  = Z_NULL;
             str->avail_in = Z_NULL;
 
-            if( cb( &str ) != Z_OK ){ 
+            if( cb( &str ) != Z_OK ){
                 string_t message = "Failed to initialize zlib for compression.";
                 _EERROR( inp.onError, message );
                 _EERROR( inp.onError, message ); coEnd;
@@ -463,24 +460,24 @@ namespace nodepp { namespace _zlib_ {
                 str->avail_in = _read.data.size();
                 str->avail_out= inp.get_buffer_size();
                 str->next_in  = (Bytef*)_read.data.data();
-                str->next_out = (Bytef*)inp.get_buffer_data(); 
+                str->next_out = (Bytef*)inp.get_buffer_data();
                             x = ::inflate( &str, Z_FINISH );
 
                 if(( size=inp.get_buffer_size()-str->avail_out )>0){
                     dout = string_t( inp.get_buffer_data(), size );
-                    inp.onData.emit(dout); 
+                    inp.onData.emit(dout);
                     while( _write(&out,dout)==1 ){ coNext; }
                        if( _write.state<=0 )     { break;  } continue;
                 }
-                
-                if( x==Z_STREAM_END ) { break; } elif( x < 0 ){ 
+
+                if( x==Z_STREAM_END ) { break; } elif( x < 0 ){
                     string_t message = string::format("ZLIB: %s",str->msg);
                     _EERROR( inp.onError, message );
                     _EERROR( out.onError, message ); break;
                 }
-            
-            }   inflateEnd( &str ); out.close(); inp.close(); 
-        
+
+            }   inflateEnd( &str ); out.close(); inp.close();
+
         gnStop
         }
 
@@ -495,7 +492,7 @@ namespace nodepp { namespace _zlib_ {
             str->next_in  = Z_NULL;
             str->avail_in = Z_NULL;
 
-            if( cb( &str ) != Z_OK ){ 
+            if( cb( &str ) != Z_OK ){
                 string_t message = "Failed to initialize zlib for compression.";
                 _EERROR( inp.onError, message ); coEnd;
             }
@@ -507,7 +504,7 @@ namespace nodepp { namespace _zlib_ {
                 str->avail_in = _read.data.size();
                 str->avail_out= inp.get_buffer_size();
                 str->next_in  = (Bytef*)_read.data.data();
-                str->next_out = (Bytef*)inp.get_buffer_data(); 
+                str->next_out = (Bytef*)inp.get_buffer_data();
                             x = ::inflate( &str, Z_PARTIAL_FLUSH );
 
                 if(( size=inp.get_buffer_size()-str->avail_out )>0){
@@ -515,21 +512,21 @@ namespace nodepp { namespace _zlib_ {
                     inp.onData.emit(dout); continue;
                 }
 
-                if( x==Z_STREAM_END ) { break; } elif( x < 0 ){ 
+                if( x==Z_STREAM_END ) { break; } elif( x < 0 ){
                     string_t message = string::format("ZLIB: %s",str->msg);
                     _EERROR( inp.onError, message ); break;
-                } 
+                }
 
-            }   inflateEnd( &str ); inp.close(); 
-            
+            }   inflateEnd( &str ); inp.close();
+
         gnStop
         }
 
     };
-    
+
     /*─······································································─*/
 
-    GENERATOR( deflate ){ 
+    GENERATOR( deflate ){
     private:
 
         ptr_t<z_stream> str = new z_stream;
@@ -550,7 +547,7 @@ namespace nodepp { namespace _zlib_ {
             str->next_in  = Z_NULL;
             str->avail_in = Z_NULL;
 
-            if( cb( &str ) != Z_OK ){ 
+            if( cb( &str ) != Z_OK ){
                 string_t message = "Failed to initialize zlib for compression.";
                 _EERROR( inp.onError, message );
                 _EERROR( inp.onError, message ); coEnd;
@@ -563,24 +560,24 @@ namespace nodepp { namespace _zlib_ {
                 str->avail_in = _read.data.size();
                 str->avail_out= inp.get_buffer_size();
                 str->next_in  = (Bytef*)_read.data.data();
-                str->next_out = (Bytef*)inp.get_buffer_data(); 
+                str->next_out = (Bytef*)inp.get_buffer_data();
                             x = ::deflate( &str, Z_PARTIAL_FLUSH );
 
                 if(( size=inp.get_buffer_size()-str->avail_out )>0){
                     dout = string_t( inp.get_buffer_data(), size );
-                    inp.onData.emit(dout); 
+                    inp.onData.emit(dout);
                     while( _write(&out,dout)==1 ){ coNext; }
                        if( _write.state<=0 )     { break;  } continue;
                 }
 
-                if( x==Z_STREAM_END ) { break; } elif( x < 0 ){ 
+                if( x==Z_STREAM_END ) { break; } elif( x < 0 ){
                     string_t message = string::format("ZLIB: %s",str->msg);
                     _EERROR( inp.onError, message );
                     _EERROR( out.onError, message ); break;
                 }
-            
-            }   deflateEnd( &str ); out.close(); inp.close(); 
-            
+
+            }   deflateEnd( &str ); out.close(); inp.close();
+
         gnStop
         }
 
@@ -595,7 +592,7 @@ namespace nodepp { namespace _zlib_ {
             str->next_in  = Z_NULL;
             str->avail_in = Z_NULL;
 
-            if( cb( &str ) != Z_OK ){ 
+            if( cb( &str ) != Z_OK ){
                 string_t message = "Failed to initialize zlib for compression.";
                 _EERROR( inp.onError, message ); coEnd;
             }
@@ -607,21 +604,21 @@ namespace nodepp { namespace _zlib_ {
                 str->avail_in = _read.data.size();
                 str->avail_out= inp.get_buffer_size();
                 str->next_in  = (Bytef*)_read.data.data();
-                str->next_out = (Bytef*)inp.get_buffer_data(); 
+                str->next_out = (Bytef*)inp.get_buffer_data();
                             x = ::deflate( &str, Z_PARTIAL_FLUSH );
 
                 if(( size=inp.get_buffer_size()-str->avail_out )>0){
                     dout = string_t( inp.get_buffer_data(), size );
                     inp.onData.emit(dout); continue;
                 }
-                
-                if( x==Z_STREAM_END ) { break; } elif( x < 0 ){ 
+
+                if( x==Z_STREAM_END ) { break; } elif( x < 0 ){
                     string_t message = string::format("ZLIB: %s",str->msg);
                     _EERROR( inp.onError, message ); break;
-                } 
+                }
 
-            }   deflateEnd( &str ); inp.close(); 
-            
+            }   deflateEnd( &str ); inp.close();
+
         gnStop
         }
 
@@ -636,7 +633,7 @@ namespace nodepp { namespace _zlib_ {
 #if !defined(GENERATOR_WS) && defined(NODEPP_GENERATOR) && ( defined(NODEPP_WS) || defined(NODEPP_WSS) )
     #define  GENERATOR_WS
     #include "encoder.h"
-    #include "crypto.h" 
+    #include "crypto.h"
 namespace nodepp { namespace _ws_ {
 
     struct ws_frame_t {
@@ -647,7 +644,7 @@ namespace nodepp { namespace _ws_ {
         char  KEY [4]; //4B
         ulong LEN;     //64b
     };
-    
+
     /*─······································································─*/
 
     template< class T > bool server( T& cli ) {
@@ -659,7 +656,7 @@ namespace nodepp { namespace _ws_ {
             string_t sec = cli.headers["Sec-Websocket-Key"];
                 auto sha = crypto::hash::SHA1(); sha.update( sec + SECRET );
             string_t enc = encoder::base64::get( encoder::buffer::hex2buff(sha.get()) );
-            
+
             cli.write_header( 101, header_t({
                 { "Sec-Websocket-Accept", enc },
                 { "Connection", "upgrade" },
@@ -669,7 +666,7 @@ namespace nodepp { namespace _ws_ {
             cli.stop();             return 1;
         }   cli.set_borrow( data ); return 0;
     }
-    
+
     /*─······································································─*/
 
     template< class T > bool client( T& cli, string_t url ) {
@@ -687,12 +684,12 @@ namespace nodepp { namespace _ws_ {
 
         if( cli.read_header()!=0 ){
             _EERROR(cli.onError,"Could not connect to server");
-            cli.close(); return false; 
+            cli.close(); return false;
         }
 
-        if( cli.status != 101 ){ 
-            _EERROR(cli.onError,string::format("Can't connect to WS Server -> status %d",cli.status)); 
-            cli.close(); return false; 
+        if( cli.status != 101 ){
+            _EERROR(cli.onError,string::format("Can't connect to WS Server -> status %d",cli.status));
+            cli.close(); return false;
         }
 
         if(!cli.headers["Sec-Websocket-Accept"].empty() ){
@@ -701,25 +698,25 @@ namespace nodepp { namespace _ws_ {
                 auto sha = crypto::hash::SHA1(); sha.update( key + SECRET );
             string_t enc = encoder::base64::get( encoder::buffer::hex2buff(sha.get()) );
 
-            if( dta != enc ){ 
-                _ERROR("secret key does not match"); 
-                cli.close(); return false; 
+            if( dta != enc ){
+                _ERROR("secret key does not match");
+                cli.close(); return false;
             }   cli.stop();
 
-        }   
-        
+        }
+
         return true;
     }
 
     /*─······································································─*/
 
-    GENERATOR( read ){ 
+    GENERATOR( read ){
     private:
 
         ws_frame_t frame;
 
     public:
-    
+
         ulong      data = 0;
 
     protected:
@@ -727,7 +724,7 @@ namespace nodepp { namespace _ws_ {
         int read_ws_frame( char* bf, ulong& size, const ulong& len ){
             while( size != len ){ return 1; }
         coStart; size = 2; coNext; memset( &frame, 0, sizeof(ws_frame_t) );
-            
+
             do { array_t<bool> y;
 
                 y = array_t<bool>(encoder::bin::get( bf[0] ));
@@ -735,7 +732,7 @@ namespace nodepp { namespace _ws_ {
                 frame.FIN   = y.splice(0,1)[0] == 1;
                 for( auto x : y.splice(0,3) ) frame.RSV = frame.RSV<<1 | x;
                 for( auto x : y.splice(0,4) ) frame.OPC = frame.OPC<<1 | x;
-                
+
                 y = array_t<bool>(encoder::bin::get( bf[1] ));
 
                 frame.MSK   = y.splice(0,1)[0] == 1;
@@ -743,13 +740,13 @@ namespace nodepp { namespace _ws_ {
 
             } while(0);
 
-            if ( frame.LEN  > 125 ){ 
+            if ( frame.LEN  > 125 ){
             if ( frame.LEN == 126 ){ size = 2; coNext; }
-            if ( frame.LEN == 127 ){ size = 4; coNext; } frame.LEN =  0; 
+            if ( frame.LEN == 127 ){ size = 4; coNext; } frame.LEN =  0;
             for( ulong x=0; x < size; x++ ){ frame.LEN = frame.LEN << 8 | (uchar) bf[x]; }
             }
 
-            if ( frame.MSK == 1 ){ size = 4; coNext; 
+            if ( frame.MSK == 1 ){ size = 4; coNext;
             for( ulong x=0; x<size; x++ ){ frame.KEY[x] = bf[x]; }
             }
 
@@ -770,7 +767,7 @@ namespace nodepp { namespace _ws_ {
         /*------*/
 
         if( frame.LEN ==  0 ){ str->close(); data = 0; coEnd; }
-        if( frame.OPC ==  8 ){ str->close(); data = 0; coEnd; } 
+        if( frame.OPC ==  8 ){ str->close(); data = 0; coEnd; }
         if( frame.OPC >= 20 ){ str->close(); data = 0; coEnd; }
 
         /*------*/
@@ -793,24 +790,24 @@ namespace nodepp { namespace _ws_ {
         string_t   bff;
 
     public:
-    
+
         ulong      data= 0;
 
     protected:
 
         string_t write_ws_frame( char* bf, const ulong& sx ){
             auto bfx = ptr_t<char>( 64, '\0' ); uint idx = 0;
-            auto byt = encoder::bytes::get( sx ); 
+            auto byt = encoder::bytes::get( sx );
 
             auto x=sx; bool b=0; while( x-->0 ){
                 if( !string::is_print(bf[x]) ){ b=1; break; }
-            }   bfx[idx] = b ? (char) 0b10000010 : (char) 0b10000001; 
-            
+            }   bfx[idx] = b ? (char) 0b10000010 : (char) 0b10000001;
+
             idx++;
 
-            if ( sx < 126 ){ 
+            if ( sx < 126 ){
                 bfx[idx] = (uchar)(byt[byt.size()-1]); idx++;
-            } elif ( sx < 65536 ){ 
+            } elif ( sx < 65536 ){
                 bfx[idx] = (uchar)( 126 ); idx++;
                 bfx[idx] = (uchar)(byt[byt.size()-2]); idx++;
                 bfx[idx] = (uchar)(byt[byt.size()-1]); idx++;
@@ -822,7 +819,7 @@ namespace nodepp { namespace _ws_ {
                 bfx[idx] = (uchar)(byt[byt.size()-1]); idx++;
             }
 
-            return string_t( &bfx, idx ); 
+            return string_t( &bfx, idx );
         }
 
     public:
@@ -831,11 +828,11 @@ namespace nodepp { namespace _ws_ {
         if( str->is_closed() ){ return -1; }
         static ulong size = 0;
     coStart;
-    
-        bff  = string_t( bf, sx ); hdr = write_ws_frame( bf, sx ); data = 0; 
+
+        bff  = string_t( bf, sx ); hdr = write_ws_frame( bf, sx ); data = 0;
         size = 0; while( str->_write_( hdr.get(), hdr.size(), size ) ){ coNext; }
         size = 0; while( str->_write_( bff.get(), bff.size(), size ) ){ coNext; }
-        
+
         data = size;
 
     coStop

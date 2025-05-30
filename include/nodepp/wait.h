@@ -30,7 +30,7 @@ public: wait_t() noexcept : obj( new queue_t<NODE>() ) {}
     void off( void* address ) const noexcept { process::clear( address ); }
 
     void* once( T val, function_t<void,A...> func ) const noexcept {
-        if( obj->size() >= MAX_EVENTS ) { return nullptr; }
+        if( MAX_EVENTS!=0 && obj->size()>=MAX_EVENTS ) { return nullptr; }
         ptr_t<bool> out = new bool(1); obj->push([=]( T arg, A... args ){
             if( *out != 0 && val == arg ){ func( args... ); }
             *out = 0; return *out;
@@ -38,7 +38,7 @@ public: wait_t() noexcept : obj( new queue_t<NODE>() ) {}
     }
 
     void* on( T val, function_t<void,A...> func ) const noexcept {
-        if( obj->size() >= MAX_EVENTS ) { return nullptr; }
+        if( MAX_EVENTS!=0 && obj->size()>=MAX_EVENTS ) { return nullptr; }
         ptr_t<bool> out = new bool(1); obj->push([=]( T arg, A... args ){
             if( *out != 0 && val == arg ){ func( args... ); } 
             return *out;
