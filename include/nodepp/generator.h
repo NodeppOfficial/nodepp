@@ -167,20 +167,16 @@ namespace nodepp { namespace _file_ {
 
     template< class T > coEmit( T* str, string_t ch ){
         if( str->is_closed() ){ return -1; }
-    gnStart s.clear(); data.clear(); str->flush();
-            state=0; sop=0; pos=0;
+    gnStart s.clear(); data.clear(); str->flush(); state=0; pos=0;
 
-        while( str->is_available() ){
-        while( _read(str) == 1 ){ coNext;}
-           if( _read.state<= 0 ){ break; } state=0; s+=_read.data;
-        while( state < s.size() ){ auto x=s[ state ];
-           if( pos>=ch.size() ) { pos=0; break; }
-         elif( ch[pos] == x )   { pos++; }
-         else                   { pos=0; sop++; state=sop; continue; } state++; }
-           if( state<=s.size() ){ break; } sop = state + 1;
-        }      str->set_borrow(s); state -= pos;
-
-        ptr_t<int> results ({
+        while( str->is_available() ){ coWait( _read(str)==1 );
+           if( _read.state<= 0     ){ break; } state=0; s+=_read.data;
+        while( state<s.size()      ){ state++;
+           if( ch.size()<=pos      ){ pos=0; break; }
+         elif( ch[pos]==s[state]   ){ pos++;        }
+         else                       { pos=0;        }} break; }      
+        
+        str->set_borrow(s); state -= pos; ptr_t<int> results ({
             memcmp( str->get_borrow().slice(state-ch.size()).get(), ch.get(), ch.size() ),
             memcmp( str->get_borrow().get(), ch.get(), ch.size() )
         });
@@ -200,13 +196,11 @@ namespace nodepp { namespace _file_ {
         if( str->is_closed() ){ return -1; }
     gnStart state=1; s.clear(); data.clear(); str->flush();
 
-        while( str->is_available() ){
-        while( _read(str) == 1 ){ coNext; }
+        while( str->is_available() ){ coWait( _read(str)==1 );
            if( _read.state<= 0 ){ break; } state=1; s+=_read.data;
-          for( auto &x: s )     { if( x == ch ){ break; } state++; }
-           if( state<=s.size() ){ break; }
-        }      str->set_borrow(s);
-
+          for( auto &x: s )     { if( x==ch ){ break; } state++; } break; }      
+        
+               str->set_borrow(s);
         data = str->get_borrow().splice( 0, state );
 
     gnStop
