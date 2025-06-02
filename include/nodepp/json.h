@@ -135,7 +135,7 @@ public: json_t () noexcept = default;
     }
 
     string_t format( const object_t& obj ) const {
-        if( !obj.has_value() ){ return nullptr; }
+        if( !obj.has_value() ){ return "{}"; }
         string_t result; /*process::next();*/
 
         if( obj.get_type_id() == 20 ){

@@ -14,6 +14,10 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#include "encoder.h"
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 namespace nodepp { template<class U, class V> class map_t { 
 protected:
 
@@ -47,8 +51,8 @@ public:
 
     V& operator[]( const U& id ) const noexcept {
 
-        auto key = string::to_string( id ); uchar idx=0; 
-        for( auto x:key ){ idx=(idx+x)%sizeof(uchar); }
+        auto key = string::to_string( id );
+        ulong idx= encoder::hash::get(key); 
         auto n   = obj->table[idx].first();
         
         while( n!=nullptr ){
@@ -72,9 +76,9 @@ public:
 
     bool has( const U& id ) const noexcept {
 
-        auto key = string::to_string( id ); uchar idx = 0; 
-        for( auto x:key ){ idx=(idx+x)%sizeof(uchar); }
-        auto n   = obj->table[idx].first();
+        auto  key = string::to_string( id ); 
+        ulong idx = encoder::hash::get(key); 
+        auto  n   = obj->table[idx].first();
         
         while( n!=nullptr ){
         auto itm = obj->queue.as(n->data); if( itm==nullptr ){ break; }
@@ -107,9 +111,9 @@ public:
 
     void erase( const U& id ) const noexcept {
 
-        auto key = string::to_string( id ); uchar idx = 0; 
-        for( auto x:key ){ idx=(idx+x)%sizeof(uchar); }
-        auto n   = obj->table[idx].first();
+        auto  key = string::to_string( id );
+        ulong idx = encoder::hash::get(key); 
+        auto  n   = obj->table[idx].first();
         
         while( n!=nullptr ){
         auto itm = obj->queue.as(n->data); if( itm==nullptr ){ return; }
@@ -134,9 +138,9 @@ public:
 
     void append( const T& pair ) const noexcept {
 
-        auto key = string::to_string(pair.first); uchar idx = 0; 
-        for( auto x:key ){ idx=(idx+x)%sizeof(uchar); }
-        auto n   = obj->table[idx].first();
+        auto  key = string::to_string(pair.first);
+        ulong idx = encoder::hash::get(key); 
+        auto  n   = obj->table[idx].first();
         
         while( n!=nullptr ){
         auto itm = obj->queue.as(n->data); if( itm==nullptr ){ break; }

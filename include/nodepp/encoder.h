@@ -29,19 +29,15 @@ namespace nodepp { namespace encoder { namespace key {
         }   return data;
     }
 
-    string_t generate( int x=32 ) {
-        string_t data ( (ulong)x, '\0' ); while( x --> 0 ){
-            data[x] = (char)( rand() % 0xFF );
-        }   return data;
-    }
+    string_t generate( int x=32 ) { return generate( BASE64, x ); }
 
 }}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace encoder {
+namespace nodepp { namespace encoder { namespace hash {
 
-    ulong hash( const string_t& key, int tableSize ) {
+    ulong get( const string_t& key, int tableSize ) {
         ulong hash = 5381; forEach( x, key ) {
               hash = ((hash << 5) + hash) + x;
         }     return hash % tableSize;
@@ -49,17 +45,11 @@ namespace nodepp { namespace encoder {
 
     /*─······································································─*/
 
-    ulong hash() { int x= sizeof(ulong) * 8;
-            ulong  data = 0; while( x --> 0 ){
-            data = data <<1 | ( data | rand() % 2 );
-        }   return data;
-    }
+    ulong get( int key, int tableSize ) { return key % tableSize; }
 
-    /*─······································································─*/
+    ulong get( const string_t& key )    { return get( key, sizeof(uchar) ); }
 
-    ulong hash( int key, int tableSize ) { return key % tableSize; }
-
-}}
+}}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

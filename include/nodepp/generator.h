@@ -157,9 +157,8 @@ namespace nodepp { namespace _file_ {
 
     GENERATOR( until ){
     private:
-        _file_::read _read;
-        uint sop=0, pos=0;
-        string_t    s;
+
+        _file_::read _read; uint pos=0;
 
     public:
         string_t  data ;
@@ -167,25 +166,23 @@ namespace nodepp { namespace _file_ {
 
     template< class T > coEmit( T* str, string_t ch ){
         if( str->is_closed() ){ return -1; }
-    gnStart s.clear(); data.clear(); str->flush(); state=0; pos=0;
+    gnStart data.clear(); str->flush(); state=0; pos=0;
 
-        while( str->is_available() ){ coWait( _read(str)==1 );
-           if( _read.state<= 0     ){ break; } state=0; s+=_read.data;
-        while( state<s.size()      ){ state++;
-           if( ch.size()<=pos      ){ pos=0; break; }
-         elif( ch[pos]==s[state]   ){ pos++;        }
-         else                       { pos=0;        }} break; }      
+        coWait( _read(str) ==1 );
+            if( _read.state<=0 ){ coEnd; }
+
+        do{for( auto x: _read.data ){ state++; 
+            if( ch[pos]  ==x   ){ pos++; } else { pos=0; }
+            if( ch.size()==pos ){ break; } }
+        } while(0); 
         
-        str->set_borrow(s); state -= pos; ptr_t<int> results ({
-            memcmp( str->get_borrow().slice(state-ch.size()).get(), ch.get(), ch.size() ),
-            memcmp( str->get_borrow().get(), ch.get(), ch.size() )
-        });
+        str->set_borrow( _read.data );
 
-        if( results[1]==0 ){
-                 data = str->get_borrow().splice( 0, ch.size() );
-        } elif( results[0]==0 ){
-                 data = str->get_borrow().splice( 0, state-ch.size() );
-        } else { data = str->get_borrow().splice( 0, state ); }
+        if( memcmp( _read.data.get(), ch.get(), ch.size() )==0 ){
+                 data=str->get_borrow().splice( 0, ch.size() );
+        } elif( state > pos ) { 
+                 data=str->get_borrow().splice( 0, state-pos ); 
+        } else { data=str->get_borrow().splice( 0, state     ); }
 
         state = data.size();
 
@@ -194,13 +191,16 @@ namespace nodepp { namespace _file_ {
 
     template< class T > coEmit( T* str, char ch ){
         if( str->is_closed() ){ return -1; }
-    gnStart state=1; s.clear(); data.clear(); str->flush();
+    gnStart data.clear(); str->flush(); state=0;
 
-        while( str->is_available() ){ coWait( _read(str)==1 );
-           if( _read.state<= 0 ){ break; } state=1; s+=_read.data;
-          for( auto &x: s )     { if( x==ch ){ break; } state++; } break; }      
+        coWait( _read(str) ==1 );
+            if( _read.state<=0 ){ coEnd; }
+
+        do{ for( auto x: _read.data ){ state++;
+             if( ch ==x ){ break; } continue; }
+        } while(0);
         
-               str->set_borrow(s);
+               str->set_borrow(_read.data);
         data = str->get_borrow().splice( 0, state );
 
     gnStop
@@ -210,8 +210,8 @@ namespace nodepp { namespace _file_ {
 
     GENERATOR( line ){
     private:
+    
         _file_::read _read;
-        string_t     s;
 
     public:
         string_t  data ;
@@ -219,15 +219,16 @@ namespace nodepp { namespace _file_ {
 
     template< class T > coEmit( T* str ){
         if( str->is_closed() ){ return -1; }
-    gnStart state=1; s.clear(); data.clear(); str->flush();
+    gnStart data.clear(); str->flush(); state=0;
 
-        while( str->is_available() ){
-        while( _read(str) == 1 ){ coNext; }
-           if( _read.state<= 0 ){ break; } state = 1; s += _read.data;
-          for( auto &x: s )     { if( x == '\n' ){ break; } state++; }
-           if( state<=s.size() ){ break; }
-        }      str->set_borrow(s);
+        coWait( _read(str) ==1 );
+            if( _read.state<=0 ){ coEnd; }
 
+        do{ for( auto x: _read.data ){ state++;
+             if('\n'==x ){ break; } continue; }
+        } while(0);
+        
+               str->set_borrow(_read.data);
         data = str->get_borrow().splice( 0, state );
 
     gnStop

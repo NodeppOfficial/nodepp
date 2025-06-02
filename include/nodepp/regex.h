@@ -449,6 +449,16 @@ namespace nodepp { namespace regex {
 
     /*─······································································─*/
 
+    ptr_t<string_t> get_memory( const string_t& _str, const string_t& _reg, bool _flg=false ){
+        regex_t reg( _reg, _flg ); reg.search_all( _str ); return reg.get_memory();
+    }
+
+    ptr_t<string_t> get_memory( const string_t& _str, const regex_t& reg, bool _flg=false ){
+        reg.search_all( _str ); return reg.get_memory();
+    }
+
+    /*─······································································─*/
+
     array_t<string_t> match_all( const string_t& _str, const string_t& _reg, bool _flg=false ){
         regex_t reg( _reg, _flg ); return reg.match_all( _str );
     }
