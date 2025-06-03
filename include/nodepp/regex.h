@@ -369,10 +369,10 @@ public: regex_t () noexcept : obj( new NODE() ) {}
     /*─······································································─*/
 
     array_t<string_t> match_all( const string_t& _str ) const noexcept {
-        auto idx = search_all( _str ); array_t<string_t> result;
+        auto idx = search_all( _str ); queue_t<string_t> result;
         for( auto x : idx ){
             result.push(_str.slice( x[0], x[1] ));
-        }   return result;
+        }   return result.data();
     }
 
     /*─······································································─*/

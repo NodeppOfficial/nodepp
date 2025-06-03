@@ -91,12 +91,12 @@ public: tcp_t() noexcept : obj( new NODE() ) {}
             while( _accept == -2 ){
                if( self->is_closed() || sk.is_closed() ) { coGoto(2); }
                    _accept = sk._accept(); if( _accept!=-2 ) { break; }
-            while( self->next()==1 ){ coSet(3); return 0; coYield(3); } coNext; }
+            while( self->next()==1 ){ coTry(3); coYield(3); } coNext; }
 
             if( _accept < 0 ){ _EERROR(self->onError,"Error while accepting TCP"); coGoto(2); }
             do{ if( self->obj->poll.push_read(_accept)==0 )
               { socket_t cli( _accept ); cli.free(); }
-              } while(0); _accept=-2; coSet(0); return 0; // coGoto(0);
+              } while(0); _accept=-2; coTry(0);
 
             coYield(2); self->close(); sk.free();
 

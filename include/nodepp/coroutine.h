@@ -34,26 +34,26 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define coDelay(VALUE)  do { static auto tm = process::millis()+VALUE; while( process::millis() < tm ){ coNext; } tm = process::millis()+VALUE; break; } while (0)
-#define coUDelay(VALUE) do { static auto tm = process::micros()+VALUE; while( process::micros() < tm ){ coNext; } tm = process::micros()+VALUE; break; } while (0)
+#define coTry(VALUE)    do { static auto tm=process::millis()+1000 ; while( process::millis()<tm ){ coStay(VALUE); } tm=process::micros()+1000 ; coGoto(VALUE); } while (0)
+#define coDelay(VALUE)  do { static auto tm=process::millis()+VALUE; while( process::millis()<tm ){ coNext;        } tm=process::millis()+VALUE;                } while (0)
+#define coUDelay(VALUE) do { static auto tm=process::micros()+VALUE; while( process::micros()<tm ){ coNext;        } tm=process::micros()+VALUE;                } while (0)
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define coReturn(VALUE) do { _state_ = _LINE_; return VALUE; case _LINE_:; } while (0)
-#define coNext          do { _state_ = _LINE_; return 1;     case _LINE_:; } while (0)
-#define coAgain         do { _state_ = _LINE_; return 0;     case _LINE_:; } while (0)
-#define coGoto(VALUE)   do { _state_ = VALUE ; return 1;                   } while (0)
-#define coYield(VALUE)  do { _state_ = VALUE ; return 1;     case VALUE:;  } while (0)
-#define coReset         coGoto(0)
+#define coStart        static int _state_ = 0; { switch(_state_) { case 0:;
+#define coSet(VALUE)   _state_ = VALUE
+#define coGet          _state_
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define coStart static int _state_ = 0; { switch(_state_) { case 0:;
-#define coEnd         do { _state_ = 0; return -1; }  while(0)
-#define coStop           } _state_ = 0; return -1; }
-#define coWait(VALUE) do { while( VALUE ){ coNext; }} while(0)
-#define coSet(VALUE)       _state_ = VALUE
-#define coGet              _state_
+#define coNext         do { _state_ = _LINE_; return  1; case _LINE_:; } while(0)
+#define coYield(VALUE) do { _state_ = VALUE ; return  1; case VALUE :; } while(0)
+#define coWait(VALUE)  do { while   ( VALUE ){ coNext; }               } while(0)
+#define coGoto(VALUE)  do { _state_ = VALUE ; return  1;               } while(0)
+#define coStay(VALUE)  do { _state_ = VALUE ; return  0;               } while(0)
+#define coEnd          do { _state_ = 0;      return -1;               } while(0)
+#define coStop            } _state_ = 0;      return -1;               }
+#define coReset        coGoto(0)
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
