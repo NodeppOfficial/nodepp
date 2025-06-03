@@ -313,8 +313,6 @@ public:
 
     /*─······································································─*/
 
-    NODE* get() const noexcept { return obj->act==nullptr ? first() : obj->act; }
-
     void set( NODE* x ) const noexcept { if( is_item(x) ){ obj->act = x; } }
 
     NODE* get( ulong x ) const noexcept {
@@ -326,6 +324,11 @@ public:
         while( n != nullptr && x != nullptr ){ 
            if( n == type::cast<NODE>(x) ){ break; } 
         n = n->next; } return n; 
+    }
+
+    NODE* get() const noexcept { 
+	if( obj->act==nullptr ){ obj->act=first(); }
+	return obj->act; 
     }
 
     NODE* as( void* x ) const noexcept {
