@@ -18,7 +18,7 @@ namespace nodepp { class regex_t {
 protected:
 
     struct NODE {
-        array_t<string_t> memory;
+        queue_t<string_t> memory;
         string_t regex, _data;
         ptr_t<int> _rep;
         bool i, j=false;
@@ -27,7 +27,7 @@ protected:
     /*─······································································─*/
 
     array_t<int> get_next_regex( ulong _pos=0 ) const noexcept {
-        array_t<int> result ({ 0 });
+        queue_t<int> result ({ 0 });
         while( _pos < obj->regex.size() ){
             if( obj->regex[_pos] == '|' ){ result.push(_pos+1); }
             if( obj->regex[_pos] == '[' ||
@@ -35,7 +35,7 @@ protected:
                 obj->regex[_pos] == '('
              ){ _pos = get_next_key( _pos ); continue; }
             if( obj->regex[_pos] == '\\' ){ _pos++; } _pos++;
-        }   return result;
+        }   return result.data();
     }
 
     int get_next_key( ulong _pos ) const noexcept {
@@ -289,7 +289,7 @@ public: regex_t () noexcept : obj( new NODE() ) {}
     /*─······································································─*/
 
     ptr_t<string_t> get_memory() const noexcept {
-        return obj->memory.ptr();
+        return obj->memory.data();
     }
 
     /*─······································································─*/
@@ -319,21 +319,22 @@ public: regex_t () noexcept : obj( new NODE() ) {}
     /*─······································································─*/
 
     array_t<ptr_t<ulong>> search_all( const string_t& _str ) const noexcept {
-        array_t<ptr_t<ulong>> result; ulong off=0; while(1){
+        queue_t<ptr_t<ulong>> result; ulong off=0; do {
             auto idx = search( _str, off );
-            if( idx == nullptr )  { return result; }
-            if( idx[0] == idx[1] ){ return result; } off=idx[1];
+            if( idx    == nullptr ){ return result.data(); }
+            if( idx[0] == idx[1]  ){ return result.data(); } off=idx[1];
                 ptr_t<ulong> mem({ idx[0], idx[1] }); result.push(mem);
-        }
+        } while(1); return nullptr;
     }
 
     /*─······································································─*/
 
     array_t<string_t> split( const string_t& _str ) const noexcept { ulong n = 0;
-        auto idx = search_all( _str ); array_t<string_t> result;
-        if( idx.empty() ) { return result; } for ( auto x : idx ) {
+        auto idx = search_all( _str ); queue_t<string_t> result;
+        if ( idx.empty()  ){ return result.data(); } 
+        for( auto x : idx ){
             result.push( _str.slice( n, x[0] ) ); n = x[1];
-        }   result.push( _str.slice( n ) ); return result;
+        }   result.push( _str.slice( n ) ); return result.data();
     }
 
     /*─······································································─*/

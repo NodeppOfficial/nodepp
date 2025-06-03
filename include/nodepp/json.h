@@ -89,7 +89,7 @@ protected:
     }
 
     ARRAY get_array( ulong x, ulong y, const string_t& str ) const {
-        ARRAY data; do {
+        queue_t<object_t> data; do {
            if( string::is_space(str[x]) || str[x]==',' ){ continue; }
            if( str[x] == '{' || str[x] == '[' ){
                auto z = get_next_key( x, str );
@@ -103,7 +103,7 @@ protected:
                ulong z=x; while( str[z]!=',' && z<y ){ z++; }
                data.push( get_data(str.slice( x, z )) ); x=z;
            }
-        } while( x++<y ); return data;
+        } while( x++<y ); return data.data();
     }
 
 public: json_t () noexcept = default;
@@ -252,8 +252,8 @@ namespace nodepp { namespace json {
 
     template<class T, class V>
     array_t<object_t> parse( const array_t<map_t<T,V>>& map ){
-        array_t<object_t> obj; for( auto &x: map )
-          { obj.push( parse(x) ); } return obj;
+        queue_t<object_t> obj; for( auto &x: map )
+          { obj.push( parse(x) ); } return obj.data();
     }
 
     template<class T, class V>

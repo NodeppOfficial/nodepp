@@ -96,10 +96,10 @@ public:
 
     /*─······································································─*/
 
-    array_t<U> keys() const noexcept { array_t<U> result;
+    array_t<U> keys() const noexcept { queue_t<U> result;
         auto x = obj->queue.first(); while( x!=nullptr ){
             result.push( x->data.first ); x=x->next; 
-        }   return result;
+        }   return result.data();
     }
     
     /*─······································································─*/

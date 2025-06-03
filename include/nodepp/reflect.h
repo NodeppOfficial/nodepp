@@ -39,10 +39,10 @@ public:
     /*─······································································─*/
 
     array_t<string_t> keys() const noexcept {
-        array_t<string_t> res ( obj->fields.size() );
+        queue_t<string_t> res ( obj->fields.size() );
         ulong n=0; obj->fields.map([&]( T& data ){
             res[n] = data.first; n++;
-        }); return res;
+        }); return res.data();
     }
 
     /*─······································································─*/

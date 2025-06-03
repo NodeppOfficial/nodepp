@@ -156,10 +156,10 @@ public:
 
     /*─······································································─*/
 
-    array_t<string_t> keys() const noexcept { array_t<string_t> res;
+    array_t<string_t> keys() const noexcept { queue_t<string_t> res;
         if( obj->type == 20 ){ auto mem = obj->mem.as<QUEUE>();
             mem.map([&]( T item ){ res.push( item.first ); });
-        }   return res;
+        }   return res.data();
     }
 
     int get_type_id() const noexcept { return obj->type; }

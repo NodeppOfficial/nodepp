@@ -117,8 +117,7 @@ public:
     ptr_t<V> data() const noexcept {
         if( empty() ){ return nullptr; } ptr_t<V> res ( size() );
         ulong y=0; auto n = first(); while( n!=nullptr ){
-            res[y] = type::cast<V>( n->data );
-            n = n->next; y++;
+            res[y] = (V)( n->data ); n = n->next; y++;
         }   return res;
     }
 
