@@ -67,7 +67,7 @@ public:
 
     /*─······································································─*/
 
-    queue_t( const V* value, const ulong& n ) noexcept : obj( new DONE ) {
+    queue_t( const V* value, const ulong& n=0 ) noexcept : obj( new DONE ) {
         if ( value == nullptr || n == 0 ){ return; } auto i=n;
       while( i-->0 ){ unshift(value[i]); }
     }
@@ -79,6 +79,11 @@ public:
 
     queue_t( const ptr_t<V>& argc ) noexcept: obj( new DONE ) {
         forEach( x, argc ){ push( x ); }
+    }
+
+    queue_t( const ulong& n, const V& c ) noexcept {
+        if ( n == 0 ){ return; }
+        auto i=n; while( i-->0 ){ unshift(c); }
     }
 
     queue_t() noexcept : obj( new DONE ) {}
@@ -118,7 +123,7 @@ public:
     ptr_t<V> data() const noexcept {
         if( empty() ){ return nullptr; } ptr_t<V> res ( size() );
         ulong y=0; auto n = first(); while( n!=nullptr ){
-            res[y] = (V)( n->data ); n = n->next; 
+            res[y] = (V)( n->data ); n = n->next;
         y++; } return res;
     }
 
@@ -206,11 +211,11 @@ public:
 
     queue_t splice( long start, ulong end ) const noexcept {
 
-        auto n_buffer = queue_t<V>(); uint idx =0;
-	    auto r = get_slice_range( start, end );
+        auto n_buffer = queue_t<V>(); uint idx=1;
+	    auto r = get_splice_range( start, end );
          if( r == nullptr ){ return nullptr; }
 
-        auto n = get( r[0] ); while( n!=nullptr && idx<=r[1] )
+        auto n = get( r[0] ); while( n!=nullptr && idx<=r[2] )
            { n_buffer.push( n->data ); n=n->next; idx++; }
 
         erase( r[0], r[0]+end ); return n_buffer;
@@ -220,11 +225,11 @@ public:
     template< class T, ulong N >
     queue_t splice( long start, ulong end, const T (&value)[N] ) const noexcept {
 
-        auto n_buffer = queue_t<V>(); uint idx =0;
-	    auto r = get_slice_range( start, end );
+        auto n_buffer = queue_t<V>(); uint idx=1;
+	    auto r = get_splice_range( start, end );
          if( r == nullptr ){ return nullptr; }
 
-        auto n = get( r[0] ); while( n!=nullptr && idx<=r[1] )
+        auto n = get( r[0] ); while( n!=nullptr && idx<=r[2] )
            { n_buffer.push( n->data ); n=n->next; idx++; }
 
         erase( r[0], r[0]+end ); insert( r[0], value ); return n_buffer;
@@ -262,13 +267,13 @@ public:
     void insert( ulong index, const V(&value)[N] ) const noexcept {
 	    index = clamp( index, 0UL, size() - 1 );
     	ulong i=index; for( ulong x=0; x<N; x++ )
-        { insert( x, value[x] ); }
+        { insert( i+x, value[x] ); }
     }
 
     void insert( ulong index, V* value, ulong N ) const noexcept {
 	    index = clamp( index, 0UL, size() - 1 );
     	ulong i=index; for( ulong x=0; x<N; x++ )
-            { insert( x, value[x] ); }
+            { insert( i+x, value[x] ); }
     }
 
     void insert( ulong index, const V& value ) const noexcept {

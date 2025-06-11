@@ -20,16 +20,16 @@ namespace nodepp {
 
 namespace string {
 
-    inline bool   is_hex( uchar c ){ return ((c>='0' && c<='9') ||(c>='A' && c<='F' ) || ( c>='a' && c<='f' ) ); }
-    inline bool is_space( uchar c ){ return ( c==' ' || c=='\t' || c=='\n' || c=='\r' || c=='\f' || c=='\v' ); }
-    inline bool is_alpha( uchar c ){ return ((c>='A' && c<='Z') ||(c>='a' && c<='z' ) ); }
-    inline bool is_graph( uchar c ){ return ( c>=33 && c<=126 && c!=' ' ); }
+    inline bool   is_hex( uchar c ){ return ((c>='0' && c<='9') ||(c>='A'  && c<='F' ) || ( c>='a' && c<='f'  ) ); }
+    inline bool is_space( uchar c ){ return ( c==' ' || c=='\t' || c=='\n' || c=='\r'  ||   c=='\f'|| c=='\v' ); }
+    inline bool is_alpha( uchar c ){ return ((c>='A' && c<='Z') ||(c>='a'  && c<='z' ) ); }
+    inline bool is_graph( uchar c ){ return ( c>=33  && c<=126  && c!=' ' ); }
     inline bool is_lower( uchar c ){ return ( c>='a' && c<='z' ); }
     inline bool is_upper( uchar c ){ return ( c>='A' && c<='Z' ); }
     inline bool is_digit( uchar c ){ return ( c>='0' && c<='9' ); }
     inline bool is_print( uchar c ){ return ( c>=32  && c<=127 ); }
     inline bool is_contr( uchar c ){ return ( c< 32  || c==127 ); }
-    inline bool  is_null( uchar c ){ return ( c=='\0' ); }
+    inline bool  is_null( uchar c ){ return ( c=='\0'); }
     inline bool is_ascii( uchar c ){ return ( c<=127 ); }
 
     /*─······································································─*/
@@ -85,8 +85,8 @@ protected:
 
         ulong a = clamp( first() + y, 0UL, last() );
         ulong b = clamp( first() + x, 0UL, a      );
-        ulong c = a - b + 1; 
-        
+        ulong c = a - b + 1;
+
         return ptr_t<ulong>({ b, a, c });
     }
 
@@ -100,8 +100,8 @@ protected:
 
         ulong a = clamp( first() + y, 0UL, last() );
         ulong b = clamp( first() + x, 0UL, a      );
-        ulong c = a - b + 1; 
-        
+        ulong c = a - b + 1;
+
         return ptr_t<ulong>({ b, a, c });
     }
 
@@ -436,7 +436,7 @@ public:
 /*────────────────────────────────────────────────────────────────────────────*/
 
 string_t operator+( const string_t& A, const string_t& B ){
-    string_t C = string::buffer( A.size() + B.size() ); 
+    string_t C = string::buffer( A.size() + B.size() );
     memcpy( C.get()+ A.size(), B.get(), B.size() );
     memcpy( C.get(), A.get() , A.size() ); return C;
 }

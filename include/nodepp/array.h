@@ -31,7 +31,7 @@ protected:
         ulong a = clamp( first() + y, 0UL, last() );
         ulong b = clamp( first() + x, 0UL, a      );
         ulong c = a - b + 1;
-        
+
         return ptr_t<ulong>({ b, a, c });
     }
 
@@ -45,8 +45,8 @@ protected:
 
         ulong a = clamp( first() + y, 0UL, last() );
         ulong b = clamp( first() + x, 0UL, a      );
-        ulong c = a - b + 1; 
-        
+        ulong c = a - b + 1;
+
         return ptr_t<ulong>({ b, a, c });
     }
 

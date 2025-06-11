@@ -775,9 +775,9 @@ namespace nodepp { namespace _ws_ {
         } } while(0);
 
             frame.LEN-= min( sz, (ulong)state );
-            data      = min( sz, (ulong)state ); 
-            
-        if( frame.LEN ==0 ){ coStay(0); } coStay(1);
+            data      = min( sz, (ulong)state );
+
+        if( frame.LEN ==0 ){ coEnd; } coStay(1);
         coYield(1); }
 
     gnStop
