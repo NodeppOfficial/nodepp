@@ -342,7 +342,7 @@ public:
     NODE* get( void* x ) const noexcept {
         if( empty() )          { return nullptr; }
         auto n = first(); while( n != nullptr ){
-           if( n == as(x) ){ break; }
+        if( n == as(x) ){ break; }
         n = n->next; } return n;
     }
 
