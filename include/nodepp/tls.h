@@ -142,7 +142,8 @@ public: tls_t() noexcept : obj( new NODE() ) {}
 
             coWait( sk._connect()==-2 ); if( sk._connect()<=0 ){
                 _EERROR(self->onError,"Error while connecting TLS");
-            coEnd; }
+                self->close(); coEnd; 
+            }
 
             if( self->obj->poll.push_write( sk.get_fd() ) ==0 )
               { sk.free(); } while( self->obj->poll.emit()==0 ){
