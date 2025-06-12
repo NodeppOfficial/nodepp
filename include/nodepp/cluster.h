@@ -31,11 +31,9 @@
 namespace nodepp { namespace cluster {
 
     template< class... T > cluster_t add( const T&... args ){
-    cluster_t pid(args...); 
-    if ( process::is_parent() ) { 
-        process::poll::add([=](){ return pid.next(); }); 
-    }   
-    return pid; }
+    cluster_t pid(args...); if( process::is_parent() ) { 
+       process::poll::add([=](){ return pid.next(); }); 
+    }  return pid; }
 
     /*─······································································─*/
 

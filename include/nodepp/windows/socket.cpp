@@ -386,7 +386,7 @@ public: socket_t() noexcept { _socket_::start_device(); }
 
     /*─······································································─*/
 
-    virtual int socket( const string_t& host, int port ) noexcept {
+    virtual int socket( const string_t& host, int port ) const noexcept {
         if( host.empty() ){ _EERROR(onError,"dns coudn't found ip"); return -1; }
             obj->addrlen = sizeof( obj->server_addr ); _socket_::start_device(); 
 

@@ -108,7 +108,7 @@ public:
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
         if( obj->state == -2 ){ return; } close(); obj->state = -2;
             obj->std_error.close(); obj->std_output.close();
-            obj->std_input.close(); onClose.emit();
+            obj->std_input.close(); onClose.emit(); kill();
 
     //  onClose .clear(); onDrain.clear();
         onResume.clear(); onError.clear(); 

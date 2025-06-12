@@ -44,7 +44,7 @@ protected:
         });
     }
 
-    int next() const noexcept {
+    int next() const noexcept { if( obj->state==0 ){ return -1; }
           if( obj->poll.emit()==-1 ){ return -1; } auto x = obj->poll.get_last_poll();
           if( x[0] >= 0 )
             { socket_t cli(x[1]); cli.set_sockopt(obj->agent); add_socket(cli); }
@@ -70,7 +70,7 @@ public: tcp_t() noexcept : obj( new NODE() ) {}
 
     void     close() const noexcept { if(obj->state<=0){return;} obj->state=-1; onClose.emit(); }
 
-    bool is_closed() const noexcept { return obj == nullptr ? 1 :obj->state<=0; }
+    bool is_closed() const noexcept { return obj == nullptr ? 1: obj->state<=0; }
 
     /*─······································································─*/
 
@@ -131,7 +131,8 @@ public: tcp_t() noexcept : obj( new NODE() ) {}
 
             coWait( sk._connect()==-2 ); if( sk._connect()<=0 ){
                 _EERROR(self->onError,"Error while connecting TCP");
-            coEnd; }
+                self->close(); coEnd; 
+            }
 
             if( self->obj->poll.push_write( sk.get_fd() ) ==0 )
               { sk.free(); } while( self->obj->poll.emit()==0 ){
@@ -154,7 +155,7 @@ public: tcp_t() noexcept : obj( new NODE() ) {}
     }
 
     void listen( const string_t& host, int port ) const noexcept {
-         listen( host, port, []( socket_t ){} );
+         listen( host, port, [=]( socket_t ){} );
     }
 
     /*─······································································─*/

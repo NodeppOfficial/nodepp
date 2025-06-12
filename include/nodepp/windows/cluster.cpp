@@ -119,6 +119,8 @@ public:
             obj->input.close(); obj->output.close();
             obj->error.close(); onClose.emit();
 
+        if( is_parent() ){ kill(); }
+
     //  onClose .clear(); onDrain.clear(); 
         onResume.clear(); onError.clear(); 
         onStop  .clear(); onOpen .clear();

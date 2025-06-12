@@ -104,7 +104,9 @@ public:
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
         if( obj->state == -2 ){ return; } close(); obj->state = -2;
         obj->input.close(); obj->output.close();
-        obj->error.close(); onClose.emit();
+        obj->error.close(); onClose.emit(); 
+
+        if( is_parent() ){ kill(); }
 
     //  onClose .clear(); onDrain.clear(); 
         onResume.clear(); onError.clear();
