@@ -66,11 +66,11 @@ public:
 
     /*─······································································─*/
 
-    bool     empty() const noexcept { return obj->queue.empty(); }
-    ulong     size() const noexcept { return obj->queue.size(); }
-    ptr_t<T>  data() const noexcept { return obj->queue.data(); }
-    ptr_t<T>   get() const noexcept { return obj->queue.data(); }
-    queue_t<T> raw() const noexcept { return obj->queue; }
+    bool      empty() const noexcept { return obj->queue.empty(); }
+    ulong      size() const noexcept { return obj->queue.size(); }
+    ptr_t<T>   data() const noexcept { return obj->queue.data(); }
+    ptr_t<T>    get() const noexcept { return obj->queue.data(); }
+    queue_t<T>& raw() const noexcept { return obj->queue; }
 
     /*─······································································─*/
 
