@@ -134,6 +134,7 @@ Check out some articles on [Medium](https://medium.com/@EDBCBlog)
 ## Official Libraries for Nodepp
 - 🔗: [ExpressPP](https://github.com/NodeppOfficial/nodepp-express) -> Express equivalent for Nodepp
 - 🔗: [ApifyPP](https://github.com/NodeppOfficial/nodepp-apify)     -> Socket.io equivalent for Nodepp
+- 🔗: [SerialPP](https://github.com/NodeppOfficial/nodepp-serial)   -> Serial Port for Nodepp
 - 🔗: [Argon2](https://github.com/NodeppOfficial/nodepp-argon2)     -> Argon2 for Nodepp
 - 🔗: [Torify](https://github.com/NodeppOfficial/nodepp-torify)     -> HTTP|Ws over Tor
 - 🔗: [NginxPP](https://github.com/NodeppOfficial/nodepp-nginx)     -> Reverse Proxy
