@@ -353,7 +353,7 @@ namespace nodepp { namespace type {
         static constexpr bool value = __is_base_of( T, V );
     };
 
-    template<typename T> struct is_polimorfic {
+    template<typename T> struct is_polymorphic {
         static constexpr bool value = __is_polymorphic(T);
     };
 
