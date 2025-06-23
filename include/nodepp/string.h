@@ -494,7 +494,7 @@ namespace string {
 
     void* to_addr( const string_t& buffer ){
         void* out=nullptr; if( buffer.empty() ){ return out; }
-        sprintf( (char*) buffer, "%p", out ); return out;
+        sscanf( (char*) buffer, "%p", &out ); return out;
     }
 
     wchar to_wchar( const string_t& buffer ){
@@ -527,7 +527,8 @@ namespace string {
 
     template< class... T >
     string_t format( const string_t& str, const T&... args ){
-        char   buffer[UNBFF_SIZE]; sprintf( buffer, (char*)str, args... );
+        char buffer[UNBFF_SIZE]; 
+        snprintf( buffer, UNBFF_SIZE, (char*)str, args... );
         return buffer;
     }
 
@@ -545,67 +546,67 @@ namespace string {
     inline string_t to_string( const string_t& num ){ return num; }
 
     string_t to_string( char num ){
-        char buffer[32]; auto x = sprintf( buffer, "%c", num );
+        char buffer[32]; auto x = snprintf( buffer, 32, "%c", num );
         return { buffer, (ulong)x };
     }
 
     string_t to_string( uint num ){
-        char buffer[32]; auto x = sprintf( buffer, "%u", num );
+        char buffer[32]; auto x = snprintf( buffer, 32, "%u", num );
         return { buffer, (ulong)x };
     }
 
     string_t to_string( int num ){
-        char buffer[32]; auto x = sprintf( buffer, "%d", num );
+        char buffer[32]; auto x = snprintf( buffer, 32, "%d", num );
         return { buffer, (ulong)x };
     }
 
     string_t to_string( long num ){
-        char buffer[32]; auto x = sprintf( buffer, "%ld", num );
+        char buffer[32]; auto x = snprintf( buffer, 32, "%ld", num );
         return { buffer, (ulong)x };
     }
 
     string_t to_string( wchar num ){
-        char buffer[32]; auto x = sprintf( buffer, "%lc", num );
+        char buffer[32]; auto x = snprintf( buffer, 32, "%lc", num );
         return { buffer, (ulong)x };
     }
 
     string_t to_string( ulong num ){
-        char buffer[32]; auto x = sprintf( buffer, "%lu", num );
+        char buffer[32]; auto x = snprintf( buffer, 32, "%lu", num );
         return { buffer, (ulong)x };
     }
 
     string_t to_string( llong num ){
-        char buffer[32]; auto x = sprintf( buffer, "%lld", num );
+        char buffer[32]; auto x = snprintf( buffer, 32, "%lld", num );
         return { buffer, (ulong)x };
     }
 
     string_t to_string( ullong num ){
-        char buffer[32]; auto x = sprintf( buffer, "%llu", num );
+        char buffer[32]; auto x = snprintf( buffer, 32, "%llu", num );
         return { buffer, (ulong)x };
     }
 
     string_t to_string( double num ){
-        char buffer[32]; auto x = sprintf( buffer, "%lf", num );
+        char buffer[32]; auto x = snprintf( buffer, 32, "%lf", num );
         return { buffer, (ulong)x };
     }
 
     string_t to_string( ldouble num ){
-        char buffer[32]; auto x = sprintf( buffer, "%Lf", num );
+        char buffer[32]; auto x = snprintf( buffer, 32, "%Lf", num );
         return { buffer, (ulong)x };
     }
 
     template< class T > string_t to_string( T* num ){
-        char buffer[32]; auto x = sprintf( buffer, "%p", (void*)num );
+        char buffer[32]; auto x = snprintf( buffer, 32, "%p", (void*)num );
         return { buffer, (ulong)x };
     }
 
     template< class T > string_t to_string( const ptr_t<T>& num ){
-        char buffer[32]; auto x = sprintf( buffer, "%p", (void*)&num );
+        char buffer[32]; auto x = snprintf( buffer, 32, "%p", (void*)&num );
         return { buffer, (ulong)x };
     }
 
     string_t to_string( float num ){
-        char buffer[32]; auto x = sprintf( buffer, "%lf", (double)num );
+        char buffer[32]; auto x = snprintf( buffer, 32, "%lf", (double)num );
         return { buffer, (ulong)x };
     }
 

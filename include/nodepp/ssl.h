@@ -90,10 +90,10 @@ protected:
         if( !key.empty() && x==1 ){ x=SSL_CTX_use_PrivateKey_file       ( ctx, (char*)key, obj->tpy ); }
 
         if( obj->cert != nullptr && x==1 ){
-        if( !SSL_CTX_use_certificate(ctx,obj->cert->get_cert()) || !ctx ){ x == 0; goto DONE; }
-        if( !SSL_CTX_use_RSAPrivateKey(ctx,obj->cert->get_prv()) )       { x == 0; goto DONE; } 
-        if( !SSL_CTX_check_private_key(ctx) )                            { x == 0; goto DONE; }
-        } else { x == 0; }
+        if( !SSL_CTX_use_certificate(ctx,obj->cert->get_cert()) || !ctx ){ x = 0; goto DONE; }
+        if( !SSL_CTX_use_RSAPrivateKey(ctx,obj->cert->get_prv()) )       { x = 0; goto DONE; } 
+        if( !SSL_CTX_check_private_key(ctx) )                            { x = 0; goto DONE; }
+          } else { x = 0; }
         
         DONE:; return x==1 ? 1 : -1;
     }

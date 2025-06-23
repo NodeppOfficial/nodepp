@@ -88,7 +88,7 @@ namespace nodepp { namespace fs {
     /*─······································································─*/
 
     int rename_file( const string_t& oname, const string_t& nname ) {
-        if( oname.empty() || nname.empty() ) return -1;
+        if( oname.empty() || nname.empty() ){ return -1; }
         return rename( oname.c_str(), nname.c_str() );
     }
 

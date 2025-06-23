@@ -10,6 +10,7 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #pragma once
+#include "limit.cpp"
 
 #include <ws2tcpip.h>
 #include <winsock2.h>
@@ -19,7 +20,7 @@
 
 namespace nodepp { namespace _socket_ {
 
-    void start_device(){ static bool sockets=false; 
+    void start_device(){ static bool sockets=false;
         if( sockets == false ){ WSADATA wsaData;
             process::onSIGEXIT([=](){ WSACleanup(); });
             if( WSAStartup(MAKEWORD(2,2),&wsaData) != 0 ){
@@ -69,19 +70,19 @@ protected:
         string_t     borrow;
 
     };  ptr_t<NODE> obj = new NODE();
-    
+
     /*─······································································─*/
 
     virtual bool is_blocked( int& c ) const noexcept {
-        if ( c >= 0 ){ return 0; } auto error =  WSAGetLastError(); 
+        if ( c >= 0 ){ return 0; } auto error =  WSAGetLastError();
         if ( error == WSAEISCONN ){ c=0; return 0; } return (
              error == WSAEWOULDBLOCK || error == WSAEINPROGRESS ||
              error == WSAEALREADY    || error == WSAECONNRESET
         );
     }
-    
+
     /*─······································································─*/
-    
+
     virtual int set_nonbloking_mode() const noexcept { ulong mode = 1;
         return ioctlsocket( obj->fd, FIONBIO, &mode ) != 0 ? -1 : 1;
     }
@@ -99,48 +100,48 @@ public: socket_t() noexcept { _socket_::start_device(); }
     event_t<string_t>  onData;
     event_t<>          onUse;
     event_t<>          onRelease;
-    
+
     /*─······································································─*/
 
     int SOCK    = SOCK_STREAM;
-    int AF      = AF_INET; 
+    int AF      = AF_INET;
     int IPPROTO = 0;
-    
+
     /*─······································································─*/
 
-    ulong get_recv_timeout() const noexcept { 
-        return obj->recv_timeout==0 ? process::millis() : obj->recv_timeout; 
+    ulong get_recv_timeout() const noexcept {
+        return obj->recv_timeout==0 ? process::millis() : obj->recv_timeout;
     }
 
-    ulong get_send_timeout() const noexcept { 
+    ulong get_send_timeout() const noexcept {
         return obj->send_timeout==0 ? process::millis() : obj->send_timeout;
     }
 
-    ulong get_conn_timeout() const noexcept { 
+    ulong get_conn_timeout() const noexcept {
         return obj->conn_timeout==0 ? process::millis() : obj->conn_timeout;
     }
-    
+
     /*─······································································─*/
 
-    ulong set_conn_timeout( ulong time ) const noexcept { 
+    ulong set_conn_timeout( ulong time ) const noexcept {
         if( time == 0 ){ obj->conn_timeout = 0; return 0; }
-        obj->conn_timeout = process::millis() + time; return time; 
+        obj->conn_timeout = process::millis() + time; return time;
     }
 
-    ulong set_recv_timeout( ulong time ) const noexcept { 
+    ulong set_recv_timeout( ulong time ) const noexcept {
         if( time == 0 ){ obj->recv_timeout = 0; return 0; }
         TIMEVAL en; memset( &en, 0, sizeof(en) ); en.tv_sec = time / 1000; en.tv_usec = 0; int c;
         while( is_blocked( c=setsockopt( obj->fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&en, sizeof(en) ) ) )
-             { process::next(); } obj->recv_timeout = process::millis() + time; return time; 
+             { process::next(); } obj->recv_timeout = process::millis() + time; return time;
     }
 
-    ulong set_send_timeout( ulong time ) const noexcept { 
+    ulong set_send_timeout( ulong time ) const noexcept {
         if( time == 0 ){ obj->send_timeout = 0; return 0; }
         TIMEVAL en; memset( &en, 0, sizeof(en) ); en.tv_sec = time / 1000; en.tv_usec = 0; int c;
         while( is_blocked( c=setsockopt( obj->fd, SOL_SOCKET, SO_SNDTIMEO, (char*)&en, sizeof(en) ) ) )
-             { process::next(); } obj->send_timeout = process::millis() + time; return time; 
+             { process::next(); } obj->send_timeout = process::millis() + time; return time;
     }
-    
+
     /*─······································································─*/
 
     int set_recv_buff( uint en ) const noexcept { int c;
@@ -204,7 +205,7 @@ public: socket_t() noexcept { _socket_::start_device(); }
         while( is_blocked( c=getsockopt(obj->fd, SOL_SOCKET, SO_SNDBUF, (char*)&en, &size) ) )
              { process::next(); } return c==0 ? en : c;
     }
-    
+
     int get_accept_connection() const noexcept { int c, en; socklen_t size = sizeof(en);
         while( is_blocked( c=getsockopt(obj->fd, SOL_SOCKET, SO_ACCEPTCONN, (char*)&en, &size) ) )
              { process::next(); } return c==0 ? en : c;
@@ -258,22 +259,22 @@ public: socket_t() noexcept { _socket_::start_device(); }
         return c < 0 ? "127.0.0.1" : buff;
     }
 
-    int get_sockport() const noexcept { int c;
+    int get_sockport() const noexcept {
         SOCKADDR cli; if( obj->srv==1 ) cli = obj->client_addr; else cli = obj->server_addr;
         return ntohs( ((SOCKADDR_IN*)&cli)->sin_port );
     }
-    
+
     /*─······································································─*/
 
-    virtual ulong set_buffer_size( ulong _size ) const noexcept { 
+    virtual ulong set_buffer_size( ulong _size ) const noexcept {
         set_send_buff( _size ); set_recv_buff( _size );
         obj->buffer = ptr_t<char>(_size); return _size;
     }
-    
+
     /*─······································································─*/
 
     ulong set_timeout( ulong time ) const noexcept {
-        set_recv_timeout( time ); 
+        set_recv_timeout( time );
         set_send_timeout( time ); return time;
     }
 
@@ -287,7 +288,7 @@ public: socket_t() noexcept { _socket_::start_device(); }
     bool     is_server() const noexcept { return obj->srv; }
 
     /*─······································································─*/
-    
+
     void  resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume .emit(); }
     void    stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop   .emit(); }
     void     use() const noexcept { if(obj->used == 1) { return; } obj->used = 1; onUse    .emit(); }
@@ -297,18 +298,18 @@ public: socket_t() noexcept { _socket_::start_device(); }
 
     /*─······································································─*/
 
-    void close() const noexcept { 
-        if( obj->state< 0 ){ return; } 
+    void close() const noexcept {
+        if( obj->state< 0 ){ return; }
         if( obj->keep== 1 ){ stop(); goto DONE; }
-            obj->state=-1; DONE:; release(); onDrain.emit();  
+            obj->state=-1; DONE:; release(); onDrain.emit();
     }
-    
+
     /*─······································································─*/
 
     SOCKET    get_fd() const noexcept { return obj == nullptr ? INVALID_SOCKET : obj->fd;    }
     ulong* get_range() const noexcept { return obj == nullptr ?        nullptr : obj->range; }
     int    get_state() const noexcept { return obj == nullptr ?             -1 : obj->state; }
-    
+
     /*─······································································─*/
 
     void   set_borrow( const string_t& brr ) const noexcept { obj->borrow = brr; }
@@ -316,24 +317,24 @@ public: socket_t() noexcept { _socket_::start_device(); }
     char*  get_borrow_data() const noexcept { return obj->borrow.data(); }
     void        del_borrow() const noexcept { obj->borrow.clear(); }
     string_t&   get_borrow() const noexcept { return obj->borrow; }
-    
+
     /*─······································································─*/
 
     ulong   get_buffer_size() const noexcept { return obj->buffer.size(); }
     char*   get_buffer_data() const noexcept { return obj->buffer.data(); }
     ptr_t<char>& get_buffer() const noexcept { return obj->buffer; }
-    
+
     /*─······································································─*/
-    
+
     ulong pos( ulong /*unused*/ ) const noexcept { return 0; }
 
     ulong size() const noexcept { return 0; }
 
     ulong  pos() const noexcept { return 0; }
-    
+
     /*─······································································─*/
 
-    void set_sockopt( agent_t opt ) const noexcept { 
+    void set_sockopt( agent_t opt ) const noexcept {
         set_reuse_address( opt.reuse_address );
         set_conn_timeout ( opt.conn_timeout  );
         set_recv_timeout ( opt.recv_timeout  );
@@ -346,7 +347,7 @@ public: socket_t() noexcept { _socket_::start_device(); }
         set_broadcast    ( opt.broadcast     );
     }
 
-    agent_t get_sockopt() const noexcept { 
+    agent_t get_sockopt() const noexcept {
     agent_t opt;
         opt.reuse_address = get_reuse_address();
         opt.recv_timeout  = get_recv_timeout();
@@ -360,15 +361,15 @@ public: socket_t() noexcept { _socket_::start_device(); }
         opt.broadcast     = get_broadcast();
     return opt;
     }
-    
+
     /*─······································································─*/
-    
+
     virtual ~socket_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
-    
+
     /*─······································································─*/
 
     socket_t( SOCKET fd, ulong _size=CHUNK_SIZE ){ _socket_::start_device();
-        if( fd == INVALID_SOCKET ){ 
+        if( fd == INVALID_SOCKET ){
             process::error("Such Socket has an Invalid fd");
         }   obj->fd = fd; set_nonbloking_mode(); set_buffer_size(_size);
     }
@@ -379,10 +380,10 @@ public: socket_t() noexcept { _socket_::start_device(); }
 
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
         if( obj->state == -2 ){ return; } close(); obj->state = -2;
-        ::shutdown(obj->fd,SD_BOTH); closesocket(obj->fd); 
+        ::shutdown(obj->fd,SD_BOTH); closesocket(obj->fd);
         onClose.emit();
 
-    //  onDrain .clear(); onClose .clear(); 
+    //  onDrain .clear(); onClose .clear();
         onUnpipe.clear(); onResume.clear();
         onStop  .clear(); onError .clear();
         onOpen  .clear(); onPipe  .clear();
@@ -394,11 +395,11 @@ public: socket_t() noexcept { _socket_::start_device(); }
 
     virtual int socket( const string_t& host, int port ) const noexcept {
         if( host.empty() ){ _EERROR(onError,"dns coudn't found ip"); return -1; }
-            obj->addrlen = sizeof( obj->server_addr ); _socket_::start_device(); 
+            obj->addrlen = sizeof( obj->server_addr ); _socket_::start_device();
 
         if((obj->fd=::socket( AF, SOCK, IPPROTO )) == INVALID_SOCKET )
-          { _EERROR(onError,"can't initializate socket fd"); return -1; } 
-          
+          { _EERROR(onError,"can't initializate socket fd"); return -1; }
+
         set_buffer_size( CHUNK_SIZE );
         set_nonbloking_mode();
         set_ipv6_only_mode(0);
@@ -415,13 +416,13 @@ public: socket_t() noexcept { _socket_::start_device(); }
 
           if( host == "0.0.0.0"         || host == "global"    ){ server.sin_addr.s_addr = INADDR_ANY; }
         elif( host == "1.1.1.1"         || host == "loopback"  ){ server.sin_addr.s_addr = INADDR_LOOPBACK; }
-        elif( host == "255.255.255.255" || host == "broadcast" ){ server.sin_addr.s_addr = INADDR_BROADCAST; } 
+        elif( host == "255.255.255.255" || host == "broadcast" ){ server.sin_addr.s_addr = INADDR_BROADCAST; }
         elif( host == "127.0.0.1"       || host == "localhost" ){ inet_pton(AF, "127.0.0.1", &server.sin_addr); }
         else                                                    { inet_pton(AF, host.c_str(),&server.sin_addr); }
 
         obj->server_addr = *((SOCKADDR*) &server); obj->client_addr = *((SOCKADDR*) &client); obj->len = sizeof( server ); return 1;
     }
-    
+
     /*─······································································─*/
 
     int _connect() const noexcept { int c=0;
@@ -440,7 +441,7 @@ public: socket_t() noexcept { _socket_::start_device(); }
 
     int _listen() const noexcept { int c = 0;
         if( process::millis() > get_conn_timeout() || obj->srv == 0 ){ return -1; }
-        return is_blocked( c=::listen( obj->fd, MAX_FILENO ) ) ? -2 : c;
+        return is_blocked( c=::listen( obj->fd, limit::get_soft_fileno() ) ) ? -2 : c;
     }
 
     /*─······································································─*/
@@ -457,10 +458,10 @@ public: socket_t() noexcept { _socket_::start_device(); }
         while( (c=_accept())==-2 ){ process::next(); } return c;
     }
 
-    int bind() const noexcept { int c=0; 
+    int bind() const noexcept { int c=0;
         while( (c=_bind())==-2 ){ process::next(); } return c;
     }
-    
+
     /*─······································································─*/
 
     char read_char() const noexcept { return read(1)[0]; }
@@ -478,14 +479,14 @@ public: socket_t() noexcept { _socket_::start_device(); }
              { process::next(); }
         return gen.data;
     }
-    
+
     string_t read_line() const noexcept {
         auto gen = nodepp::_file_::line();
         while( gen( this ) == 1 )
              { process::next(); }
         return gen.data;
     }
-    
+
     /*─······································································─*/
 
     string_t read( ulong size=CHUNK_SIZE ) const noexcept {
@@ -501,17 +502,17 @@ public: socket_t() noexcept { _socket_::start_device(); }
              { process::next(); }
         return gen.data;
     }
-    
+
     /*─······································································─*/
 
     virtual int _read ( char* bf, const ulong& sx ) const noexcept { return __read ( bf, sx ); }
     virtual int _write( char* bf, const ulong& sx ) const noexcept { return __write( bf, sx ); }
-    
+
     /*─······································································─*/
 
     virtual int __read( char* bf, const ulong& sx ) const noexcept {
         if ( process::millis() > get_recv_timeout() || is_closed() )
-           { close(); return -1; } if ( sx==0 ) { return 0; } 
+           { close(); return -1; } if ( sx==0 ) { return 0; }
         if ( SOCK != SOCK_DGRAM ){
             obj->feof = ::recv( obj->fd, bf, sx, 0 );
             obj->feof = is_blocked(obj->feof) ?-2 : obj->feof;
@@ -524,10 +525,10 @@ public: socket_t() noexcept { _socket_::start_device(); }
             return obj->feof;
         }   return -1;
     }
-    
+
     virtual int __write( char* bf, const ulong& sx ) const noexcept {
         if ( process::millis() > get_send_timeout() || is_closed() )
-           { close(); return -1; } if ( sx==0 ) { return 0; } 
+           { close(); return -1; } if ( sx==0 ) { return 0; }
         if ( SOCK != SOCK_DGRAM ){
             obj->feof = ::send( obj->fd, bf, sx, 0 );
             obj->feof = is_blocked(obj->feof) ?-2 : obj->feof;
@@ -539,7 +540,7 @@ public: socket_t() noexcept { _socket_::start_device(); }
             if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
             return obj->feof;
         }   return -1;
-    } 
+    }
 
     /*─······································································─*/
 
@@ -558,7 +559,7 @@ public: socket_t() noexcept { _socket_::start_device(); }
             if( c >  0 ){ sy += c; continue; } return 1;
         }   return 0;
     }
-    
+
 };}
 
 /*────────────────────────────────────────────────────────────────────────────*/

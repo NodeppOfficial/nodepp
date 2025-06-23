@@ -12,18 +12,18 @@ void onMain(){
     server.onConnect([=]( ssocket_t cli ){
 
         console::log("connected to:", cli.get_fd());
-    
+
         cli.onData([=]( string_t data ){
             console::log( data );
         });
 
-        cli.onClose([=](){
+        cli.onClose.once([=](){
             console::log("closed");
         });
 
     });
 
-    server.listen( "localhost", 8000, []( ssocket_t srv ){
+    server.listen( "localhost", 8000, []( ssocket_t ){
         console::log("server started at tls://localhost:8000");
     });
 

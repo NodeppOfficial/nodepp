@@ -80,8 +80,8 @@ private:
     class any_impl : public any_base {
     public:
         any_impl( const T& f ) noexcept : any( f ) {}
-        virtual void get( void* argc ) const noexcept { memcpy( argc, &any, sizeof(T) ); }
-        virtual void set( void* argc )       noexcept { memcpy( &any, argc, sizeof(T) ); }
+        virtual void get( void* argc ) const noexcept { memcpy( argc, (void*)&any, sizeof(T) ); }
+        virtual void set( void* argc )       noexcept { memcpy( (void*)&any, argc, sizeof(T) ); }
     private:
         T any;
     };

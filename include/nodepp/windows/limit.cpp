@@ -9,21 +9,24 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#ifndef NODEPP_SERIAL
-#define NODEPP_SERIAL
+#pragma once
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if   _KERNEL == NODEPP_KERNEL_WINDOWS
-    #include "fs.h"
-    #include "windows/serial.cpp"
-#elif _KERNEL == NODEPP_KERNEL_POSIX
-    #include "fs.h"
-    #include "posix/serial.cpp"
-#else
-    #error "This OS Does not support serial.h"
-#endif
+namespace nodepp { namespace limit {
+
+    uint get_hard_fileno() { return _getmaxstdio(); }
+
+    uint get_soft_fileno() { return _getmaxstdio(); }
+
+    int set_hard_fileno( uint value ) {
+        return _setmaxstdio( value );
+    }
+
+    int set_soft_fileno( uint value ) {
+        return _setmaxstdio( value );
+    }
+
+}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
-
-#endif

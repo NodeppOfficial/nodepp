@@ -64,7 +64,7 @@ namespace nodepp { namespace fs {
     /*─······································································─*/
 
     int copy_file( const string_t& src, const string_t& des ){
-        if( src.empty() || des.empty() ) return -1; try {
+        if( src.empty() || des.empty() ){ return -1; } try {
             file_t _file_a ( src, "r" );
             file_t _file_b ( des, "w" );
             stream::pipe( _file_a, _file_b ); return  0;
@@ -74,7 +74,7 @@ namespace nodepp { namespace fs {
     /*─······································································─*/
 
     int rename_file( const string_t& oname, const string_t& nname ) {
-        if( oname.empty() || nname.empty() ) return -1;
+        if( oname.empty() || nname.empty() ){ return -1; }
         return rename( oname.c_str(), nname.c_str() );
     }
 

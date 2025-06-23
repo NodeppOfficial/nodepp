@@ -20,10 +20,6 @@
 
 namespace nodepp { namespace process {
 
-    array_t<string_t> args;
-
-    /*─······································································─*/
-
     template< class... T >
     int  spawn( const T&... args ){ return ::system(args...); }
 
@@ -34,12 +30,6 @@ namespace nodepp { namespace process {
 
     void abort(){ ::abort(); }
 
-    /*─······································································─*/
-
-    void stop(){    while( !process::empty() )
-        { onSIGNEXT.emit(); process::next(); }
-    }
-
 }}
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -49,6 +39,10 @@ namespace nodepp { namespace process {
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace process {
+
+    array_t<string_t> args;
+
+    /*─······································································─*/
 
     void start(){ process::yield(); process::signal::start(); }
 
@@ -62,6 +56,12 @@ namespace nodepp { namespace process {
             }
         }   while( i ++< argc - 1 ); process::start();
     }
+
+    /*─······································································─*/
+
+    void stop(){ while( !process::empty() ){
+        onSIGNEXT.emit(); process::next();
+    }}
 
 }}
 

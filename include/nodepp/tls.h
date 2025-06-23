@@ -40,7 +40,7 @@ protected:
 
     template< class T > void add_socket( T& cli ) const noexcept {
         auto self = type::bind( this ); process::poll::add([=](){
-             self->onSocket.emit(cli); self->obj->func(cli); 
+             self->onSocket.emit(cli); self->obj->func(cli);
              return -1;
         });
     }
@@ -96,12 +96,11 @@ public: tls_t() noexcept : obj( new NODE() ) {}
         if( sk.listen()<0 ){ _EERROR(onError,"Error while listening TLS"); close(); sk.free(); return; }
 
         cb( sk ); onOpen.emit( sk ); process::poll::add([=](){
-            if( self->is_closed() || sk.is_closed() ){ return -1; }
         coStart
 
             while( self->obj->accept == -2 ){
                if( self->is_closed()|| sk.is_closed() ){ coGoto(2); }
-                   self->obj->accept = sk._accept(); 
+                   self->obj->accept = sk._accept();
                if( self->obj->accept!=-2 ){ break; } coYield(3);
             while( self->next()==1 ){ coStay(3); } coNext; }
 
@@ -137,12 +136,11 @@ public: tls_t() noexcept : obj( new NODE() ) {}
         sk.ssl->set_hostname( host );
 
         process::poll::add([=](){
-            if( self->is_closed() || sk.is_closed() ){ return -1; }
         coStart
 
             coWait( sk._connect()==-2 ); if( sk._connect()<=0 ){
                 _EERROR(self->onError,"Error while connecting TLS");
-                self->close(); coEnd; 
+                self->close(); coEnd;
             }
 
             if( self->obj->poll.push_write( sk.get_fd() ) ==0 )
@@ -179,7 +177,7 @@ public: tls_t() noexcept : obj( new NODE() ) {}
         if( is_closed() ){ return; } close();
         onConnect.clear(); onSocket.clear();
         onError  .clear(); onOpen  .clear();
-    //  onClose  .clear(); 
+    //  onClose  .clear();
     }
 
 };

@@ -55,11 +55,8 @@ namespace nodepp { namespace type {
     template <typename T> struct is_void : false_type {};
 
     template <> struct is_void<const volatile void> : true_type {};
-
     template <> struct is_void<volatile void> : true_type {};
-
     template <> struct is_void<const void> : true_type {};
-
     template <> struct is_void<void> : true_type {};
     
     /*─······································································─*/
@@ -79,7 +76,6 @@ namespace nodepp { namespace type {
     template <typename T> struct is_character : false_type {};
 
     template <> struct is_character<char> : true_type {};
-
     template <> struct is_character<uchar> : true_type {};
     
     /*─······································································─*/
@@ -87,159 +83,114 @@ namespace nodepp { namespace type {
     template <typename T> struct is_integral : false_type {};
 
     template <> struct is_integral<int> : true_type {};
-
     template <> struct is_integral<bool> : true_type {};
-
     template <> struct is_integral<char> : true_type {};
-
     template <> struct is_integral<long> : true_type {};
-
     template <> struct is_integral<uint> : true_type {};
-
     template <> struct is_integral<short> : true_type {};
-
     template <> struct is_integral<llong> : true_type {};
-
     template <> struct is_integral<ulong> : true_type {};
-
     template <> struct is_integral<uchar> : true_type {};
-
     template <> struct is_integral<ushort> : true_type {};
-
     template <> struct is_integral<ullong> : true_type {};
-
     template <> struct is_integral<wchar_t> : true_type {};
-
     template <> struct is_integral<char16_t> : true_type {};
-
     template <> struct is_integral<char32_t> : true_type {};
 
     /*─······································································─*/
 
     template <typename T> struct is_floating_point : false_type {};
-
     template <> struct is_floating_point<float> : true_type {};
-
     template <> struct is_floating_point<double> : true_type {};
-
     template <> struct is_floating_point<ldouble> : true_type {};
     
     /*─······································································─*/
 
     template <typename T> struct is_cr : false_type {};
-
     template <typename T> struct is_cr<const T&> : true_type {};
-
     template <typename T> struct is_cr<const T&&> : true_type {};
     
     /*─······································································─*/
 
     template <typename T> struct is_const : false_type {};
-
     template <typename T> struct is_const<const T> : true_type {};
     
     /*────────────────────────────────────────────────────────────────────────────*/
 
     template <typename T> struct is_volatile : false_type {};
-
     template <typename T> struct is_volatile<volatile T> : true_type {};
     
     /*────────────────────────────────────────────────────────────────────────────*/
 
     template <typename T> struct is_reference : false_type {};
-
     template <typename T> struct is_reference<T&> : true_type {};
-
     template <typename T> struct is_reference<T&&> : true_type {};
     
     /*────────────────────────────────────────────────────────────────────────────*/
 
     template <typename T> struct is_lvalue_reference : false_type {};
-
     template <typename T> struct is_lvalue_reference<T&> : true_type {};
     
     /*─······································································─*/
 
     template <typename T> struct is_rvalue_reference : false_type {};
-
     template <typename T> struct is_rvalue_reference<T&&> : true_type {};
     
     /*─······································································─*/
 
     template <typename T, ulong N = 0> struct add_extent { typedef T type[N]; };
-
     template <typename T> struct add_extent<T[], 0> { typedef T type[]; };
-
     template <typename T, ulong N> struct add_extent<T[], N> { typedef T type[N]; };
     
     /*─······································································─*/
 
     template <typename T> struct remove_extent { typedef T type; };
-
     template <typename T, ulong N> struct remove_extent<T[N]> { typedef T type; };
     
     /*─······································································─*/
 
     template<typename T> struct add_const { using type = const T; };
-
     template<typename T> struct remove_const { using type = T; };
-
     template<typename T> struct remove_const<const T> { using type = T; };
     
     /*─······································································─*/
 
     template<typename T> struct add_volatile { using type = volatile T; };
-
     template<typename T> struct remove_volatile { using type = T; };
-
     template<typename T> struct remove_volatile<volatile T> { using type = T; };
     
     /*─······································································─*/
 
     template<typename T> struct remove_reference { using type = T; };
-
     template<typename T> struct remove_reference<T&> { using type = T; };
-
     template<typename T> struct remove_reference<T&&> { using type = T; };
 
     /*─······································································─*/
 
     template<typename T> typename remove_reference<T>::type&& move(T&& arg) { return static_cast<typename remove_reference<T>::type&&>( arg ); }
-
     template<typename T> typename remove_reference<T>::type&  copy(T& arg) { return static_cast<typename remove_reference<T>::type&>( arg ); }
-
     template<typename T> typename remove_reference<T>::type&& forward(T&& arg) { return move(arg); }
-
     template<typename T> typename remove_reference<T>::type&  forward(T& arg) { return copy(arg); }
     
     /*─······································································─*/
 
     template<typename T> struct add_pointer { using type = T*; };
-
     template<typename T> struct remove_pointer { using type = T; };
-
     template<typename T> struct remove_pointer<T*> { using type = T; };
-
     template<typename T> struct remove_pointer<T* const> { using type = T; };
-
     template<typename T> struct remove_pointer<T* volatile> { using type = T; };
-
     template<typename T> struct remove_pointer<T* const volatile> { using type = T; };
     
     /*─······································································─*/
     
     template<typename T> struct add_cv { using type = const volatile T; };
-
     template<typename T> struct remove_cv { using type = typename remove_volatile<typename remove_const<T>::type>::type; };
     
     /*─······································································─*/
 
     template<typename T> struct add_lvalue_reference { using type = T&; };
-
     template<typename T> struct add_rvalue_reference { using type = T&&; };
-
     template<typename T> typename add_rvalue_reference<T>::type add_rvalue_reference_fn(T&& t) { return static_cast<typename add_rvalue_reference<T>::type>(t); };
-
     template<typename T> struct add_reference : public conditional<is_lvalue_reference<T>::value, add_lvalue_reference<typename remove_reference<T>::type>, add_rvalue_reference<typename remove_reference<T>::type>>::type {};
     
     /*─······································································─*/
@@ -323,12 +274,17 @@ namespace nodepp { namespace type {
 
     /*─······································································─*/
 
+    /*
+    template<typename T, typename V> struct is_trivially_assignable {
+        static constexpr bool value = __is_trivially_assignable(T,V);
+    };
+
     template<typename T> struct is_trivially_constructible {
         static constexpr bool value = __is_trivially_constructible(T);
     };
 
     template<typename T> struct is_trivially_destructible {
-        static constexpr bool value = __has_trivial_destructor(T);
+        static constexpr bool value = __is_trivially_destructible(T);
     };
 
     template<typename T> struct is_virtually_destructible {
@@ -338,14 +294,7 @@ namespace nodepp { namespace type {
     template<typename T> struct is_trivially_copiable {
         static constexpr bool value = __is_trivially_copyable(T);
     };
-
-    template<typename T> struct is_trivially_assigned {
-        static constexpr bool value = __has_trivial_assign(T);
-    };
-
-    template<typename T, typename V> struct is_trivially_assignable {
-        static constexpr bool value = __is_trivially_assignable(T,V);
-    };
+    */
 
     /*─······································································─*/
 
@@ -353,7 +302,7 @@ namespace nodepp { namespace type {
         static constexpr bool value = __is_base_of( T, V );
     };
 
-    template<typename T> struct is_polimorfic {
+    template<typename T> struct is_polymorphic {
         static constexpr bool value = __is_polymorphic(T);
     };
 

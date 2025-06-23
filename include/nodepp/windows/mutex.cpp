@@ -18,15 +18,9 @@
 namespace nodepp { namespace worker {
     
     void delay( ulong time ){ process::delay(time); }
-
+    void yield(){ delay(TIMEOUT); SwitchToThread(); }
     int    pid(){ return GetCurrentThreadId(); }
-
     void  exit(){ ExitThread(0); }
-
-    void yield(){ 
-        delay( TIMEOUT );
-        SwitchToThread(); 
-    }
 
 }}
 

@@ -61,10 +61,6 @@ namespace nodepp { namespace os {
     
     /*─······································································─*/
 
-    uint max_fileno(){ return MAX_FILENO; }
-    
-    /*─······································································─*/
-
     DWORD error(){ return GetLastError(); }
     
 }}

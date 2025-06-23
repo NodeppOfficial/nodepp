@@ -8,12 +8,12 @@ void onMain(){
     auto server = tcp::server();
 
     server.onConnect([=]( socket_t cli ){
-    
+
         cli.onData([=]( string_t data ){
             console::log( data );
         });
 
-        cli.onClose([=](){
+        cli.onClose.once([=](){
             console::log("closed");
         });
 

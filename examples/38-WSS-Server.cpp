@@ -14,7 +14,11 @@ void onMain(){
 
     auto server = https::server([=]( https_t cli ){ 
 
-        /* HTTP Server logic here */
+        cli.write_header( 200, header_t({
+            { "Content-Security-Policy", "*" }
+        }) );
+
+        cli.write("Hello World!");
 
     }, &ssl ); wss::server( server );
 

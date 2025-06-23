@@ -632,12 +632,14 @@ public:
 
     void update( string_t msg ) const noexcept { if( obj->state != 1 ){ return; }
         while( !msg.empty() ){ string_t tmp = msg.splice( 0, obj->bff.size()/2 ); 
-            for ( int x=0; x<64; x++ ){ obj->ctx->T[CRYPTO_BASE64[x]]=x; }
+            for ( int x=0; x<64; x++ ){ obj->ctx->T[type::cast<int>(CRYPTO_BASE64[x])]=x; }
 
             string_t out; obj->ctx->len = 0; forEach ( x, tmp ) {
-                if ( obj->ctx->T[x]==-1 ){ break; }
+                uint   y = type::cast<uint>(x);
 
-                obj->ctx->pos1 = ( obj->ctx->pos1 << 6 ) + obj->ctx->T[x]; obj->ctx->pos2 += 6;
+                if ( obj->ctx->T[y]==-1 ){ break; }
+
+                obj->ctx->pos1 = ( obj->ctx->pos1 << 6 ) + obj->ctx->T[y]; obj->ctx->pos2 += 6;
 
                 if ( obj->ctx->pos2 >= 0 ) {
                     obj->bff[obj->ctx->len] = char((obj->ctx->pos1>>obj->ctx->pos2)&0xFF);

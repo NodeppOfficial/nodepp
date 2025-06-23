@@ -28,8 +28,8 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #define onMain INIT(); int main( int argc, char** args ) { \
-   process::start( argc, args ); INIT(); \
-   process::stop(); return 0;            \
+   process::start( argc,args ); INIT(); \
+   process::stop (); return 0;          \
 }  void INIT
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -101,29 +101,9 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 #define UNBFF_SIZE      4096
 #define CHUNK_SIZE      65536
 
-/*────────────────────────────────────────────────────────────────────────────*/
-
-#ifndef MAX_WORKERS
-#define MAX_WORKERS 0 // 1024
-#endif
-
-#ifndef MAX_EVENTS
-#define MAX_EVENTS  0 // 1024
-#endif
-
-#ifndef MAX_FILENO
-#define MAX_FILENO  1024 // 0
-#endif
-
-#ifndef MAX_TASKS
-#define MAX_TASKS   0 // 1024
-#endif
-
 #ifndef MAX_PATH
-#define MAX_PATH    1024 // 0
+#define MAX_PATH 1024 // 0
 #endif
-
-/*────────────────────────────────────────────────────────────────────────────*/
 
 #ifndef TIMEOUT
 #define TIMEOUT 1

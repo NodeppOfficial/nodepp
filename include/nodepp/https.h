@@ -122,8 +122,8 @@ public:
 namespace nodepp { namespace https {
 
     template< class T > tls_t server( T cb, const ssl_t* ctx, agent_t* opt=nullptr ){
-        return tls_t([=]( https_t cli ){ int c=0;
-            if( cli.read_header()==0 ){ cb( cli ); } 
+        return tls_t([=]( https_t cli ){
+            if( cli.read_header() ==0 ){ cb( cli ); } 
           else{ cli.close(); }
         }, ctx, opt ); 
     }
@@ -146,7 +146,7 @@ namespace nodepp { namespace https {
         string_t dir = uri.pathname + uri.search + uri.hash;
        
         auto client = tls_t ([=]( https_t cli ){ 
-            cli.set_timeout( gfc->timeout ); int c = 0; cli.write_header( gfc, dir );
+            cli.set_timeout( gfc->timeout ); cli.write_header( gfc, dir );
 
             if( cli.read_header()==0 ){ res( cli ); } else { 
                 rej(except_t("Could not connect to server"));

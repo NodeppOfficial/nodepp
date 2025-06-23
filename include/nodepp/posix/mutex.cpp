@@ -17,15 +17,9 @@
 namespace nodepp { namespace worker {
 
     void delay( ulong time ){ process::delay(time); }
-
+    void yield(){  delay(TIMEOUT); sched_yield(); }
     int    pid(){ return (int)pthread_self(); }
-
     void  exit(){ pthread_exit(NULL); }
-
-    void yield(){ 
-        delay( TIMEOUT );
-        sched_yield();
-    }
     
 }}
 

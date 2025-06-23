@@ -78,8 +78,6 @@ protected:
 
 public:
 
-    object_t( const object_t& any ) noexcept : obj(new NODE()) { *this=any; }
-
     template< ulong N >
     object_t( const T (&arr) [N] ) noexcept : obj(new NODE()) {
         QUEUE mem; for( ulong x=0; x<N; x++ )

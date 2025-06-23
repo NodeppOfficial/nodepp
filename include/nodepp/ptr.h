@@ -102,7 +102,7 @@ public:
     }
 
     void resize( ulong n, const T& c ) noexcept {
-        ulong s=0; reset(); resize(n);
+        reset(); resize(n);
         for( auto x=begin(); x!=end(); x++ )
            { *x = (T)c; }
     }

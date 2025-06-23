@@ -22,7 +22,7 @@ void onMain(){
     coStop
     });
 
-    worker::add([=](){ 
+    auto wrk = worker::add([=](){ 
         mut.lock();
     coStart
 
@@ -34,5 +34,7 @@ void onMain(){
 
     coStop
     });
+
+    timer::timeout([=](){ wrk.off(); }, 1000 );
 
 }

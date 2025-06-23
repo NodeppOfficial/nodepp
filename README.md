@@ -134,6 +134,7 @@ Check out some articles on [Medium](https://medium.com/@EDBCBlog)
 ## Official Libraries for Nodepp
 - 🔗: [ExpressPP](https://github.com/NodeppOfficial/nodepp-express) -> Express equivalent for Nodepp
 - 🔗: [ApifyPP](https://github.com/NodeppOfficial/nodepp-apify)     -> Socket.io equivalent for Nodepp
+- 🔗: [SerialPP](https://github.com/NodeppOfficial/nodepp-serial)   -> Serial Port for Nodepp
 - 🔗: [Argon2](https://github.com/NodeppOfficial/nodepp-argon2)     -> Argon2 for Nodepp
 - 🔗: [Torify](https://github.com/NodeppOfficial/nodepp-torify)     -> HTTP|Ws over Tor
 - 🔗: [NginxPP](https://github.com/NodeppOfficial/nodepp-nginx)     -> Reverse Proxy
@@ -156,7 +157,7 @@ If you want to contribute to **Nodepp**, you are welcome to do so! You can contr
 - 🧪 Writing tests and ensuring compatibility with different platforms
 - 🔍 Before submitting a pull request, make sure to read the contribution guidelines.
 
-**NOTE:** We don't use STD here, just Pure C++.
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/edbc_repo)
 
 ## License
 

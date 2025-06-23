@@ -623,7 +623,7 @@ namespace nodepp { namespace _ws_ {
     public:
 
     template<class T> coEmit( T* str, char* bf, const ulong& sx ) {
-    gnStart ; memset( bf, 0, sx ); size=0; data=0; len=0;
+    gnStart ; memset( bf, 0, sx ); size=0; data=0; len=0; key=0;
               memset( &frame, 0, sizeof(ws_frame_t) );
 
         coWait(str->__read( bf, 2   )==-2); read_ws_hdr_frame( bf, len );
@@ -638,9 +638,9 @@ namespace nodepp { namespace _ws_ {
         while ( frame.LEN > 0 ){ sz = min( sx, frame.LEN );
         coWait( str->_read_( bf, sz, len )==1 );
 
-        do{ for( auto x=len; x-->0; ){
-            bf[x]=bf[x]^frame.KEY[key]; key=(key+1) % 4;
-        } } while(0);
+        if( frame.MSK ){ for( ulong x=0; x<len; x++ ){
+            bf[x]=bf[x]^frame.KEY[key]; key=(key+1)%4;
+        }}
 
             frame.LEN -= len; data = len;
         if( frame.LEN ==0 ){ coEnd; } coStay(1); }

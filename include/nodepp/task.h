@@ -37,7 +37,6 @@ namespace task {
 
     template< class T, class... V >
     void* add( T cb, const V&... arg ){
-        if( MAX_TASKS!=0 && queue.size()>=MAX_TASKS ){ return nullptr; }
         ptr_t<nodepp_process_waiter> obj = new nodepp_process_waiter();
         obj->blk=0; obj->out=1; auto clb = type::bind(cb);
         queue.push([=](){
@@ -76,7 +75,6 @@ namespace loop {
 
     template< class T, class... V >
     void* add( T cb, const V&... arg ){
-        if( MAX_TASKS!=0 && queue.size()>=MAX_TASKS ){ return nullptr; }
         ptr_t<nodepp_process_waiter> obj = new nodepp_process_waiter();
         obj->blk=0; obj->out=1; auto clb = type::bind(cb);
         queue.push([=](){
@@ -115,7 +113,6 @@ namespace poll {
 
     template< class T, class... V >
     void* add( T cb, const V&... arg ){
-        if( MAX_TASKS!=0 && queue.size()>=MAX_TASKS ){ return nullptr; }
         ptr_t<nodepp_process_waiter> obj = new nodepp_process_waiter();
         obj->blk=0; obj->out=1; auto clb = type::bind(cb);
         queue.push([=](){

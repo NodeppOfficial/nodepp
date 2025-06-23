@@ -3,24 +3,12 @@
 
 using namespace nodepp;
 
-void onMain(){
+void onMain() {
 
-    console::log( "now->", date::now() );
+    auto time1 = date_t( 2025, 7,  9, false );
+    auto time2 = date_t( 2025, 7, 19, false );
+    auto time3 = date2 - date1;
 
-    console::log(" -- -- ");
-
-    console::log( "day->", date::day() );
-
-    console::log( "year->", date::year() );
-
-    console::log( "month->", date::month() );
-
-    console::log(" -- -- ");
-
-    console::log( "hours->", date::hour() );
-
-    console::log( "minutes->", date::minute() );
-
-    console::log( "seconds->", date::second() );
+    console::log( "days left:", time3.get_day() );
 
 }

@@ -34,7 +34,6 @@ public:
     void off( void* address ) const noexcept { process::clear( address ); }
 
     void* once( function_t<void,A...> func ) const noexcept {
-        if( MAX_EVENTS!=0 && obj.size()>=MAX_EVENTS ){ return nullptr; }
         ptr_t<bool> out = new bool(1); NODE ctx;
         ctx.out=&out; ctx.clb=([=]( A... args ){
             if(*out != 0   ){ func(args...); }
@@ -43,7 +42,6 @@ public:
     }
 
     void* on( function_t<void,A...> func ) const noexcept {
-        if( MAX_EVENTS!=0 && obj.size()>=MAX_EVENTS ){ return nullptr; }
         ptr_t<bool> out = new bool(1); NODE ctx;
         ctx.out=&out; ctx.clb=([=]( A... args ){
             if(*out != 0   ){ func(args...); }
@@ -65,7 +63,7 @@ public:
 
     void clear() const noexcept {
         auto x=obj.first(); while( x!=nullptr && !obj.empty() ){
-        auto y=x->next; *x->data.out==0; x=y;
+        auto y=x->next; *x->data.out=0; x=y;
     }}
 
     /*─······································································─*/

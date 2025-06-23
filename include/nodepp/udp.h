@@ -70,8 +70,7 @@ public: udp_t() noexcept : obj( new NODE() ) {}
                  sk.socket( dns::lookup(host), port );
                  sk.set_sockopt( self->obj->agent );
 
-        process::poll::add([=](){ int c = 0; 
-            if( self->is_closed() || sk.is_closed() ){ return -1; }
+        process::poll::add([=](){ int c = 0;
         coStart
 
             coWait( (c=sk._bind())==-2 ); if( c<0 ){
@@ -130,7 +129,7 @@ public: udp_t() noexcept : obj( new NODE() ) {}
         if( is_closed() ){ return; } close();
         onConnect.clear(); onSocket.clear();
         onError  .clear(); onOpen  .clear();
-    //  onClose  .clear(); 
+    //  onClose  .clear();
     }
 
 };
