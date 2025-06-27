@@ -38,13 +38,13 @@ protected:
     void set_time( time_t time, bool utc ) const noexcept {
         TIME* info  = !utc ? localtime( &time ) : gmtime( &time );
 
-        obj->second = info->tm_sec;
-        obj->minute = info->tm_min;
-        obj->month  = info->tm_mon;
-        obj->year   = info->tm_year;
-        obj->hour   = info->tm_hour;
-        obj->day    = info->tm_mday;
-        obj->utc    = utc;
+        set_year  ( info->tm_year+1900 );
+        set_month ( info->tm_mon       );
+        set_second( info->tm_sec       );
+        set_minute( info->tm_min       );
+        set_day   ( info->tm_mday      );
+        set_hour  ( info->tm_hour      );
+        set_utc   ( utc );
 
     }
 
@@ -132,7 +132,7 @@ public:
     /*─······································································─*/
 
     void set_year  ( uint year  ) const noexcept { obj->year   = year-1900; }
-    void set_month ( uint month ) const noexcept { obj->month  = month-1;   }
+    void set_month ( uint month ) const noexcept { obj->month  = month;     }
     void set_second( uint sec   ) const noexcept { obj->second = sec;       }
     void set_minute( uint min   ) const noexcept { obj->minute = min;       }
     void set_hour  ( uint hour  ) const noexcept { obj->hour   = hour;      }
@@ -148,12 +148,12 @@ public:
 
     uint get_year() const noexcept { time_t time = get_time();
         TIME* info = !obj->utc ? localtime( &time ) : gmtime( &time );
-        return info->tm_year + 1900;
+        return info->tm_year+1900;
     }
 
     uint get_month() const noexcept { time_t time = get_time();
         TIME* info = !obj->utc ? localtime( &time ) : gmtime( &time );
-        return info->tm_mon + 1;
+        return info->tm_mon;
     }
 
     uint get_hour() const noexcept { time_t time = get_time();
