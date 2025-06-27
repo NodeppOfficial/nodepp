@@ -80,7 +80,7 @@ public:
 
     template< ulong N >
     object_t( const T (&arr) [N] ) noexcept : obj(new NODE()) {
-        QUEUE mem; for( ulong x=0; x<N; x++ )
+        QUEUE mem; for( ulong x=0; x<N; ++x )
             { mem[arr[x].first]= arr[x].second; }
         obj->mem = mem; obj->type = 20;
     }

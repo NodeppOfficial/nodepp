@@ -134,14 +134,14 @@ namespace {
         auto sec = regex::split( path, "/+|\\\\+" );
         array_t<string_t> nsec; ulong y=0;
 
-        for ( ulong x=0; x<sec.size(); x++ ){
+        for ( ulong x=0; x<sec.size(); ++x ){
          if ( sec[x] == ".." ){ 
               nsec.push( sec[x] );
-              y++; continue; 
+              ++y; continue; 
             } break;
         }
 
-        for ( ulong x=y; x<sec.size(); x++ ){
+        for ( ulong x=y; x<sec.size(); ++x ){
          if ( sec[x] == ".." && !nsec.empty() ){
               nsec.pop(); continue; 
             } nsec.push( sec[x] );
@@ -247,12 +247,12 @@ namespace {
         auto secB = regex::split( path::normalize(path_b), "/+|\\\\+" );
         auto sec  = array_t<string_t>(); ulong y=0;
 
-        for ( ulong x=0; x<secA.size() && x<secB.size(); x++ ){
-         if ( secA[x]==secB[x] ){ y++; continue; } break;
+        for ( ulong x=0; x<secA.size() && x<secB.size(); ++x ){
+         if ( secA[x]==secB[x] ){ ++y; continue; } break;
         }
 
-        for ( ulong x=y; x<secA.size(); x++ ){ sec.push(    ".." ); }
-        for ( ulong x=y; x<secB.size(); x++ ){ sec.push( secB[x] ); }
+        for ( ulong x=y; x<secA.size(); ++x ){ sec.push(    ".." ); }
+        for ( ulong x=y; x<secB.size(); ++x ){ sec.push( secB[x] ); }
 
         return sec.join( sep );
     }

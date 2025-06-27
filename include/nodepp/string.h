@@ -148,8 +148,8 @@ public:
     string_t operator+=( const string_t& oth ){
         if( oth.empty() ){ return *this; } string_t ths = copy(); ulong n = 0;
         buffer = string::buffer( this->size() + oth.size() );
-        for( auto x : ths ){ (*this)[n] = x; n++; }
-        for( auto x : oth ){ (*this)[n] = x; n++; } return *this;
+        for( auto x : ths ){ (*this)[n] = x; ++n; }
+        for( auto x : oth ){ (*this)[n] = x; ++n; } return *this;
     }
 
     /*─······································································─*/
@@ -166,17 +166,17 @@ public:
     /*─······································································─*/
 
     long index_of( function_t<bool,char> func ) const noexcept { long i=0;
-        for( auto& x : *this ){ if( func(x) ) return i; i++; } return -1;
+        for( auto& x : *this ){ if( func(x) ){ return i; } ++i; } return -1;
     }
 
     ulong count( function_t<bool,char> func ) const noexcept { ulong n=0;
-        for( auto& x : *this ){ if( func(x) ) n++; } return n;
+        for( auto& x : *this ){ if( func(x) ){ n++; }} return n;
     }
 
     /*─······································································─*/
 
     char reduce( function_t<char,char,char> func ) const noexcept { char act = (*this)[0];
-        for( auto x=this->begin() + 1; x != this->end(); x++ )
+        for( auto x=this->begin() + 1; x != this->end(); ++x )
            { act = func( act, *x ); } return act;
     }
 
@@ -201,12 +201,12 @@ public:
     ptr_t<int> find( const string_t& data, ulong offset=0 ) const noexcept {
         if ( data.empty() ){ return nullptr; }
         ulong x=0; int n=0; ptr_t<int> pos ({ 0, 0 });
-        for( ulong i=offset; i<buffer.size(); i++ ){
+        for( ulong i=offset; i<buffer.size(); ++i ){
             if ( buffer[i] == data[x] ){
-                pos[n]=i; x++; n=1;
+                pos[n]=i; ++x; n=1;
             } elif ( x==data.size() ){
-                pos[n]=i; x++; n=1; break;
-            } else { n=0; x=0; }
+                pos[n]=i; ++x; n=1; 
+            break; } else { n=0; x=0; }
         }
         return !x ? nullptr : pos;
     }
@@ -220,10 +220,7 @@ public:
     int compare( const string_t& oth ) const noexcept {
         if( size() < oth.size() ){ return -1; }
         if( size() > oth.size() ){ return  1; }
-        ulong n = size(); while( n-->0 ){
-            if( (*this)[n] < oth[n] ){ return -1; }
-            if( (*this)[n] > oth[n] ){ return  1; }
-        }   return 0;
+        return memcmp( begin(), oth.begin(), size() );
     }
 
     /*─······································································─*/
@@ -252,15 +249,14 @@ public:
     /*─······································································─*/
 
     string_t sort( function_t<bool,char,char> func ) const noexcept {
-        queue_t<char> n_buffer;
+        queue_t<char> n_buffer; char* addr = begin();
 
-        for( ulong i=0; i<size(); i++ ){
-            auto x = buffer[i]; auto n = n_buffer.first();
-            while( n!=nullptr ){
-               if( !func( x, n->data ) )
+        while( addr != end() ){
+            auto x = *addr; auto n = n_buffer.first();
+            while( n!=nullptr ){ if( !func( x, n->data ) )
                  { n = n->next; continue; } break;
             }      n_buffer.insert( n, x );
-        }          n_buffer.push('\0');
+        ++addr; }  n_buffer.push('\0');
 
         return n_buffer.data();
     }
@@ -282,12 +278,11 @@ public:
 
     void insert( ulong index, const char& value ) noexcept {
 	    index = clamp( index, 0UL, size() );
-        if( empty() ){ buffer = string::buffer( 1 ); buffer[0] = value; }
+        if( empty() ){ buffer = string::buffer(1); buffer[0] = value; }
         else { ulong n=size() + 1; auto n_buffer = string::buffer(n);
-            for( ulong x=0,i=0; x<n; x++ ){
-                if( x == index ){ n_buffer[x] = value; }
-                else { n_buffer[x] = buffer[i++]; }
-            }   buffer = n_buffer;
+            memcpy( &n_buffer+index+1, &buffer+index, buffer.size()-index );
+            memcpy( &n_buffer,         &buffer      , index );
+            n_buffer[index] = value; buffer = n_buffer;
         }
     }
 
@@ -295,33 +290,46 @@ public:
 	    index = clamp( index, 0UL, size() );
         if( empty() ){ buffer = string::buffer( value, N ); }
         else { ulong n=size() + N; auto n_buffer = string::buffer(n);
-            for( ulong x=0,i=0,p=0; x<n; x++ ){
-                if( x>=index && x<index+N ){ n_buffer[x] = value[p++]; }
-                else { n_buffer[x] = buffer[i++]; }
-            }   buffer = n_buffer;
+            memcpy( &n_buffer+index+N, &buffer+index, buffer.size()-index );
+            memcpy( &n_buffer,         &buffer      , index );
+            memcpy( &n_buffer+index  ,  value       , N );
+            buffer = n_buffer;
         }
     }
 
     void insert( ulong index, ulong N , const char& value ) noexcept {
 	    index = clamp( index, 0UL, size() );
         if( empty() ){ buffer = string::buffer( N, value ); }
-        else { ulong n=size() + N; auto n_buffer = string::buffer(n);
-            for( ulong x=0,i=0; x<n; x++ ){
-                if( x>=index && x<index+N ){ n_buffer[x] = value; }
-                else { n_buffer[x] = buffer[i++]; }
-            }   buffer = n_buffer;
+        else{ ulong n=size() + N; auto n_buffer = string::buffer(n);
+            memcpy( &n_buffer+index+N, &buffer+index, buffer.size()-index );
+            memcpy( &n_buffer,         &buffer      , index );
+            memset( &n_buffer+index  ,  value       , N     );
+            buffer = n_buffer;
         }
     }
 
     void insert( ulong index, const string_t& value ) noexcept {
 	    index = clamp( index, 0UL, size() );
         if( empty() ){ buffer = string::buffer( value.size() );
-            for( ulong i=0; i<value.size(); i++ ){ buffer[i] = value[i]; }
-        } else { ulong n=size() + value.size(); auto n_buffer = string::buffer(n);
-            for( ulong x=0,i=0,p=0; x<n; x++ ){
-                if( x>=index && x<index+value.size() ){ n_buffer[x] = value[p++]; }
-                else { n_buffer[x] = buffer[i++]; }
-            }   buffer = n_buffer;
+            memcpy( &buffer, value.begin(), value.size() );
+        } else { auto n_buffer = string::buffer( size() + value.size() );
+                 ulong N=value.size();
+            memcpy( &n_buffer+index+N, &buffer+index, buffer.size()-index );
+            memcpy( &n_buffer,         &buffer      , index );
+            memcpy( &n_buffer+index  , value.begin(), N );
+            buffer = n_buffer;
+        }
+    }
+
+    template< ulong N >
+    void insert( ulong index, const char (&value)[N] ) noexcept {
+	    index = clamp( index, 0UL, size() );
+        if( empty() ){ buffer = string::buffer( N ); memcpy( &buffer, value, N );
+        } else { ulong n=size() + N; auto n_buffer = string::buffer( n );
+            memcpy( &n_buffer+index+N, &buffer+index, (buffer.size()-index) );
+            memcpy( &n_buffer,         &buffer      , index );
+            memcpy( &n_buffer+index  , &value       , N );
+            buffer = n_buffer;
         }
     }
 
@@ -331,19 +339,19 @@ public:
 	    auto r = get_slice_range( index, size() );
          if( r == nullptr ){ return; } else {
             auto n_buffer = string::buffer( size() - 1 );
-            for( ulong i=0, j=0; i<size(); i++ ){ if( i != r[0] )
-               { n_buffer[j] = buffer[i]; j++; }
-            }    buffer = n_buffer;
+            memcpy( &n_buffer+r[0], &buffer+r[0]+1, size()-r[0]-1 );
+            memcpy( &n_buffer     , &buffer       , r[0] );
+            buffer = n_buffer;
         }
     }
 
-    void erase( ulong start, ulong end  ) noexcept {
-	    auto r = get_slice_range( start, end );
+    void erase( ulong start, ulong stop  ) noexcept {
+	    auto r = get_slice_range( start, stop );
          if( r == nullptr ){ return; } else {
-            auto n_buffer = string::buffer( size() - (r[1]-r[0]) - 1 );
-            for( ulong i=0, j=0; i<=last(); i++ ){ if( i<r[0] || i>r[1] )
-               { n_buffer[j] = buffer[i]; j++; }
-            }    buffer = n_buffer;
+            auto n_buffer = string::buffer( size() - r[2] );
+            memcpy( &n_buffer+r[0], &buffer+r[1]+1, size()-r[1]-1 );
+            memcpy( &n_buffer     , &buffer       , r[0] );
+            buffer = n_buffer;
         }
     }
 
@@ -360,9 +368,9 @@ public:
 
     /*─······································································─*/
 
-    string_t slice( long start, long end ) const noexcept {
+    string_t slice( long start, long stop ) const noexcept {
 
-        auto r = get_slice_range( start, end );
+        auto r = get_slice_range( start, stop );
          if( r == nullptr ){ return nullptr; }
 
         auto n_buffer = string_t( buffer.data()+r[0], r[2] );
@@ -371,23 +379,22 @@ public:
 
     /*─······································································─*/
 
-    string_t splice( long start, ulong end ) noexcept {
+    string_t splice( long start, ulong stop ) noexcept {
 
-        auto r = get_splice_range( start, end );
+        auto r = get_splice_range( start, stop );
          if( r == nullptr ){ return nullptr; }
 
         auto n_buffer = string_t( buffer.data()+r[0], r[2] );
-        erase( r[0], r[0]+end ); return n_buffer;
+        erase( r[0], r[0]+r[2] ); return n_buffer;
     }
 
-    template< class V >
-    string_t splice( long start, ulong end, const V& value ) noexcept {
+    string_t splice( long start, ulong stop, string_t value ) noexcept {
 
-        auto r = get_splice_range( start, end );
+        auto r = get_splice_range( start, stop );
          if( r == nullptr ){ return nullptr; }
 
         auto n_buffer = string_t( buffer.data()+r[0], r[2] );
-        erase( r[0], r[0]+end ); insert( r[0], value ); return n_buffer;
+        erase( r[0], r[0]+r[2] ); insert( r[0], value ); return n_buffer;
     }
 
     /*─······································································─*/

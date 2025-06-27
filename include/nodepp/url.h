@@ -155,7 +155,7 @@ namespace url {
         if( !_host.empty() && _a.test( _host ) ){
             return string::to_uint( _a.match( _host ).slice(1) );
         } elif( !_prot.empty() ) {
-            for( ulong i=0; i<prot.size(); i++ ) {
+            for( ulong i=0; i<prot.size(); ++i ) {
              if( _prot.find( prot[i] ) != nullptr )
                { return prts[i]; }
             }

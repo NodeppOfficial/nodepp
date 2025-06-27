@@ -37,7 +37,9 @@ BOOL APIENTRY CreatePipe(
         nSize, nSize, 0, lpPipeAttributes
     );
 
-    if( lpReadPipe==INVALID_HANDLE_VALUE) { throw except_t("Invalid Read Pipe"); }
+    if( lpReadPipe==INVALID_HANDLE_VALUE) { 
+        throw nodepp::except_t("Invalid Read Pipe"); 
+    }
 
     *lpWritePipe = CreateFileA(
         PipeNameBuffer, GENERIC_WRITE, FILE_SHARE_WRITE,
@@ -45,7 +47,9 @@ BOOL APIENTRY CreatePipe(
         NULL
     );
 
-    if( lpWritePipe==INVALID_HANDLE_VALUE) { throw except_t("Invalid Write Pipe"); }
+    if( lpWritePipe==INVALID_HANDLE_VALUE) { 
+        throw nodepp::except_t("Invalid Write Pipe"); 
+    }
 
     return( TRUE );
 }

@@ -22,13 +22,18 @@ void onMain() {
             cli.write( data );
         });
 
+        cli.onDrain([=](){
+            console::log("drained"); 
+            cin.close();
+        });
+
         cli.onClose([](){ 
             console::log("closed"); 
             process::exit(1);
         });
 
-    });
+        stream::pipe( cin );
 
-    stream::pipe( cin );
+    });
 
 }

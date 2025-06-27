@@ -55,38 +55,34 @@ namespace nodepp { namespace ws {
     tcp_t server( const tcp_t& skt ){ skt.onSocket([=]( socket_t cli ){
 
         auto hrv = type::cast<http_t>(cli);
-        if ( !_ws_::server( hrv ) ){ return; }
+        if( !_ws_::server( hrv ) ){ skt.onConnect.skip(); return; }
+        process::poll::add([=](){ skt.onConnect.emit(cli); return -1; }); 
 
-    process::task::add([=](){
-        cli.onDrain  .once([=](){ cli.free(); });
-        skt.onConnect.once([=]( ws_t ctx ){ stream::pipe(ctx); });
-        cli.set_timeout(0); cli.resume(); skt.onConnect.emit(cli);
-    return -1; });
-
+    }); skt.onConnect([=]( ws_t cli ){
+        cli.onDrain.once([=](){ cli.free(); });
+        cli.set_timeout(0); cli.resume(); stream::pipe(cli); 
     }); return skt; }
 
     /*─······································································─*/
 
     tcp_t server( agent_t* opt=nullptr ){
-    auto skt = http::server( [=]( http_t /*unused*/ ){}, opt );
+    auto skt = http::server( [=]( http_t ){}, opt );
                  ws::server( skt ); return skt;
     }
 
     /*─······································································─*/
 
     tcp_t client( const string_t& uri, agent_t* opt=nullptr ){
-    tcp_t skt   ( [=]( socket_t /*unused*/ ){}, opt );
+    tcp_t skt   ( [=]( socket_t ){}, opt );
     skt.onSocket.once([=]( socket_t cli ){
 
         auto hrv = type::cast<http_t> (cli);
-        if( !_ws_::client( hrv, uri ) ){ return; }
+        if( !_ws_::client( hrv, uri ) ){ skt.onConnect.skip(); return; }
+        process::poll::add([=](){ skt.onConnect.emit(cli); return -1; }); 
 
-    process::task::add([=](){
-        cli.onDrain  .once([=](){ cli.free(); });
-        skt.onConnect.once([=]( ws_t ctx ){ stream::pipe(ctx); });
-        cli.set_timeout(0); cli.resume(); skt.onConnect.emit(cli);
-    return -1; });
-
+    }); skt.onConnect.once([=]( ws_t cli ){
+        cli.onDrain.once([=](){ cli.free(); });
+        cli.set_timeout(0); cli.resume(); stream::pipe(cli); 
     }); skt.connect( url::hostname(uri), url::port(uri) ); return skt; }
 
 }}

@@ -34,20 +34,20 @@ protected:
                 obj->regex[_pos] == '{' ||
                 obj->regex[_pos] == '('
              ){ _pos = get_next_key( _pos ); continue; }
-            if( obj->regex[_pos] == '\\' ){ _pos++; } _pos++;
+            if( obj->regex[_pos] == '\\' ){ ++_pos; } ++_pos;
         }   return result.data();
     }
 
     int get_next_key( ulong _pos ) const {
         uchar k=0; while( _pos < obj->regex.size() ){
 
-            switch( obj->regex[_pos] ){  case '\\': _pos++;break;
-                case '[': k += 1; break; case ']': k -= 1; break;
-                case '(': k += 2; break; case ')': k -= 2; break;
-                case '{': k += 3; break; case '}': k -= 3; break;
+            switch( obj->regex[_pos] ){  case '\\': ++_pos; break;
+                case '[': k += 1; break; case ']' : k -= 1; break;
+                case '(': k += 2; break; case ')' : k -= 2; break;
+                case '{': k += 3; break; case '}' : k -= 3; break;
             }
 
-            if( k == 0 ){ break; } _pos++;
+            if( k == 0 ){ break; } ++_pos;
         }   return _pos == obj->regex.size() ? -1 : _pos;
     }
 
@@ -70,9 +70,9 @@ protected:
             auto npos = get_next_key( pos );
                  obj->_rep = get_rep( pos, npos ); pos = npos + 1;
         }
-        elif( obj->regex[pos] == '?' ){ obj->_rep = ptr_t<int>({ 0, 1 }); pos++; }
-        elif( obj->regex[pos] == '*' ){ obj->_rep = ptr_t<int>({ 0,-1 }); pos++; }
-        elif( obj->regex[pos] == '+' ){ obj->_rep = ptr_t<int>({ 1,-1 }); pos++; }
+        elif( obj->regex[pos] == '?' ){ obj->_rep = ptr_t<int>({ 0, 1 }); ++pos; }
+        elif( obj->regex[pos] == '*' ){ obj->_rep = ptr_t<int>({ 0,-1 }); ++pos; }
+        elif( obj->regex[pos] == '+' ){ obj->_rep = ptr_t<int>({ 1,-1 }); ++pos; }
         else                          { obj->_rep = ptr_t<int>({ 1, 0 });        } return pos;
     }
 
@@ -80,7 +80,7 @@ protected:
 
     int check_reg_pattern( string_t str, ptr_t<ulong>& off, ptr_t<int>& pos ) const {
 
-        goto CHCK; MORE: pos[1]++;
+        goto CHCK; MORE: ++pos[1];
 
         CHCK:
 
@@ -106,9 +106,9 @@ protected:
                 auto list = compile_range(obj->_data.slice(x));
 
                   if ( x == 2 && list.none([&]( char itm ){ return _str_ == itm; }))
-                     { off[1]++; goto LESS; }
+                     { ++off[1]; goto LESS; }
                 elif ( x == 1 && list.some([&]( char itm ){ return _str_ == itm; }))
-                     { off[1]++; goto LESS; } goto DONE;
+                     { ++off[1]; goto LESS; } goto DONE;
 
             } elif( (uchar) obj->_data[0] == 0x00 ) {
                                  goto CLSE;
@@ -117,15 +117,15 @@ protected:
                   { goto SKIP; } goto DONE;
             } elif( (uchar) obj->_data[0] <= 0x0f ) {
                 if( compile_cmd( obj->_data[0], obj->j, str, pos[1] ) )
-                  { off[1]++; goto LESS; }
+                  { ++off[1]; goto LESS; }
                               goto DONE;
             } else {
                 if( obj->_data[0] == _str_ )
-                  { off[1]++; goto LESS; }
+                  { ++off[1]; goto LESS; }
                               goto DONE;
             }
 
-        LESS: pos[2]++;
+        LESS: ++pos[2];
 
               if( obj->_rep[1] ==-1 ){ goto MORE; }
             elif( obj->_rep[1] == 0 ){
@@ -200,20 +200,20 @@ protected:
     /*─······································································─*/
 
     string_t compile_range( string_t nreg ) const {
-        string_t reg;
+        queue_t<char> reg;
 
-        for( ulong x=0; x<nreg.size(); x++ ){
-            if ( nreg[x]=='\\' ){ x++;
+        for( ulong x=0; x<nreg.size(); ++x ){
+            if ( nreg[x]=='\\' ){ ++x;
             if ( x < nreg.size() ){ reg.push( nreg[x] ); }
             } elif ( nreg[x+1] == '-' && (x+2)<nreg.size() ){
                 auto a = min( nreg[x], nreg[x+2] );
                 auto b = max( nreg[x], nreg[x+2] );
-                for( auto j=a; j<=b; j++ )
+                for( auto j=a; j<=b; ++j )
                    { reg.push(j); } x+=2;
             } else { reg.push( nreg[x] ); }
-        }
+        }            reg.push( '\0' );
 
-        return reg;
+        return reg.data();
     }
 
     /*─······································································─*/
@@ -232,7 +232,7 @@ protected:
             pos[0] = get_next_repeat( pos[0] );
         switch( check_reg_pattern( str, off, pos ) ){
             case -1: obj->_data=nullptr; obj->_rep=nullptr; off[0]=off[1]; return -1;
-            case  1: obj->_data=nullptr; obj->_rep=nullptr; pos[1]++;      return  1;
+            case  1: obj->_data=nullptr; obj->_rep=nullptr; ++pos[1];      return  1;
             case  0: obj->_data=nullptr; obj->_rep=nullptr;                return  1;
             default: obj->_data=nullptr; obj->_rep=nullptr;                return -1;
         }}
@@ -257,7 +257,7 @@ protected:
             elif( obj->regex[pos[0]] == '^' ){ obj->_data.clear(); obj->_data.push( (char) 0x02 ); }
             elif( obj->regex[pos[0]] == '.' ){ obj->_data.clear(); obj->_data.push( (char) 0x0c ); }
 
-            elif( obj->regex[pos[0]] == '\\' ){ pos[0]++;
+            elif( obj->regex[pos[0]] == '\\' ){ ++pos[0];
                                                 obj->_data.clear(); obj->_data.push( (char) 0x0f );
               if( obj->regex[pos[0]] == 'b'  ){ obj->_data.clear(); obj->_data.push( (char) 0x03 ); obj->j = true;  }
             elif( obj->regex[pos[0]] == 'B'  ){ obj->_data.clear(); obj->_data.push( (char) 0x03 ); obj->j = false; }
@@ -269,8 +269,7 @@ protected:
             elif( obj->regex[pos[0]] == 'S'  ){ obj->_data.clear(); obj->_data.push( (char) 0x06 ); obj->j = false; }
             elif( obj->regex[pos[0]] == 'n'  ){ obj->_data.clear(); obj->_data.push( (char) 0x07 ); obj->j = true;  }
             elif( obj->regex[pos[0]] == 'N'  ){ obj->_data.clear(); obj->_data.push( (char) 0x07 ); obj->j = false; }
-            else{ obj->_data += string::to_string(obj->regex[pos[0]]); }
-            }
+            else{ obj->_data += string::to_string(obj->regex[pos[0]]); }}
 
             else {
                 obj->_data = string::to_string(obj->regex[pos[0]]);
@@ -314,7 +313,7 @@ public: regex_t (): obj( new NODE() ) {}
         ptr_t<ulong> result; while( off < _str.size() ){
             result = _search( _str, off );
             if( result != nullptr )
-              { break; } off++;
+              { break; } ++off;
         }   return result;
     }
 
@@ -527,7 +526,7 @@ namespace nodepp { namespace regex {
     template< class V, class... T > string_t format( const V& val, const T&... args ){
         string_t result = string::to_string(val); ulong n=0; string::map([&]( string_t arg ){
             string_t reg = "\\$\\{" + string::to_string(n) + "\\}";
-            result = replace_all(result,reg,arg); n++;
+            result = replace_all(result,reg,arg); ++n;
         },  args... ); return result;
     }
 

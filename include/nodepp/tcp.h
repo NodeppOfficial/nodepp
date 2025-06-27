@@ -38,10 +38,10 @@ protected:
     /*─······································································─*/
 
     template< class T > void add_socket( T& cli ) const noexcept {
-        auto self = type::bind( this ); process::poll::add([=](){
+        auto self = type::bind(this); process::poll::add([=](){
              self->onSocket.emit(cli); self->obj->func(cli);
-             return -1;
-        });
+        if ( cli.is_available() ){ self->onConnect.emit(cli); } 
+        return -1; });
     }
 
     int next() const noexcept { if( obj->state==0 ){ return -1; }
@@ -69,7 +69,6 @@ public: tcp_t() noexcept : obj( new NODE() ) {}
     /*─······································································─*/
 
     void     close() const noexcept { if(obj->state<=0){return;} obj->state=-1; onClose.emit(); }
-
     bool is_closed() const noexcept { return obj == nullptr ? 1: obj->state<=0; }
 
     /*─······································································─*/
@@ -96,7 +95,7 @@ public: tcp_t() noexcept : obj( new NODE() ) {}
                if( self->is_closed()|| sk.is_closed() ){ coGoto(2); }
                    self->obj->accept = sk._accept();
                if( self->obj->accept!=-2 ){ break; } coYield(3);
-            while( self->next()==1 ){ coTry(3); } coNext; }
+            while( self->next()==1 ){ coStay(3); } coNext; }
 
             if( self->obj->accept<0 ){ _EERROR(self->onError,"Error while accepting TCP"); coGoto(2); }
             do{ if( self->obj->poll.push_read(self->obj->accept)==0 )
@@ -137,9 +136,14 @@ public: tcp_t() noexcept : obj( new NODE() ) {}
             if( process::now() > sk.get_send_timeout() )
               { coEnd; } coNext; } cb( sk );
 
-            sk.onClose.once([=](){ self->close(); });
-            self->onSocket.emit(sk); sk.onOpen.emit();
-            self->onOpen.emit(sk); self->obj->func(sk);
+            sk.onDrain.once([=](){ self->close(); });
+            self->onSocket.emit(sk); self->obj->func(sk);
+            
+            if( sk.is_available() ){ 
+                sk.onOpen      .emit(  );
+                self->onOpen   .emit(sk); 
+                self->onConnect.emit(sk); 
+            }
 
         coStop
         });
@@ -149,20 +153,19 @@ public: tcp_t() noexcept : obj( new NODE() ) {}
     /*─······································································─*/
 
     void connect( const string_t& host, int port ) const noexcept {
-         connect( host, port, [=]( socket_t ){} );
+         connect( host, port, []( socket_t ){} );
     }
 
     void listen( const string_t& host, int port ) const noexcept {
-         listen( host, port, [=]( socket_t ){} );
+         listen( host, port, []( socket_t ){} );
     }
 
     /*─······································································─*/
 
     void free() const noexcept {
-        if( is_closed() ){ return; } close();
+        if( is_closed() ){ return; }close();
         onConnect.clear(); onSocket.clear();
         onError  .clear(); onOpen  .clear();
-    //  onClose  .clear();
     }
 
 };
@@ -171,33 +174,27 @@ public: tcp_t() noexcept : obj( new NODE() ) {}
 
 namespace tcp {
 
-    tcp_t server( const tcp_t& skt ){ skt.onSocket([=]( socket_t cli ){
-    process::task::add([=](){
-        skt.onConnect.once([=]( socket_t cli ){ stream::pipe(cli); });
-        cli.onDrain  .once([=](){ cli.free(); });
-        skt.onConnect.emit(cli);
-    return -1; }); }); return skt; }
+    tcp_t server( const tcp_t& skt ){ skt.onConnect([=]( socket_t cli ){
+        cli.onDrain.once([=](){ cli.free(); }); stream::pipe(cli);
+    }); return skt; }
 
     /*─······································································─*/
 
     tcp_t server( agent_t* opt=nullptr ){
-        auto skt = tcp_t( [=]( socket_t /*unused*/ ){}, opt );
+        auto skt = tcp_t( [=]( socket_t ){}, opt );
         tcp::server( skt ); return skt;
     }
 
     /*─······································································─*/
 
-    tcp_t client( const tcp_t& skt ){ skt.onSocket.once([=]( socket_t cli ){
-    process::task::add([=](){
-        skt.onConnect.once([=]( socket_t cli ){ stream::pipe(cli); });
-        cli.onDrain  .once([=](){ cli.free(); });
-        skt.onConnect.emit(cli);
-    return -1; }); }); return skt; }
+    tcp_t client( const tcp_t& skt ){ skt.onConnect.once([=]( socket_t cli ){
+        cli.onDrain.once([=](){ cli.free(); }); stream::pipe(cli);
+    }); return skt; }
 
     /*─······································································─*/
 
     tcp_t client( agent_t* opt=nullptr ){
-        auto skt = tcp_t( [=]( socket_t /*unused*/ ){}, opt );
+        auto skt = tcp_t( [=]( socket_t ){}, opt );
         tcp::client( skt ); return skt;
     }
 

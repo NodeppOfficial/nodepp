@@ -55,7 +55,7 @@ public:
             obj->mutex.lock(); 
             if((obj->ctx%2) != 0 )
               { obj->mutex.unlock(); goto loop; }
-            obj->ctx++; obj->addr=(void*)this;
+          ++obj->ctx; obj->addr=(void*)this;
             obj->mutex.unlock();
 
     }
@@ -63,7 +63,7 @@ public:
     void release() const noexcept {
         obj->mutex.lock();
         obj->addr=nullptr; 
-        obj->ctx++; 
+      ++obj->ctx; 
         obj->mutex.unlock();
     }
 

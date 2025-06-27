@@ -31,7 +31,7 @@ protected:
     static DWORD WINAPI callback( LPVOID arg ){
         auto self = type::cast<worker_t>(arg); self->obj->state=1;
         while( self->obj->cb.emit()>=0 ){ worker::yield(); }
-        self->obj->mtx.lock(); process::threads--; self->obj->mtx.unlock();
+        self->obj->mtx.lock(); --process::threads; self->obj->mtx.unlock();
         CloseHandle( self->obj->thread ); delete self; worker::exit(); return 0; 
     }
 
@@ -76,7 +76,7 @@ public: worker_t() noexcept : obj( new NODE ) {}
         obj->thread = CreateThread( NULL, 0, &callback, (void*)self, 0, &obj->id );
         if( obj->thread == NULL ){ CloseHandle( obj->thread ); delete self; return -1; }
         
-        process::threads++; WaitForSingleObject( obj->thread, 0 ); 
+        ++process::threads; WaitForSingleObject( obj->thread, 0 ); 
         while( obj->state==0 ){ /**/ } 
 
         return 1;

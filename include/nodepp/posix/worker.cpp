@@ -30,7 +30,7 @@ protected:
     static void* callback( void* arg ){
         auto self = type::cast<worker_t>(arg); self->obj->state=1;
         while( self->obj->cb.emit()>=0 ){ worker::yield(); }
-        self->obj->mtx.lock(); process::threads--; self->obj->mtx.unlock();
+        self->obj->mtx.lock(); --process::threads; self->obj->mtx.unlock();
         delete self;  worker::exit(); return nullptr;
     }
 
@@ -75,7 +75,7 @@ public: worker_t() noexcept : obj( new NODE ) {}
         auto pth = pthread_create( &obj->id, NULL, &callback, (void*)self );
         if ( pth!= 0 ){ delete self; return -1; }
 
-        process::threads++; pthread_detach( obj->id );
+        ++process::threads; pthread_detach( obj->id );
         while( obj->state==0 ){ /**/ } 
 
         return 1;
