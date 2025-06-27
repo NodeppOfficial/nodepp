@@ -16,6 +16,10 @@ void onMain(){
     
     .fail([=]( int rej ){
         console::log("rejected:>",rej);
+    })
+
+    .finally([=](){
+        console::log( "Done" );
     });
 
 }
