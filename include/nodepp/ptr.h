@@ -87,7 +87,7 @@ public:
         elif( count() > 0 && size()> 0 ){ 
             auto n_buffer=ptr_t<T>( size() );
             type::copy( begin(), end(), n_buffer.begin() );
-        return  n_buffer; } return  nullptr;
+        return n_buffer; } return nullptr;
     }
 
     /*─······································································─*/

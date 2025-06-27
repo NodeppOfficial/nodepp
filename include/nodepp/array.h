@@ -83,6 +83,15 @@ public: array_t() noexcept {};
 
     /*─······································································─*/
 
+    array_t operator+=( const array_t& oth ){
+        if( oth.empty() ){ return *this; } 
+        auto slf=copy(); buffer.resize( slf.size() +oth.size() );
+        type::copy( oth.begin(), oth.end(), begin()+slf.size() );
+        type::copy( slf.begin(), slf.end(), begin() ); return *this;
+    }
+
+    /*─······································································─*/
+
     bool operator> ( const array_t& oth ) const noexcept { return compare( oth ) == 1; }
     bool operator>=( const array_t& oth ) const noexcept { return compare( oth ) >= 0; }
     bool operator<=( const array_t& oth ) const noexcept { return compare( oth ) <= 0; }
@@ -161,8 +170,9 @@ public: array_t() noexcept {};
         ulong n=size(); while( n-->0 ){ if( func((*this)[n]) ){ erase(n); }} return (*this);
     }
 
-    array_t reverse() const noexcept { auto n_buffer = ptr_t<T>(size());
-        ulong n=last(); for( auto& x : *this ){ n_buffer[n]=x; n--; } return n_buffer;
+    array_t reverse() const noexcept { auto n_buffer = copy();
+        type::reverse( begin(), end(), n_buffer.begin() );
+        return n_buffer;
     }
 
     array_t replace( function_t<bool,T> func, const T& targ ) const noexcept {
@@ -363,23 +373,32 @@ public: array_t() noexcept {};
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace string {
+    
+    template< class T >
+    array_t<T> operator+( const array_t<T>& A, const array_t<T>& B ){
+        ptr_t<T> C( A.size() + B.size() );
+        type::copy( B.begin(), B.end(), C.begin()+A.size() );
+        type::copy( A.begin(), A.end(), C.begin() ); return C;
+    }
+
+    /*─······································································─*/
 
     array_t<string_t> split( string_t _str, char ch ){
-        array_t<string_t> result; int c; while( !_str.empty() ){
+        queue_t<string_t> result; int c; while( !_str.empty() ){
             while((c=_str.index_of([=]( char c ){ return c==ch; }))==0 )
                  { _str.erase(0); continue; }
             if( c != -1 ){ result.push(_str.splice( 0, c )); }
             else         { result.push(_str); break; }
-        }   return result;
+        }   return result.data();
     }
 
     /*─······································································─*/
 
     array_t<string_t> split( string_t _str, int ch ){
         ch = clamp( (ulong)ch, 1UL, _str.size() );
-        array_t<string_t> result; while( !_str.empty() ){
+        queue_t<string_t> result; while( !_str.empty() ){
             result.push( _str.splice( 0, ch ) );
-        }   return result;
+        }   return result.data();
     }
 
 }}

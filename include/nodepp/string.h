@@ -145,11 +145,11 @@ public:
 
     /*─······································································─*/
 
-    string_t operator+=( const string_t& oth ){
-        if( oth.empty() ){ return *this; } string_t ths = copy(); ulong n = 0;
-        buffer = string::buffer( this->size() + oth.size() );
-        for( auto x : ths ){ (*this)[n] = x; ++n; }
-        for( auto x : oth ){ (*this)[n] = x; ++n; } return *this;
+    string_t operator+=( const string_t& oth ) noexcept {
+        if( oth.empty() ){ return *this; } auto slf=copy();
+        buffer = string::buffer( slf.size() + oth.size() );
+        memcpy( begin()+slf.size () ,oth.begin(), oth.size() ); 
+        memcpy( begin(),slf.begin() ,slf.size () ); return *this;
     }
 
     /*─······································································─*/
@@ -226,15 +226,16 @@ public:
     /*─······································································─*/
 
     string_t remove( function_t<bool,char> func ) noexcept {
-        ulong n=size(); while( n-->0 ){ if( func((*this)[n]) ) erase(n); } return (*this);
-    }
-
-    string_t reverse() const noexcept { auto n_buffer = copy();
-        ulong n=size(); for( auto& x : *this ){ n--; n_buffer[n]=x; } return n_buffer;
+        ulong n=size(); while( n-->0 ){ if( func((*this)[n]) ){ erase(n); }} return (*this);
     }
 
     string_t replace( function_t<bool,char> func, char targ ) const noexcept {
-        for( auto& x : *this ){ if(func(x)) x=targ; } return (*this);
+        for( auto& x : *this ){ if(func(x)){ x=targ; }} return (*this);
+    }
+
+    string_t reverse() const noexcept { auto n_buffer = copy();
+        type::reverse( begin(), end(), n_buffer.end() ); 
+        return n_buffer;
     }
 
     string_t copy() const noexcept { return buffer.copy(); }

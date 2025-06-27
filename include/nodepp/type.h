@@ -363,10 +363,10 @@ namespace nodepp { namespace type {
         return static_cast<typename remove_reference<T>::type&&>( arg ); 
     }
 
-    template < class A, class B >
-    int find( A src_first, A src_last, B value, ulong* out ) {
+    template < class A >
+    int find( A src_first, A src_last, A value, ulong* out ) {
         while ( src_first != src_last ){
-           if (*src_first == value    ){ return 1; }
+           if (*src_first ==*value    ){ return 1; }
            ++src_first; ++( *out );
         }  return -1;
     }
@@ -381,6 +381,15 @@ namespace nodepp { namespace type {
     }
 
     template < class A, class B >
+    void reverse( A src_first, A src_last, B dst_first ) {
+        while ( src_first != src_last ) {
+          --src_last;
+           *dst_first=*src_last;
+          ++dst_first;
+        }
+    }
+
+    template < class A, class B >
     void copy( A src_first, A src_last, B dst_first ) {
         while ( src_first != src_last ) {
            *dst_first =*src_first;
@@ -392,7 +401,7 @@ namespace nodepp { namespace type {
     int map( A src_first, A src_last, T callback ) {
         while ( src_first != src_last ) {
            callback( src_first ); 
-        ++src_first; } return 0;
+         ++src_first; } return 0;
     }
 
     template < class A, class B >

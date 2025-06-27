@@ -144,6 +144,13 @@ public:
         n = n->next; } return i;
     }
 
+    queue_t reverse() const noexcept { 
+        auto n_buffer=queue_t<V>(); auto n =first();
+        while( n!=nullptr ){
+            n_buffer.unshift( n->data );
+        n=n->next; } return n_buffer;
+    }
+
     /*─······································································─*/
 
     bool some( function_t<bool,V> func ) const noexcept {
