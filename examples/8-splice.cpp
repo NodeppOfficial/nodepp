@@ -14,6 +14,12 @@ void onMain(){
 
     console::log( "---" );
 
+    console::log( "str:", str.reverse() );
+    console::log( "arr:", arr.reverse().join() );
+    console::log( "que:", array_t<int>(que.reverse().data()).join() );
+
+    console::log( "---" );
+
     console::log( "str:", str.splice(2,2,"98") );
     console::log( "arr:", arr.splice(2,2,{9,8}).join() );
     console::log( "que:", array_t<int>(que.splice(2,2,{9,8}).data()).join() );

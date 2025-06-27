@@ -181,15 +181,15 @@ public:
     }
 
     bool some( function_t<bool,char> func ) const noexcept {
-        for( auto& x : *this ){ if( func(x)==1 ) return 1; } return 0;
+        for( auto& x : *this ){ if( func(x)==1 ){ return 1; }} return 0;
     }
 
     bool none( function_t<bool,char> func ) const noexcept {
-        for( auto& x : *this ){ if( func(x)==1 ) return 0; } return 1;
+        for( auto& x : *this ){ if( func(x)==1 ){ return 0; }} return 1;
     }
 
     bool every( function_t<bool,char> func ) const noexcept {
-        for( auto& x : *this ){ if(!func(x)==0 ) return 0; } return 1;
+        for( auto& x : *this ){ if(!func(x)==0 ){ return 0; }} return 1;
     }
 
     void map( function_t<void,char&> func ) const noexcept {
