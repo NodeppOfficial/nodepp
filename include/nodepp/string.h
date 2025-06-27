@@ -234,7 +234,7 @@ public:
     }
 
     string_t reverse() const noexcept { auto n_buffer = copy();
-        type::reverse( begin(), end(), n_buffer.end() ); 
+        type::reverse( begin(), end(), n_buffer.begin() ); 
         return n_buffer;
     }
 
