@@ -22,7 +22,6 @@ protected:
 
     struct NODE {
         ulong        range[2] ={ 0, 0 };
-        bool         used     = false;
         bool         keep     = false;
         int          state    =  0;
         int          fd       = -1;
@@ -70,8 +69,6 @@ public: file_t() noexcept {}
     event_t<>          onOpen;
     event_t<>          onPipe;
     event_t<string_t>  onData;
-    event_t<>          onUse;
-    event_t<>          onRelease;
 
     /*─······································································─*/
 
@@ -97,15 +94,12 @@ public: file_t() noexcept {}
     bool     is_closed() const noexcept { return obj->state <  0 ||  is_feof() || obj->fd == -1; }
     bool       is_feof() const noexcept { return obj->feof  <= 0 && obj->feof  != -2; }
     bool  is_available() const noexcept { return obj->state >= 0 && !is_closed(); }
-    bool       is_used() const noexcept { return obj->used; }
     bool is_persistent() const noexcept { return obj->keep; }
 
     /*─······································································─*/
 
     void  resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume .emit(); }
     void    stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop   .emit(); }
-    void     use() const noexcept { if(obj->used == 1) { return; } obj->used = 1; onUse    .emit(); }
-    void release() const noexcept { if(obj->used == 0) { return; } obj->used = 0; onRelease.emit(); }
     void   reset() const noexcept { if(obj->state!=-2) { return; } resume(); pos(0); }
     void   flush() const noexcept { obj->buffer.fill(0); }
 
@@ -114,7 +108,7 @@ public: file_t() noexcept {}
     void close() const noexcept {
         if( obj->state< 0 ){ return; }
         if( obj->keep== 1 ){ stop(); goto DONE; }
-            obj->state=-1; DONE:; release(); onDrain.emit();
+            obj->state=-1; DONE:; onDrain.emit();
     }
 
     /*─······································································─*/
@@ -163,7 +157,7 @@ public: file_t() noexcept {}
         onUnpipe.clear(); onResume.clear();
         onError .clear(); onStop  .clear();
         onOpen  .clear(); onPipe  .clear();
-        onData  .clear(); onUse   .clear();
+        onData  .clear();
 
     }
 

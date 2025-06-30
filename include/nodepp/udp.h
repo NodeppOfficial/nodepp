@@ -53,7 +53,6 @@ public: udp_t() noexcept : obj( new NODE() ) {}
     /*─······································································─*/
 
     void     close() const noexcept { if(obj->state<=0){return;} obj->state=-1; onClose.emit(); }
-
     bool is_closed() const noexcept { return obj == nullptr ? 1 :obj->state<=0; }
 
     /*─······································································─*/
@@ -78,9 +77,14 @@ public: udp_t() noexcept : obj( new NODE() ) {}
                 self->close(); sk.close(); coEnd;
             }
 
-            cb(sk); sk.onClose.once([=](){ self->close(); });
-            self->onSocket.emit(sk); sk.onOpen.emit();
-            self->onOpen.emit(sk); self->obj->func(sk);
+            cb(sk); sk.onDrain.once([=](){ self->close(); });
+            self->onSocket.emit(sk); self->obj->func(sk);
+            
+            if( sk.is_available() ){ 
+                sk.onOpen      .emit(  );
+                self->onOpen   .emit(sk); 
+                self->onConnect.emit(sk); 
+            }
 
         coStop
         });
@@ -93,7 +97,7 @@ public: udp_t() noexcept : obj( new NODE() ) {}
         if( obj->state == 1 ){ return; } if( dns::lookup(host).empty() )
           { _EERROR(onError,"dns couldn't get ip"); close(); return; }
 
-        auto self = type::bind( this ); obj->state = 1;
+        auto self = type::bind(this); obj->state = 1;
 
         socket_t sk;
                  sk.SOCK    = SOCK_DGRAM;
@@ -104,9 +108,14 @@ public: udp_t() noexcept : obj( new NODE() ) {}
         process::poll::add([=](){
         coStart
 
-            cb(sk); sk.onClose.once([=](){ self->close(); });
-            self->onSocket.emit(sk); sk.onOpen.emit();
-            self->onOpen.emit(sk); self->obj->func(sk);
+            cb(sk); sk.onDrain.once([=](){ self->close(); });
+            self->onSocket.emit(sk); self->obj->func(sk);
+
+            if( sk.is_available() ){ 
+                sk.onOpen      .emit(  );
+                self->onOpen   .emit(sk); 
+                self->onConnect.emit(sk); 
+            }
 
         coStop
         });
@@ -116,7 +125,7 @@ public: udp_t() noexcept : obj( new NODE() ) {}
     /*─······································································─*/
 
     void connect( const string_t& host, int port ) const noexcept {
-         connect( host, port, [=]( socket_t ){} );
+         connect( host, port, []( socket_t ){} );
     }
 
     void listen( const string_t& host, int port ) const noexcept {
@@ -126,10 +135,9 @@ public: udp_t() noexcept : obj( new NODE() ) {}
     /*─······································································─*/
 
     void free() const noexcept {
-        if( is_closed() ){ return; } close();
+        if( is_closed() ){ return; }close();
         onConnect.clear(); onSocket.clear();
         onError  .clear(); onOpen  .clear();
-    //  onClose  .clear();
     }
 
 };
@@ -138,33 +146,27 @@ public: udp_t() noexcept : obj( new NODE() ) {}
 
 namespace udp {
 
-    udp_t server( const udp_t& skt ){ skt.onSocket([=]( socket_t cli ){
-    process::task::add([=](){
-        skt.onConnect.once([=]( socket_t cli ){ stream::pipe(cli); });
-        cli.onDrain  .once([=](){ cli.free(); });
-        skt.onConnect.emit(cli);
-    return -1; }); }); return skt; }
+    udp_t server( const udp_t& skt ){ skt.onConnect.once([=]( socket_t cli ){
+        cli.onDrain.once([=](){ cli.free(); }); stream::pipe(cli);
+    }); return skt; }
 
     /*─······································································─*/
 
     udp_t server( agent_t* opt=nullptr ){
-        auto skt = udp_t( [=]( socket_t /*unused*/ ){}, opt );
+        auto skt = udp_t( [=]( socket_t ){}, opt );
         udp::server( skt ); return skt;
     }
 
     /*─······································································─*/
 
-    udp_t client( const udp_t& skt ){ skt.onSocket.once([=]( socket_t cli ){
-    process::task::add([=](){
-        skt.onConnect.once([=]( socket_t cli ){ stream::pipe(cli); });
-        cli.onDrain  .once([=](){ cli.free(); });
-        skt.onConnect.emit(cli);
-    return -1; }); }); return skt; }
+    udp_t client( const udp_t& skt ){ skt.onConnect.once([=]( socket_t cli ){
+        cli.onDrain.once([=](){ cli.free(); }); stream::pipe(cli);
+    }); return skt; }
 
     /*─······································································─*/
 
     udp_t client( agent_t* opt=nullptr ){
-        auto skt = udp_t( [=]( socket_t /*unused*/ ){}, opt );
+        auto skt = udp_t( [=]( socket_t ){}, opt );
         udp::client( skt ); return skt;
     }
 

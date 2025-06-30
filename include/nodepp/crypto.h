@@ -89,7 +89,7 @@ public:
            { process::error("can't initializate hash_t"); }
     }
 
-    virtual ~hash_t() noexcept { if( obj.count()>1 ){ return; } free(); }
+    ~hash_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     EVP_MD_CTX* get_fd() const noexcept { return obj->ctx; }
 
@@ -101,7 +101,7 @@ public:
         }
     }
 
-    virtual void free() const noexcept { 
+    void free() const noexcept { 
         if( obj->state == 0 ){ return; } obj->state = 0;
         EVP_DigestFinal_ex( obj->ctx, &obj->bff, &obj->length );
         EVP_MD_CTX_free( obj->ctx ); 
@@ -147,7 +147,7 @@ public:
            { process::error("can't initializate hmac_t"); }
     }
     
-    virtual ~hmac_t() noexcept { if( obj.count()>1 ){ return; } free(); }
+    ~hmac_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     HMAC_CTX* get_fd() const noexcept { return obj->ctx; }
 
@@ -159,7 +159,7 @@ public:
         }
     }
 
-    virtual void free() const noexcept {
+    void free() const noexcept {
         if( obj->state == 0 ){ return; } obj->state = 0;
         HMAC_Final( obj->ctx, &obj->bff, &obj->length ); 
         HMAC_CTX_free( obj->ctx ); 
@@ -209,12 +209,12 @@ public:
 
     xor_t() noexcept : obj( new NODE() ) { obj->state = 0; }
     
-    virtual ~xor_t() noexcept { if( obj.count()>1 ){ return; } free(); }
+    ~xor_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     void update( string_t msg ) const noexcept { if( obj->state != 1 ){ return; }
         while( !msg.empty() ){ string_t tmp = msg.splice( 0, CHUNK_SIZE );
             forEach( y, obj->ctx ){ forEach( x, tmp ){ 
-                x = x ^ y.key[ y.pos % y.key.size() ]; y.pos++; 
+                x = x ^ y.key[ y.pos % y.key.size() ]; ++y.pos; 
             }} if ( tmp.empty() )     { return; }
              elif ( onData.empty() )  { obj->buff +=tmp; }
              else { onData.emit(tmp); }
@@ -227,9 +227,10 @@ public:
 
     string_t get() const noexcept { free(); return obj->buff; }
 
-    virtual void free() const noexcept { 
+    void free() const noexcept { 
         if ( obj->state == 0 ){ return; } 
-             obj->state = 0; onClose.emit();
+             obj->state = 0; onClose.emit(); 
+             onData.clear();
     }
 
     void close() const noexcept { free(); } 
@@ -258,32 +259,30 @@ public:
     cipher_t( const string_t& key, int mode, const T& type ) 
     :    obj( new NODE() ) { if( key.empty() ){ return; }
           uchar iv[EVP_MAX_IV_LENGTH] = {0};
-        obj->bff   = ptr_t<uchar>(CHUNK_SIZE,'\0');
-        obj->ctx   =       EVP_CIPHER_CTX_new(); obj->state = 1; 
+        obj->bff = ptr_t<uchar>(CHUNK_SIZE,'\0');
+        obj->ctx = EVP_CIPHER_CTX_new(); obj->state = 1; 
         if ( !obj->ctx || !EVP_CipherInit_ex( obj->ctx, type, nullptr, (uchar*)key.data(), iv, mode ) )
            { process::error("can't initializate cipher_t"); }
     }
 
     template< class T >
     cipher_t( const string_t& iv, const string_t& key, int mode, const T& type ) 
-    :    obj( new NODE() ) { if( key.empty() || iv.empty() ){ return; }
-         
-        obj->bff   = ptr_t<uchar>(CHUNK_SIZE,'\0');
-        obj->ctx   =       EVP_CIPHER_CTX_new(); obj->state = 1; 
+    :   obj( new NODE() ) { if( key.empty() || iv.empty() ){ return; }
+        obj->bff = ptr_t<uchar>(CHUNK_SIZE,'\0');
+        obj->ctx = EVP_CIPHER_CTX_new(); obj->state = 1; 
         if ( !obj->ctx || !EVP_CipherInit_ex( obj->ctx, type, nullptr, (uchar*)key.data(), (uchar*)iv.data(), mode ) )
            { process::error("can't initializate cipher_t"); }
     }
 
     template< class T >
     cipher_t( int mode, const T& type ) : obj( new NODE() ) { 
-         
-        obj->bff   =       ptr_t<uchar>(CHUNK_SIZE,'\0');
-        obj->ctx   =       EVP_CIPHER_CTX_new(); obj->state = 1; 
+        obj->bff = ptr_t<uchar>(CHUNK_SIZE,'\0');
+        obj->ctx = EVP_CIPHER_CTX_new(); obj->state = 1; 
         if ( !obj->ctx || !EVP_CipherInit_ex( obj->ctx, type, nullptr, (uchar*)"\0", (uchar*)"\0", mode ) )
            { process::error("can't initializate cipher_t"); }
     }
     
-    virtual ~cipher_t() noexcept { if( obj.count()>1 ){ return; } free(); }
+    ~cipher_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     EVP_CIPHER_CTX* get_fd() const noexcept { return obj->ctx; }
 
@@ -296,13 +295,14 @@ public:
         }
     }
 
-    virtual void free() const noexcept { 
+    void free() const noexcept { 
         if( obj->state == 0 ){ return; } obj->state = 0;
         EVP_CipherFinal_ex( obj->ctx, &obj->bff, &obj->len );
         EVP_CIPHER_CTX_free( obj->ctx ); 
         if ( obj->len > 0 ) { if ( onData.empty() ) {
                  obj->buff += string_t( (char*)&obj->bff, (ulong) obj->len );
-        } else { onData.emit( string_t( (char*)&obj->bff, (ulong) obj->len ) ); } onClose.emit(); }
+        } else { onData.emit( string_t( (char*)&obj->bff, (ulong) obj->len ) ); 
+        } onClose.emit(); } onData.clear();
     }
 
     bool is_available() const noexcept { return obj->state == 1; }
@@ -335,22 +335,19 @@ public:
 
     template< class T >
     encrypt_t( const string_t& key, const T& type )
-    :    obj( new NODE() ) { if( key.empty() ){ return; }
-          uchar iv[EVP_MAX_IV_LENGTH] = {0};
-        obj->bff   = ptr_t<uchar>(CHUNK_SIZE,'\0');
-        obj->ctx   =       EVP_CIPHER_CTX_new(); 
-        obj->state = 1;    EVP_CIPHER_CTX_init( obj->ctx );
+    :   obj( new NODE() ) { if( key.empty() ){ return; }
+        uchar iv[EVP_MAX_IV_LENGTH] = {0};
+        obj->bff = ptr_t<uchar>(CHUNK_SIZE,'\0');
+        obj->ctx = EVP_CIPHER_CTX_new(); obj->state = 1;
         if ( !obj->ctx || !EVP_EncryptInit_ex( obj->ctx, type, NULL, (uchar*)key.data(), iv ) )
            { process::error("can't initializate encrypt_t"); }
     }
 
     template< class T >
     encrypt_t( const string_t& iv, const string_t& key, const T& type )
-    :    obj( new NODE() ) { if( key.empty() || iv.empty() ){ return; }
-         
-        obj->bff   = ptr_t<uchar>(CHUNK_SIZE,'\0');
-        obj->ctx   =    EVP_CIPHER_CTX_new(); 
-        obj->state = 1; EVP_CIPHER_CTX_init( obj->ctx ); 
+    :   obj( new NODE() ) { if( key.empty() || iv.empty() ){ return; }
+        obj->bff = ptr_t<uchar>(CHUNK_SIZE,'\0');
+        obj->ctx = EVP_CIPHER_CTX_new(); obj->state = 1;
         if ( !obj->ctx || !EVP_EncryptInit_ex( obj->ctx, type, NULL, (uchar*)key.data(), (uchar*)iv.data() ) )
            { process::error("can't initializate encrypt_t"); }
     }
@@ -364,19 +361,20 @@ public:
         }
     }
     
-    virtual ~encrypt_t() noexcept { if( obj.count()>1 ){ return; } free(); }
+    ~encrypt_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     EVP_CIPHER_CTX* get_fd() const noexcept { return obj->ctx; }
 
     string_t get() const noexcept { free(); return obj->buff; }
 
-    virtual void free() const noexcept { 
+    void free() const noexcept { 
         if( obj->state == 0 ){ return; } obj->state = 0;
         EVP_EncryptFinal( obj->ctx, &obj->bff, &obj->len );
         EVP_CIPHER_CTX_free( obj->ctx ); 
         if ( obj->len > 0 ) { if ( onData.empty() ) {
                  obj->buff += string_t( (char*)&obj->bff, (ulong) obj->len );
-        } else { onData.emit( string_t( (char*)&obj->bff, (ulong) obj->len ) ); } onClose.emit(); }
+        } else { onData.emit( string_t( (char*)&obj->bff, (ulong) obj->len ) ); 
+        } onClose.emit(); } onData.clear();
     }
 
     bool is_available() const noexcept { return obj->state == 1; }
@@ -407,22 +405,19 @@ public:
 
     template< class T >
     decrypt_t( const string_t& key, const T& type )
-    :    obj( new NODE() ) { if( key.empty() ){ return; }
-          uchar iv[EVP_MAX_IV_LENGTH] = {0};
-        obj->bff   = ptr_t<uchar>(CHUNK_SIZE,'\0');
-        obj->ctx   =    EVP_CIPHER_CTX_new(); 
-        obj->state = 1; EVP_CIPHER_CTX_init( obj->ctx );
+    :   obj( new NODE() ) { if( key.empty() ){ return; }
+        uchar iv[EVP_MAX_IV_LENGTH] = {0};
+        obj->bff = ptr_t<uchar>(CHUNK_SIZE,'\0');
+        obj->ctx = EVP_CIPHER_CTX_new(); obj->state = 1;
         if ( !obj->ctx || !EVP_DecryptInit_ex( obj->ctx, type, NULL, (uchar*)key.data(), iv ) )
            { process::error("can't initializate decrypt_t"); }
     }
 
     template< class T >
     decrypt_t( const string_t& iv, const string_t& key, const T& type )
-    :    obj( new NODE() ) { if( key.empty() || iv.empty() ){ return; }
-         
-        obj->bff   = ptr_t<uchar>(CHUNK_SIZE,'\0');
-        obj->ctx   =    EVP_CIPHER_CTX_new(); 
-        obj->state = 1; EVP_CIPHER_CTX_init( obj->ctx );
+    :   obj( new NODE() ) { if( key.empty() || iv.empty() ){ return; }
+        obj->bff = ptr_t<uchar>(CHUNK_SIZE,'\0');
+        obj->ctx = EVP_CIPHER_CTX_new(); obj->state = 1;
         if ( !obj->ctx || !EVP_DecryptInit_ex( obj->ctx, type, NULL, (uchar*)key.data(), (uchar*)iv.data() ) )
            { process::error("can't initializate decrypt_t"); }
     }
@@ -436,19 +431,20 @@ public:
         }
     }
     
-    virtual ~decrypt_t() noexcept { if( obj.count()>1 ){ return; } free(); }
+    ~decrypt_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     EVP_CIPHER_CTX* get_fd() const noexcept { return obj->ctx; }
 
     string_t get() const noexcept { free(); return obj->buff; }
 
-    virtual void free() const noexcept { 
+    void free() const noexcept { 
         if( obj->state == 0 ){ return; } obj->state = 0;
         EVP_DecryptFinal( obj->ctx, &obj->bff, &obj->len ); 
         EVP_CIPHER_CTX_free( obj->ctx ); 
         if ( obj->len > 0 ) { if ( onData.empty() ) {
                  obj->buff += string_t( (char*)&obj->bff, (ulong) obj->len );
-        } else { onData.emit( string_t( (char*)&obj->bff, (ulong) obj->len ) ); } onClose.emit(); }
+        } else { onData.emit( string_t( (char*)&obj->bff, (ulong) obj->len ) ); 
+        } onClose.emit(); } onData.clear();
     }
 
     bool is_available() const noexcept { return obj->state == 1; }
@@ -502,7 +498,7 @@ public:
 
                 while ( obj->ctx->pos2 >= 0 ) { 
                     obj->bff[obj->ctx->len] = CRYPTO_BASE64[(obj->ctx->pos1>>obj->ctx->pos2)&0x3F];
-                    obj->ctx->pos2 -= 6; obj->ctx->len++;
+                    obj->ctx->pos2 -= 6; ++obj->ctx->len;
                 }
 
             }   obj->ctx->size += obj->ctx->len; out = string_t( &obj->bff, obj->ctx->len );
@@ -512,7 +508,7 @@ public:
         }
     }
 
-    virtual void free() const noexcept { if ( obj->state == 0 ){ return; } 
+    void free() const noexcept { if ( obj->state == 0 ){ return; } 
         string_t out; obj->state = 0; obj->ctx->len = 0;
 
         if ( obj->ctx->pos2 > -6 ){ 
@@ -524,7 +520,8 @@ public:
         } 
 
         obj->ctx->size += obj->ctx->len; out = string_t( &obj->bff, obj->ctx->len );
-        if ( onData.empty() ) { obj->buff += out; } else { onData.emit( out ); } onClose.emit();
+        if ( onData.empty() ) { obj->buff += out; } else { onData.emit( out ); }
+             onClose.emit(); onData.clear();
     }
 
     bool is_available() const noexcept { return obj->state == 1; }
@@ -551,6 +548,9 @@ protected:
 
 public:
 
+    event_t<string_t> onData;
+    event_t<>         onClose;
+
     encoder_t( const string_t& chr ) : obj( new NODE() ) { 
         obj->state = 1; obj->chr = chr; 
         obj->bn = (BIGNUM*) BN_new();
@@ -558,7 +558,7 @@ public:
            { process::error("can't initializate encoder"); }
     }
     
-    virtual ~encoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
+    ~encoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     string_t get() const noexcept { free(); return obj->buff; }
 
@@ -577,13 +577,15 @@ public:
                 obj->buff.unshift( obj->chr[0] );
         }
 
+        if(!onData.empty() ) 
+          { onData.emit( obj->buff ); obj->buff.clear(); }
+
     }
 
-    virtual void free() const noexcept { 
-        if( obj->state == 0 ){ return; }
+    void free() const noexcept { 
+        if( obj->state == 1 ){ return; } obj->state = 0;
         if( obj->bn != nullptr ){ BN_clear_free( obj->bn ); }
-            obj->state  = 0;
-        
+            onClose.emit(); onData.clear();
     }
 
     bool is_available() const noexcept { return obj->state == 1; }
@@ -643,7 +645,7 @@ public:
 
                 if ( obj->ctx->pos2 >= 0 ) {
                     obj->bff[obj->ctx->len] = char((obj->ctx->pos1>>obj->ctx->pos2)&0xFF);
-                    obj->ctx->pos2 -= 8; obj->ctx->len++;
+                    obj->ctx->pos2 -= 8; ++obj->ctx->len;
                 }
 
             }   obj->ctx->size += obj->ctx->len; out = string_t( &obj->bff, obj->ctx->len );
@@ -653,9 +655,10 @@ public:
         }
     }
 
-    virtual void free() const noexcept { 
+    void free() const noexcept { 
         if ( obj->state == 0 ){ return; } 
              obj->state =  0; onClose.emit();
+             onData.clear();
     }
 
     bool is_available() const noexcept { return obj->state == 1; }
@@ -691,7 +694,7 @@ public:
            { process::error("can't initializate decoder"); }
     }
     
-    virtual ~decoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
+    ~decoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     void update( const string_t& msg ) const { 
         if( obj->state != 1 ){ return; }
@@ -711,10 +714,10 @@ public:
 
     string_t get() const noexcept { free(); return obj->buff; }
 
-    virtual void free() const noexcept { 
+    void free() const noexcept { 
         if( obj->state == 1 ){ return; } obj->state = 0;
         if( obj->bn != nullptr ){ BN_clear_free( obj->bn ); }
-            onClose.emit();
+            onClose.emit(); onData.clear();
     }
 
     bool is_available() const noexcept { return obj->state == 1; }
@@ -755,7 +758,7 @@ public:
 
     }
 
-    virtual ~X509_t() noexcept { if( obj.count()>1 ){ return; } free(); }
+    ~X509_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     EVP_PKEY* get_pub()  const noexcept { return obj->pkey; }
 
@@ -773,8 +776,8 @@ public:
         X509_set_subject_name( obj->ctx, obj->name ); X509_set_issuer_name( obj->ctx, obj->name );
 
         if( _time != 0 ){
-            X509_gmtime_adj( X509_get_notBefore(obj->ctx), 0 );
-            X509_gmtime_adj( X509_get_notAfter(obj->ctx), _time );
+            X509_gmtime_adj( X509_getm_notBefore(obj->ctx), 0 );
+            X509_gmtime_adj( X509_getm_notAfter(obj->ctx), _time );
         }
 
         EVP_PKEY_assign_RSA( obj->pkey, obj->rsa ); X509_set_pubkey( obj->ctx, obj->pkey );
@@ -811,7 +814,7 @@ public:
         fclose( fp );
     }
 
-    virtual void free() const noexcept { 
+    void free() const noexcept { 
         if( obj->state == 0 ){ return; } obj->state = 0; 
         if( obj->num != nullptr ){ BN_free( obj->num ); }
         if( obj->ctx != nullptr ){ X509_free( obj->ctx ); }
@@ -844,7 +847,7 @@ public:
            { process::error("creating rsa object"); }
     }
 
-    virtual ~rsa_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
+    ~rsa_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
     RSA* get_fd() const noexcept { return obj->rsa; }
 
@@ -952,7 +955,7 @@ public:
 
     void close() const noexcept { free(); } 
 
-    virtual void free() const noexcept { 
+    void free() const noexcept { 
         if( obj->state == 0 ){ return; } obj->state =0;
         if( obj->num != nullptr ){ BN_free( obj->num ); }
         if( obj->rsa != nullptr ){ RSA_free( obj->rsa ); }
@@ -1007,7 +1010,7 @@ public:
         obj->priv_key = (BIGNUM*)  EC_KEY_get0_private_key( obj->key_pair );
     }
     
-    virtual ~ec_t() noexcept { if( obj.count()>1 ){ return; } free(); }
+    ~ec_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     string_t get_public_key( uint x = 0 ) const noexcept { 
         if( obj->state != 1 ){ return nullptr; }
@@ -1020,7 +1023,7 @@ public:
 
     string_t get_private_key() const noexcept { return BN_bn2hex( obj->priv_key ); }
 
-    virtual void free() const noexcept { 
+    void free() const noexcept { 
         if( obj->state == 0 ){ return; } obj->state = 0;
         if( obj->priv_key  != nullptr ){ BN_free( obj->priv_key ); }
     //  if( obj->key_pair  != nullptr ){ EC_KEY_free( obj->key_pair ); }
@@ -1058,7 +1061,7 @@ public:
           { process::error( "creating new dh" ); }
     }
 
-    virtual ~dh_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
+    ~dh_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
     int generate_keys( int len=512 ) const noexcept {
         if( !DH_generate_parameters_ex( obj->dh, len, DH_GENERATOR_2, NULL ) )
@@ -1088,7 +1091,7 @@ public:
         return BN_bn2hex( DH_get0_pub_key( obj->dh ) );
     }
 
-    virtual void free() const noexcept {
+    void free() const noexcept {
         if( obj->state == 0 ){ return; } obj->state = 0;
         if( obj->dh != nullptr ){ DH_free( obj->dh ); }
         if( obj->k  != nullptr ){ BN_free( obj->k ); }
@@ -1125,7 +1128,7 @@ public:
         obj->state = 1; obj->dsa = DSA_new(); 
     }
 
-    virtual ~dsa_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
+    ~dsa_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
     int generate_keys( uint len=512 ) const noexcept {
         if(!DSA_generate_parameters_ex( obj->dsa, len, NULL, 0, NULL, NULL, NULL ) )
@@ -1203,7 +1206,7 @@ public:
            { fclose( fp ); process::error("while writting the public key"); } fclose( fp );
     }
 
-    virtual void free() const noexcept { 
+    void free() const noexcept { 
         if( obj->state == 0 ){ return; } obj->state = 0;
         if( obj->dsa != nullptr ) DSA_free( obj->dsa );
     }

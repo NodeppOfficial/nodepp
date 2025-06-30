@@ -24,9 +24,7 @@ public:
 
     template < class V, ulong N >
     ptr_t( const V (&value)[N] ) noexcept {
-        ulong s=0; reset(); resize(N);
-        for( auto x=begin(); x!=end(); x++ )
-           { *x = (T)value[s]; s++; }
+        reset(); resize(N); type::copy( value, value+N, begin() );
     }
 
     ptr_t() noexcept {                reset(); }
@@ -71,48 +69,46 @@ public:
     /*─······································································─*/
 
     T& operator[]( ulong i ) const noexcept {
-       return size()==0 ?data()[i] :data()[i%size()];
+       return size()!=0 ? *(data()+(i%size()))
+                        : *(data()+i);
     }
 
     /*─······································································─*/
 
     void fill( const T& c ) const noexcept {
-        if ( size() != 0 ){
-        for( auto x=begin(); x!=end(); x++ )
-           { *x = c; }} else { *data() =c; }
+        if( null() ){ return; } if( size() != 0 )
+          { type::fill( begin(), end(), c );
+          } else { *data() =c; }
     }
 
     ptr_t copy() const noexcept {
         if  ( count() > 0 && size()==0 )
             { return new T( *data() ); }
-        elif( count() > 0 && size()> 0 ){
-            auto    n_buffer =ptr_t<T>(size());
-            memcpy(&n_buffer, data(), size() );
-            return  n_buffer;
-        }   return  nullptr;
+        elif( count() > 0 && size()> 0 ){ 
+            auto n_buffer=ptr_t<T>( size() );
+            type::copy( begin(), end(), n_buffer.begin() );
+        return n_buffer; } return nullptr;
     }
 
     /*─······································································─*/
 
     template < class V, ulong N >
     void resize( const V (&value)[N] ) noexcept {
-        ulong s=0; reset(); resize(N);
-        for( auto x=begin(); x!=end(); x++ )
-           { *x = (T)value[s]; s++; }
+        reset(); resize(N); type::copy( value, value+N, begin() );
     }
 
     void resize( ulong n, const T& c ) noexcept {
-        reset(); resize(n);
-        for( auto x=begin(); x!=end(); x++ )
-           { *x = (T)c; }
+        reset(); resize(n); fill(c);
     }
 
     void resize( ulong n ) noexcept { reset();
         if( n == 0 ){
+            free_  = new bool( false ); 
             value_ = new T();
             length_= new ulong( n );
             count_ = new ulong( 1 ); used_ = true;
         } else {
+            free_  = new bool( false ); 
             value_ = new T[n];
             length_= new ulong( n );
             count_ = new ulong( 1 ); used_ = true;
@@ -121,6 +117,7 @@ public:
 
     void resize( T* c, ulong n ) noexcept {
         if( c == nullptr ){ return; } reset();
+        free_  = new bool( false ); 
         length_= new ulong( n );
         count_ = new ulong( 1 );
         value_ = c; used_ =true;
@@ -128,6 +125,7 @@ public:
 
     void resize( T* c ) noexcept {
         if( c == nullptr ){ return; } reset();
+        free_  = new bool( false ); 
         length_= new ulong( 0 );
         count_ = new ulong( 1 );
         value_ = c; used_ =true;
@@ -137,33 +135,34 @@ public:
 
     void reset() noexcept {
 
-        if( null () )       { return; }
-        if( count()    !=0 ){
+        if( null () )    { return; }
+        if( count() !=0 && !null() ){
         if( --(*count_)==0 ){
             if(*length_==0 ){
                      delete    data();
             } else { delete [] data(); }
+                     delete     free_;
                      delete    count_;
                      delete   length_;
         }}
 
         length_= nullptr;
         count_ = nullptr;
-        value_ = nullptr; used_ = false;
+        value_ = nullptr;
+        free_  = nullptr; used_ = false;
     }
 
     /*─······································································─*/
 
-    T*         end() const noexcept { return null() ?nullptr :value_+size(); }
-    T*       begin() const noexcept { return null() ?nullptr :value_; }
+    ulong    count() const noexcept { return null() ? 0 : ( _EXIT_||*free_ ) ? 1 : *count_ ; }
+    T*         end() const noexcept { return null() ? nullptr : value_+size(); }
+    T*       begin() const noexcept { return null() ? nullptr : value_; }
+    ulong     size() const noexcept { return null() ? 0 : *length_; }
     bool      null() const noexcept { return used_ ==false; }
 
-    void      free() const noexcept {    if( !null() ){ *count_ = 0; } }
+    void      free() const noexcept {    if( !null() ){ * free_ = 1; } }
     bool     empty() const noexcept { return  null() ||  size()== 0; }
     bool has_value() const noexcept { return !null() && count()!= 0; }
-
-    ulong     size() const noexcept { return  null() ? 0 :*length_; }
-    ulong    count() const noexcept { return  null() ? 0 :*count_ ; }
 
     T*        data() const noexcept { return  begin(); }
     T*         get() const noexcept { return  begin(); }
@@ -181,28 +180,32 @@ public:
 
 protected:
 
-    ulong* length_= nullptr;
-    ulong* count_ = nullptr;
-        T* value_ = nullptr;
-    bool    used_ = false  ;
+    ulong* length_ = nullptr;
+    ulong*  count_ = nullptr;
+     bool*   free_ = nullptr;
+        T*  value_ = nullptr;
+    bool     used_ = false  ;
 
     /*─······································································─*/
 
     void cpy( const ptr_t& other ) noexcept {
         if( other.null() ){ return; }
         length_ = other.length_;
-        count_  = other.count_; used_ = true;
-        value_  = other.value_; ++(*count_ );
+        count_  = other. count_; used_ = true;
+        value_  = other. value_; 
+        free_   = other.  free_; ++(*count_ );
     }
 
     void mve( ptr_t&& other ) noexcept {
         if( other.null() ){ return; }
         length_ = other.length_;
-        count_  = other.count_;
-        value_  = other.value_;
-        other.length_= nullptr;
-        other.count_ = nullptr; this->used_ = true;
-        other.value_ = nullptr; other.used_ = false;
+        count_  = other .count_;
+        value_  = other .value_;
+        free_   = other .free_ ; this->used_ = true;
+        other.  free_ = nullptr;
+        other.length_ = nullptr;
+        other. count_ = nullptr; 
+        other. value_ = nullptr; other.used_ = false;
     }
 
 };}

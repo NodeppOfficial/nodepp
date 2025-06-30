@@ -16,6 +16,7 @@
 
 #if   _KERNEL == NODEPP_KERNEL_WINDOWS
     #include "fs.h"
+    #include "worker.h"
     #include "initializer.h"
     #include "windows/popen.cpp"
 #elif _KERNEL == NODEPP_KERNEL_POSIX
@@ -28,27 +29,41 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#if defined( NODEPP_POPEN ) && _KERNER == NODEPP_KERNEL_WINDOWS
 namespace nodepp { namespace popen {
 
-    popen_t async( const string_t& path, const initializer_t<string_t>& args ){
-    popen_t pid( path, args ); process::poll::add([=](){ return pid.next(); }); 
+    template< class... T > string_t async( const T&... args ){
+    popen_t pid( args... ); worker::add([=](){ return pid.next(); }); 
     return pid; }
-
-    popen_t async( const string_t& path ){ return async( path, { path } ); }
 
     /*─······································································─*/
 
-    string_t await( const string_t& path, const initializer_t<string_t>& args ){
-        string_t result; auto fp = popen_t( path, args ); _stream_::pipe _read;
+    template< class... T > string_t await( const T&... args ){
+        string_t result; auto fp = popen_t( args... ); _stream_::pipe _read;
         fp.onData([&]( string_t chunk ){ result += chunk; });
-        process::await( _read, fp.std_output() ); return result;
-    }
-
-    string_t await( const string_t& path ){
-      return await( path, { path } );
+        worker::await( _read, fp.std_output() ); return result;
     }
 
 }}
+
+#else
+
+namespace nodepp { namespace popen {
+
+    template< class... T > string_t await( const T&... args ){
+        string_t result; auto fp = popen_t( args... ); _stream_::pipe _read;
+        fp.onData([&]( string_t chunk ){ result += chunk; });
+        process::await( _read, fp.std_output() ); 
+    return result; }
+
+    /*─······································································─*/
+
+    template< class... T > popen_t async( const T&... args ){
+    popen_t pid( args... ); process::poll::add([=](){ return pid.next(); }); 
+    return pid; }
+
+}}
+#endif
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

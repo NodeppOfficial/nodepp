@@ -294,7 +294,7 @@ public: socket_t() noexcept { _socket_::start_device(); }
 
     /*─······································································─*/
 
-    virtual ~socket_t() noexcept { if( obj.count() > 1 || obj->fd < 3 ){ return; } free(); }
+    virtual ~socket_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
     /*─······································································─*/
 
@@ -315,7 +315,7 @@ public: socket_t() noexcept { _socket_::start_device(); }
         onUnpipe.clear(); onResume.clear();
         onError .clear(); onStop  .clear();
         onOpen  .clear(); onPipe  .clear();
-        onData  .clear(); onUse   .clear();
+        onData  .clear();
 
     }
 

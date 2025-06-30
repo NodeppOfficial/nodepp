@@ -85,29 +85,31 @@ protected:
 
     event_t<T> onDone; 
     event_t<V> onFail;
+    event_t<>  onFinally;
 
 public:
 
     template< class U >
-    promise_t& then( const U cb ) noexcept { obj->state=1; onDone.once(cb); return (*this); }
+    promise_t& then( const U cb )    noexcept { obj->state=1; onDone.once(cb);    return (*this); }
     
     template< class U >
-    promise_t& fail( const U cb ) noexcept { obj->state=1; onFail.once(cb); return (*this); }
+    promise_t& fail( const U cb )    noexcept { obj->state=1; onFail.once(cb);    return (*this); }
+    
+    template< class U >
+    promise_t& finally( const U cb ) noexcept { /*         */ onFinally.once(cb); return (*this); }
 
     /*─······································································─*/
 
     void resolve() const noexcept { if( obj->state!=1 ){ return; }
         obj->state= 0; auto self = type::bind(this);
         obj->addr = promise::resolve<T,V>( obj->main_func, 
-            [=]( T res ){ self->onDone.emit(res); self->free(); },
-            [=]( V rej ){ self->onFail.emit(rej); self->free(); }
+            [=]( T res ){ self->onDone.emit(res); self->onFinally.emit(); self->free(); },
+            [=]( V rej ){ self->onFail.emit(rej); self->onFinally.emit(); self->free(); }
         ); 
     }
 
     void clear() const noexcept { process::clear( obj->addr ); }
-
-    void  free() const noexcept { onDone.clear(); onFail.clear(); }
-
+    void  free() const noexcept { onDone.clear(); onFail.clear(); onFinally.clear(); }
     expected_t<T,V> await() const noexcept { return promise::await<T,V>( obj->main_func ); }
 
     /*─······································································─*/
