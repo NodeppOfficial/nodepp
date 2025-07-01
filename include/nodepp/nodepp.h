@@ -23,12 +23,10 @@ namespace nodepp { namespace process {
     template< class... T >
     int  spawn( const T&... args ){ return ::system(args...); }
 
+    void exit( int err=0 ){ _EXIT_= true; ::exit(err); }
+
     template< class... T >
     void error( const T&... msg ){ _ERROR( msg... ); }
-
-    void exit( int err=0 ){ ::exit(err); }
-
-    void abort(){ ::abort(); }
 
 }}
 
@@ -59,9 +57,9 @@ namespace nodepp { namespace process {
 
     /*─······································································─*/
 
-    void stop(){ while( !process::empty() ){
+    void stop(){ while( ! process::empty() ){
         onSIGNEXT.emit(); process::next();
-    }}
+    }   process::exit(); }
 
 }}
 

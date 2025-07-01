@@ -161,16 +161,9 @@ namespace nodepp { namespace type {
     
     /*─······································································─*/
 
-    template<typename T> struct remove_reference { using type = T; };
+    template<typename T> struct remove_reference     { using type = T; };
     template<typename T> struct remove_reference<T&> { using type = T; };
-    template<typename T> struct remove_reference<T&&> { using type = T; };
-
-    /*─······································································─*/
-
-    template<typename T> typename remove_reference<T>::type&& move(T&& arg) { return static_cast<typename remove_reference<T>::type&&>( arg ); }
-    template<typename T> typename remove_reference<T>::type&  copy(T& arg) { return static_cast<typename remove_reference<T>::type&>( arg ); }
-    template<typename T> typename remove_reference<T>::type&& forward(T&& arg) { return move(arg); }
-    template<typename T> typename remove_reference<T>::type&  forward(T& arg) { return copy(arg); }
+    template<typename T> struct remove_reference<T&&>{ using type = T; };
     
     /*─······································································─*/
 
@@ -185,6 +178,11 @@ namespace nodepp { namespace type {
     
     template<typename T> struct add_cv { using type = const volatile T; };
     template<typename T> struct remove_cv { using type = typename remove_volatile<typename remove_const<T>::type>::type; };
+
+    /*─······································································─*/
+
+    template<typename T> typename remove_reference<T>::type&& set_move(T&& arg){ return static_cast<typename remove_reference<T>::type&&>( arg ); }
+    template<typename T> typename remove_reference<T>::type&  set_copy(T&  arg){ return static_cast<typename remove_reference<T>::type&> ( arg ); }
     
     /*─······································································─*/
 
@@ -359,15 +357,75 @@ namespace nodepp { namespace type {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+namespace nodepp { namespace type {
+
+    template<typename T> typename remove_reference<T>::type&& move(T&& arg){ 
+        return static_cast<typename remove_reference<T>::type&&>( arg ); 
+    }
+
+    template < class A >
+    int find( A src_first, A src_last, A value, ulong* out ) {
+        while ( src_first != src_last ){
+           if (*src_first ==*value    ){ return 1; }
+           ++src_first; ++( *out );
+        }  return -1;
+    }
+
+    template < class A >
+    int compare( A src_first, A src_last, A dst_first ) {
+        while ( src_first != src_last ){
+           if (*src_first <*dst_first ){ return -1; }
+           if (*src_first >*dst_first ){ return  1; }
+           ++src_first; ++dst_first;
+        }  return 0;
+    }
+
+    template < class A, class B >
+    void reverse( A src_first, A src_last, B dst_first ) {
+        while ( src_first != src_last ) {
+          --src_last;
+           *dst_first=*src_last;
+          ++dst_first;
+        }
+    }
+
+    template < class A, class B >
+    void copy( A src_first, A src_last, B dst_first ) {
+        while ( src_first != src_last ) {
+           *dst_first =*src_first;
+          ++src_first;++dst_first;
+        }
+    }
+
+    template < class A, class T >
+    int map( A src_first, A src_last, T callback ) {
+        while ( src_first != src_last ) {
+           callback( src_first ); 
+         ++src_first; } return 0;
+    }
+
+    template < class A, class B >
+    void fill( A src_first, A src_last, B value ) {
+        while ( src_first != src_last ) {
+           *src_first = value;
+          ++src_first;
+        }
+    }
+
+
+}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #include "ptr.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace type {
 
-    template< class T, class V > T* cast( ptr_t<V>& object ){ if( object==nullptr ){ return nullptr; } return ( T* )( object ); }
-    template< class T, class V > T* cast(       V*  object ){ if( object==nullptr ){ return nullptr; } return ( T* )( object ); }
-    template< class T, class V > T  cast(       V   object ){ return ( T )( object ); }
+    template< class T, class V > T* cast( ptr_t<V>& object ){ if( object==nullptr ){ return nullptr; } return static_cast<T*>(object.get()); }
+    template< class T, class V > T* cast(       V*  object ){ if( object==nullptr ){ return nullptr; } return static_cast<T*>(object); }
+    template< class T, class V > T  cast(       V   object ){ return static_cast<T>( object ); }
 
     template<class T> ptr_t<T>      bind( ptr_t<T>& object ){ if( object==nullptr ){ return nullptr; } return    object.copy(); }
     template<class T> ptr_t<T>      bind(       T*  object ){ if( object==nullptr ){ return nullptr; } return new T( *object ); }

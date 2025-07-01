@@ -33,7 +33,7 @@ protected:
 
     ptr_t<ulong> get_slice_range( long x, long y ) const noexcept {
 
-        if( empty() || x == y ){ return nullptr; } if( y>0 ){ y--; }
+        if( empty() || x == y ){ return nullptr; } if( y>0 ){ --y; }
 
         if( x < 0 ){ x = size()-1+x; } if( (ulong)x > size()-1 ){ return nullptr; }
         if( y < 0 ){ y = size()-1+y; } if( (ulong)y > size()-1 ){ y = size() - 1; }
@@ -63,7 +63,7 @@ protected:
 
 public:
 
-    virtual ~queue_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
+    ~queue_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
     /*─······································································─*/
 
@@ -100,8 +100,7 @@ public:
                  { n = n->next; continue; } break;
             }
 
-            V item; memcpy( &item, &x->data, sizeof(V) );
-            n_buffer.insert( n, item ); x = x->next;
+            V item; n_buffer.insert( n, item ); x = x->next;
         }
 
         return n_buffer;
@@ -121,10 +120,11 @@ public:
     /*─······································································─*/
 
     ptr_t<V> data() const noexcept {
-        if( empty() ){ return nullptr; } ptr_t<V> res ( size() );
-        ulong y=0; auto n = first(); while( n!=nullptr ){
-            res[y] = (V)( n->data ); n = n->next;
-        y++; } return res;
+        if( empty() ){ return nullptr; } 
+        ptr_t<V> out(size()); V* addr = out.begin();
+        auto n = first(); while( n!=nullptr ){
+         *addr = n->data; ++addr;
+        n = n->next; } return out;
     }
 
     /*─······································································─*/
@@ -134,14 +134,21 @@ public:
         auto n = first(); while( n != nullptr ) {
         if( func(n->data) == 1 ){ return i; }
         if( n->next == nullptr ){ break; }
-        i++; n = n->next; } return -1;
+        ++i; n = n->next; } return -1;
     }
 
     ulong count( function_t<bool,V> func ) const noexcept {
         ulong i=0; if( empty() ){ return 0; }
         auto n = first(); while( n != nullptr ) {
-        if( func(n->data) == 1 ){ i++; }
+        if( func(n->data) == 1 ){ ++i; }
         n = n->next; } return i;
+    }
+
+    queue_t reverse() const noexcept { 
+        auto n_buffer=queue_t<V>(); auto n =first();
+        while( n!=nullptr ){
+            n_buffer.unshift( n->data );
+        n=n->next; } return n_buffer;
     }
 
     /*─······································································─*/
@@ -181,6 +188,12 @@ public:
         n=n->next; } return false;
     }
 
+    queue_t copy() const noexcept { queue_t n_buffer;
+        auto n = first(); while( n!=nullptr ){
+             n_buffer.push( n->data );
+        n=n->next(); } return n_buffer;
+    }
+
     /*─······································································─*/
 
     queue_t slice( long start ) const noexcept {
@@ -190,7 +203,7 @@ public:
          if( r == nullptr ){ return nullptr; }
 
         auto n = get( r[0] ); while( n!=nullptr && idx<=r[1] )
-           { n_buffer.push( n->data ); n=n->next; idx++; }
+           { n_buffer.push( n->data ); n=n->next; ++idx; }
         return n_buffer;
 
     }
@@ -202,7 +215,7 @@ public:
          if( r == nullptr ){ return nullptr; }
 
        auto n = get( r[0] ); while( n!=nullptr && idx<=r[1] )
-          { n_buffer.push( n->data ); n=n->next; idx++; }
+          { n_buffer.push( n->data ); n=n->next; ++idx; }
        return n_buffer;
 
     }
@@ -216,7 +229,7 @@ public:
          if( r == nullptr ){ return nullptr; }
 
         auto n = get( r[0] ); while( n!=nullptr && idx<=r[2] )
-           { n_buffer.push( n->data ); n=n->next; idx++; }
+           { n_buffer.push( n->data ); n=n->next; ++idx; }
 
         erase( r[0], r[0]+end ); return n_buffer;
 
@@ -230,7 +243,7 @@ public:
          if( r == nullptr ){ return nullptr; }
 
         auto n = get( r[0] ); while( n!=nullptr && idx<=r[2] )
-           { n_buffer.push( n->data ); n=n->next; idx++; }
+           { n_buffer.push( n->data ); n=n->next; ++idx; }
 
         erase( r[0], r[0]+end ); insert( r[0], value ); return n_buffer;
 
@@ -263,17 +276,17 @@ public:
 
     /*─······································································─*/
 
-    template< ulong N >
-    void insert( ulong index, const V(&value)[N] ) const noexcept {
+    template< class T, ulong N >
+    void insert( ulong index, const T(&value)[N] ) const noexcept {
 	    index = clamp( index, 0UL, size() - 1 );
-    	ulong i=index; for( ulong x=0; x<N; x++ )
+    	ulong i=index; for( ulong x=0; x<N; ++x )
         { insert( i+x, value[x] ); }
     }
 
     void insert( ulong index, V* value, ulong N ) const noexcept {
 	    index = clamp( index, 0UL, size() - 1 );
-    	ulong i=index; for( ulong x=0; x<N; x++ )
-            { insert( i+x, value[x] ); }
+    	ulong i=index; for( ulong x=0; x<N; ++x )
+        { insert( i+x, value[x] ); }
     }
 
     void insert( ulong index, const V& value ) const noexcept {
@@ -295,7 +308,7 @@ public:
             if ( n->prev== nullptr ){ obj->fst = n; }
             if ( m->next== nullptr ){ obj->lst = m; }
                  m->prev = n; n->next = m;
-        }   obj->length++;
+        } ++obj->length;
     }
 
     /*─······································································─*/

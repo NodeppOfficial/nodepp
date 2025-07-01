@@ -15,33 +15,64 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #if   _KERNEL == NODEPP_KERNEL_WINDOWS
+    
     #include "fs.h"
+    #include "worker.h"
     #include "initializer.h"
     #include "windows/cluster.cpp"
+
+    namespace nodepp { namespace cluster {
+
+        template< class... T > cluster_t async( const T&... args ){
+        cluster_t pid(args...); if( process::is_parent() ) { 
+            worker::add([=](){ return pid.next(); }); 
+        } return pid; }
+
+        template< class... T > cluster_t add( const T&... args ){
+        return async( args... ); }
+
+        template< class... T > int await( const T&... args ){
+        cluster_t pid(args...); if( process::is_parent() ) { 
+           return worker::await([=](){ return pid.next(); }); 
+        } return -1; }
+
+        bool  is_child(){ return !process::env::get("CHILD").empty(); }
+
+        bool is_parent(){ return  process::env::get("CHILD").empty(); }
+
+    }}
+
+
 #elif _KERNEL == NODEPP_KERNEL_POSIX
+
     #include "fs.h"
     #include "initializer.h"
     #include "posix/cluster.cpp"
+
+    namespace nodepp { namespace cluster {
+
+        template< class... T > cluster_t async( const T&... args ){
+        cluster_t pid(args...); if( process::is_parent() ) { 
+        process::poll::add([=](){ return pid.next(); }); 
+        }  return pid; }
+
+        template< class... T > cluster_t add( const T&... args ){
+        return async( args... ); }
+
+        template< class... T > int await( const T&... args ){
+        cluster_t pid(args...); if( process::is_parent() ) { 
+        return process::await([=](){ return pid.next(); }); 
+        }  return -1; }
+
+        bool  is_child(){ return !process::env::get("CHILD").empty(); }
+
+        bool is_parent(){ return  process::env::get("CHILD").empty(); }
+
+    }}
+
 #else
-    #error "This OS does not support cluster.h"
+    #error "This OS Does not support cluster.h"
 #endif
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-namespace nodepp { namespace cluster {
-
-    template< class... T > cluster_t add( const T&... args ){
-    cluster_t pid(args...); if( process::is_parent() ) { 
-       process::poll::add([=](){ return pid.next(); }); 
-    }  return pid; }
-
-    /*─······································································─*/
-
-    bool  is_child(){ return !process::env::get("CHILD").empty(); }
-
-    bool is_parent(){ return  process::env::get("CHILD").empty(); }
-
-}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

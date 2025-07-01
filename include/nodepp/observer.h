@@ -95,11 +95,9 @@ public: observer_t() noexcept {} queue_t<T> node;
     /*─······································································─*/
     
     template< class V, ulong N >
-    void set( const V (&args) [N] ) const {
-         for( ulong x=0; x<N; x++ ){
-              this->set( args[x].first, args[x].second );
-         }
-    }
+    void set( const V (&args) [N] ) const { for( ulong x=0; x<N; ++x ){
+        this->set( args[x].first, args[x].second );
+    }}
 
     /*─······································································─*/
 
@@ -117,7 +115,7 @@ public: observer_t() noexcept {} queue_t<T> node;
     bool empty() const noexcept { return node.empty(); }
 
     ulong size() const noexcept { return node.size(); }
-    
+
     /*─······································································─*/
 
     void clear( string_t name ) const noexcept { 

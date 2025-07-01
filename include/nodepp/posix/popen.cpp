@@ -68,70 +68,81 @@ public:
     event_t<string_t>  onDout;
     event_t<string_t>  onDerr;
 
-    virtual ~popen_t() noexcept {
-        if( obj.count() > 1 ){ return; }
-        if( obj->state == 0 ){ return; } free();
+    popen_t( const string_t& path, const initializer_t<string_t>& args, const initializer_t<string_t>& envs )
+    : obj( new NODE() ) { if( path.empty() ){ throw except_t("invalid command"); }
+        array_t<const char*> arg; array_t<const char*> env;
+        for( auto x : args ) { arg.push( x.get() ); }
+        for( auto x : envs ) { env.push( x.get() ); } _init_( path, arg, env );
     }
 
-    template< class... T >
-    popen_t( const string_t& path, const initializer_t<string_t>& args ) : obj( new NODE() ) {
-        array_t<const char*> arg; array_t<const char*> env; bool y=0;
+    popen_t( const string_t& path ) 
+    : obj( new NODE() ) { if( path.empty() ){ throw except_t("invalid command"); }
+        array_t<const char*> arg; array_t<const char*> env; auto cmd = regex::match_all( path, "[^ ]+" );
+        type::map( cmd.begin(), cmd.end(), [&]( string_t* x ){ arg.push(x->get()); } );
+        _init_( cmd[0], arg, env );
+    }
 
-        for ( auto x : args ) {
-          if( x != nullptr && !y ) arg.push( x.c_str() );
-        elif( x != nullptr &&  y ) env.push( x.c_str() ); else y =! y; }
-
+    popen_t( const string_t& path, const initializer_t<string_t>& args ) : obj( new NODE() ) { 
+        if ( path.empty() ){ throw except_t("invalid command"); }
+        array_t<const char*> arg; array_t<const char*> env;
+        for( auto x : args ) { arg.push( x.get() ); }
         _init_( path, arg, env );
     }
+
+   ~popen_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
     popen_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    virtual void free() const noexcept {
+    void free() const noexcept {
 
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
         if( obj->state == -2 ){ return; } close(); obj->state = -2;
             obj->std_error.close(); obj->std_output.close();
             obj->std_input.close(); onClose.emit(); kill();
 
-    //  onClose .clear(); onDrain.clear(); 
         onResume.clear(); onError.clear(); 
         onStop  .clear(); onOpen .clear();
         onData  .clear(); onDout .clear(); 
-        onDerr .clear();
+        onDerr  .clear();
         
     }
 
     /*─······································································─*/
 
     int next() const noexcept {
-        if( std_output().is_closed() ){ close(); return -1; }
-        if( std_error() .is_closed() ){ close(); return -1; }
-        if( std_input() .is_closed() ){ close(); return -1; }
-    coStart
+    coStart 
 
+        while( !is_closed() ){ 
         onOpen.emit(); coYield(1);
 
-        if((*_read1)(&std_output())==1 )  { coGoto(2); }
-        if(  _read1->state <= 0 )         { coGoto(2); }
+        if((*_read1)(&std_output())==1){ coGoto(2); }
+        if(  _read1->state <= 0 )      { coGoto(2); }
         onData.emit(_read1->data);
-        onDout.emit(_read1->data);          coGoto(2);
+        onDout.emit(_read1->data);       coGoto(2); 
 
         coYield(2);
+        if( !is_alive()&&_read1->state<=0 ){ break; }
 
-        if((*_read2)(&std_error())==1 )   { coGoto(1); }
-        if(  _read2->state <= 0 )         { coGoto(1); }
+        if((*_read2)(&std_error())==1 ){ coGoto(1); }
+        if(  _read2->state <= 0 )      { coGoto(1); }
         onData.emit(_read2->data);
-        onDerr.emit(_read2->data);          coGoto(1);
+        onDerr.emit(_read2->data);       coGoto(1);
+
+        }
 
     coStop
     }
 
     /*─······································································─*/
 
-    bool is_alive()     const noexcept { return ::kill( obj->fd, 0 ) == 0; }
-    bool is_available() const noexcept { return is_closed() == false; }
+    bool is_alive() const noexcept { 
+        if( std_error ().is_available() ){ return true; }
+        if( std_output().is_available() ){ return true; } return false; 
+    }
+
+    bool is_available() const noexcept { return is_closed()== false; }
     bool is_closed()    const noexcept { return obj->state <= 0; }
     int  get_fd()       const noexcept { return obj->fd; }
 

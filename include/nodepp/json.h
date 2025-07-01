@@ -38,7 +38,7 @@ protected:
                 case '"': _pos =get_next_key( _pos, str ); break;
                 case '\\':_pos =get_next_key( _pos, str ); break;
             }
-            if( k == 0 ){ break; } _pos++;
+            if( k == 0 ){ break; } ++_pos;
         }   return _pos >= str.size() ? -1 : _pos;
     }
 
@@ -47,17 +47,17 @@ protected:
             switch( str[_pos] ){
                 case '[': k += 1; break; case ']': k -= 1; break;
                 case '{': k += 3; break; case '}': k -= 3; break;
-                case '\\':_pos++; break; case '"':
+                case '\\':++_pos; break; case '"':
                     if( x ){ k+=5; x=!x; }
                     else   { k-=5; x=!x; }
                 break;
             }
-            if( k == 0 ){ break; } _pos++;
+            if( k == 0 ){ break; } ++_pos;
         }   return _pos >= str.size() ? -1 : _pos;
     }
 
     object_t get_data( const string_t& data ) const noexcept {
-        ulong x=0; while( x < data.size() && data[x]==' ' ){ x++; }
+        ulong x=0; while( x < data.size() && data[x]==' ' ){ ++x; }
           if( data.empty() || data[x] == ',' )         { return nullptr; }
         elif( data[x] == '"'     )                     { return regex::match(data,"\"[^\"]+\"").slice(1,-1); }
         elif( data[x] == '{'     )                     { return parse( data ); }
@@ -79,7 +79,7 @@ protected:
            if( str[x] == '"' ){
                auto z = get_next_sec( x, str );
                data.first = str.slice( x+1,z );
-            while( str[x]!=':' && x<y ){ x++; }
+            while( str[x]!=':' && x<y ){ ++x; }
                auto w = get_next_sec( x, str );
                     w = w<0 ? str.size()-1 : w;
                data.second = str.slice( x+1, w ); x=w;
@@ -100,7 +100,7 @@ protected:
            if( z < 0 ){ process::error("Invalid JSON Format"); }
                data.push( get_data(str.slice( x,z+1 )) ); x=z+1;
            } elif( x != y ) {
-               ulong z=x; while( str[z]!=',' && z<y ){ z++; }
+               ulong z=x; while( str[z]!=',' && z<y ) { ++z; }
                data.push( get_data(str.slice( x, z )) ); x=z;
            }
         } while( x++<y ); return data.data();

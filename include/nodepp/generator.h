@@ -109,9 +109,7 @@ namespace nodepp { namespace _file_ {
     template< class T > coEmit( T* str, ulong size=CHUNK_SIZE ){
     gnStart state=0; d=0; data.clear(); str->flush();
 
-    coWait( str->is_used()==1 ); r = str->get_range();
-
-        if(!str->is_available()       ){ coEnd; }
+        if(!str->is_available()       ){ coEnd; } r=str->get_range();
         if(!str->get_borrow().empty() ){ data = str->get_borrow(); }
 
           if ( r[1] != 0  ){ auto pos = str->pos(); d = r[1]-r[0];
@@ -144,15 +142,13 @@ namespace nodepp { namespace _file_ {
     template< class T > coEmit( T* str, const string_t& msg ){
     gnStart state=0; data=0; str->flush();
 
-        coWait( str->is_used()==1 ); str->use();
-
-        if(!str->is_available() || msg.empty() ){ str->release(); coEnd; }
-        if( b.empty() )                         { b = msg;               }
+        if(!str->is_available() || msg.empty() ){ coEnd; }
+        if( b.empty() )                         { b=msg; }
 
         do{ coWait((state=str->_write( b.data()+data, b.size()-data ))==-2 );
         if( state>0 ){ data += state; }} while ( state>=0 && data<b.size() );
 
-        b.clear(); str->release();
+        b.clear();
 
     gnStop
     }};
@@ -174,8 +170,8 @@ namespace nodepp { namespace _file_ {
         coWait( _read(str) ==1 );
             if( _read.state<=0 ){ coEnd; }
 
-        do{for( auto x: _read.data ){ state++;
-            if( ch[pos]  ==x   ){ pos++; } else { pos=0; }
+        do{for( auto x: _read.data ){ ++state;
+            if( ch[pos]  ==x   ){ ++pos; } else { pos=0; }
             if( ch.size()==pos ){ break; } }
         } while(0);
 
@@ -198,7 +194,7 @@ namespace nodepp { namespace _file_ {
         coWait( _read(str) ==1 );
             if( _read.state<=0 ){ coEnd; }
 
-        do{ for( auto x: _read.data ){ state++;
+        do{ for( auto x: _read.data ){ ++state;
              if( ch ==x ){ break; } continue; }
         } while(0);
 
@@ -225,7 +221,7 @@ namespace nodepp { namespace _file_ {
         coWait( _read(str) ==1 );
             if( _read.state<=0 ){ coEnd; }
 
-        do{ for( auto x: _read.data ){ state++;
+        do{ for( auto x: _read.data ){ ++state;
              if('\n'==x ){ break; } continue; }
         } while(0);
 
@@ -611,11 +607,11 @@ namespace nodepp { namespace _ws_ {
             if ( frame.LEN  > 125 ){
             if ( frame.LEN == 126 ){ size=2; }
             if ( frame.LEN == 127 ){ size=4; } frame.LEN=0;
-            for( ulong x=0; x < size; x++ )  { frame.LEN=frame.LEN << 8 | (uchar) bf[x]; }
+            for( ulong x=0; x < size; ++x )  { frame.LEN=frame.LEN << 8 | (uchar) bf[x]; }
             }
 
             if ( frame.MSK == 1 ){ size=4; 
-            for( ulong x=0; x<size; x++ ){ frame.KEY[x] = bf[x]; }
+            for( ulong x=0; x<size; ++x ){ frame.KEY[x] = bf[x]; }
             }
 
         }
@@ -638,7 +634,7 @@ namespace nodepp { namespace _ws_ {
         while ( frame.LEN > 0 ){ sz = min( sx, frame.LEN );
         coWait( str->_read_( bf, sz, len )==1 );
 
-        if( frame.MSK ){ for( ulong x=0; x<len; x++ ){
+        if( frame.MSK ){ for( ulong x=0; x<len; ++x ){
             bf[x]=bf[x]^frame.KEY[key]; key=(key+1)%4;
         }}
 
@@ -664,20 +660,18 @@ namespace nodepp { namespace _ws_ {
                 if( !string::is_print(bf[x]) ){ b=1; break; }
             }   bfx[idx] = b ? (char) 0b10000010 : (char) 0b10000001;
 
-            idx++;
-
-            if ( sx < 126 ){
-                bfx[idx] = (uchar)(byt[byt.size()-1]); idx++;
+            ++idx; if ( sx < 126 ){
+                bfx[idx] = (uchar)(byt[byt.size()-1]); ++idx;
             } elif ( sx < 65536 ){
-                bfx[idx] = (uchar)( 126 ); idx++;
-                bfx[idx] = (uchar)(byt[byt.size()-2]); idx++;
-                bfx[idx] = (uchar)(byt[byt.size()-1]); idx++;
+                bfx[idx] = (uchar)( 126 ); ++idx;
+                bfx[idx] = (uchar)(byt[byt.size()-2]); ++idx;
+                bfx[idx] = (uchar)(byt[byt.size()-1]); ++idx;
             } else {
-                bfx[idx] = (uchar)( 127 ); idx++;
-                bfx[idx] = (uchar)(byt[byt.size()-4]); idx++;
-                bfx[idx] = (uchar)(byt[byt.size()-3]); idx++;
-                bfx[idx] = (uchar)(byt[byt.size()-2]); idx++;
-                bfx[idx] = (uchar)(byt[byt.size()-1]); idx++;
+                bfx[idx] = (uchar)( 127 ); ++idx;
+                bfx[idx] = (uchar)(byt[byt.size()-4]); ++idx;
+                bfx[idx] = (uchar)(byt[byt.size()-3]); ++idx;
+                bfx[idx] = (uchar)(byt[byt.size()-2]); ++idx;
+                bfx[idx] = (uchar)(byt[byt.size()-1]); ++idx;
             }
 
             return string_t( &bfx, idx );

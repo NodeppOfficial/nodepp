@@ -10,7 +10,6 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #pragma once
-#include "pipe.cpp"
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -30,33 +29,34 @@ protected:
         int     state =0;
     };  ptr_t<NODE> obj;
 
-    template< class T >
-    void _init_( const string_t& path, T& arg, T& env ) {
+    void _init_( const string_t& path, array_t<string_t> arg, array_t<string_t> env ) {
 
         SECURITY_ATTRIBUTES sa;
                             sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-                            sa.lpSecurityDescriptor = NULL;
+                            sa.lpSecurityDescriptor = NULL; 
                             sa.bInheritHandle = TRUE;
 
-        HANDLE fda[2]; CreatePipe( &fda[0], &fda[1], &sa, CHUNK_SIZE, FILE_FLAG_OVERLAPPED, FILE_FLAG_OVERLAPPED );
-        HANDLE fdb[2]; CreatePipe( &fdb[0], &fdb[1], &sa, CHUNK_SIZE, FILE_FLAG_OVERLAPPED, FILE_FLAG_OVERLAPPED );
-        HANDLE fdc[2]; CreatePipe( &fdc[0], &fdc[1], &sa, CHUNK_SIZE, FILE_FLAG_OVERLAPPED, FILE_FLAG_OVERLAPPED );
+        HANDLE fda[2]; CreatePipe( &fda[0], &fda[1], &sa, CHUNK_SIZE );
+        HANDLE fdb[2]; CreatePipe( &fdb[0], &fdb[1], &sa, CHUNK_SIZE );
+        HANDLE fdc[2]; CreatePipe( &fdc[0], &fdc[1], &sa, CHUNK_SIZE );
 
         ZeroMemory(&obj->si, sizeof(STARTUPINFO));
         ZeroMemory(&obj->pi, sizeof(PROCESS_INFORMATION));
-                    obj->si.cb         = sizeof( STARTUPINFO );
-                    obj->si.hStdInput  = fda[0];
-                    obj->si.hStdError  = fdc[1];
-                    obj->si.hStdOutput = fdb[1];
-                    obj->si.dwFlags   |= STARTF_USESTDHANDLES;
+                    obj->si.cb        = sizeof( STARTUPINFO );
+                    obj->si.hStdInput = fda[0];
+                    obj->si.hStdError = fdc[1];
+                    obj->si.hStdOutput= fdb[1];
+                    obj->si.dwFlags  |= STARTF_USESTDHANDLES;
 
-        auto cmd = arg.join(" "); auto ven = env.join("\0");
-        auto dta = LPTSTR( ven.empty() ? NULL : ven.get() );
+        arg.unshift( path ); 
+        auto CMD = arg.join( string::space() ); 
+        auto ENV = env.join( string::null () );
 
-        obj->fd = ::CreateProcess( NULL, cmd.data(), NULL, NULL, 1, 0, dta, NULL, &obj->si, &obj->pi );
-        WaitForSingleObject( obj->pi.hProcess, 0 ); WaitForSingleObject( obj->pi.hThread, 0 );
+        obj->fd = ::CreateProcess( NULL, CMD.get(), NULL, NULL, 1, 0, ENV.get(), NULL, &obj->si, &obj->pi );
+        WaitForSingleObject( obj->pi.hProcess, 0 ); 
+        WaitForSingleObject( obj->pi.hThread , 0 );
 
-        if ( obj->fd != 0 ){ // Parent process
+        if( obj->fd != 0 ){
             obj->std_input  = { fda[1] }; ::CloseHandle( fda[0] );
             obj->std_output = { fdb[0] }; ::CloseHandle( fdb[1] );
             obj->std_error  = { fdc[0] }; ::CloseHandle( fdc[1] );
@@ -83,34 +83,31 @@ public:
     event_t<string_t>  onDout;
     event_t<string_t>  onDerr;
 
-    virtual ~popen_t() noexcept {
-        if( obj.count() > 1 ){ return; }
-        if( obj->state == 0 ){ return; } free();
+    popen_t( const string_t& path, const initializer_t<string_t>& args, const initializer_t<string_t>& envs )
+    : obj( new NODE() ) { _init_( path, args, envs ); }
+
+    popen_t( const string_t& path, const initializer_t<string_t>& args )
+    : obj( new NODE() ) { _init_( path, args, nullptr ); }
+
+    popen_t( const string_t& path ) 
+    : obj( new NODE() ) { auto cmd = regex::match_all( path, "[^ ]+" );
+        if ( cmd.empty() ){ throw except_t("invalid command"); }
+        _init_( cmd[0], cmd.slice(1), nullptr );
     }
 
-    template< class... T >
-    popen_t( const string_t& path, const initializer_t<string_t>& args ) : obj( new NODE() ) {
-        array_t<const char*> arg; array_t<const char*> env; bool y=0;
-
-        for ( auto x : args ) {
-          if( x != nullptr && !y ) arg.push( x.get() );
-        elif( x != nullptr &&  y ) env.push( x.get() ); else y =! y; }
-
-        _init_( path, arg, env );
-    }
+   ~popen_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
     popen_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    virtual void free() const noexcept {
+    void free() const noexcept {
         
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
         if( obj->state == -2 ){ return; } close(); obj->state = -2;
             obj->std_error.close(); obj->std_output.close();
             obj->std_input.close(); onClose.emit(); kill();
-
-    //  onClose .clear(); onDrain.clear();
+    
         onResume.clear(); onError.clear(); 
         onStop  .clear(); onOpen .clear();
         onData  .clear(); onDout .clear(); 
@@ -121,36 +118,39 @@ public:
     /*─······································································─*/
 
     int next() const noexcept {
-        if( std_output().is_closed() ){ close(); return -1; }
-        if( std_error() .is_closed() ){ close(); return -1; }
-        if( std_input() .is_closed() ){ close(); return -1; }
-    coStart; onOpen.emit(); coYield(1);
+    coStart 
+    
+        while( !is_closed() ){ 
+        onOpen.emit(); coYield(1);
 
-        if((*_read1)(&std_output())==1 ){ coGoto(2); }
-        if(  _read1->state <= 0 )       { coGoto(2); }
+        if((*_read1)(&std_output())==1){ coGoto(2); }
+        if(  _read1->state <= 0 )      { coGoto(2); }
         onData.emit(_read1->data);
-        onDout.emit(_read1->data);        coGoto(2);
+        onDout.emit(_read1->data);       coGoto(2); 
 
         coYield(2);
+        if( !is_alive()&&_read1->state<=0 ){ break; }
 
         if((*_read2)(&std_error())==1 ){ coGoto(1); }
         if(  _read2->state <= 0 )      { coGoto(1); }
         onData.emit(_read2->data);
         onDerr.emit(_read2->data);       coGoto(1);
 
+        }
+
     coStop
     }
 
     /*─······································································─*/
 
-    bool is_available() const noexcept { return is_closed() == false; }
-    bool is_closed()    const noexcept { return obj->state <= 0; }
-    int get_fd()        const noexcept { return obj->fd; }
-
     bool is_alive() const noexcept { DWORD exitCode;
-        if( GetExitCodeProcess(obj->pi.hProcess,&exitCode) ) {
-        if( exitCode == STILL_ACTIVE ) { return true; }      } return false;
+        if( GetExitCodeProcess(obj->pi.hProcess,&exitCode) ){
+        if( exitCode == STILL_ACTIVE ) { return true; }     } return false;
     }
+
+    bool is_available() const noexcept { return is_closed()== false; }
+    bool is_closed()    const noexcept { return obj->state <= 0; }
+    int  get_fd()       const noexcept { return obj->fd; }
 
     /*─······································································─*/
 

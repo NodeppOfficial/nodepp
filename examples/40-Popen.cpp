@@ -5,8 +5,7 @@ using namespace nodepp;
 
 void onMain(){
 
-    array_t<string_t> cmd ({ "curl", "http://www.google.com/", "-Ls" });
-    auto pid = popen::async( cmd[0], cmd );
+    auto pid = popen::async( "curl https://www.google.com -Ls" );
 
     pid.onData([]( string_t data ){ console::log( data ); });
     pid.onClose([=](){ console::log("done"); });

@@ -29,7 +29,7 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 #define onMain INIT(); int main( int argc, char** args ) { \
    process::start( argc,args ); INIT(); \
-   process::stop (); return 0;          \
+   process::stop(); return 0;           \
 }  void INIT
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -94,6 +94,7 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 #define _FILE_  __FILE__
 #define _LINE_  __LINE__
 #define _TIME_  __TIME__
+bool    _EXIT_ = false;
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -102,7 +103,7 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 #define CHUNK_SIZE      65536
 
 #ifndef MAX_PATH
-#define MAX_PATH 1024 // 0
+#define MAX_PATH 1024
 #endif
 
 #ifndef TIMEOUT
@@ -112,8 +113,8 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #define NODEPP_KERNEL_WINDOWS 4
-#define NODEPP_KERNEL_POSIX   3
-#define NODEPP_KERNEL_ARDUINO 2
+#define NODEPP_KERNEL_ARDUINO 3
+#define NODEPP_KERNEL_POSIX   2
 #define NODEPP_KERNEL_WASM    1
 #define NODEPP_KERNEL_UNKNOWN 0
 
@@ -141,12 +142,12 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 #define NODEPP_OS_WINDOWS 9
 #define NODEPP_OS_ANDROID 8
-#define NODEPP_OS_IOS     7
-#define NODEPP_OS_TIZEN   6
-#define NODEPP_OS_APPLE   5
-#define NODEPP_OS_FRBSD   4
-#define NODEPP_OS_LINUX   3
-#define NODEPP_OS_UNIX    2
+#define NODEPP_OS_TIZEN   7
+#define NODEPP_OS_APPLE   6
+#define NODEPP_OS_FRBSD   5
+#define NODEPP_OS_LINUX   4
+#define NODEPP_OS_UNIX    3
+#define NODEPP_OS_IOS     2
 #define NODEPP_OS_ARDUINO 1
 #define NODEPP_OS_UNKNOWN 0
 
@@ -239,10 +240,11 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define NODEPP_POLL_WPOLL 3
-#define NODEPP_POLL_KPOLL 2
-#define NODEPP_POLL_EPOLL 1
-#define NODEPP_POLL_POLL  0
+#define NODEPP_POLL_WPOLL 4
+#define NODEPP_POLL_KPOLL 3
+#define NODEPP_POLL_EPOLL 2
+#define NODEPP_POLL_POLL  1
+#define NODEPP_POLL_NONE  0
 
 #ifndef    _POLL
 #if   _OS == NODEPP_OS_WINDOWS

@@ -178,11 +178,6 @@ namespace nodepp { namespace process {
 
     /*─······································································─*/
 
-    template< class... T >
-    void* add( const T&... args ){ return process::loop::add( args... ); }
-
-    /*─······································································─*/
-
     int next(){
     coStart
 
@@ -196,8 +191,11 @@ namespace nodepp { namespace process {
 
     /*─······································································─*/
 
+    template< class... T >
+    void* add( const T&... args ){ return process::loop::add( args... ); }
+
     template< class T, class... V >
-    void await( T cb, const V&... args ){ while( cb( args... )!=-1 ){ next(); } }
+    int await( T cb, const V&... args ){ while( cb( args... )!=-1 ){ next(); } return 1; }
 
 }}
 

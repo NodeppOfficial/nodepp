@@ -39,10 +39,10 @@ protected:
     /*─······································································─*/
 
     template< class T > void add_socket( T& cli ) const noexcept {
-        auto self = type::bind( this ); process::poll::add([=](){
+        auto self = type::bind(this); process::poll::add([=](){
              self->onSocket.emit(cli); self->obj->func(cli);
-             return -1;
-        });
+        if ( cli.is_available() ){ self->onConnect.emit(cli); } 
+        return -1; });
     }
 
     int next() const noexcept { if( obj->state==0 ){ return -1; }
@@ -74,7 +74,6 @@ public: tls_t() noexcept : obj( new NODE() ) {}
     /*─······································································─*/
 
     void     close() const noexcept { if(obj->state<=0){return;} obj->state=-1; onClose.emit(); }
-
     bool is_closed() const noexcept { return obj == nullptr ? 1: obj->state<=0; }
 
     /*─······································································─*/
@@ -152,9 +151,14 @@ public: tls_t() noexcept : obj( new NODE() ) {}
                 _EERROR(self->onError,"Error while handshaking TLS");
             coEnd; } cb( sk );
 
-            sk.onClose.once([=](){ self->close(); });
-            self->onSocket.emit(sk); sk.onOpen.emit();
-            self->onOpen.emit(sk); self->obj->func(sk);
+            sk.onDrain.once([=](){ self->close(); });
+            self->onSocket.emit(sk); self->obj->func(sk);
+
+            if( sk.is_available() ){ 
+                sk.onOpen      .emit(  );
+                self->onOpen   .emit(sk); 
+                self->onConnect.emit(sk); 
+            }
 
         coStop
         });
@@ -174,10 +178,9 @@ public: tls_t() noexcept : obj( new NODE() ) {}
     /*─······································································─*/
 
     void free() const noexcept {
-        if( is_closed() ){ return; } close();
+        if( is_closed() ){ return; }close();
         onConnect.clear(); onSocket.clear();
         onError  .clear(); onOpen  .clear();
-    //  onClose  .clear();
     }
 
 };
@@ -186,33 +189,27 @@ public: tls_t() noexcept : obj( new NODE() ) {}
 
 namespace tls {
 
-    tls_t server( const tls_t& skt ){ skt.onSocket([=]( ssocket_t cli ){
-    process::task::add([=](){
-        skt.onConnect.once([=]( ssocket_t cli ){ stream::pipe(cli); });
-        cli.onDrain  .once([=](){ cli.free(); });
-        skt.onConnect.emit(cli);
-    return -1; }); }); return skt; }
+    tls_t server( const tls_t& skt ){ skt.onConnect([=]( ssocket_t cli ){
+        cli.onDrain.once([=](){ cli.free(); }); stream::pipe(cli);
+    }); return skt; }
 
     /*─······································································─*/
 
     tls_t server( const ssl_t* ctx, agent_t* opt=nullptr ){
-        auto skt = tls_t( [=]( ssocket_t /*unused*/ ){}, ctx, opt );
+        auto skt = tls_t( [=]( ssocket_t ){}, ctx, opt );
         tls::server( skt ); return skt;
     }
 
     /*─······································································─*/
 
-    tls_t client( const tls_t& skt ){ skt.onSocket.once([=]( ssocket_t cli ){
-    process::task::add([=](){
-        skt.onConnect.once([=]( ssocket_t cli ){ stream::pipe(cli); });
-        cli.onDrain  .once([=](){ cli.free(); });
-        skt.onConnect.emit(cli);
-    return -1; }); }); return skt; }
+    tls_t client( const tls_t& skt ){ skt.onConnect.once([=]( ssocket_t cli ){
+        cli.onDrain.once([=](){ cli.free(); }); stream::pipe(cli);
+    }); return skt; }
 
     /*─······································································─*/
 
     tls_t client( const ssl_t* ctx, agent_t* opt=nullptr ){
-        auto skt = tls_t( [=]( ssocket_t /*unused*/ ){}, ctx, opt );
+        auto skt = tls_t( [=]( ssocket_t ){}, ctx, opt );
         tls::client( skt ); return skt;
     }
 

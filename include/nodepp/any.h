@@ -22,7 +22,7 @@ public: any_t() noexcept {};
     template< class T >
     any_t( const T& f ) noexcept { set( f ); }
 
-    virtual ~any_t() noexcept = default;
+   ~any_t() noexcept {}
 
     /*─······································································─*/
 
@@ -33,7 +33,7 @@ public: any_t() noexcept {};
 
     /*─······································································─*/
 
-    virtual void free() const noexcept { any_ptr.free(); }
+    void free() const noexcept { any_ptr.free(); }
 
     /*─······································································─*/
 

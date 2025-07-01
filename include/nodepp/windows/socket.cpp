@@ -63,7 +63,6 @@ protected:
 
         SOCKET       fd       = INVALID_SOCKET;
         ulong        range[2] = { 0, 0 };
-        bool         used     = false;
         bool         keep     = false;
         int          state    = 0;
         ptr_t<char>  buffer;
@@ -98,8 +97,6 @@ public: socket_t() noexcept { _socket_::start_device(); }
     event_t<>          onOpen;
     event_t<>          onPipe;
     event_t<string_t>  onData;
-    event_t<>          onUse;
-    event_t<>          onRelease;
 
     /*─······································································─*/
 
@@ -283,16 +280,13 @@ public: socket_t() noexcept { _socket_::start_device(); }
     bool     is_closed() const noexcept { return obj->state <  0 ||  is_feof() || obj->fd == INVALID_SOCKET; }
     bool       is_feof() const noexcept { return obj->feof  <= 0 && obj->feof  != -2; }
     bool  is_available() const noexcept { return obj->state >= 0 && !is_closed(); }
-    bool       is_used() const noexcept { return obj->used; }
     bool is_persistent() const noexcept { return obj->keep; }
-    bool     is_server() const noexcept { return obj->srv; }
+    bool     is_server() const noexcept { return obj->srv;  }
 
     /*─······································································─*/
 
     void  resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume .emit(); }
     void    stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop   .emit(); }
-    void     use() const noexcept { if(obj->used == 1) { return; } obj->used = 1; onUse    .emit(); }
-    void release() const noexcept { if(obj->used == 0) { return; } obj->used = 0; onRelease.emit(); }
     void   reset() const noexcept { if(obj->state!=-2) { return; } resume(); pos(0); }
     void   flush() const noexcept { obj->buffer.fill(0); }
 
@@ -301,7 +295,7 @@ public: socket_t() noexcept { _socket_::start_device(); }
     void close() const noexcept {
         if( obj->state< 0 ){ return; }
         if( obj->keep== 1 ){ stop(); goto DONE; }
-            obj->state=-1; DONE:; release(); onDrain.emit();
+            obj->state=-1; DONE:; onDrain.emit();
     }
 
     /*─······································································─*/

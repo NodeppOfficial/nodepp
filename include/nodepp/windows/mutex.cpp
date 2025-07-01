@@ -45,7 +45,7 @@ public:
           { process::error("Cant Start Mutex"); }
     }
 
-    virtual ~mutex_t() noexcept {
+   ~mutex_t() noexcept {
         if( mutex->state== 0 )          { return;   }
         if( mutex->addr == (void*)this ){ unlock(); }
         if( mutex.count() > 1 )         { return;   }

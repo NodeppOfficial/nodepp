@@ -26,6 +26,7 @@ One of the standout features of Nodepp is its 100% asynchronous architecture, po
 
 - 📌: Include a **build-in JSON** parser / stringify system.
 - 📌: Include a **build-in RegExp** engine for processing text strings.
+- 📌: Include Support for **UTF** manipulation | **UTF8 - UTF16 - UTF32**
 - 📌: Include a **build-in System** that make every object **Async Task** safety.
 - 📌: Include a **Smart Pointer** base **Garbage Collector** to avoid **Memory Leaks**.
 - 📌: Include support for **Reactive Programming** based on **Events** and **Observers**.

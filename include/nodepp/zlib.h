@@ -50,7 +50,7 @@ public:
     
     /*─······································································─*/
     
-    virtual ~zlib_t() noexcept { if( obj.count()>1 || obj->state==0 ){ return; } free(); }
+   ~zlib_t() noexcept { if( obj.count()>1 || obj->state==0 ){ return; } free(); }
 
     zlib_t( int type=0, ulong size=CHUNK_SIZE ) noexcept : obj( new NODE ) { 
         obj->bff  = ptr_t<char>( size ); 
@@ -59,7 +59,7 @@ public:
 
     /*─······································································─*/
     
-    virtual void free() const noexcept {
+    void free() const noexcept {
         if( obj->state == 0 ){ return; } obj->state = 0;
         if( obj->mode  ==-1 ){ inflateEnd( &obj->fd ); }
         if( obj->mode  == 1 ){ deflateEnd( &obj->fd ); }

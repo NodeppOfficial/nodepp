@@ -25,7 +25,7 @@ namespace nodepp { namespace encoder { namespace key {
 
     string_t generate( const string_t& alph, int x=32 ){ ulong idx=0;
         string_t data ( (ulong)x, '\0' ); for( auto &x: data ){
-        x = alph[rand()%(alph.size())]; idx++; } return data;
+        x = alph[rand()%(alph.size())]; ++idx; } return data;
     }
 
     string_t generate( int x=32 ) { return generate( BASE64, x ); }
@@ -53,17 +53,17 @@ namespace nodepp { namespace encoder { namespace hash {
 namespace nodepp { namespace encoder { namespace XOR {
 
     string_t get( string_t data, const string_t& key ){
-        auto  tmp = data.copy();
-        ulong pos = 0; forEach( x, tmp ) {
-            x = x ^ key[pos]; pos++;
+        auto  tmp= data.copy();
+        ulong pos= 0; forEach( x, tmp ) {
+            x = x^ key[pos]; ++pos;
             pos %= key.size();
         }   return tmp;
     }
 
     string_t set( string_t data, const string_t& key ){
-        auto  tmp = data.copy();
-        ulong pos = 0; forEach( x, tmp ) {
-            x = x ^ key[pos]; pos++;
+        auto  tmp= data.copy();
+        ulong pos= 0; forEach( x, tmp ) {
+            x = x^ key[pos]; ++pos;
             pos %= key.size();
         }   return tmp;
     }
@@ -85,14 +85,14 @@ namespace nodepp { namespace encoder { namespace bytes {
     template< class T >
     ptr_t<uchar> get( T num ){
         ptr_t<uchar> out ( sizeof(num), 0 );
-        for( ulong y=0; y<out.size(); y++ ){
+        for( ulong y=0; y<out.size(); ++y ){
              out[y] = num >> ( 8*(out.size()-y-1) );
         }    return out;
     }
 
     template< class T >
     T set( const ptr_t<uchar>& num ){ T out;
-      for( ulong y=0; y<num.size(); y++ ){
+      for( ulong y=0; y<num.size(); ++y ){
            out = out << 8 | num[y];
       }    return out;
     }
@@ -100,10 +100,10 @@ namespace nodepp { namespace encoder { namespace bytes {
     /*─······································································─*/
 
     template< class T >
-    ptr_t<uchar> btoa( T num ) { return set( num ); }
+    ptr_t<uchar> atob( T num ) { return get( num ); }
 
     template< class T >
-    T atob( const ptr_t<uchar>& num ) { return set<T>( num ); }
+    T btoa( const ptr_t<uchar>& num ) { return set<T>( num ); }
 
 }}}
 
@@ -225,6 +225,16 @@ namespace nodepp { namespace encoder { namespace buffer {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+namespace nodepp { namespace encoder { namespace base16 {
+
+    string_t atob( const string_t& inp ) { return buffer::buff2hex( inp ); }
+
+    string_t btoa( const string_t& inp ) { return buffer::hex2buff( inp ); }
+
+}}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 namespace nodepp { namespace encoder { namespace base64 {
 
     string_t get( const string_t &in ) {
@@ -250,7 +260,7 @@ namespace nodepp { namespace encoder { namespace base64 {
         queue_t<char> out; int pos1=0, pos2=-8;
         array_t<int> T( 256, -1 );
 
-        for ( int i=0; i<64; i++ ) T[BASE64[i]] = i;
+        for ( int i=0; i<64; ++i ) T[BASE64[i]] = i;
         for ( uchar c: in ) { if ( T[c]==-1 ) break;
             pos1 = ( pos1 << 6 ) + T[c]; pos2 += 6;
             if (pos2 >= 0) {

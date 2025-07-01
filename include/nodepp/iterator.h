@@ -30,7 +30,7 @@ namespace nodepp { namespace iterator {
 
     template< class U, class T, class... V > 
     long count( U func, const T& argc, const V&... args ){ ulong n = 0;
-	    iterator::map([&]( T argc ){ if( func(argc) ) n++; }, argc, args... ); return n;
+	    iterator::map([&]( T argc ){ if( func(argc) ){ ++n; }}, argc, args... ); return n;
     }
 
     template< class U, class T, class... V > 
@@ -45,7 +45,7 @@ namespace nodepp { namespace iterator {
 
     template< class U, class T, class... V > 
     bool every( U func, const T& argc, const V&... args ){ ulong n = 0;
-	    iterator::map([&]( T argc ){ if( func(argc) ) n++; }, argc, args... ); 
+	    iterator::map([&]( T argc ){ if( func(argc) ){ ++n; }}, argc, args... ); 
 	    return ( n == (sizeof...(V)+1) );
     }
 
@@ -54,7 +54,7 @@ namespace nodepp { namespace iterator {
 
     template< class U, class T, class... V > 
     bool some( U func, const T& argc, const V&... args ){ ulong n = 0;
-	    iterator::map([&]( T argc ){ if( func(argc) ) n++; }, argc, args... ); 
+	    iterator::map([&]( T argc ){ if( func(argc) ){ ++n; }}, argc, args... ); 
 	    return ( n > 0 );
     }
 
@@ -63,7 +63,7 @@ namespace nodepp { namespace iterator {
 
     template< class U, class T, class... V > 
     bool none( U func, const T& argc, const V&... args ){ ulong n = 0;
-	    iterator::map([&]( T argc ){ if( func(argc) ) n++; }, argc, args... ); 
+	    iterator::map([&]( T argc ){ if( func(argc) ){ ++n; }}, argc, args... ); 
 	    return ( n == 0 );
     }
     
@@ -92,7 +92,7 @@ namespace nodepp { namespace string {
 
     template< class U, class T, class... V > 
     long count( U func, const T& argc, const V&... args ){ ulong n = 0;
-	    string::map([&]( T argc ){ if( func(argc) ) n++; }, argc, args... ); return n;
+	    string::map([&]( T argc ){ if( func(argc) ){ ++n; }}, argc, args... ); return n;
     }
 
     template< class U, class T, class... V > 
@@ -107,7 +107,7 @@ namespace nodepp { namespace string {
 
     template< class U, class T, class... V > 
     bool every( U func, const T& argc, const V&... args ){ ulong n = 0;
-	    string::map([&]( T argc ){ if( func(argc) ) n++; }, argc, args... ); 
+	    string::map([&]( T argc ){ if( func(argc) ){ ++n; }}, argc, args... ); 
 	    return ( n == (sizeof...(V)+1) );
     }
 
@@ -116,7 +116,7 @@ namespace nodepp { namespace string {
 
     template< class U, class T, class... V > 
     bool some( U func, const T& argc, const V&... args ){ ulong n = 0;
-	    string::map([&]( T argc ){ if( func(argc) ) n++; }, argc, args... ); 
+	    string::map([&]( T argc ){ if( func(argc) ){ ++n; }}, argc, args... ); 
 	    return ( n > 0 );
     }
 
@@ -125,7 +125,7 @@ namespace nodepp { namespace string {
 
     template< class U, class T, class... V > 
     bool none( U func, const T& argc, const V&... args ){ ulong n = 0;
-	    string::map([&]( T argc ){ if( func(argc) ) n++; }, argc, args... ); 
+	    string::map([&]( T argc ){ if( func(argc) ){ ++n; }}, argc, args... ); 
 	    return ( n == 0 );
     }
     
@@ -138,7 +138,7 @@ namespace nodepp { namespace string {
     string_t join( const string_t& c, const T& argc, const V&... args ){
         array_t<string_t> list; string_t result; 
             map([&]( string_t argc ){ list.push( argc ); }, argc, args... );
-                for( ulong x=0; x<list.size(); x++ ){
+                for( ulong x=0; x<list.size(); ++x ){
                 result += to_string(list[x]) + ((x==list.last()) ? "" : c);
             }   return result;
     }

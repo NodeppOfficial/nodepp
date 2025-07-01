@@ -29,9 +29,10 @@ protected:
 
     static void* callback( void* arg ){
         auto self = type::cast<worker_t>(arg); self->obj->state=1;
-        while( self->obj->cb.emit()>=0 ){ worker::yield(); }
-        self->obj->mtx.lock(); process::threads--; self->obj->mtx.unlock();
-        delete self;  worker::exit(); return nullptr;
+        while( self->obj->cb.emit()>=0 ){ worker::yield(); } 
+        self->obj->state=0; self->obj->mtx.lock  (); 
+        --process::threads; self->obj->mtx.unlock();
+        delete self; worker::exit(); return nullptr;
     }
 
 public: worker_t() noexcept : obj( new NODE ) {}
@@ -69,14 +70,30 @@ public: worker_t() noexcept : obj( new NODE ) {}
     
     /*─······································································─*/
 
-    int run() const noexcept {
-         if( obj->state == 1 ){ return 0; } auto self = new worker_t( *this );
+    int add() const noexcept {
+        if ( obj->state == 1 ){ return 0; } auto self = new worker_t( *this );
 
         auto pth = pthread_create( &obj->id, NULL, &callback, (void*)self );
         if ( pth!= 0 ){ delete self; return -1; }
 
-        process::threads++; pthread_detach( obj->id );
-        while( obj->state==0 ){ /**/ } 
+        ++process::threads; pthread_detach( obj->id );
+        while( obj->state==0 ){ /*------------*/ } 
+    //  while( obj->state==1 ){ process::next(); } 
+
+        return 1;
+    }
+
+    /*─······································································─*/
+
+    int await() const noexcept {
+        if ( obj->state == 1 ){ return 0; } auto self = new worker_t( *this );
+
+        auto pth = pthread_create( &obj->id, NULL, &callback, (void*)self );
+        if ( pth!= 0 ){ delete self; return -1; }
+
+        ++process::threads; pthread_detach( obj->id );
+        while( obj->state==0 ){ /*------------*/ } 
+        while( obj->state==1 ){ process::next(); } 
 
         return 1;
     }

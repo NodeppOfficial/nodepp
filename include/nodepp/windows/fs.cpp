@@ -21,9 +21,9 @@ namespace nodepp { namespace fs {
 
     /*─······································································─*/
 
-    file_t std_input ( const ulong& _size=CHUNK_SIZE ){ return file_t( "CONIN$" , "r", _size ); }
-    file_t std_output( const ulong& _size=CHUNK_SIZE ){ return file_t( "CONOUT$", "w", _size ); }
-    file_t std_error ( const ulong& _size=CHUNK_SIZE ){ return file_t( "CONERR$", "w", _size ); }
+    file_t std_input ( const ulong& _size=CHUNK_SIZE ){ return file_t( GetStdHandle(STD_INPUT_HANDLE) , _size ); }
+    file_t std_output( const ulong& _size=CHUNK_SIZE ){ return file_t( GetStdHandle(STD_OUTPUT_HANDLE), _size ); }
+    file_t std_error ( const ulong& _size=CHUNK_SIZE ){ return file_t( GetStdHandle(STD_ERROR_HANDLE) , _size ); }
 
     /*─······································································─*/
 

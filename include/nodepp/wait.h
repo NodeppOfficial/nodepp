@@ -17,13 +17,19 @@
 namespace nodepp { template< class T, class... A > class wait_t { 
 protected:
 
-    struct NODE {  bool        *out;
+    struct DONE {  bool        *out;
         function_t<bool,T,A...> clb;
-    };  queue_t<NODE> obj;
+    };  
+    
+    struct NODE {
+        bool skip = false;
+        queue_t<DONE> que;
+    };  ptr_t<NODE>   obj;
 
 public:
 
-    wait_t() noexcept {} ~wait_t() noexcept { free(); }
+    wait_t() noexcept : obj( new NODE() ) {} 
+   ~wait_t() noexcept { free(); }
     
     /*─······································································─*/
 
@@ -34,48 +40,52 @@ public:
     void off( void* address ) const noexcept { process::clear( address ); }
 
     void* once( T val, function_t<void,A...> func ) const noexcept {
-        ptr_t<bool> out = new bool(1); NODE ctx;
+        ptr_t<bool> out = new bool(1); DONE ctx;
         ctx.out=&out; ctx.clb=([=]( T arg, A... args ){
             if( val == arg ){ return true;   }
             if(*out != 0   ){ func(args...); }
             if( out.null() ){ return false;  } *out = 0; return *out;
-        }); obj.push(ctx); return &out;
+        }); obj->que.push(ctx); return &out;
     }
 
     void* on( T val, function_t<void,A...> func ) const noexcept {
-        ptr_t<bool> out = new bool(1); NODE ctx;
+        ptr_t<bool> out = new bool(1); DONE ctx;
         ctx.out=&out; ctx.clb=([=]( T arg, A... args ){
             if( val == arg ){ return true;   }
             if(*out != 0   ){ func(args...); }
             if( out.null() ){ return false;  } return *out;
-        }); obj.push(ctx); return &out;
+        }); obj->que.push(ctx); return &out;
     }
     
     /*─······································································─*/
 
-    bool  empty() const noexcept { return obj.empty(); }
-    ulong  size() const noexcept { return obj.size (); }
+    bool  empty() const noexcept { return obj->que.empty(); }
+    ulong  size() const noexcept { return obj->que.size (); }
 
     /*─······································································─*/
 
     void free() const noexcept {
-        auto x=obj.first(); while( x!=nullptr && !obj.empty() ){
-        auto y=x->next; if( *x->data.out==0 ){ obj.erase(x); } x=y; }
+        auto x=obj->que.first(); while( x!=nullptr && !obj->que.empty() ){
+        auto y=x->next; if( *x->data.out==0 ){ obj->que.erase(x); } x=y; }
     }
 
-    void clear() const noexcept {
-        auto x=obj.first(); while( x!=nullptr && !obj.empty() ){
+    void clear() const noexcept { auto x=obj->que.first(); 
+        while( x!=nullptr && !obj->que.empty() ){
         auto y=x->next; *x->data.out=0; x=y;
     }}
     
     /*─······································································─*/
 
     void emit( const T& arg, const A&... args ) const noexcept {
-        auto x=obj.first(); while( x!=nullptr && !obj.empty() ){
-        auto y=x->next; 
+        if( obj->skip ){ obj->skip=false; return; } auto x=obj->que.first(); 
+        while( x!=nullptr && !obj->que.empty() ){   auto y=x->next; 
             if( *x->data.out == 0 )        { x=y; continue; }
             if( !x->data.clb(arg,args...) ){ x=y; continue; } x=y; }
     }
+
+    /*─······································································─*/
+
+    void skip() const noexcept { obj->skip = true; }
     
 };}
 
