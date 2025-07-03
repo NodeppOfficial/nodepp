@@ -28,6 +28,8 @@ namespace nodepp { namespace process {
     template< class... T >
     void error( const T&... msg ){ _ERROR( msg... ); }
 
+    bool is_exit(){ return _EXIT_; }
+
 }}
 
 /*────────────────────────────────────────────────────────────────────────────*/

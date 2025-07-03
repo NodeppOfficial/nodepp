@@ -51,11 +51,9 @@ public:
 
     /*─······································································─*/
 
-    int next () noexcept { return emit(); }
-
-    int emit () noexcept {
+    int next () noexcept {
         static int c=0; static EPOLLFD x;
-    coStart
+    coBegin
 
         if( (c=epoll_wait( obj->pd, &obj->ev, obj->ev.size(), 0 ))<=0 ) { coEnd; } while( c-->0 ){ x = obj->ev[c];
               if( x.events & EPOLLIN  ){ remove(x);  onRead.emit(x.data.fd); obj->ls={{ 0, x.data.fd }}; onEvent.emit(obj->ls); coNext; }
@@ -63,7 +61,7 @@ public:
             else                       { remove(x); onError.emit(x.data.fd); obj->ls={{-1, x.data.fd }}; onEvent.emit(obj->ls); coNext; }
         }
 
-    coStop
+    coFinish
     };
 
     /*─······································································─*/

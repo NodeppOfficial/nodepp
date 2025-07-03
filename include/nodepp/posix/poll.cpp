@@ -44,11 +44,9 @@ public: poll_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    int next () noexcept { return emit(); }
-
-    int emit () noexcept { 
+    int next () noexcept { 
         static ulong s=0; static POLLFD x;
-    gnStart
+    coBegin
 
         if( obj->ev.empty() )                               { coEnd; }
         if( ::poll( obj->ev.data(), obj->ev.size(), 0 )<=0 ){ coEnd; } 
@@ -59,7 +57,7 @@ public: poll_t() noexcept : obj( new NODE() ) {}
             elif( x.revents & POLLOUT ){ remove(s); onWrite.emit(x.fd); obj->ls={{ 1, x.fd }}; onEvent.emit(obj->ls); coNext; }
         }
 
-    gnStop
+    coFinish
     };
 
     /*─······································································─*/

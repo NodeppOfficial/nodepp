@@ -168,9 +168,9 @@ namespace nodepp { namespace fs {
         if( path.empty()   ){ return; } DIR* dir=opendir(path.c_str());
         if( dir == nullptr ){ return; }
 
-        process::task::add([=](){
+        process::task::add( coroutine::add( COROUTINE(){
             struct dirent* entry;
-        coStart
+        coBegin
 
             while( (entry=readdir(dir)) != NULL ){ do {
     		if( string_t(entry->d_name) == ".." ){ break; }
@@ -178,8 +178,8 @@ namespace nodepp { namespace fs {
                 cb( entry->d_name );
             } while(0); coNext; } closedir(dir);
 
-        coStop
-        });
+        coFinish
+        }));
 
     }
 

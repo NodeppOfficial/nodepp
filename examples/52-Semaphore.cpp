@@ -9,43 +9,41 @@ void onMain(){
     ptr_t<int> x = new int(100);
     semaphore_t sem;
 
-    worker::add([=](){ 
+    worker::add( coroutine::add( COROUTINE(){
         sem.wait( 0 );
-    coStart
+    coBegin
 
         while( *x > 0 ){ *x-=1;
             console::info("Hello World 1:>",*x);
-            worker::delay( 100 ); 
-            sem.release(); coNext;
-        }   sem.release(); 
+            coDelay( 100 ); sem.release(); 
+        coNext; } sem.release();
 
-    coStop
-    });
+    coFinish
+    }));
 
-    worker::add([=](){ 
+    worker::add( coroutine::add( COROUTINE(){
         sem.wait( 1 );
-    coStart
+    coBegin
 
         while( *x > 0 ){ *x-=1;
             console::done("Hello World 2:",*x);
-            worker::delay( 100 ); 
-            sem.release(); coNext;
-        }   sem.release(); 
+            coDelay( 100 ); sem.release(); 
+        coNext; } sem.release(); 
 
-    coStop
-    });
+    coFinish
+    }));
 
-    worker::add([=](){ 
+    worker::add( coroutine::add( COROUTINE(){
         sem.wait( 2 );
-    coStart
+    coBegin
 
         while( *x > 0 ){ *x-=1;
             console::warning("Hello World 3:",*x);
-            worker::delay( 100 ); 
-            sem.release(); coNext;
-        }   sem.release(); 
+            coDelay( 100 ); sem.release(); 
+        coNext; } sem.release();
 
-    coStop
-    });
+    coFinish
+    }));
+
 
 }

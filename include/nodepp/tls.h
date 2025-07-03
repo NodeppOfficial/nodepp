@@ -46,7 +46,7 @@ protected:
     }
 
     int next() const noexcept { if( obj->state==0 ){ return -1; }
-          if( obj->poll.emit()==-1 ){ return -1; } auto x = obj->poll.get_last_poll();
+          if( obj->poll.next()==-1 ){ return -1; } auto x = obj->poll.get_last_poll();
           if( x[0] >= 0 )
             { ssocket_t cli( obj->ctx, x[1] ); cli.set_sockopt( obj->agent ); add_socket(cli); }
         else{ socket_t  cli( x[1] ); cli.free(); } return 1;
@@ -94,8 +94,10 @@ public: tls_t() noexcept : obj( new NODE() ) {}
         if( sk.bind()  <0 ){ _EERROR(onError,"Error while binding TLS");   close(); sk.free(); return; }
         if( sk.listen()<0 ){ _EERROR(onError,"Error while listening TLS"); close(); sk.free(); return; }
 
-        cb( sk ); onOpen.emit( sk ); process::poll::add([=](){
-        coStart
+        cb( sk ); onOpen.emit( sk ); 
+        
+        process::poll::add( coroutine::add( COROUTINE(){
+        coBegin
 
             while( self->obj->accept == -2 ){
                if( self->is_closed()|| sk.is_closed() ){ coGoto(2); }
@@ -110,8 +112,8 @@ public: tls_t() noexcept : obj( new NODE() ) {}
 
             coYield(2); self->close(); sk.free();
 
-        coStop
-        });
+        coFinish
+        }));
 
     }
 
@@ -134,8 +136,8 @@ public: tls_t() noexcept : obj( new NODE() ) {}
         sk.ssl = new ssl_t( obj->ctx, sk.get_fd() );
         sk.ssl->set_hostname( host );
 
-        process::poll::add([=](){
-        coStart
+        process::poll::add( coroutine::add( COROUTINE(){
+        coBegin
 
             coWait( sk._connect()==-2 ); if( sk._connect()<=0 ){
                 _EERROR(self->onError,"Error while connecting TLS");
@@ -143,7 +145,7 @@ public: tls_t() noexcept : obj( new NODE() ) {}
             }
 
             if( self->obj->poll.push_write( sk.get_fd() ) ==0 )
-              { sk.free(); } while( self->obj->poll.emit()==0 ){
+              { sk.free(); } while( self->obj->poll.next()==0 ){
             if( process::now() > sk.get_send_timeout() )
               { coEnd; } coNext; }
 
@@ -160,8 +162,8 @@ public: tls_t() noexcept : obj( new NODE() ) {}
                 self->onConnect.emit(sk); 
             }
 
-        coStop
-        });
+        coFinish
+        }));
 
     }
 

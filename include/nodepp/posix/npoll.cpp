@@ -45,10 +45,9 @@ public: poll_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    int next () noexcept { return emit(); }
-
-    int emit () noexcept { static POLLFD x;
-    gnStart
+    int next () noexcept { 
+        static POLLFD x;
+    coBegin
     
         if( obj->ev.empty() ){ coEnd; } while ( obj->ev.next() ) { x=obj->ev.get()->data;
           if( x.md == 1 ){ onWrite.emit(x.fd); obj->ls={{ 1, x.fd }}; onEvent.emit(x.fd); obj->ev.erase(obj->ev.get()); coNext; }
@@ -56,7 +55,7 @@ public: poll_t() noexcept : obj( new NODE() ) {}
         else             { onError.emit(x.fd); obj->ls={{-1, x.fd }}; onEvent.emit(x.fd); obj->ev.erase(obj->ev.get()); coNext; }
         }
 
-    gnStop
+    coFinish
     };
 
     /*─······································································─*/

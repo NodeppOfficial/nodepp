@@ -5,6 +5,19 @@ using namespace nodepp;
 
 void onMain(){
 
+    // add: a Coroutine Based Timer
+    auto C = timer::add( coroutine::add( COROUTINE(){
+        static uchar x = 100;
+    coBegin
+
+        while( x-->0 ){
+            console::log(" timer task ");
+            coNext;
+        }
+
+    coFinish
+    }) ,1000);
+
     // Interval: a setInterval equivalent
     auto A = timer::interval([=](){ 
         console::done("set interval");
@@ -13,22 +26,9 @@ void onMain(){
     // Timeout: a setTimeout equivalent
     auto B = timer::timeout([=](){
         console::error("set timeout");
-    },10000);
-
-    // add: a Coroutine Based Timer
-    auto C = timer::add([=](){
-        static uchar x = 100;
-    coStart
-
-        while( x-->0 ){
-            console::log(" timer task ");
-            coNext;
-        }
-
-    coStop
-    },10000);
+    },1000);
 
     // Turn off an specific timer
-    timer::clear(A);
+    // timer::clear(A);
 
 }

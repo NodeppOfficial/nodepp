@@ -13,7 +13,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { class popen_t {
+namespace nodepp { class popen_t : public generator_t {
 protected:
 
     ptr_t<_file_::read> _read1 = new _file_::read;
@@ -117,28 +117,24 @@ public:
 
     /*─······································································─*/
 
-    int next() const noexcept {
-    coStart 
-    
-        while( !is_closed() ){ 
+    int next() noexcept {
+    coBegin; if( !is_closed() ){
+
         onOpen.emit(); coYield(1);
 
         if((*_read1)(&std_output())==1){ coGoto(2); }
         if(  _read1->state <= 0 )      { coGoto(2); }
         onData.emit(_read1->data);
-        onDout.emit(_read1->data);       coGoto(2); 
+        onDout.emit(_read1->data);       coYield(2);
 
-        coYield(2);
         if( !is_alive()&&_read1->state<=0 ){ break; }
 
         if((*_read2)(&std_error())==1 ){ coGoto(1); }
         if(  _read2->state <= 0 )      { coGoto(1); }
         onData.emit(_read2->data);
-        onDerr.emit(_read2->data);       coGoto(1);
-
-        }
-
-    coStop
+        onDerr.emit(_read2->data);
+        
+    coGoto(1); } coFinish
     }
 
     /*─······································································─*/

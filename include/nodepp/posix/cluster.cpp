@@ -14,7 +14,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { class cluster_t {
+namespace nodepp { class cluster_t : public generator_t {
 protected:
 
     ptr_t<_file_::read> _read1 = new _file_::read;
@@ -35,7 +35,8 @@ protected:
             int fd[2] = { 0, 0 }; string_t ch = process::env::get("CHILD");
             string::parse( ch.data(), "%d|%d", &fd[0], &fd[1] );
             obj->output= { fd[0] }; obj->input = { fd[1] };
-            obj->error = { STDERR_FILENO }; return;
+            obj->error = { STDERR_FILENO }; 
+            obj->state = 1; return;
         }
 
         int fda[2]; ::pipe( fda );
@@ -115,29 +116,25 @@ public:
 
     /*─······································································─*/
 
-    int next() const noexcept {
-    coStart
-    
-        while( !is_closed() ){ 
+    int next() noexcept {
+    coBegin; if( !is_closed() ){ 
+        
         onOpen.emit(); coYield(1);
 
-        if((*_read1)(&readable())==1){ coGoto(2); }
-        if(  _read1->state <= 0 )    { coGoto(2); }
+        if((*_read1)(&readable())==1)  { coGoto(2); }
+        if(  _read1->state <= 0 )      { coGoto(2); }
         onData.emit(_read1->data);
-        onDout.emit(_read1->data);     coGoto(2); 
+        onDout.emit(_read1->data);
 
-        coYield(2);
-        if( !is_alive()&&_read1->state<=0 ){ break; }
+        coYield(2); if( !is_alive() )  { break; }
         if( process::is_child() )      { coStay(1); }
 
         if((*_read2)(&std_error())==1 ){ coGoto(1); }
         if(  _read2->state <= 0 )      { coGoto(1); }
         onData.emit(_read2->data);
-        onDerr.emit(_read2->data);       coGoto(1);
-
-        }
-    
-    coStop
+        onDerr.emit(_read2->data);
+        
+    coGoto(1); } coFinish
     }
 
     /*─······································································─*/

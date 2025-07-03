@@ -187,8 +187,8 @@ namespace nodepp { namespace fs {
 
         if( hFind == INVALID_HANDLE_VALUE ){ return; }
 
-        process::task::add([=](){
-        coStart
+        process::task::add( coroutine::add( COROUTINE(){
+        coBegin
 
             while( FindNextFileA(hFind,&findData) != 0 ){ do {
         	if( string_t(findData->cFileName)==".." ){ break; }
@@ -198,8 +198,9 @@ namespace nodepp { namespace fs {
 
             FindClose( hFind );
 
-        coStop
-        });
+        coFinish
+        }));
+        
     }
 
     /*─······································································─*/

@@ -24,14 +24,15 @@
     namespace nodepp { namespace popen {
 
         template< class... T > string_t await( const T&... args ){
-            string_t result; auto fp = popen_t( args... ); _stream_::pipe _read;
-            fp.onData([&]( string_t chunk ){ result += chunk; });
-            worker::await( _read, fp.std_output() ); return result;
-        }
+            string_t result; auto pid = type::bind( popen_t( args... ) );
+            pid->onData([&]( string_t chunk ){ result += chunk; });
+            worker::await([&](){ return pid->next(); }); 
+        return result; }
 
         template< class... T > popen_t async( const T&... args ){
-        popen_t pid( args... ); worker::add([=](){ return pid.next(); }); 
-        return pid; }
+            auto pid = type::bind( popen_t( args... ) );
+            worker::add([=](){ return pid->next(); }); 
+        return *pid; }
 
     }}
 
@@ -44,14 +45,15 @@
     namespace nodepp { namespace popen {
 
         template< class... T > string_t await( const T&... args ){
-            string_t result; auto fp = popen_t( args... ); _stream_::pipe _read;
-            fp.onData([&]( string_t chunk ){ result += chunk; });
-            process::await( _read, fp.std_output() ); 
+            string_t result; auto pid = type::bind( popen_t( args... ) );
+            pid->onData([&]( string_t chunk ){ result += chunk; });
+            process::await([&](){ return pid->next(); }); 
         return result; }
 
         template< class... T > popen_t async( const T&... args ){
-        popen_t pid( args... ); process::poll::add([=](){ return pid.next(); }); 
-        return pid; }
+            auto pid = type::bind( popen_t( args... ) );
+            process::poll::add([=](){ return pid->next(); }); 
+        return *pid; }
 
     }}
 

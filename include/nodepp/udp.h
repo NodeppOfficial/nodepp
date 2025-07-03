@@ -69,8 +69,8 @@ public: udp_t() noexcept : obj( new NODE() ) {}
                  sk.socket( dns::lookup(host), port );
                  sk.set_sockopt( self->obj->agent );
 
-        process::poll::add([=](){ int c = 0;
-        coStart
+        process::poll::add( coroutine::add( COROUTINE(){
+        coBegin
 
             coWait( (c=sk._bind())==-2 ); if( c<0 ){
                 _EERROR(self->onError,"Error while binding UDP");
@@ -86,8 +86,8 @@ public: udp_t() noexcept : obj( new NODE() ) {}
                 self->onConnect.emit(sk); 
             }
 
-        coStop
-        });
+        coFinish
+        }));
 
     }
 
@@ -105,8 +105,8 @@ public: udp_t() noexcept : obj( new NODE() ) {}
                  sk.socket( dns::lookup(host), port );
                  sk.set_sockopt( self->obj->agent );
 
-        process::poll::add([=](){
-        coStart
+        process::poll::add( coroutine::add( COROUTINE(){
+        coBegin
 
             cb(sk); sk.onDrain.once([=](){ self->close(); });
             self->onSocket.emit(sk); self->obj->func(sk);
@@ -117,8 +117,8 @@ public: udp_t() noexcept : obj( new NODE() ) {}
                 self->onConnect.emit(sk); 
             }
 
-        coStop
-        });
+        coFinish
+        }));
 
     }
 

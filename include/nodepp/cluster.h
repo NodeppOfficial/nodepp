@@ -24,16 +24,18 @@
     namespace nodepp { namespace cluster {
 
         template< class... T > cluster_t async( const T&... args ){
-        cluster_t pid(args...); if( process::is_parent() ) { 
-            worker::add([=](){ return pid.next(); }); 
-        } return pid; }
+        auto pid = type::bind( cluster_t(args...) ); 
+        if( process::is_parent() ) { 
+            worker::add([=](){ return pid->next(); }); 
+        } return *pid; }
 
         template< class... T > cluster_t add( const T&... args ){
         return async( args... ); }
 
         template< class... T > int await( const T&... args ){
-        cluster_t pid(args...); if( process::is_parent() ) { 
-           return worker::await([=](){ return pid.next(); }); 
+        auto pid = type::bind( cluster_t(args...) );
+        if( process::is_parent() ) { 
+          return process::await([=](){ return pid->next(); }); 
         } return -1; }
 
         bool  is_child(){ return !process::env::get("CHILD").empty(); }
@@ -52,17 +54,19 @@
     namespace nodepp { namespace cluster {
 
         template< class... T > cluster_t async( const T&... args ){
-        cluster_t pid(args...); if( process::is_parent() ) { 
-        process::poll::add([=](){ return pid.next(); }); 
-        }  return pid; }
+        auto pid = type::bind( cluster_t(args...) ); 
+        if( process::is_parent() ) { 
+            process::poll::add([=](){ return pid->next(); }); 
+        } return *pid; }
 
         template< class... T > cluster_t add( const T&... args ){
         return async( args... ); }
 
         template< class... T > int await( const T&... args ){
-        cluster_t pid(args...); if( process::is_parent() ) { 
-        return process::await([=](){ return pid.next(); }); 
-        }  return -1; }
+        auto pid = type::bind( cluster_t(args...) );
+        if( process::is_parent() ) { 
+          return process::await([=](){ return pid->next(); }); 
+        } return -1; }
 
         bool  is_child(){ return !process::env::get("CHILD").empty(); }
 

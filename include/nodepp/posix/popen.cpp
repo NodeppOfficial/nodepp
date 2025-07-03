@@ -14,7 +14,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { class popen_t {
+namespace nodepp { class popen_t : public generator_t {
 protected:
 
     ptr_t<_file_::read> _read1 = new _file_::read;
@@ -41,7 +41,7 @@ protected:
             ::dup2( fdc[1], STDERR_FILENO ); ::close( fdc[0] ); env.push( nullptr );
             ::execvpe( path.c_str(), (char**) arg.data(), (char**) env.data() );
             process::error("while spawning new popen"); process::exit(1);
-        } elif ( obj->fd > 0 ) { // Parent process
+        } elif ( obj->fd > 0 ){ // Parent process
             obj->std_input  = { fda[1] }; ::close( fda[0] );
             obj->std_output = { fdb[0] }; ::close( fdb[1] );
             obj->std_error  = { fdc[0] }; ::close( fdc[1] );
@@ -111,28 +111,24 @@ public:
 
     /*─······································································─*/
 
-    int next() const noexcept {
-    coStart 
-
-        while( !is_closed() ){ 
+    int next() noexcept {
+    coBegin; if( !is_closed() ){
+        
         onOpen.emit(); coYield(1);
 
         if((*_read1)(&std_output())==1){ coGoto(2); }
         if(  _read1->state <= 0 )      { coGoto(2); }
         onData.emit(_read1->data);
-        onDout.emit(_read1->data);       coGoto(2); 
+        onDout.emit(_read1->data);
 
-        coYield(2);
-        if( !is_alive()&&_read1->state<=0 ){ break; }
+        coYield(2); if( !is_alive() )  { break; }
 
         if((*_read2)(&std_error())==1 ){ coGoto(1); }
         if(  _read2->state <= 0 )      { coGoto(1); }
         onData.emit(_read2->data);
-        onDerr.emit(_read2->data);       coGoto(1);
-
-        }
-
-    coStop
+        onDerr.emit(_read2->data);
+        
+    coGoto(1); } coFinish
     }
 
     /*─······································································─*/

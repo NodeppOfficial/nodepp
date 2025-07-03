@@ -9,31 +9,31 @@ void onMain(){
     ptr_t<int> x = new int(100);
     mutex_t mut;
 
-    worker::add([=](){ 
+    worker::add( coroutine::add( COROUTINE(){
         mut.lock();
-    coStart
+    coBegin
 
         while( *x > 0 ){ *x-=1;
             console::info("Hello World",*x);
-            worker::delay( 100 ); 
-            mut.unlock(); coNext;
+            coDelay( 100 ); mut.unlock(); 
+            coNext;
         }
 
-    coStop
-    });
+    coFinish
+    }));
 
-    auto wrk = worker::add([=](){ 
+    auto wrk = worker::add( coroutine::add( COROUTINE(){
         mut.lock();
-    coStart
+    coBegin
 
         while( *x > 0 ){ *x-=1;
             console::done("Hello World",*x);
-            worker::delay( 100 ); 
-            mut.unlock(); coNext;
+            coDelay( 100 ); mut.unlock(); 
+            coNext;
         }
 
-    coStop
-    });
+    coFinish
+    }));
 
     timer::timeout([=](){ wrk.off(); }, 1000 );
 

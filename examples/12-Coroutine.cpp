@@ -9,30 +9,30 @@ using namespace nodepp;
 
 void onMain(){
 
-    auto f = fs::readable( "LICENSE" );
-    auto x = type::bind( f );
+    auto file = fs::readable( "LICENSE" );
+    auto x    = type::bind( file );
 
-    process::add([=](){
-    coStart
+    process::add( coroutine::add( COROUTINE(){
+    coBegin
 
         while( x->is_available() ){
             console::log( ":>", x->read_line().slice(0,-1) );
             coNext;
         }
 
-    coStop
-    });
+    coFinish
+    }));
 
-    process::add([=](){
-    coStart
+    process::add( coroutine::add( COROUTINE(){
+    coBegin
 
         while( x->is_available() ){
             console::done("Hello World");
             coNext;
         }
 
-    coStop
-    });
+    coFinish
+    }));
 
 }
 

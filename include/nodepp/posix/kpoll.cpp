@@ -55,11 +55,9 @@ public:
 
     /*─······································································─*/
 
-    int next () noexcept { return emit(); }
-
-    int emit () noexcept {
+    int next () noexcept {
         static int c=0; static KPOLLFD x;
-    gnStart
+    coBegin
 
         if( (c=kevent( obj->pd, NULL, 0, &obj->ev, obj->ev.size(), 0 ))<=0 ) { coEnd; } while( c-->0 ){ x = obj->ev[c];
               if( x.flags & EVFILT_READ  ){ remove(x);  onRead.emit(x.ident); obj->ls={{ 0, x.ident }}; onEvent.emit(obj->ls); coNext; }
@@ -67,7 +65,7 @@ public:
             else                          { remove(x); onError.emit(x.ident); obj->ls={{-1, x.ident }}; onEvent.emit(obj->ls); coNext; }
         }
 
-    gnStop
+    coFinish
     };
 
     /*─······································································─*/

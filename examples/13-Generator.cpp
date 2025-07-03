@@ -7,14 +7,14 @@ GENERATOR( process_1 ) {
     int counter = 10;
 
     coEmit(){ 
-    coStart
+    coBegin
     
         while( counter-->0 ){
             console::done( ":>", counter ); 
             coNext;
         }
 
-    coStop
+    coFinish
     }
 
 };

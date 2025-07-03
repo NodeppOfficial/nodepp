@@ -15,15 +15,16 @@ void onMain() {
         });
     
     } else {
-        process::add([=](){
+        process::add( coroutine::add( COROUTINE(){
             static uint x = 10; 
-        coStart
+        coBegin
             while( x-->0 ){
                 console::log("Hello World!");
                 coDelay(1000);
             }
-        coStop
-        });
+        coFinish
+        }));
+
     }
 
 }
