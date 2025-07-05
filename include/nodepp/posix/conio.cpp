@@ -11,6 +11,12 @@
 
 #pragma once
 
+#include <sys/file.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #define C_BLACK   0x00
 #define C_WHITE   0x01
 #define C_GREEN   0x02
@@ -27,13 +33,20 @@ namespace nodepp { namespace conio {
 
     /*─······································································─*/
 
-    int perr( const string_t& args ){ return fprintf( stderr, "%s", args.c_str() ); }
+    int perr( const string_t& args ){ 
+        return ::write( STDERR_FILENO, args.get(), args.size() );
+    }
     
-    int pout( const string_t& args ){ return fprintf( stdout, "%s", args.c_str() ); }
+    int pout( const string_t& args ){
+        return ::write( STDOUT_FILENO, args.get(), args.size() );
+    }
 
     template< class V, class... T >
     int scan( const V& argc, const T&... args ){ 
-        return scanf( (const char*)argc, args... ); 
+        auto bff = string::buffer( UNBFF_SIZE );
+        auto len = ::read( STDIN_FILENO, bff.get(), bff.size() );
+        auto data= string_t( &bff, len );
+        return string::parse( data.get(), argc, args... );
     }
 
     /*─······································································─*/

@@ -32,11 +32,8 @@ protected:
     void _init_( T& arg, T& env ) {
 
         if( process::is_child() ){
-            int fd[2] = { 0, 0 }; string_t ch = process::env::get("CHILD");
-            string::parse( ch.data(), "%d|%d", &fd[0], &fd[1] );
-            obj->output= { fd[0] }; obj->input = { fd[1] };
-            obj->error = { STDERR_FILENO }; 
-            obj->state = 1; return;
+            obj->input = fs::std_output(); obj->error = fs::std_error(); 
+            obj->output= fs::std_input (); obj->state = 1; return;
         }
 
         int fda[2]; ::pipe( fda );
@@ -44,13 +41,14 @@ protected:
         int fdc[2]; ::pipe( fdc ); obj->fd = ::fork();
 
         if( obj->fd == 0 ){
-            auto chl = string::format( "CHILD=%d|%d", fda[0], fdb[1] ); env.push( chl.c_str() );
-            arg.unshift( process::args[0].c_str() ); ::close( fda[1] ); arg.push( nullptr );
-                                                     ::close( fdb[0] ); env.push( nullptr );
-            ::dup2( fdc[1], STDERR_FILENO  );        ::close( fdc[0] );
-            ::execvpe( arg[0], (char**) arg.data(), (char**)env.data() );
+            auto chl = string::format( "CHILD=TRUE", fda[0], fdb[1] ); 
+            arg.unshift( process::args[0].c_str() );            env.push( chl.c_str() );
+            ::dup2( fda[0], STDIN_FILENO  ); ::close( fda[1] ); arg.push( nullptr );
+            ::dup2( fdb[1], STDOUT_FILENO ); ::close( fdb[0] ); env.push( nullptr );
+            ::dup2( fdc[1], STDERR_FILENO ); ::close( fdc[0] ); 
+            ::execvpe( arg[0], (char**) arg.data(), (char**) env.data() );
             process::error("while spawning new cluster"); process::exit(1);
-        } elif ( obj->fd > 0 ) { // Parent process
+        } elif ( obj->fd > 0 ) {
             obj->input  = { fda[1] }; ::close( fda[0] );
             obj->output = { fdb[0] }; ::close( fdb[1] );
             obj->error  = { fdc[0] }; ::close( fdc[1] );
