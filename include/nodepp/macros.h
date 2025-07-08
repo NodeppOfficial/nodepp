@@ -14,8 +14,8 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define coDelay(VALUE)  do { _time_=process::millis()+VALUE; while( process::millis()<_time_ ){ coNext; } } while (0)
-#define coUDelay(VALUE) do { _time_=process::micros()+VALUE; while( process::micros()<_time_ ){ coNext; } } while (0)
+#define coDelay(VALUE)  do { _time_=process::millis()+VALUE; coWait( process::millis()<_time_ ); } while (0)
+#define coUDelay(VALUE) do { _time_=process::micros()+VALUE; coWait( process::micros()<_time_ ); } while (0)
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

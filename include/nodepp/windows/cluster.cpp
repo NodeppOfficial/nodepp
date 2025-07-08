@@ -32,8 +32,8 @@ protected:
     void _init_( array_t<string_t> arg, array_t<string_t> env ) {
 
         if( process::is_child() ){
-            obj->input = fs::std_input (); obj->error = fs::std_error(); 
-            obj->output= fs::std_output(); obj->state = 1; return;
+            obj->input = fs::std_output(); obj->error = fs::std_error(); 
+            obj->output= fs::std_input (); obj->state = 1; return;
         }
 
         SECURITY_ATTRIBUTES sa;

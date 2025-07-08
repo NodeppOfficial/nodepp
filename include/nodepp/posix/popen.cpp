@@ -35,13 +35,13 @@ protected:
         int fdb[2]; ::pipe( fdb );
         int fdc[2]; ::pipe( fdc ); obj->fd = ::fork();
 
-        if( obj->fd == 0 ){ // Child process
+        if( obj->fd == 0 ){
             ::dup2( fda[0], STDIN_FILENO  ); ::close( fda[1] );
             ::dup2( fdb[1], STDOUT_FILENO ); ::close( fdb[0] ); arg.push( nullptr );
             ::dup2( fdc[1], STDERR_FILENO ); ::close( fdc[0] ); env.push( nullptr );
-            ::execvpe( path.c_str(), (char**) arg.data(), (char**) env.data() );
+            ::execvpe( path.c_str(), (char**)arg.data(),(char**)env.data() );
             process::error("while spawning new popen"); process::exit(1);
-        } elif ( obj->fd > 0 ){ // Parent process
+        } elif ( obj->fd > 0 ){
             obj->std_input  = { fda[1] }; ::close( fda[0] );
             obj->std_output = { fdb[0] }; ::close( fdb[1] );
             obj->std_error  = { fdc[0] }; ::close( fdc[1] );
