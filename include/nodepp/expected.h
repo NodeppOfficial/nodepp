@@ -41,13 +41,13 @@ public:
     /*─······································································─*/
 
     T& value() const { if ( !has_value() ) {
-        process::error("expected does not have a value");
+        throw except_t("expected does not have a value");
     }   return obj->data;  }
 
     /*─······································································─*/
 
     E& error() const { if ( has_value() ) {
-        process::error("expected does not have a value");
+        throw except_t("expected does not have a value");
     }   return obj->err;  }
 
 };}

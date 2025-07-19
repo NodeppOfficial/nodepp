@@ -14,11 +14,11 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if   _KERNEL == NODEPP_KERNEL_WINDOWS
+#if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
     #include "path.h"
     #include "stream.h"
     #include "windows/fs.cpp"
-#elif _KERNEL == NODEPP_KERNEL_POSIX
+#elif _KERNEL_ == NODEPP_KERNEL_POSIX
     #include "path.h"
     #include "stream.h"
     #include "posix/fs.cpp"

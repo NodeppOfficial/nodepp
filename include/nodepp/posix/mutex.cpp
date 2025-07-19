@@ -17,10 +17,10 @@
 namespace nodepp { namespace worker {
 
     void delay( ulong time ){ process::delay(time); }
-    void yield(){  delay(TIMEOUT); sched_yield(); }
+    void yield(){ delay(TIMEOUT); sched_yield(); }
     int    pid(){ return (int)pthread_self(); }
     void  exit(){ pthread_exit(NULL); }
-    
+
 }}
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -38,7 +38,7 @@ public:
 
     mutex_t() : mutex( new NODE() ) {
         if( pthread_mutex_init(&mutex->fd,NULL) != 0 )
-          { process::error("Cant Start Mutex"); }
+          { throw except_t("Cant Start Mutex"); }
             mutex->addr=nullptr; mutex->state=1;
     }
 
@@ -58,15 +58,22 @@ public:
     
     /*─······································································─*/
 
+    template< class T, class... V >
+    void emit( T callback, const V&... args ) const noexcept {
+         lock(); callback( args... ); unlock();
+    }
+    
+    /*─······································································─*/
+
     void unlock() const noexcept { 
         while( pthread_mutex_unlock(&mutex->fd)!=0 )
-             { worker::yield(); } 
+             { worker::yield(); }
         mutex->addr = nullptr;
     }
 
     void lock() const noexcept { 
         while( pthread_mutex_lock(&mutex->fd)!=0 )
-             { worker::yield(); } 
+             { worker::yield(); }
         mutex->addr = (void*)this;
     }
 

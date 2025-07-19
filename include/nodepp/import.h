@@ -42,12 +42,18 @@
 #include "iterator.h"
 #include "console.h"
 #include "sleep.h"
-#include "task.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#include "loop.h"
 #include "signal.h"
 #include "except.h"
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+#include "query.h"
+#include "poll.h"
+#include "task.h"
 #include "env.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/

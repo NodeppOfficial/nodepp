@@ -15,10 +15,14 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { class cluster_t : public generator_t {
+private:
+
+    using _read_ = generator::file::read;
+
 protected:
 
-    ptr_t<_file_::read> _read1 = new _file_::read;
-    ptr_t<_file_::read> _read2 = new _file_::read;
+    ptr_t<_read_> _read1 = new _read_();
+    ptr_t<_read_> _read2 = new _read_();
 
     struct NODE {
         int          fd;
@@ -47,11 +51,11 @@ protected:
             ::dup2( fdb[1], STDOUT_FILENO ); ::close( fdb[0] ); env.push( nullptr );
             ::dup2( fdc[1], STDERR_FILENO ); ::close( fdc[0] ); 
             ::execvpe( arg[0], (char**) arg.data(), (char**) env.data() );
-            process::error("while spawning new cluster"); process::exit(1);
+            throw except_t("while spawning new cluster"); process::exit(1);
         } elif ( obj->fd > 0 ) {
-            obj->input  = { fda[1] }; ::close( fda[0] );
-            obj->output = { fdb[0] }; ::close( fdb[1] );
-            obj->error  = { fdc[0] }; ::close( fdc[1] );
+            obj->input  = file_t(fda[1]); ::close( fda[0] );
+            obj->output = file_t(fdb[0]); ::close( fdb[1] );
+            obj->error  = file_t(fdc[0]); ::close( fdc[1] );
             obj->state  = 1;
         } else {
             ::close( fda[0] ); ::close( fda[1] );
@@ -101,14 +105,14 @@ public:
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
         if( obj->state == -2 ){ return; } close(); obj->state = -2;
         obj->input.close(); obj->output.close();
-        obj->error.close(); onClose.emit(); 
+        obj->error.close();
 
         if( is_parent() ){ kill(); }
 
         onResume.clear(); onError.clear();
         onStop  .clear(); onOpen .clear();
         onData  .clear(); onDout .clear(); 
-        onDerr  .clear();
+        onDerr  .clear(); onClose.emit (); 
 
     }
 
@@ -125,7 +129,7 @@ public:
         onDout.emit(_read1->data);
 
         coYield(2); if( !is_alive() )  { break; }
-        if( process::is_child() )      { coStay(1); }
+        if( process::is_child() )      { coGoto(1); }
 
         if((*_read2)(&std_error())==1 ){ coGoto(1); }
         if(  _read2->state <= 0 )      { coGoto(1); }

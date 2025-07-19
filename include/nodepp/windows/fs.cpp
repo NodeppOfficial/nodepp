@@ -31,7 +31,7 @@ namespace nodepp { namespace fs {
         WIN32_FILE_ATTRIBUTE_DATA fileData; ULARGE_INTEGER uli;
 
         if (!GetFileAttributesExA(path.c_str(),GetFileExInfoStandard,&fileData) )
-           { process::error("Failed to get file last modification time properties"); }
+           { throw except_t("Failed to get file last modification time properties"); }
 
         FILETIME ftModified = fileData.ftLastWriteTime;
         uli.LowPart         = ftModified.dwLowDateTime;
@@ -44,7 +44,7 @@ namespace nodepp { namespace fs {
         WIN32_FILE_ATTRIBUTE_DATA fileData; ULARGE_INTEGER uli;
 
         if (!GetFileAttributesExA(path.c_str(),GetFileExInfoStandard,&fileData) )
-           { process::error("Failed to get file last access time properties"); }
+           { throw except_t("Failed to get file last access time properties"); }
 
         FILETIME ftAccess = fileData.ftLastAccessTime;
         uli.HighPart      = ftAccess.dwHighDateTime;
@@ -57,7 +57,7 @@ namespace nodepp { namespace fs {
         WIN32_FILE_ATTRIBUTE_DATA fileData; ULARGE_INTEGER uli;
 
         if (!GetFileAttributesExA(path.c_str(),GetFileExInfoStandard,&fileData) )
-           { process::error("Failed to get file creation time properties"); }
+           { throw except_t("Failed to get file creation time properties"); }
 
         FILETIME ftCreated = fileData.ftCreationTime;
         uli.LowPart        = ftCreated.dwLowDateTime;
@@ -187,7 +187,7 @@ namespace nodepp { namespace fs {
 
         if( hFind == INVALID_HANDLE_VALUE ){ return; }
 
-        process::task::add( coroutine::add( COROUTINE(){
+        process::add( coroutine::add( COROUTINE(){
         coBegin
 
             while( FindNextFileA(hFind,&findData) != 0 ){ do {

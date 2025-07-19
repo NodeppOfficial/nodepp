@@ -89,7 +89,7 @@ public: observer_t() noexcept {} queue_t<T> node;
              n->data.third.emit( n->data.second, value );
              n->data.second = value; return;
         }    n = n->next; }   
-             process::error("field not found:",name);
+             throw except_t("field not found:",name);
     }
     
     /*─······································································─*/
@@ -106,7 +106,7 @@ public: observer_t() noexcept {} queue_t<T> node;
         if ( n->data.first == name ){
              return n->data.second;
         }    n = n->next; }   
-             process::error( "field not found:", name ); 
+             throw except_t( "field not found:", name ); 
              return (const V)(0);
     }
     

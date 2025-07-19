@@ -18,58 +18,67 @@ namespace nodepp { using POLLFD = struct pollfd; class poll_t: public generator_
 protected:
 
     struct NODE {
-        array_t<POLLFD> ev;
-        ptr_t<int>      ls;
+        int        off,len;
+        ptr_t<POLLFD>   ev;
     };  ptr_t<NODE>    obj;
-
-    void remove( int fd ) const noexcept { obj->ev.erase( fd ); }
 
 public:
 
-    wait_t<ptr_t<int>> onEvent;
-    wait_t<int>        onWrite;
-    wait_t<int>        onError;
-    wait_t<int>        onRead;
+    poll_t() noexcept : obj( new NODE() ) { 
+        obj->ev.resize( limit::get_soft_fileno() );
+        obj->off=0; obj->len=0; 
+    }
 
-public: poll_t() noexcept : obj( new NODE() ) {}
+   ~poll_t() noexcept { if( obj.count() > 1 ){ return; } }
 
-   ~poll_t() noexcept { 
-        if ( obj.count() > 1 ){ return; }
-        for( auto x : obj->ev ) onError.emit(x.fd); 
+    /*─······································································─*/
+
+    int next() noexcept {
+        if((obj->len=poll( obj->ev.data(), obj->ev.size(), 0 ))<=0 ) 
+          { return -2; } return obj->len;
     }
 
     /*─······································································─*/
 
-    ptr_t<int> get_last_poll() const noexcept { return obj->ls; }
+    int check( const int& fd ) const noexcept { if( obj->len<=0 ){ return 0; }
+
+        auto y=0; while( y < obj->len ){ auto x = obj->ev[y]; ++y;
+        int  out= 0; if( x.data.fd == fd ){
+                if( x.revents &(EPOLLERR|EPOLLHUP|EPOLLNVAL)){ return -1; }
+                if( x.revents & EPOLLIN  ){ out |= 0x01; }
+                if( x.revents & EPOLLOUT ){ out |= 0x02; } return out;
+            }
+        }
+
+    return 0x04; }
 
     /*─······································································─*/
 
-    int next () noexcept { 
-        static ulong s=0; static POLLFD x;
-    coBegin
-
-        if( obj->ev.empty() )                               { coEnd; }
-        if( ::poll( obj->ev.data(), obj->ev.size(), 0 )<=0 ){ coEnd; } 
-        
-        s = obj->ev.size(); while( s-->0 ){ x = obj->ev[s]; 
-              if( x.revents & POLLERR ){ remove(s); onError.emit(x.fd); obj->ls={{-1, x.fd }}; onEvent.emit(obj->ls); coNext; }
-            elif( x.revents & POLLIN  ){ remove(s);  onRead.emit(x.fd); obj->ls={{ 0, x.fd }}; onEvent.emit(obj->ls); coNext; }
-            elif( x.revents & POLLOUT ){ remove(s); onWrite.emit(x.fd); obj->ls={{ 1, x.fd }}; onEvent.emit(obj->ls); coNext; }
-        }
-
-    coFinish
-    };
+    int remove( const int& fd ) const noexcept { 
+        if( obj->ev.empty() ){ return 0; } int y=0;
+        auto x = obj->ev.size(); while( x-->0 ){
+            if( obj->ev[x].data.fd == fd ){ obj->ev.erase(x); ++y; }
+        }   return y;
+    }
 
     /*─······································································─*/
 
     bool push_write( const int& fd ) noexcept { 
-         for( auto &x: obj->ev ){ if( x.fd==fd ){ return false; } }
-	     obj->ev.unshift({ fd, POLLOUT, 0 }); return true;
+         if( obj->off >= obj->ev.size() ){ return false; }
+         obj->ev[obj->off] = POLLFD({ fd, POLLOUT, 0 });
+	     ++obj->off; return true;
     }
 
     bool push_read( const int& fd ) noexcept { 
-         for( auto &x: obj->ev ){ if( x.fd==fd ){ return false; } }
-         obj->ev.unshift({ fd, POLLIN, 0 }); return true;
+         if( obj->off >= obj->ev.size() ){ return false; }
+         obj->ev[obj->off] = POLLFD({ fd, POLLIN, 0 });
+         ++obj->off; return true;
+    }
+
+    bool push_duplex( const int& fd ) noexcept { 
+         bool success_write= push_write( fd );
+         bool success_read = push_read ( fd );
+         return success_read && success_write;
     }
 
 };}

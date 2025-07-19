@@ -32,45 +32,27 @@ public:
 
 public: poll_t() noexcept : obj( new NODE() ) {}
 
-   ~poll_t() noexcept { 
-        if ( obj.count() > 1 ){ return; }
-        for( auto x : obj->ev.data() ) 
-           { onError.emit( x.md ); }
-    }
-
-    /*─······································································─*/
-
-    ptr_t<int> get_last_poll() const noexcept { 
-    ptr_t<int> result=obj->ls; return result; }
+   ~poll_t() noexcept { if( obj.count() > 1 ){ return; } /*free();*/ }
 
     /*─······································································─*/
 
     int next () noexcept { 
-        static POLLFD x;
-    coBegin
-    
-        if( obj->ev.empty() ){ coEnd; } while ( obj->ev.next() ) { x=obj->ev.get()->data;
-          if( x.md == 1 ){ onWrite.emit(x.fd); obj->ls={{ 1, x.fd }}; onEvent.emit(x.fd); obj->ev.erase(obj->ev.get()); coNext; }
-        elif( x.md == 0 ){  onRead.emit(x.fd); obj->ls={{ 0, x.fd }}; onEvent.emit(x.fd); obj->ev.erase(obj->ev.get()); coNext; }
-        else             { onError.emit(x.fd); obj->ls={{-1, x.fd }}; onEvent.emit(x.fd); obj->ev.erase(obj->ev.get()); coNext; }
-        }
+    POLLFD x ; coBegin ; if( obj->ev.empty() ){ coEnd; } x = obj->ev.last()->data;
+            
+          if( x.md & 1 ){ onWrite.emit(x.fd); obj->ls={{ 1,x.fd}}; onEvent.emit(obj->ls); }
+        elif( x.md & 4 ){  onRead.emit(x.fd); obj->ls={{ 0,x.fd}}; onEvent.emit(obj->ls); }
+        else            { onError.emit(x.fd); obj->ls={{-1,x.fd}}; onEvent.emit(obj->ls); }
 
-    coFinish
+    obj->ev.pop() ; coGoto(0) ; coFinish
     };
 
     /*─······································································─*/
 
-    bool push_write( const int& fd ) noexcept {
-        auto n=obj->ev.first();          while( n != nullptr  ){ 
-        if( n->data.fd==fd )                  { return false; } 
-        n = n->next; } obj->ev.push({ fd, 1 }); return true ;
-    }
+    bool push_write( const int& fd ) noexcept { obj->ev.unshift({fd,1}); return true; }
 
-    bool push_read( const int& fd ) noexcept {
-        auto n=obj->ev.first();          while( n != nullptr  ){ 
-        if( n->data.fd==fd )                  { return false; } 
-        n = n->next; } obj->ev.push({ fd, 0 }); return true ;
-    }
+    bool push_read ( const int& fd ) noexcept { obj->ev.unshift({fd,4}); return true; }
+
+    ptr_t<int> get_last_poll() const noexcept { return obj->ls; }
 
 };}
 

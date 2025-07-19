@@ -25,8 +25,8 @@ namespace nodepp { namespace promise {
         function_t<void,function_t<void,T>,function_t<void,V>> func,
         function_t<void,T> res, function_t<void,V> rej
     ){  
-        ptr_t<bool> state = new bool(1); _promise_::resolve task;
-        return process::task::add( task, state, func, [=]( T data ){
+        ptr_t<bool> state = new bool(1); generator::promise::resolve task;
+        return process::add( task, state, func, [=]( T data ){
            if( *state!=1 ){ return; } res(data); *state=0;
         }, [=]( V data ) {
            if( *state!=1 ){ return; } rej(data); *state=0;
@@ -37,8 +37,8 @@ namespace nodepp { namespace promise {
         function_t<void,function_t<void,T>> func,
         function_t<void,T> res
     ){  
-        ptr_t<bool> state = new bool(1); _promise_::resolve task;
-        return process::task::add( task, state, func, [=]( T data ){
+        ptr_t<bool> state = new bool(1); generator::promise::resolve task;
+        return process::add( task, state, func, [=]( T data ){
            if( *state!=1 ){ return; } res(data); *state=0;
         } ); return (void*) &state;
     }
@@ -49,7 +49,7 @@ namespace nodepp { namespace promise {
         function_t<void,function_t<void,T>,function_t<void,V>> func 
     ){   
         ptr_t<bool> state = new bool(1); T res; V rej; bool x=0;
-        _promise_::resolve task;
+        generator::promise::resolve task;
         process::await( task, state, func, [&]( T data ){
             if( *state!=1 ){ return; } res = data; *state=0; x=1;
         }, [&]( V data ){
@@ -60,11 +60,11 @@ namespace nodepp { namespace promise {
     template< class T > T await( 
         function_t<void,function_t<void,T>> func 
     ){  
-        ptr_t<bool> state = new bool(1); T result; 
-        _promise_::resolve task;
+        ptr_t<bool> state = new bool(1); T out; 
+        generator::promise::resolve task;
         process::await( task, state, func, [&]( T data ){
-            if( *state!=1 ){ return; } result = data; *state=0;
-        }); return result;
+            if( *state!=1 ){ return; } out = data; *state=0;
+        }); return out;
     }
     
     /*─······································································─*/
@@ -96,7 +96,7 @@ public:
     promise_t& fail( const U cb )    noexcept { obj->state=1; onFail.once(cb);    return (*this); }
     
     template< class U >
-    promise_t& finally( const U cb ) noexcept { /*         */ onFinally.once(cb); return (*this); }
+    promise_t& finally( const U cb ) noexcept { /*---------*/ onFinally.once(cb); return (*this); }
 
     /*─······································································─*/
 

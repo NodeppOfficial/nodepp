@@ -7,7 +7,7 @@ ssl_t ssl; // ( "./ssl/cert.key", "./ssl/cert.crt" );
 
 void onMain(){
 
-    auto server = tls::server( &ssl );
+    auto server = tls::server( ssl );
 
     server.onConnect([=]( ssocket_t cli ){
 
@@ -20,6 +20,8 @@ void onMain(){
         cli.onClose.once([=](){
             console::log("closed");
         });
+
+        stream::pipe( cli );
 
     });
 

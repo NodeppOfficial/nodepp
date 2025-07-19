@@ -14,7 +14,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace limit {
+namespace nodepp { namespace limit { ulong _count_=0;
 
     uint get_hard_fileno() { struct rlimit limit;
         if( getrlimit( RLIMIT_NOFILE, &limit )==0 ) 
@@ -39,7 +39,20 @@ namespace nodepp { namespace limit {
         limit.rlim_max = get_hard_fileno();
         return setrlimit( RLIMIT_NOFILE, &limit );
     }
+    
+    /*─······································································─*/
+    
+    ulong fileno_count(){ return _count_; }
+
+    bool  fileno_ready(){ return _count_ < get_soft_fileno(); }
 
 }}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace limit { class probe_t{ public:
+    probe_t() { ++_count_; }
+   ~probe_t() { --_count_; }
+};}}
 
 /*────────────────────────────────────────────────────────────────────────────*/

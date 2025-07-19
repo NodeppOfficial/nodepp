@@ -14,19 +14,28 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if   _KERNEL == NODEPP_KERNEL_WINDOWS
+#if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
     #include "os.h"
+    #include "limit.h"
     #include "event.h"
     #include "generator.h"
     #include "windows/file.cpp"
-#elif _KERNEL == NODEPP_KERNEL_POSIX
+#elif _KERNEL_ == NODEPP_KERNEL_POSIX
     #include "os.h"
+    #include "limit.h"
     #include "event.h"
     #include "generator.h"
     #include "posix/file.cpp"
 #else
     #error "This OS Does not support file.h"
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace type { 
+    template< class T > struct can_be_polled         { static constexpr bool value = true ; };
+    template<>          struct can_be_polled<file_t> { static constexpr bool value = false; };
+}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

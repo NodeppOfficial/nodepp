@@ -14,188 +14,48 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace process { 
-   struct nodepp_process_waiter { bool blk; bool out; }; 
-}}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-namespace nodepp { namespace process {
-
-namespace task {
-
-    queue_t<function_t<int>> queue;
-
-    void clear(){        queue.clear(); }
-    ulong size(){ return queue.size (); }
-    bool empty(){ return queue.empty(); }
-
-    void clear( void* address ){
-       if( address == nullptr ){ return; }
-        *((bool*)( address )) = 0;
-    }
-
-    template< class T, class... V >
-    void* add( T cb, const V&... arg ){
-        ptr_t<nodepp_process_waiter> obj = new nodepp_process_waiter();
-        obj->blk=0; obj->out=1; auto clb = type::bind(cb);
-        queue.push([=](){
-            if( obj->out==0 ){ return -1; }
-            if( obj->blk==1 ){ return  1; } 
-                obj->blk =1; int rs=(*clb)( arg... );
-            if( clb.null()  ){ return -1; }  
-                obj->blk =0;   return !obj->out?-1:rs;
-        }); return (void*) &obj->out;
-    }
-
-    bool next(){
-        if( queue.empty() ){ return 0; }
-            auto x = queue.get();
-            int  y = x->data  ();
-        if( y==-1 ){ queue.erase(x); }
-        if( y== 1 ){ queue.next();   } return 1;
-    }
-
-}
+namespace nodepp { namespace process { loop_t loop; poll_t poll;
 
     /*─······································································─*/
 
-namespace loop {
+    ulong size(){ return _TASK_ + loop.size(); }
 
-    queue_t<function_t<int>> queue;
+    void clear(){ _TASK_=0; loop.clear(); }
 
-    void clear(){        queue.clear(); }
-    ulong size(){ return queue.size (); }
-    bool empty(){ return queue.empty(); }
-
-    void clear( void* address ){
-       if( address == nullptr ){ return; }
-        *((bool*)( address )) = 0;
-    }
-
-    template< class T, class... V >
-    void* add( T cb, const V&... arg ){
-        ptr_t<nodepp_process_waiter> obj = new nodepp_process_waiter();
-        obj->blk=0; obj->out=1; auto clb = type::bind(cb);
-        queue.push([=](){
-            if( obj->out==0 ){ return -1; }
-            if( obj->blk==1 ){ return  1; } 
-                obj->blk =1; int rs=(*clb)( arg... );
-            if( clb.null()  ){ return -1; }  
-                obj->blk =0;   return !obj->out?-1:rs;
-        }); return (void*) &obj->out;
-    }
-
-    bool next(){
-        if( queue.empty() ){ return 0; }
-            auto x = queue.get();
-            int  y = x->data  ();
-        if( y==-1 ){ queue.erase(x); }
-        if( y== 1 ){ queue.next();   } return 1;
-    }
-
-}
+    bool empty(){ return size() <= 0; }
 
     /*─······································································─*/
 
-namespace poll {
+    bool should_close(){ return empty() || _EXIT_; }
 
-    queue_t<function_t<int>> queue;
-
-    void clear(){        queue.clear(); }
-    ulong size(){ return queue.size (); }
-    bool empty(){ return queue.empty(); }
-
-    void clear( void* address ){
-       if( address == nullptr ){ return; }
-        *((bool*)( address )) = 0;
-    }
-
-    template< class T, class... V >
-    void* add( T cb, const V&... arg ){
-        ptr_t<nodepp_process_waiter> obj = new nodepp_process_waiter();
-        obj->blk=0; obj->out=1; auto clb = type::bind(cb);
-        queue.push([=](){
-            if( obj->out==0 ){ return -1; }
-            if( obj->blk==1 ){ return  1; } 
-                obj->blk =1; int rs=(*clb)( arg... );
-            if( clb.null()  ){ return -1; }  
-                obj->blk =0;   return !obj->out?-1:rs;
-        }); return (void*) &obj->out;
-    }
-
-    bool next(){
-        if( queue.empty() ){ return 0; }
-            auto x = queue.get();
-            int  y = x->data  ();
-        if( y==-1 ){ queue.erase(x); }
-        if( y== 1 ){ queue.next();   } return 1;
-    }
-
-}
-
-}}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-namespace nodepp { namespace process {
-
-    int threads = 0;
-
-    /*─······································································─*/
-
-    void clear(){
-        process::task::clear();
-        process::poll::clear();
-        process::loop::clear();
-        process::threads = 0;
-    }
+    int next(){ coStart
+        coWait( loop.next()==1 );
+        coWait( poll.next()==1 );
+        process::yield();
+    coStop }
 
     /*─······································································─*/
 
     void clear( void* address ){
-        if( address == nullptr ){ return; }
-        *((bool*)( address )) = 0;
-    }
-
-    /*─······································································─*/
-
-    bool empty(){ return (
-        process::task::empty() &&
-        process::poll::empty() &&
-        process::loop::empty() &&
-        process::threads <= 0
-    );}
-
-    /*─······································································─*/
-
-    ulong size(){
-    return process::poll::size() +
-           process::task::size() +
-           process::loop::size() +
-           process::threads      ;
-    }
-
-    /*─······································································─*/
-
-    int next(){
-    coStart
-
-        if( !process::poll::empty() ){ process::poll::next(); coNext; }
-        if( !process::loop::empty() ){ process::loop::next(); coNext; }
-        if( !process::task::empty() ){ process::task::next(); coNext; }
-             process::yield();
-
-    coStop
+         if( address == nullptr ){ return; }
+         memset( address, 0, sizeof(bool) );
     }
 
     /*─······································································─*/
 
     template< class... T >
-    void* add( const T&... args ){ return process::loop::add( args... ); }
+    void* add( const T&... args ){ return loop.add( args... ); }
 
     template< class T, class... V >
-    int await( T cb, const V&... args ){ while( cb( args... )!=-1 ){ next(); } return 1; }
+    void await( T cb, const V&... args ){ while( ([&](){
+
+        switch( cb( args... ) ){
+            case  1: next(); return 1; break;
+            case  0: /*---*/ return 0; break;
+            default: /*-------------*/ break;
+        }
+
+    return -1; })()>=0 ){} }
 
 }}
 

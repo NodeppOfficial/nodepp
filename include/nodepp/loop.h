@@ -9,50 +9,76 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#ifndef NODEPP_NODEPP
-#define NODEPP_NODEPP
+#ifndef NODEPP_LOOP
+#define NODEPP_LOOP
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#include "import.h"
+namespace nodepp { class loop_t {
+private:
 
-/*────────────────────────────────────────────────────────────────────────────*/
+    struct waiter { bool blk; bool out; }; 
+    using CALLBACK = function_t<int>;
 
-namespace nodepp { namespace process { array_t<string_t> args;
+protected:
+
+    struct NODE {
+        queue_t<CALLBACK> queue;
+    };  ptr_t<NODE> obj;
+
+public:
+
+    loop_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    template< class... T >
-    void error( const T&... msg ){ throw except_t( msg... ); }
+    void clear() const noexcept {        obj->queue.clear(); }
 
-    void exit( int err=0 ){ _EXIT_= true; ::exit(err); }
+    ulong size() const noexcept { return obj->queue.size (); }
+
+    bool empty() const noexcept { return obj->queue.empty(); }
 
     /*─······································································─*/
 
-    void start(){ process::yield(); process::signal::start(); }
+    int emit() const noexcept { auto x = obj->queue.first(); 
+    int y=0; while( x != nullptr ){ auto z = x->next; 
+    if( x->data()==-1 ){ obj->queue.erase(x); x=z; continue; }
+    ++y; x=z; } return y; }
 
-    void start( int argc, char** args ){
-        int i=0; onSIGEXIT.once([=](){ process::exit(1); }); do {
-            if(!regex::test(args[i],"^\\?") ) {
-                process::args.push(args[i]);
-            } else {
-                for( auto &x: query::parse( args[i] ).data() )
-                   { process::env::set( x.first, x.second ); }
-            }
-        }   while( i ++< argc - 1 ); process::start();
+    /*─······································································─*/
+
+    int next() const noexcept { auto x = obj->queue.get(); 
+    if( x==nullptr ){ return -1; }
+        
+        switch( x->data() ){
+            case -1: obj->queue.erase(x); break;
+            case  1: obj->queue.next();   break;
+            default: /*----------------*/ break;
+        } 
+        
+    return x->next==nullptr ? -1 : 1; }
+
+    /*─······································································─*/
+
+    template< class T, class... V >
+    void* add( T cb, const V&... arg ) const noexcept {
+
+        ptr_t<waiter> tsk = new waiter();
+        auto clb=type::bind(cb);
+        tsk->blk=0; tsk->out=1; 
+
+        obj->queue.push([=](){
+            if( tsk->out==0 ){ return -1; }
+            if( tsk->blk==1 ){ return  1; } 
+                tsk->blk =1; int rs=(*clb)( arg... );
+            if( clb.null()  ){ return -1; }  
+                tsk->blk =0;   return !tsk->out?-1:rs;
+        }); 
+        
+        return (void*) &tsk->out;
     }
 
-    /*─······································································─*/
-
-    void stop(){ 
-        while(!process::should_close() )
-             { process::next(); }
-        process::exit();
-    }
-
-    /*─······································································─*/
-
-}}
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

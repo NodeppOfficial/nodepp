@@ -15,9 +15,16 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace dns { 
+
+    string_t ipv6 = "([0-9a-fA-F]+\\:)+[0-9a-fA-F]+";
     
     string_t ipv4 = "([0-9]+\\.)+[0-9]+";
-    string_t ipv6 = "([0-9a-fA-F]+\\:)+[0-9a-fA-F]+";
+    
+    /*─······································································─*/
+
+    bool is_ipv4( string_t URL ){ return regex::test( URL, ipv4 ) ? 1 : 0; }
+
+    bool is_ipv6( string_t URL ){ return regex::test( URL, ipv6 ) ? 1 : 0; }
     
     /*─······································································─*/
 
@@ -91,7 +98,6 @@ namespace nodepp { namespace dns {
 
     string_t get_hostname(){
         auto socket = socket_t();
-        auto result = string_t();
             
         socket.SOCK    = SOCK_DGRAM;
         socket.IPPROTO = IPPROTO_UDP;
@@ -100,12 +106,6 @@ namespace nodepp { namespace dns {
 
         return socket.get_sockname();
     }
-    
-    /*─······································································─*/
-
-    bool is_ipv4( string_t URL ){ return regex::test( URL, ipv4 ) ? 1 : 0; }
-
-    bool is_ipv6( string_t URL ){ return regex::test( URL, ipv6 ) ? 1 : 0; }
     
     /*─······································································─*/
 

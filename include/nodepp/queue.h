@@ -77,8 +77,8 @@ public:
         auto i=N; while( i-->0 ){ unshift(value[i]); }
     }
 
-    queue_t( const ptr_t<V>& argc ) noexcept: obj( new DONE ) {
-        forEach( x, argc ){ push( x ); }
+    queue_t( const ptr_t<V>& args ) noexcept: obj( new DONE ) {
+        for( auto &x: args ){ push( x ); }
     }
 
     queue_t( const ulong& n, const V& c ) noexcept {
@@ -120,32 +120,29 @@ public:
     /*─······································································─*/
 
     ptr_t<V> data() const noexcept {
-        if( empty() ){ return nullptr; } 
-        ptr_t<V> out(size()); V* addr = out.begin();
+        ptr_t<V> out( size() ); V* addr = out.begin();
         auto n = first(); while( n!=nullptr ){
-         *addr = n->data; ++addr;
+            *addr = n->data; ++addr;
         n = n->next; } return out;
     }
 
     /*─······································································─*/
 
-    long index_of( function_t<bool,V> func ) const noexcept {
-        long i=0; if( empty() ){ return -1; }
-        auto n = first(); while( n != nullptr ) {
+    int index_of( function_t<bool,V> func ) const noexcept {
+        int  i=0; auto n= first(); while( n != nullptr ) {
         if( func(n->data) == 1 ){ return i; }
         if( n->next == nullptr ){ break; }
         ++i; n = n->next; } return -1;
     }
 
-    ulong count( function_t<bool,V> func ) const noexcept {
-        ulong i=0; if( empty() ){ return 0; }
-        auto n = first(); while( n != nullptr ) {
+    int count( function_t<bool,V> func ) const noexcept {
+        int  i=0; auto n = first(); while( n != nullptr ) {
         if( func(n->data) == 1 ){ ++i; }
         n = n->next; } return i;
     }
 
     queue_t reverse() const noexcept { 
-        auto n_buffer=queue_t<V>(); auto n =first();
+        auto n_buffer=queue_t<V>(); auto n=first();
         while( n!=nullptr ){
             n_buffer.unshift( n->data );
         n=n->next; } return n_buffer;
@@ -154,38 +151,38 @@ public:
     /*─······································································─*/
 
     bool some( function_t<bool,V> func ) const noexcept {
-        if( empty() ){ return false; }
         auto n = first(); while( n != nullptr ) {
         if( func(n->data) == 1 ){ return 1; }
         n = n->next; } return false;
     }
 
     bool none( function_t<bool,V> func ) const noexcept {
-        if( empty() ){ return false; }
         auto n = first(); while( n != nullptr ) {
         if( func(n->data) == 1 ){ return 0; }
         n = n->next; } return true;
     }
 
     bool every( function_t<bool,V> func ) const noexcept {
-        if( empty() ){ return false; }
         auto n = first(); while( n != nullptr ) {
         if( func(n->data) == 0 ){ return 0; }
         n = n->next; } return true;
     }
 
     void map( function_t<void,V&> func ) const noexcept {
-        if( empty() ){ return; } auto n = first();
-        while( n!=nullptr ){ func( n->data ); n = n->next; }
+        auto n = first(); while( n!=nullptr )
+        { func( n->data ); n = n->next; }
     }
 
     /*─······································································─*/
 
     bool is_item( NODE* item ) const noexcept {
-        if( empty() || item==nullptr ){ return false; }
+        if( empty() || item==nullptr )
+          { return false; } return true;
+        /*
         auto n = first(); while( n!=nullptr ){
          if( n == item ){ return true; }
         n=n->next; } return false;
+        */
     }
 
     queue_t copy() const noexcept { queue_t n_buffer;
@@ -298,7 +295,7 @@ public:
         if( empty() ){
             obj->fst = new NODE( value ); obj->lst=first();
         } elif ( is_item(n) ) {
-            auto  m = new NODE( value ); m->prev = n->prev;
+            auto m = new NODE( value ); m->prev = n->prev;
             if ( n->prev!= nullptr ){ n->prev->next = m; }
             if ( n->next== nullptr ){ obj->lst = n; }
             if ( m->prev== nullptr ){ obj->fst = m; }
@@ -361,7 +358,7 @@ public:
 
     NODE* as( void* x ) const noexcept {
         if( x == nullptr ){ return nullptr; }
-        return (NODE*)(x);
+        return type::cast<NODE>(x);
     }
 
 };}

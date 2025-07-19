@@ -14,7 +14,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if   _KERNEL == NODEPP_KERNEL_WINDOWS
+#if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
 
     #include "fs.h"
     #include "worker.h"
@@ -24,10 +24,10 @@
     namespace nodepp { namespace popen {
 
         template< class... T > string_t await( const T&... args ){
-            string_t result; auto pid = type::bind( popen_t( args... ) );
-            pid->onData([&]( string_t chunk ){ result += chunk; });
+            string_t out; auto pid = type::bind( popen_t( args... ) );
+            pid->onData([&]( string_t chunk ){ out += chunk; });
             worker::await([&](){ return pid->next(); }); 
-        return result; }
+        return out; }
 
         template< class... T > popen_t async( const T&... args ){
             auto pid = type::bind( popen_t( args... ) );
@@ -36,7 +36,7 @@
 
     }}
 
-#elif _KERNEL == NODEPP_KERNEL_POSIX
+#elif _KERNEL_ == NODEPP_KERNEL_POSIX
 
     #include "fs.h"
     #include "initializer.h"
@@ -45,14 +45,14 @@
     namespace nodepp { namespace popen {
 
         template< class... T > string_t await( const T&... args ){
-            string_t result; auto pid = type::bind( popen_t( args... ) );
-            pid->onData([&]( string_t chunk ){ result += chunk; });
+            string_t out; auto pid = type::bind( popen_t( args... ) );
+            pid->onData([&]( string_t chunk ){ out += chunk; });
             process::await([&](){ return pid->next(); }); 
-        return result; }
+        return out; }
 
         template< class... T > popen_t async( const T&... args ){
             auto pid = type::bind( popen_t( args... ) );
-            process::poll::add([=](){ return pid->next(); }); 
+            process::add([=](){ return pid->next(); } ); 
         return *pid; }
 
     }}

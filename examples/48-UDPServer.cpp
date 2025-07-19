@@ -17,6 +17,8 @@ void onMain(){
             console::log("closed");
         });
 
+        stream::pipe( cli );
+
     });
 
     server.listen( "localhost", 8000, []( socket_t srv ){

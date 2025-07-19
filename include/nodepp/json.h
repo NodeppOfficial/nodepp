@@ -29,7 +29,7 @@ private:
 
 protected:
 
-    long get_next_sec( ulong _pos, const string_t& str ) const noexcept {
+    long get_next_sec( ulong _pos, const string_t& str ) const {
         uchar k=0; while( _pos < str.size() ){
             switch( str[_pos] ){
                 case ':': k += 6; break; case ',': k -= 6; break;
@@ -42,7 +42,7 @@ protected:
         }   return _pos >= str.size() ? -1 : _pos;
     }
 
-    long get_next_key( ulong _pos, const string_t& str ) const noexcept {
+    long get_next_key( ulong _pos, const string_t& str ) const {
         bool x=1; uchar k=0; while( _pos < str.size() ){
             switch( str[_pos] ){
                 case '[': k += 1; break; case ']': k -= 1; break;
@@ -56,7 +56,7 @@ protected:
         }   return _pos >= str.size() ? -1 : _pos;
     }
 
-    object_t get_data( const string_t& data ) const noexcept {
+    object_t get_data( const string_t& data ) const {
         ulong x=0; while( x < data.size() && data[x]==' ' ){ ++x; }
           if( data.empty() || data[x] == ',' )         { return nullptr; }
         elif( data[x] == '"'     )                     { return regex::match(data,"\"[^\"]+\"").slice(1,-1); }
@@ -64,7 +64,7 @@ protected:
         elif( data[x] == '['     )                     { return parse( data ); }
         elif( data.find("false") )                     { return (bool) 0; }
         elif( data.find("true")  )                     { return (bool) 1; }
-        elif( data.find("null")  )                     { return nullptr;  }
+        elif( data.find("null")  )                     { return nullptr ; }
         elif( regex::test(data,"[a-z]") )              { return (string_t) data; }
         elif( data.find('.')     ){
             if( regex::match(data,"[.]\\d+").size()>5 ){ return string::to_double(data); }
@@ -74,7 +74,7 @@ protected:
     }
 
     object_t get_object( ulong x, ulong y, const string_t& str ) const {
-        object_t result; do { type::pair<string_t,string_t> data;
+        object_t out; do { type::pair<string_t,string_t> data;
            if( string::is_space(str[x]) ){ continue; }
            if( str[x] == '"' ){
                auto z = get_next_sec( x, str );
@@ -83,9 +83,9 @@ protected:
                auto w = get_next_sec( x, str );
                     w = w<0 ? str.size()-1 : w;
                data.second = str.slice( x+1, w ); x=w;
-               result[data.first] = get_data( data.second );
+               out[data.first] = get_data( data.second );
             }
-        } while( x++<y ); return result.keys().empty() ? nullptr : result;
+        } while( x++<y ); return out.keys().empty() ? nullptr : out;
     }
 
     ARRAY get_array( ulong x, ulong y, const string_t& str ) const {
@@ -93,11 +93,11 @@ protected:
            if( string::is_space(str[x]) || str[x]==',' ){ continue; }
            if( str[x] == '{' || str[x] == '[' ){
                auto z = get_next_key( x, str );
-           if( z < 0 ){ process::error("Invalid JSON Format"); }
+           if( z < 0 ){ throw except_t("Invalid JSON Format"); }
                data.push( parse(str.slice( x,z+1 )) ); x=z+1;
            } elif( str[x] == '"' ) {
                auto z = get_next_sec( x, str );
-           if( z < 0 ){ process::error("Invalid JSON Format"); }
+           if( z < 0 ){ throw except_t("Invalid JSON Format"); }
                data.push( get_data(str.slice( x,z+1 )) ); x=z+1;
            } elif( x != y ) {
                ulong z=x; while( str[z]!=',' && z<y ) { ++z; }
@@ -106,7 +106,7 @@ protected:
         } while( x++<y ); return data.data();
     }
 
-public: json_t () noexcept = default;
+public: json_t () noexcept {}
 
     object_t parse( const string_t& str ) const {
         if( str.empty() ){ return nullptr; }
@@ -114,7 +114,7 @@ public: json_t () noexcept = default;
 
             if ( str[x] == '[' || str[x] == '{' || str[x] == '"' ){
                  auto pos = get_next_key( x, str );
-            if ( pos < 0 ){ process::error("Invalid JSON Format"); }
+            if ( pos < 0 ){ throw except_t("Invalid JSON Format"); }
 
                 if( str[x] == '[' ) {
                     return get_array( x+1, pos, str );
@@ -125,7 +125,7 @@ public: json_t () noexcept = default;
                 }   x = pos + 1;
 
             } elif( str[x] == ']' || str[x] == '}' || str[x] == ')' ){
-                process::error("Invalid JSON Format");
+                throw except_t("Invalid JSON Format");
             } else {
                 if( string::is_space( str[x] ) )
                   { continue; } data.push( str[x] );
@@ -137,25 +137,25 @@ public: json_t () noexcept = default;
     string_t format( const object_t& obj ) const {
         if( !obj.has_value() ){ return "{}"; }
 
-        string_t result;
+        string_t out;
 
         if( obj.get_type_id() == 20 ){
-            result.push('{');
+            out.push('{');
 
             for( auto &item: obj.as<QUEUE>().data() ){
-                 result += string::format("\"%s\":",item.first.get());
-                 result += format( item.second ); result.push(',');
-            }    result.pop();
+                 out += string::format("\"%s\":",item.first.get());
+                 out += format( item.second ); out.push(',');
+            }    out.pop();
 
-            result.push('}'); goto END;
+            out.push('}'); goto END;
         } elif( obj.get_type_id() == 21 ){
-            result.push('[');
+            out.push('[');
 
             for( auto &item: obj.as<ARRAY>() )
-               { result += format( item ); result.push(','); }
-            if ( result[ result.size()-1 ] == ',' ){ result.pop(); }
+               { out += format( item ); out.push(','); }
+            if ( out[ out.size()-1 ] == ',' ){ out.pop(); }
 
-            result.push(']'); goto END;
+            out.push(']'); goto END;
         }
 
         switch( obj.get_type_id() ){
@@ -179,23 +179,23 @@ public: json_t () noexcept = default;
             case 0x0011: return string::to_string( obj.as<ldouble>() );                          break;
             case 0x0012: return string::format("\"%s\"",obj.as<string_t>().get());               break;
 
-            case 0xfA03: do { result.push('[');
+            case 0xfA03: do { out.push('[');
              for( auto &x: obj.as<array_t<bool>>() )
-                { result += string::format("\"%s\",",x ? "true":"false" ); }
-             if ( result[ result.size()-1 ] == ',' ){ result.pop(); }
-            result.push(']'); } while(0); break;
+                { out += string::format("\"%s\",",x ? "true":"false" ); }
+             if ( out[ out.size()-1 ] == ',' ){ out.pop(); }
+            out.push(']'); } while(0); break;
 
-            case 0xfA04: do { result.push('[');
+            case 0xfA04: do { out.push('[');
              for( auto &x: obj.as<array_t<char>>() )
-                { result += string::format("\"%c\",", x ); }
-             if ( result[ result.size()-1 ] == ',' ){ result.pop(); }
-            result.push(']'); } while(0); break;
+                { out += string::format("\"%c\",", x ); }
+             if ( out[ out.size()-1 ] == ',' ){ out.pop(); }
+            out.push(']'); } while(0); break;
 
-            case 0xfA12: do { result.push('[');
+            case 0xfA12: do { out.push('[');
              for( auto &x: obj.as<array_t<string_t>>() )
-                { result += string::format("\"%s\",", x.get() ); }
-             if ( result[ result.size()-1 ] == ',' ){ result.pop(); }
-            result.push(']'); } while(0); break;
+                { out += string::format("\"%s\",", x.get() ); }
+             if ( out[ out.size()-1 ] == ',' ){ out.pop(); }
+            out.push(']'); } while(0); break;
 
             case 0xfA01: return string::format("[%s]",obj.as<array_t<int>>().join().get());      break;
             case 0xfA02: return string::format("[%s]",obj.as<array_t<uint>>().join().get());     break;
@@ -216,7 +216,7 @@ public: json_t () noexcept = default;
             default: return "{}"; break;
         }
 
-        END:; return result;
+        END:; return out;
     }
 
 };}

@@ -23,6 +23,7 @@ protected:
     struct NODE {
         array_t<POLLFD> ev;
         ptr_t<int>      ls;
+        int         x,y,pd;
     };  ptr_t<NODE>    obj;
 
     void remove( int fd ) const noexcept { obj->ev.erase( fd ); }
@@ -48,20 +49,19 @@ public: poll_t() noexcept : obj( new NODE() ) {}
     /*─······································································─*/
 
     int next () noexcept { 
-        static ulong s=0; static POLLFD x;
-    coBegin
+    POLLFD x ; coBegin
 
-        if( obj->ev.empty() )                                  { coEnd; }
-        if( ::WSAPoll( obj->ev.data(), obj->ev.size(), 0 )<=0 ){ coEnd; } 
+        if((obj->y=::WSAPoll( obj->ev.data(), obj->ev.size(), 0 ))<=0){ coEnd; } 
         
-        s = obj->ev.size(); while( s-->0 ){ x = obj->ev[s]; 
-              if( x.revents & POLLERR ){ remove(s); onError.emit(x.fd); obj->ls={{-1, (int)x.fd }}; onEvent.emit(obj->ls); coNext; }
-            elif( x.revents & POLLIN  ){ remove(s);  onRead.emit(x.fd); obj->ls={{ 0, (int)x.fd }}; onEvent.emit(obj->ls); coNext; }
-            elif( x.revents & POLLOUT ){ remove(s); onWrite.emit(x.fd); obj->ls={{ 1, (int)x.fd }}; onEvent.emit(obj->ls); coNext; }
-        }
-    
-    coFinish
+        obj->x = 0; do { x = obj->ev[obj->x]; ++obj->x;
+              if( x.revents & POLLERR ){ onError.emit(x.fd); obj->ls={{-1, x.fd }}; onEvent.emit(obj->ls); coNext; }
+            elif( x.revents & POLLIN  ){  onRead.emit(x.fd); obj->ls={{ 0, x.fd }}; onEvent.emit(obj->ls); coNext; }
+            elif( x.revents & POLLOUT ){ onWrite.emit(x.fd); obj->ls={{ 1, x.fd }}; onEvent.emit(obj->ls); coNext; }
+        } while( obj->x < obj->y ); 
+        
+    obj->ev.splice( 0, obj->y ) ; coFinish
     };
+
     /*─······································································─*/
 
     bool push_write( const SOCKET& fd ) noexcept { 

@@ -7,7 +7,7 @@ ssl_t ssl; // ( "./ssl/cert.key", "./ssl/cert.crt" );
 
 void onMain(){
 
-    auto client = tls::client( &ssl );
+    auto client = tls::client( ssl );
 
     client.onOpen([=]( ssocket_t cli ){
     
@@ -20,6 +20,7 @@ void onMain(){
         });
 
         cli.write("hola mundo");
+        stream::pipe( cli );
 
     });
 

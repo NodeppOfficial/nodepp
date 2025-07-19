@@ -10,30 +10,53 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #pragma once
-#include "limit.cpp"
 #include <sys/epoll.h>
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { using EPOLLFD = struct epoll_event; class poll_t: public generator_t {
+namespace nodepp { using EPOLLFD= struct epoll_event; }
+namespace nodepp { class poll_t : public generator_t {
+private:
+
+    struct waiter { bool blk; bool out; }; 
+
+    using ITEM    = ptr_t<int>;
+    using CALLBACK= function_t<int>;
+    
 protected:
 
     struct NODE {
-        ptr_t<int>     ls;
+        queue_t<CALLBACK> queue;
+        int        len,pd;
         ptr_t<EPOLLFD> ev;
-        int            pd;
     };  ptr_t<NODE>   obj;
 
-    void remove( EPOLLFD x ) const noexcept {
-         epoll_ctl( obj->pd, EPOLL_CTL_DEL, x.data.fd, &x );
+    int event_loop_next_tick() const noexcept {
+    auto x =obj->queue.get(); 
+    if ( x==nullptr ){ return -1; }
+        
+        switch( x->data() ){
+            case -1: obj->queue.erase(x); break;
+            case  1: obj->queue.next();   break;
+            default: /*----------------*/ break;
+        } 
+        
+    return x->next==nullptr ? -1 : 1; }
+
+    int append( const int& fd, const int flags, void* ptr ) const noexcept {
+        EPOLLFD event; if( !limit::fileno_ready() ){ return -1; }
+        event.data.fd=fd; event.data.ptr=ptr; event.events=flags;
+        return epoll_ctl( obj->pd, EPOLL_CTL_ADD, fd, &event );
     }
 
-public:
+    int remove( const int& fd ) const noexcept {
+        EPOLLFD event; event.events=0; event.data.fd=fd; 
+        return epoll_ctl( obj->pd, EPOLL_CTL_DEL, fd, &event );
+    }
 
-    wait_t<ptr_t<int>> onEvent;
-    wait_t<int>        onWrite;
-    wait_t<int>        onError;
-    wait_t<int>        onRead;
+    int invoke( EPOLLFD x, int fd, int state ) const noexcept {
+        if( x.data.ptr == nullptr ){ return -1; } return 1;
+    }
 
 public:
 
@@ -41,44 +64,49 @@ public:
 
     poll_t() : obj( new NODE() ) {
         obj->pd = epoll_create1(0); if( obj->pd==-1 )
-        { process::error("Can't open an epoll fd"); }
+      { throw except_t("Can't open more epoll fd"); }
         obj->ev.resize( limit::get_soft_fileno() );
     }
 
     /*─······································································─*/
 
-    ptr_t<int> get_last_poll() const noexcept { return obj->ls; }
+    template< class T, class V >
+    int add( T& inp, uchar imode, V& out, uchar omode, CALLBACK cb ) noexcept {
+    //  return append( fd, EPOLLOUT | EPOLLET , cb );
+    return 1; }
+
+    template< class T >
+    int add( T& inp, uchar imode, CALLBACK cb ) noexcept {
+    return 1; }
+    
+    /*
+    bool push_read  ( const int& fd, void* cb ) noexcept { return append( fd, EPOLLIN  | EPOLLET , cb ); }
+    bool push_duplex( const int& fd, void* cb ) noexcept { 
+         bool success_write= push_write( fd, cb );
+         bool success_read = push_read ( fd, cb );
+         return success_read && success_write;
+    }
+    */
 
     /*─······································································─*/
 
-    int next () noexcept {
-        static int c=0; static EPOLLFD x;
+    int next() noexcept {
     coBegin
 
-        if( (c=epoll_wait( obj->pd, &obj->ev, obj->ev.size(), 0 ))<=0 ) { coEnd; } while( c-->0 ){ x = obj->ev[c];
-              if( x.events & EPOLLIN  ){ remove(x);  onRead.emit(x.data.fd); obj->ls={{ 0, x.data.fd }}; onEvent.emit(obj->ls); coNext; }
-            elif( x.events & EPOLLOUT ){ remove(x); onWrite.emit(x.data.fd); obj->ls={{ 1, x.data.fd }}; onEvent.emit(obj->ls); coNext; }
-            else                       { remove(x); onError.emit(x.data.fd); obj->ls={{-1, x.data.fd }}; onEvent.emit(obj->ls); coNext; }
-        }
+        if((obj->len=epoll_wait( obj->pd, &obj->ev, obj->ev.size(), 0 ))<=0 ){ coStay(1); }
 
-    coFinish
-    };
+        do{ auto y=0; while( y < obj->len ){ auto x = obj->ev[y];
+            if( x.events & ( EPOLLERR | EPOLLHUP ) )
+              { invoke( x, x.data.fd, NODEPP_POLL_ERROR ); }
+            if( x.events & EPOLLOUT )
+              { invoke( x, x.data.fd, NODEPP_POLL_WRITE ); }
+            if( x.events & EPOLLIN )
+              { invoke( x, x.data.fd, NODEPP_POLL_READ  ); }
+        ++y; }} while(0); coStay(1);
 
-    /*─······································································─*/
+        coYield(1); return event_loop_next_tick();
 
-    bool push_write( const int& fd ) noexcept {
-         EPOLLFD event;
-                 event.data.fd = fd;
-                 event.events  = EPOLLOUT;
-         return epoll_ctl( obj->pd, EPOLL_CTL_ADD, fd, &event )!=-1;
-    }
-
-    bool push_read( const int& fd ) noexcept {
-         EPOLLFD event;
-                 event.data.fd = fd;
-                 event.events  = EPOLLIN;
-         return epoll_ctl( obj->pd, EPOLL_CTL_ADD, fd, &event )!=-1;
-    }
+    coFinish }
 
 };}
 

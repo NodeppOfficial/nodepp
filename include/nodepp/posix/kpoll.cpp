@@ -10,74 +10,76 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #pragma once
-#include "limit.cpp"
-
 #include <sys/types.h>
 #include <sys/event.h>
 #include <sys/time.h>
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { using KPOLLFD = struct kevent; class poll_t: public generator_t {
+namespace nodepp { using KPOLLFD = struct kevent; class poll_t {
 protected:
 
     struct NODE {
-        ptr_t<int>     ls;
+        int        len,pd;
         ptr_t<KPOLLFD> ev;
-        int            pd;
     };  ptr_t<NODE>   obj;
 
-    void remove( KPOLLFD x ) const noexcept {
-         EV_SET( &x, x.ident, 0, EV_DELETE, 0, 0, NULL );
-         kevent( obj->pd, &x, 1, NULL, 0, NULL );
+    using T = function_t< void, void*, int, int >;
+
+    int invoke( KPOLLFD x, int fd, int state ) const noexcept {
+        if( x.data.ptr == nullptr ){ return -1; }
+        type::cast<T>(x.data.ptr)->( x.data.ptr, fd, state );
     }
-
-public:
-
-    wait_t<ptr_t<int>> onEvent;
-    wait_t<int>        onWrite;
-    wait_t<int>        onError;
-    wait_t<int>        onRead;
 
 public:
 
    ~poll_t() noexcept { if( obj.count() > 1 ){ return; } close( obj->pd ); }
 
     poll_t() : obj( new NODE() ) {
-        obj->pd = kqueue(0); if( obj->pd == -1 )
-        process::error("Can't open an epoll fd");
+        obj->pd = kqueue(0); if( obj->pd==-1 )
+      { throw except_t("Can't open more kqueue fd"); }
         obj->ev.resize( limit::get_soft_fileno() );
     }
 
     /*─······································································─*/
 
-    ptr_t<int> get_last_poll() const noexcept { return obj->ls; }
-
-    /*─······································································─*/
-
-    int next () noexcept {
-        static int c=0; static KPOLLFD x;
-    coBegin
-
-        if( (c=kevent( obj->pd, NULL, 0, &obj->ev, obj->ev.size(), 0 ))<=0 ) { coEnd; } while( c-->0 ){ x = obj->ev[c];
-              if( x.flags & EVFILT_READ  ){ remove(x);  onRead.emit(x.ident); obj->ls={{ 0, x.ident }}; onEvent.emit(obj->ls); coNext; }
-            elif( x.flags & EVFILT_WRITE ){ remove(x); onWrite.emit(x.ident); obj->ls={{ 1, x.ident }}; onEvent.emit(obj->ls); coNext; }
-            else                          { remove(x); onError.emit(x.ident); obj->ls={{-1, x.ident }}; onEvent.emit(obj->ls); coNext; }
-        }
-
-    coFinish
-    };
-
-    /*─······································································─*/
-
-    bool push_write( const int& fd ) noexcept { KPOLLFD event;
-	     EV_SET( &event, fd, EVFILT_WRITE, EV_ADD, 0, 0, NULL );
-         return kevent( obj->pd, &event, 1, NULL, 0, NULL )!=-1;
+    bool push_write ( const int& fd, T* cb ) noexcept { return append( fd, EVFILT_WRITE | EV_CLEAR, cb ); }
+    bool push_read  ( const int& fd, T* cb ) noexcept { return append( fd, EVFILT_READ  | EV_CLEAR, cb ); }
+    bool push_duplex( const int& fd, T* cb ) noexcept { 
+         bool success_write= push_write( fd, cb );
+         bool success_read = push_read ( fd, cb );
+         return success_read && success_write;
     }
 
-    bool push_read( const int& fd ) noexcept { KPOLLFD event;
-	     EV_SET( &event, fd, EVFILT_READ, EV_ADD, 0, 0, NULL );
-         return kevent( obj->pd, &event, 1, NULL, 0, NULL )!=-1;
+    /*─······································································─*/
+
+    int next() noexcept {
+
+        if((obj->len=kevent( obj->pd, NULL, 0, &obj->ev, obj->ev.size(), 0 ))<=0 ){ return -2; }
+
+        auto y=0; while( y < obj->len ){ auto x = obj->ev[y];
+            if( x.flags & (EV_ERROR|EV_EOF) )
+              { invoke( x, x.data.fd, 0x00 ); }
+            if( x.filter& EVFILT_WRITE )
+              { invoke( x, x.data.fd, 0x02 ); }
+            if( x.filter& EVFILT_READ  )
+              { invoke( x, x.data.fd, 0x01 ); }
+        ++y; }
+
+    return obj->len; }
+
+    /*─······································································─*/
+
+    int append( const int& fd, const int flags, T* cb ) const noexcept {
+        KPOLLFD event; event.udata = cb;
+        EV_SET( &event, fd, flags, EV_ADD|EV_ENABLE, 0, 0, NULL );
+        return kevent( obj->pd, &event, 1, NULL, 0, NULL );
+    }
+
+    int remove( const int& fd ) const noexcept { 
+        KPOLLFD event; event.udata = cb;
+        EV_SET( &event, fd, 0, EV_DELETE|EV_DISABLE, 0, 0, NULL );
+        return kevent( obj->pd, &event, 1, NULL, 0, NULL );
     }
 
 };}

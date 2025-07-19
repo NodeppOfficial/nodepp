@@ -14,10 +14,14 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { class popen_t : public generator_t {
+private:
+
+    using _read_ = generator::file::read;
+
 protected:
 
-    ptr_t<_file_::read> _read1 = new _file_::read;
-    ptr_t<_file_::read> _read2 = new _file_::read;
+    ptr_t<_read_> _read1 = new _read_();
+    ptr_t<_read_> _read2 = new _read_();
 
     struct NODE {
         PROCESS_INFORMATION pi;
@@ -57,9 +61,9 @@ protected:
         WaitForSingleObject( obj->pi.hThread , 0 );
 
         if( obj->fd != 0 ){
-            obj->std_input  = { fda[1] }; ::CloseHandle( fda[0] );
-            obj->std_output = { fdb[0] }; ::CloseHandle( fdb[1] );
-            obj->std_error  = { fdc[0] }; ::CloseHandle( fdc[1] );
+            obj->std_input  = file_t( fda[1] ); ::CloseHandle( fda[0] );
+            obj->std_output = file_t( fdb[0] ); ::CloseHandle( fdb[1] );
+            obj->std_error  = file_t( fdc[0] ); ::CloseHandle( fdc[1] );
             obj->state      = 1;
         } else {
             ::CloseHandle ( fda[0] ); ::CloseHandle ( fda[1] );
@@ -106,12 +110,12 @@ public:
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
         if( obj->state == -2 ){ return; } close(); obj->state = -2;
             obj->std_error.close(); obj->std_output.close();
-            obj->std_input.close(); onClose.emit(); kill();
+            obj->std_input.close(); kill();
     
         onResume.clear(); onError.clear(); 
         onStop  .clear(); onOpen .clear();
         onData  .clear(); onDout .clear(); 
-        onDerr  .clear();
+        onDerr  .clear(); onClose.emit (); 
 
     }
 
