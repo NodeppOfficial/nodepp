@@ -25,8 +25,8 @@ namespace nodepp { class wss_t : public ssocket_t {
 protected:
 
     struct NODE {
-        _ws_::write write;
-        _ws_::read  read ;
+        generator::ws::write write;
+        generator::ws::read  read ;
     };  ptr_t<NODE> ws;
 
 public:
@@ -55,30 +55,29 @@ namespace nodepp { namespace wss {
     tls_t server( const tls_t& skt ){ skt.onSocket([=]( ssocket_t cli ){
        
         auto hrv = type::cast<https_t>(cli);
-        if( !_ws_::server( hrv ) ){ skt.onConnect.skip(); return; }
-        process::poll::add([=](){ skt.onConnect.emit(cli); return -1; }); 
+        if(!generator::ws::server( hrv ) ){ skt.onConnect.skip(); return; }   
+        process::add([=](){ skt.onConnect.emit(cli); return -1; }); 
 
     }); skt.onConnect([=]( wss_t cli ){
-        cli.onDrain.once([=](){ cli.free(); });
         cli.set_timeout(0); cli.resume(); stream::pipe(cli); 
     }); return skt; }
 
     /*─······································································─*/
 
-    tls_t server( const ssl_t* ssl, agent_t* opt=nullptr ){
+    tls_t server( const ssl_t& ssl, agent_t* opt=nullptr ){
     auto skt = https::server( [=]( https_t ){}, ssl, opt );
                   wss::server( skt ); return skt;
     }
 
     /*─······································································─*/
 
-    tls_t client( const string_t& uri, const ssl_t* ssl, agent_t* opt=nullptr ){
+    tls_t client( const string_t& uri, const ssl_t& ssl, agent_t* opt=nullptr ){
     tls_t skt   ( [=]( ssocket_t ){}, ssl, opt );
     skt.onSocket.once([=]( ssocket_t cli ){
 
         auto hrv = type::cast<https_t>(cli);
-        if( !_ws_::client( hrv, uri ) ){ skt.onConnect.skip(); return; }
-        process::poll::add([=](){ skt.onConnect.emit(cli); return -1; }); 
+        if(!generator::ws::client( hrv, uri ) ){ skt.onConnect.skip(); return; }   
+        process::add([=](){ skt.onConnect.emit(cli); return -1; }); 
 
     }); skt.onConnect.once([=]( wss_t cli ){
         cli.onDrain.once([=](){ cli.free(); });

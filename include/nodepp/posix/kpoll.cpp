@@ -10,75 +10,146 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #pragma once
-#include "limit.cpp"
-
 #include <sys/types.h>
 #include <sys/event.h>
 #include <sys/time.h>
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { using KPOLLFD = struct kevent; class poll_t: public generator_t {
+namespace nodepp { enum POLL_STATE {
+    READ = 1, WRITE = 2, DUPLEX = 3
+};}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { using KPOLLFD = struct kevent; }
+namespace nodepp { class poll_t : public generator_t {
+private:
+
+    using CALLBACK = function_t<int>;
+    using DATA     = type::pair<int,CALLBACK>;
+
+    struct waiter { bool blk; bool out; }; 
+    
 protected:
 
     struct NODE {
-        ptr_t<int>     ls;
+        queue_t<DATA>  queue;
+        map_t<int,void*> mem;
+        int        len,pd;
+        bool          blk;
         ptr_t<KPOLLFD> ev;
-        int            pd;
     };  ptr_t<NODE>   obj;
 
-    void remove( KPOLLFD x ) const noexcept {
-         EV_SET( &x, x.ident, 0, EV_DELETE, 0, 0, NULL );
-         kevent( obj->pd, &x, 1, NULL, 0, NULL );
+    /*─······································································─*/
+
+    int emit() const noexcept { 
+    auto z =obj->mem.raw(); if( z.empty()  ){ return -1; } 
+    auto x =z.get(); /*--*/ if( x==nullptr ){ return -1; }
+    auto y =obj->queue.as( x->data.second );
+        
+        obj->blk = 1; bool out = x->next==nullptr;
+
+        switch( type::cast<CALLBACK>( y->data.second ).emit() ){
+            case -1: remove( y ); z.next(); break;
+            case  1: /*--------*/ z.next(); break;
+            default: /*------------------*/ break;
+        }
+
+        obj->blk = 0;
+
+    return out ? -1 : 1; }
+
+    /*─······································································─*/
+    
+    bool listen( const int fd, const int flags, void* ptr ) noexcept { bool x=1, y=1;
+        if( flags & POLL_STATE::READ  ){ x = append( fd, EVFILT_READ  | EV_CLEAR, ptr )!=-1; }
+        if( flags & POLL_STATE::WRITE ){ y = append( fd, EVFILT_WRITE | EV_CLEAR, ptr )!=-1; }
+        return ( x && y );
     }
 
-public:
+    int append( const int fd, const int flags, void* ptr ) const noexcept {
+        KPOLLFD event; if( !limit::fileno_ready() ){ return -1; }
+        EV_SET( &event, fd, flags, EV_ADD|EV_ENABLE, 0, 0, ptr );
+        return kevent( obj->pd, &event, 1, NULL, 0, NULL );
+    }
 
-    wait_t<ptr_t<int>> onEvent;
-    wait_t<int>        onWrite;
-    wait_t<int>        onError;
-    wait_t<int>        onRead;
+    int remove( void* ptr ) const noexcept {
+        auto pt = obj->queue.as( ptr ); KPOLLFD event;
+        auto fd = pt->data.first; obj->queue.erase(pt);
+        EV_SET( &event, fd, 0, EV_DELETE|EV_DISABLE, 0, 0, NULL );
+        return kevent( obj->pd, &event, 1, NULL, 0, NULL );
+    }
+
+    /*─······································································─*/
+
+    template< class T, class... V >
+    void* push( int fd, T cb, const V&... arg ) const noexcept {
+
+        ptr_t<waiter> tsk = new waiter();
+        auto clb=type::bind( cb );
+        tsk->blk=0; tsk->out=1; 
+
+        obj->queue.push({ fd, [=](){
+            if( tsk->out==0 ){ return -1; }
+            if( tsk->blk==1 ){ return  1; } 
+                tsk->blk =1; int rs=(*clb)( arg... );
+            if( clb.null () ){ return -1; }  
+                tsk->blk =0; return !tsk->out ? -1 : rs;
+        } }); 
+        
+        return (void*) &tsk->out;
+    }
+
+    /*─······································································─*/
+
+    void clear( void* address ){
+         if( address == nullptr ){ return; }
+         memset( address, 0, sizeof(bool) );
+    }
 
 public:
 
    ~poll_t() noexcept { if( obj.count() > 1 ){ return; } close( obj->pd ); }
 
     poll_t() : obj( new NODE() ) {
-        obj->pd = kqueue(0); if( obj->pd == -1 )
-        process::error("Can't open an epoll fd");
+        obj->pd = kqueue(0); if( obj->pd==-1 )
+      { throw except_t("Can't open more kqueue fd"); }
         obj->ev.resize( limit::get_soft_fileno() );
     }
 
     /*─······································································─*/
 
-    ptr_t<int> get_last_poll() const noexcept { return obj->ls; }
+    void clear() const noexcept { /*--*/ obj->queue.clear(); }
+
+    ulong size() const noexcept { return obj->queue.size (); }
+
+    bool empty() const noexcept { return obj->queue.empty(); }
 
     /*─······································································─*/
 
-    int next () noexcept {
-        static int c=0; static KPOLLFD x;
+    template< class T, class U, class... W >
+    void* add( T& inp, uchar imode, U cb, const W&... args ) noexcept {
+    auto addr = push( inp.get_fd(), cb, args... ); /*----------*/
+    bool    x = listen( inp.get_fd(), imode, obj->queue.last() );
+    if( !x ){ clear( addr ); } return addr; }
+
+    /*─······································································─*/
+
+    int next() noexcept {
+        if( obj->blk ){ return 1; }
     coBegin
 
-        if( (c=kevent( obj->pd, NULL, 0, &obj->ev, obj->ev.size(), 0 ))<=0 ) { coEnd; } while( c-->0 ){ x = obj->ev[c];
-              if( x.flags & EVFILT_READ  ){ remove(x);  onRead.emit(x.ident); obj->ls={{ 0, x.ident }}; onEvent.emit(obj->ls); coNext; }
-            elif( x.flags & EVFILT_WRITE ){ remove(x); onWrite.emit(x.ident); obj->ls={{ 1, x.ident }}; onEvent.emit(obj->ls); coNext; }
-            else                          { remove(x); onError.emit(x.ident); obj->ls={{-1, x.ident }}; onEvent.emit(obj->ls); coNext; }
-        }
+        if((obj->len=kevent( obj->pd, NULL, 0, &obj->ev, obj->ev.size(), 0 ))<=0 )
+          { coEnd; } obj->mem.clear();
 
-    coFinish
-    };
+        do{ auto y=0; while( y < obj->len ){ auto x = obj->ev[y];
+            obj->mem.append({ x.ident, obj->ev[y] });
+        ++y; }} while(0);
 
-    /*─······································································─*/
+        coWait( emit()>=0 );
 
-    bool push_write( const int& fd ) noexcept { KPOLLFD event;
-	     EV_SET( &event, fd, EVFILT_WRITE, EV_ADD, 0, 0, NULL );
-         return kevent( obj->pd, &event, 1, NULL, 0, NULL )!=-1;
-    }
-
-    bool push_read( const int& fd ) noexcept { KPOLLFD event;
-	     EV_SET( &event, fd, EVFILT_READ, EV_ADD, 0, 0, NULL );
-         return kevent( obj->pd, &event, 1, NULL, 0, NULL )!=-1;
-    }
+    coFinish }
 
 };}
 

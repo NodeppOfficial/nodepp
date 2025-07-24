@@ -40,7 +40,7 @@ public:
     /*─······································································─*/
 
     T& value() const { if ( !has_value() ) {
-        process::error("Optional does not have a value");
+        throw except_t("Optional does not have a value");
     }   return obj->data; }
     
 };}

@@ -27,8 +27,12 @@ void onMain() {
             process::exit(1);
         });
 
+        stream::pipe( cin );
+
     });
 
-    stream::pipe( cin );
+    client.onError([=]( except_t err ){
+        console::log( "<>", err.data() );
+    });
 
 }

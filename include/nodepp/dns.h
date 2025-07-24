@@ -14,11 +14,11 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if   _KERNEL == NODEPP_KERNEL_WINDOWS
+#if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
     #include "url.h"
     #include "socket.h"
     #include "windows/dns.cpp"
-#elif _KERNEL == NODEPP_KERNEL_POSIX
+#elif _KERNEL_ == NODEPP_KERNEL_POSIX
     #include "url.h"
     #include "socket.h"
     #include "posix/dns.cpp"

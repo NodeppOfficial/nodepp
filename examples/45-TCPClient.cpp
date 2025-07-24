@@ -18,6 +18,7 @@ void onMain(){
         });
 
         cli.write("Hello World!");
+        stream::pipe( cli );
 
     });
 

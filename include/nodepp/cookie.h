@@ -25,23 +25,22 @@ namespace nodepp {
 
     namespace cookie {
 
-        cookie_t parse( string_t data ){
-            if ( data.empty() ){ return cookie_t(); } cookie_t res;
-                 auto args = string::split( data, ';' );
-            for( auto x : args ){ 
-                 auto y = regex::search( x,"[^=]+");
-                 if ( y == nullptr ){ continue; }
-                 auto name = regex::replace( x.slice(y[0],y[1]), "\\s+", "" );
-                 res[ name ] = x.slice(y[1]+1);
-            }    return res;
+        query_t parse( string_t data ){
+            if( data.empty() ){ return query_t(); } query_t out;
+            auto mem = regex::get_memory( data, "([^= ]+)=([^;]+)" );
+            while( !mem.empty() ){ auto data = mem.splice( 0, 2 );
+               if( data.size()!=2 ){ break; } 
+                   out[ data[0] ] = data[1];
+            }  return out;
         }
         
         /*─······································································─*/
         
-        string_t format( const cookie_t& data ){ 
-            array_t<string_t> result; for( auto x:data.data() ) 
-                   result.push( x.first + "=" + x.second );
-            return string::format("%s",result.join(";").c_str());
+        string_t format( const cookie_t& data ){
+            if( data.empty() ){ return nullptr; } /*------*/
+            array_t<string_t> out; for( auto x:data.data() ) 
+                 { out.push( x.first + "=" + x.second ); }
+            return string::format("%s",out.join("; ").c_str());
         }
 
     }

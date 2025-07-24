@@ -14,14 +14,21 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace dns { 
+namespace nodepp { namespace dns {
+    
+    string_t ipv6 = "([0-9a-fA-F]+\\:)+[0-9a-fA-F]+"; 
     
     string_t ipv4 = "([0-9]+\\.)+[0-9]+";
-    string_t ipv6 = "([0-9a-fA-F]+\\:)+[0-9a-fA-F]+";
     
     /*─······································································─*/
 
-    string_t lookup_ipv6( string_t host ) { _socket_::start_device();
+    bool is_ipv4( const string_t& URL ){ return regex::test( URL, ipv4 ) ? 1 : 0; }
+
+    bool is_ipv6( const string_t& URL ){ return regex::test( URL, ipv6 ) ? 1 : 0; }
+    
+    /*─······································································─*/
+
+    string_t lookup_ipv6( string_t host ) {
 
           if( host == "broadcast" || host == "::2" ){ return "::2"; } 
         elif( host == "localhost" || host == "::1" ){ return "::1"; } 
@@ -53,7 +60,7 @@ namespace nodepp { namespace dns {
     
     /*─······································································─*/
 
-    string_t lookup_ipv4( string_t host ) { _socket_::start_device();
+    string_t lookup_ipv4( string_t host ) {
 
           if( host == "255.255.255.255" || host == "broadcast" ){ return "255.255.255.255"; } 
         elif( host == "127.0.0.1"       || host == "localhost" ){ return "127.0.0.1"; } 
@@ -91,7 +98,6 @@ namespace nodepp { namespace dns {
 
     string_t get_hostname(){
         auto socket = socket_t();
-        auto result = string_t();
             
         socket.SOCK    = SOCK_DGRAM;
         socket.IPPROTO = IPPROTO_UDP;
@@ -100,12 +106,6 @@ namespace nodepp { namespace dns {
 
         return socket.get_sockname();
     }
-    
-    /*─······································································─*/
-
-    bool is_ipv4( const string_t& URL ){ return regex::test( URL, ipv4 ) ? 1 : 0; }
-
-    bool is_ipv6( const string_t& URL ){ return regex::test( URL, ipv6 ) ? 1 : 0; }
     
     /*─······································································─*/
 

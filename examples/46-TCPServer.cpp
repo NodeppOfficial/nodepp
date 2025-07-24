@@ -16,6 +16,8 @@ void onMain(){
         cli.onClose.once([=](){
             console::log("closed");
         });
+        
+        stream::pipe( cli );
 
     });
 

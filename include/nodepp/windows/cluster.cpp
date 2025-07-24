@@ -14,10 +14,19 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { class cluster_t : public generator_t {
+private:
+
+    void kill() const noexcept { if( is_parent() ){ 
+        ::CloseHandle( obj->pi.hProcess ); 
+        ::CloseHandle( obj->pi.hThread ); 
+    }}
+
+    using _read_ = generator::file::read;
+
 protected:
 
-    ptr_t<_file_::read> _read1 = new _file_::read;
-    ptr_t<_file_::read> _read2 = new _file_::read;
+    ptr_t<_read_> _read1 = new _read_();
+    ptr_t<_read_> _read2 = new _read_();
 
     struct NODE {
         PROCESS_INFORMATION pi;
@@ -62,9 +71,9 @@ protected:
         WaitForSingleObject( obj->pi.hThread , 0 );
 
         if ( obj->fd != 0 ){
-            obj->input  = { fda[1] }; ::CloseHandle( fda[0] );
-            obj->output = { fdb[0] }; ::CloseHandle( fdb[1] );
-            obj->error  = { fdc[0] }; ::CloseHandle( fdc[1] );
+            obj->input  = file_t( fda[1] ); ::CloseHandle( fda[0] );
+            obj->output = file_t( fdb[0] ); ::CloseHandle( fdb[1] );
+            obj->error  = file_t( fdc[0] ); ::CloseHandle( fdc[1] );
             obj->state  = 1;
         } else {
             ::CloseHandle ( fda[0] ); ::CloseHandle ( fda[1] );
@@ -103,16 +112,17 @@ public:
     void free() const noexcept {
         
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
-        if( obj->state == -2 ){ return; } close(); obj->state = -2;
-            obj->input.close(); obj->output.close();
-            obj->error.close(); onClose.emit();
-
-        if( is_parent() ){ kill(); }
+        if( obj->state == -2 ){ return; }
+        
+        obj->input.close(); obj->output.close();
+        obj->error.close();
 
         onResume.clear(); onError.clear(); 
         onStop  .clear(); onOpen .clear();
         onData  .clear(); onDout .clear(); 
-        onDerr  .clear();
+        onDerr  .clear(); /*------------*/
+        
+        obj->state = -2; kill(); onDrain.emit(); onClose.emit();
         
     }
 
@@ -129,7 +139,7 @@ public:
         onDout.emit(_read1->data);       coYield(2);
 
         if( !is_alive()&&_read1->state<=0 ){ break; }
-        if( process::is_child() )      { coStay(1); }
+        if( process::is_child() )      { coGoto(1); }
 
         if((*_read2)(&std_error())==1 ){ coGoto(1); }
         if(  _read2->state <= 0 )      { coGoto(1); }
@@ -151,8 +161,7 @@ public:
     int  get_fd()       const noexcept { return obj->fd; }
 
     /*─······································································─*/
-
-    void   kill() const noexcept { ::CloseHandle( obj->pi.hProcess ); ::CloseHandle( obj->pi.hThread ); }
+    
     void resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume.emit(); }
     void  close() const noexcept { if(obj->state < 0) { return; } obj->state=-1; onDrain.emit(); }
     void   stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop.emit(); }

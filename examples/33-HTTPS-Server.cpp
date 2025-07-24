@@ -17,9 +17,8 @@ void onMain(){
         }));
         
         cli.write( date::fulltime() );
-        cli.close();
 
-    }, &ssl );
+    }, ssl );
 
     server.listen( "localhost", 8000, [=]( ssocket_t server ){
         console::log("server started at https://localhost:8000");

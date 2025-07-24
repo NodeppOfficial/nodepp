@@ -15,10 +15,15 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { class popen_t : public generator_t {
+private:
+
+    void kill() const noexcept { ::kill( obj->fd, SIGKILL ); }
+    using _read_ = generator::file::read;
+
 protected:
 
-    ptr_t<_file_::read> _read1 = new _file_::read;
-    ptr_t<_file_::read> _read2 = new _file_::read;
+    ptr_t<_read_> _read1 = new _read_();
+    ptr_t<_read_> _read2 = new _read_();
 
     struct NODE {
         int           fd;
@@ -40,11 +45,11 @@ protected:
             ::dup2( fdb[1], STDOUT_FILENO ); ::close( fdb[0] ); arg.push( nullptr );
             ::dup2( fdc[1], STDERR_FILENO ); ::close( fdc[0] ); env.push( nullptr );
             ::execvpe( path.c_str(), (char**)arg.data(),(char**)env.data() );
-            process::error("while spawning new popen"); process::exit(1);
+            throw except_t("while spawning new popen"); process::exit(1);
         } elif ( obj->fd > 0 ){
-            obj->std_input  = { fda[1] }; ::close( fda[0] );
-            obj->std_output = { fdb[0] }; ::close( fdb[1] );
-            obj->std_error  = { fdc[0] }; ::close( fdc[1] );
+            obj->std_input  = file_t( fda[1] ); ::close( fda[0] );
+            obj->std_output = file_t( fdb[0] ); ::close( fdb[1] );
+            obj->std_error  = file_t( fdc[0] ); ::close( fdc[1] );
             obj->state      = 1;
         } else {
             ::close( fda[0] ); ::close( fda[1] );
@@ -78,8 +83,7 @@ public:
     popen_t( const string_t& path ) 
     : obj( new NODE() ) { if( path.empty() ){ throw except_t("invalid command"); }
         array_t<const char*> arg; array_t<const char*> env; auto cmd = regex::match_all( path, "[^ ]+" );
-        type::map( cmd.begin(), cmd.end(), [&]( string_t* x ){ arg.push(x->get()); } );
-        _init_( cmd[0], arg, env );
+        for( auto x: cmd ){ arg.push( x.get() ); } _init_( cmd[0], arg, env );
     }
 
     popen_t( const string_t& path, const initializer_t<string_t>& args ) : obj( new NODE() ) { 
@@ -96,17 +100,20 @@ public:
     /*─······································································─*/
 
     void free() const noexcept {
-
+        
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
-        if( obj->state == -2 ){ return; } close(); obj->state = -2;
-            obj->std_error.close(); obj->std_output.close();
-            obj->std_input.close(); onClose.emit(); kill();
-
+        if( obj->state == -2 ){ return; } obj->state=-2;
+        
+        obj->std_error.close(); obj->std_output.close();
+        obj->std_input.close();
+    
         onResume.clear(); onError.clear(); 
         onStop  .clear(); onOpen .clear();
         onData  .clear(); onDout .clear(); 
-        onDerr  .clear();
-        
+        onDerr  .clear(); /*------------*/
+
+        kill(); onDrain.emit(); onClose.emit();
+
     }
 
     /*─······································································─*/
@@ -148,7 +155,6 @@ public:
     void resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume.emit(); }
     void  close() const noexcept { if(obj->state < 0) { return; } obj->state=-1; onDrain.emit(); }
     void   stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop.emit(); }
-    void   kill() const noexcept { ::kill( obj->fd, SIGKILL ); }
 
     /*─······································································─*/
 

@@ -15,7 +15,7 @@
 
 #if !defined(GENERATOR_TIMER) && defined(NODEPP_TIMER) && defined(NODEPP_GENERATOR)
     #define  GENERATOR_TIMER
-namespace nodepp { namespace _timer_ {
+namespace nodepp { namespace generator { namespace timer {
 
     GENERATOR( timer ){ public:
 
@@ -59,7 +59,7 @@ namespace nodepp { namespace _timer_ {
 
     };
 
-}}
+}}}
 #undef NODEPP_GENERATOR
 #endif
 
@@ -67,7 +67,7 @@ namespace nodepp { namespace _timer_ {
 
 #if !defined(GENERATOR_PROMISE) && defined(NODE_PROMISE) && defined(NODEPP_GENERATOR)
     #define  GENERATOR_PROMISE
-namespace nodepp { namespace _promise_ {
+namespace nodepp { namespace generator { namespace promise {
 
     GENERATOR( resolve ){ public:
 
@@ -87,7 +87,7 @@ namespace nodepp { namespace _promise_ {
 
     };
 
-}}
+}}}
 #undef NODEPP_GENERATOR
 #endif
 
@@ -95,36 +95,28 @@ namespace nodepp { namespace _promise_ {
 
 #if !defined(GENERATOR_FILE) && defined(NODEPP_FILE) && defined(NODEPP_GENERATOR)
     #define  GENERATOR_FILE
-namespace nodepp { namespace _file_ {
+namespace nodepp { namespace generator { namespace file {
 
     GENERATOR( read ){
-    private:
-        ulong    d;
-        ulong*   r;
-
-    public:
-        string_t data ;
-        int      state;
+    protected: ulong d; ulong* r;
+    public:    string_t data; int state;
 
     template< class T > coEmit( T* str, ulong size=CHUNK_SIZE ){
-    coBegin state=0; d=0; data.clear(); str->flush();
+    coBegin; data.clear(); state=0; d=0;
 
-        if(!str->is_available()       ){ coEnd; } r=str->get_range();
-        if(!str->get_borrow().empty() ){ data = str->get_borrow(); }
+        if( !str->is_available()       ){ coEnd; } r=str->get_range();
+        if( !str->get_borrow().empty() ){ data = str->get_borrow(); }
 
-          if ( r[1] != 0  ){ auto pos = str->pos(); d = r[1]-r[0];
-          if ( pos < r[0] ){ str->del_borrow(); str->pos( r[0] ); }
-        elif ( pos >=r[1] ){ coEnd; } }
-        else { d = str->get_buffer_size(); }
+        if( r[1] != 0  ){ auto pos = str->pos(); d = r[1]-r[0];
+        if( pos < r[0] ){ str->del_borrow(); str->pos(r[0]); }
+      elif( pos >=r[1] ){ coEnd; } } else { d = str->get_buffer_size(); }
 
-        if( data.empty() )
-          { coWait((state=str->_read(str->get_buffer_data(),min(d,size)))==-2); }
+        if( data.empty() ){ 
+            coWait((state=str->_read(str->get_buffer_data(),min(d,size)))==-2);
+        if( state>0 ){ data=string_t(str->get_buffer_data(),(ulong)state); }}
 
-        if( state > 0 ){
-            data  = string_t( str->get_buffer_data(), (ulong) state );
-        }   state = min( data.size(), size ); str->del_borrow();
-
-        str->set_borrow( data.splice( size, data.size() ) );
+        state = min( data.size(), size );
+        str->set_borrow( data.splice( state, data.size() ) );
 
     coFinish
     }};
@@ -132,23 +124,15 @@ namespace nodepp { namespace _file_ {
     /*─······································································─*/
 
     GENERATOR( write ){
-    private:
-        string_t b ;
-
-    public:
-        ulong    data ;
-        int      state;
+    public: ulong data; int state;
 
     template< class T > coEmit( T* str, const string_t& msg ){
-    coBegin state=0; data=0; str->flush();
+    coBegin state=0; data=0;
 
         if(!str->is_available() || msg.empty() ){ coEnd; }
-        if( b.empty() )                         { b=msg; }
 
-        do{ coWait((state=str->_write( b.data()+data, b.size()-data ))==-2 );
-        if( state>0 ){ data += state; }} while ( state>=0 && data<b.size() );
-
-        b.clear();
+        do{ coWait((state=str->_write( msg.data()+data, msg.size()-data ))==-2 );
+        if( state>0 ){ data += state; }} while ( state>=0 && data<msg.size() );
 
     coFinish
     }};
@@ -156,26 +140,20 @@ namespace nodepp { namespace _file_ {
     /*─······································································─*/
 
     GENERATOR( until ){
-    private:
-
-        _file_::read _read; uint pos=0;
-
-    public:
-        string_t  data ;
-        ulong     state;
+    protected: uint pos; file::read _read;
+    public: int state; string_t data;
 
     template< class T > coEmit( T* str, string_t ch ){
-    coBegin data.clear(); str->flush(); state=0; pos=0;
+    coBegin; state=0; pos=0; data.clear();
 
         coWait( _read(str) ==1 );
             if( _read.state<=0 ){ coEnd; }
+        str->set_borrow( _read.data );
 
         do{for( auto x: _read.data ){ ++state;
             if( ch[pos]  ==x   ){ ++pos; } else { pos=0; }
             if( ch.size()==pos ){ break; } }
         } while(0);
-
-        str->set_borrow( _read.data );
 
         if( memcmp( _read.data.get(), ch.get(), ch.size() )==0 ){
                  data=str->get_borrow().splice( 0, ch.size() );
@@ -189,16 +167,16 @@ namespace nodepp { namespace _file_ {
     }
 
     template< class T > coEmit( T* str, char ch ){
-    coBegin data.clear(); str->flush(); state=0;
+    coBegin; data.clear(); state=0;
 
         coWait( _read(str) ==1 );
             if( _read.state<=0 ){ coEnd; }
+        str->set_borrow( _read.data );
 
         do{ for( auto x: _read.data ){ ++state;
              if( ch ==x ){ break; } continue; }
         } while(0);
 
-               str->set_borrow(_read.data);
         data = str->get_borrow().splice( 0, state );
 
     coFinish
@@ -207,31 +185,26 @@ namespace nodepp { namespace _file_ {
     /*─······································································─*/
 
     GENERATOR( line ){
-    private:
-
-        _file_::read _read;
-
-    public:
-        string_t  data ;
-        ulong     state;
+    protected: file::read _read;
+    public: string_t data; int state;
 
     template< class T > coEmit( T* str ){
-    coBegin data.clear(); str->flush(); state=0;
+    coBegin data.clear(); state=0;
 
         coWait( _read(str) ==1 );
             if( _read.state<=0 ){ coEnd; }
+        str->set_borrow(_read.data);
 
         do{ for( auto x: _read.data ){ ++state;
              if('\n'==x ){ break; } continue; }
         } while(0);
 
-               str->set_borrow(_read.data);
         data = str->get_borrow().splice( 0, state );
 
     coFinish
     }};
 
-}}
+}}}
 #undef NODEPP_GENERATOR
 #endif
 
@@ -239,13 +212,13 @@ namespace nodepp { namespace _file_ {
 
 #if !defined(GENERATOR_STREAM) && defined(NODEPP_STREAM) && defined(NODEPP_GENERATOR)
     #define  GENERATOR_STREAM
-namespace nodepp { namespace _stream_ {
+namespace nodepp { namespace generator { namespace stream {
 
     GENERATOR( duplex ){
-    private:
+    protected:
 
-        _file_::write _write1, _write2;
-        _file_::read  _read1 , _read2;
+        file::write _write1, _write2;
+        file::read  _read1 , _read2;
 
     public:
 
@@ -278,10 +251,10 @@ namespace nodepp { namespace _stream_ {
     /*─······································································─*/
 
     GENERATOR( pipe ){
-    private:
+    protected:
 
-        _file_::write _write;
-        _file_::read  _read;
+        file::write _write;
+        file::read  _read;
 
     public:
 
@@ -312,10 +285,10 @@ namespace nodepp { namespace _stream_ {
     /*─······································································─*/
 
     GENERATOR( until ){
-    private:
+    protected:
 
-        _file_::write _write;
-        _file_::until  _read;
+        file::write _write;
+        file::until  _read;
 
     public:
 
@@ -348,10 +321,10 @@ namespace nodepp { namespace _stream_ {
     /*─······································································─*/
 
     GENERATOR( line ){
-    private:
+    protected:
 
-        _file_::write _write;
-        _file_::line  _read;
+        file::write _write;
+        file::line  _read;
 
     public:
 
@@ -379,28 +352,7 @@ namespace nodepp { namespace _stream_ {
 
     };
 
-}}
-#undef NODEPP_GENERATOR
-#endif
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-#if !defined(GENERATOR_POLL) && defined(NODEPP_SOCKET) && defined(NODEPP_GENERATOR)
-    #define  GENERATOR_POLL
-namespace nodepp { namespace _poll_ {
-
-    GENERATOR( poll ){ public:
-
-        template< class V, class T, class U >
-        coEmit( V ctx, T str, U cb ){
-        coBegin
-            str->onSocket.emit( ctx ); cb(ctx);
-        coFinish
-        }
-
-    };
-
-}}
+}}}
 #undef NODEPP_GENERATOR
 #endif
 
@@ -408,13 +360,13 @@ namespace nodepp { namespace _poll_ {
 
 #if !defined(GENERATOR_ZLIB) && defined(NODEPP_ZLIB) && defined(NODEPP_GENERATOR)
     #define  GENERATOR_ZLIB
-namespace nodepp { namespace _zlib_ {
+namespace nodepp { namespace generator { namespace zlib {
 
     GENERATOR( pipe_inflate ){
-    private:
+    protected:
 
-        _file_::write _write;
-        _file_::read  _read;
+        file::write _write;
+        file::read  _read;
         string_t borrow;
 
     public:
@@ -446,10 +398,10 @@ namespace nodepp { namespace _zlib_ {
     };
 
     GENERATOR( pipe_deflate ){
-    private:
+    protected:
 
-        _file_::write _write;
-        _file_::read  _read;
+        file::write _write;
+        file::read  _read;
         string_t borrow;
 
     public:
@@ -480,17 +432,17 @@ namespace nodepp { namespace _zlib_ {
 
     };
 
-}}
+}}}
 #undef NODEPP_GENERATOR
 #endif
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #if !defined(GENERATOR_WS) && defined(NODEPP_GENERATOR) && ( defined(NODEPP_WS) || defined(NODEPP_WSS) )
-    #define  GENERATOR_WS
+#define GENERATOR_WS
     #include "encoder.h"
     #include "crypto.h"
-namespace nodepp { namespace _ws_ {
+namespace nodepp { namespace generator { namespace ws {
 
     struct ws_frame_t {
         bool  FIN;     //1b
@@ -503,11 +455,12 @@ namespace nodepp { namespace _ws_ {
 
     /*─······································································─*/
 
-    template< class T > bool server( T& cli ) {
+    template< class T > bool server( T& cli ) { do {
         auto data = cli.read(); cli.set_borrow( data );
+        int c=0; while( (c=cli.read_header())==1 ){}
+        if( c != 0 ){ break; }
 
-        if(  cli.read_header()!=0 ){ return 0; }
-        if( !cli.headers["Sec-Websocket-Key"].empty() ){
+        if( cli.headers.has("Sec-Websocket-Key") ){
 
             string_t sec = cli.headers["Sec-Websocket-Key"];
                 auto sha = crypto::hash::SHA1(); sha.update( sec + SECRET );
@@ -519,13 +472,14 @@ namespace nodepp { namespace _ws_ {
                 { "Upgrade", "websocket" }
             }) );
 
-            cli.stop();             return 1;
-        }   cli.set_borrow( data ); return 0;
-    }
+            cli.stop(); return true;
+        }   cli.set_borrow( data );
+
+    } while(0); return false; }
 
     /*─······································································─*/
 
-    template< class T > bool client( T& cli, string_t url ) {
+    template< class T > bool client( T& cli, string_t url ) { do {
         string_t hsh = encoder::key::generate("abcdefghiABCDEFGHI0123456789",22);
         string_t key = string::format("%s==",hsh.data());
 
@@ -536,38 +490,38 @@ namespace nodepp { namespace _ws_ {
             { "Sec-Websocket-Version", "13" }
         });
 
-        cli.write_header( "GET", url::path(url), "HTTP/1.0", header );
+        cli.write_header( "GET", url::path(url), "HTTP/1.1", header );
+        int c=0; while( (c=cli.read_header())==1 ){}
 
-        if( cli.read_header()!=0 ){
-            _EERROR(cli.onError,"Could not connect to server");
-            cli.close(); return false;
+        if( c != 0 ){
+            cli.onError.emit("Could not connect to server");
+            cli.close(); break;
         }
 
         if( cli.status != 101 ){
-            _EERROR(cli.onError,string::format("Can't connect to WS Server -> status %d",cli.status));
-            cli.close(); return false;
+            cli.onError.emit(string::format("Can't connect to WS Server -> status %d",cli.status));
+            cli.close(); break;
         }
 
-        if(!cli.headers["Sec-Websocket-Accept"].empty() ){
+        if( cli.headers.has("Sec-Websocket-Accept") ){
 
             string_t dta = cli.headers["Sec-Websocket-Accept"];
                 auto sha = crypto::hash::SHA1(); sha.update( key + SECRET );
             string_t enc = encoder::base64::get( encoder::buffer::hex2buff(sha.get()) );
 
             if( dta != enc ){
-                _ERROR("secret key does not match");
-                cli.close(); return false;
-            }   cli.stop ();
+                cli.onError.emit("secret key does not match"); 
+                cli.close(); break;
+            }   cli.stop (); return true;
 
         }
 
-        return true;
-    }
+    } while(0); return false; }
 
     /*─······································································─*/
 
     GENERATOR( read ){
-    private:
+    protected:
 
         ulong size=0, len=0, key=0, sz=0;
         ws_frame_t frame;
@@ -690,5 +644,6 @@ namespace nodepp { namespace _ws_ {
 
     };
 
-}}
+}}}
+#undef NODEPP_GENERATOR
 #endif

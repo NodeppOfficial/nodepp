@@ -18,13 +18,24 @@ using TIMEVAL = struct timeval;
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace process {
+namespace nodepp { namespace process { 
 
-    TIMEVAL _time_;
+    TIMEVAL get_new_timeval(){ TIMEVAL timeval;
+        gettimeofday( &timeval, NULL );
+        return timeval;
+    }
     
-    ulong  millis(){ return _time_.tv_sec * 1000 + _time_.tv_usec / 1000; }
-    ulong seconds(){ return _time_.tv_sec + _time_.tv_usec / 1000000; }
-    ulong  micros(){ return _time_.tv_sec * 1000000 + _time_.tv_usec; }
+    ulong micros(){ TIMEVAL time = get_new_timeval();
+        return time.tv_sec * 1000000 + time.tv_usec; 
+    }
+    
+    ulong seconds(){ TIMEVAL time = get_new_timeval();
+        return time.tv_sec + time.tv_usec / 1000000; 
+    }
+    
+    ulong millis(){ TIMEVAL time = get_new_timeval();
+        return time.tv_sec * 1000 + time.tv_usec / 1000; 
+    }
 
 }}
 
@@ -32,17 +43,11 @@ namespace nodepp { namespace process {
 
 namespace nodepp { namespace process {
 
+    void delay( ulong time ){ ::usleep( time * 1000 ); }
+
+    void yield(){ delay( TIMEOUT ); }
+
     ulong now(){ return millis(); }
-
-    void delay( ulong time ){ 
-        if( time == 0 ){ return; }
-        ::usleep( time * 1000 ); 
-    }
-
-    void yield(){ 
-        gettimeofday( &_time_, NULL );
-        delay( TIMEOUT ); 
-    }
 
 }}
 

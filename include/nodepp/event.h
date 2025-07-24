@@ -37,8 +37,6 @@ public:
 
     /*─······································································─*/
 
-    void off( void* address ) const noexcept { process::clear( address ); }
-
     void* once( function_t<void,A...> func ) const noexcept {
         ptr_t<bool> out = new bool(1); DONE ctx;
         ctx.out=&out; ctx.clb=([=]( A... args ){
@@ -53,6 +51,11 @@ public:
             if(*out != 0   ){ func(args...); }
             if( out.null() ){ return false;  } return *out;
         }); obj->que.push(ctx); return &out;
+    }
+
+    void off( void* address ) const noexcept { 
+        if( address == nullptr ){ return; }
+        memset( address, 0, sizeof(bool) );
     }
 
     /*─······································································─*/
@@ -77,8 +80,9 @@ public:
     void emit( const A&... args ) const noexcept {
         if( obj->skip ){ obj->skip=false; return; } auto x=obj->que.first(); 
         while( x!=nullptr && !obj->que.empty() ){   auto y=x->next;
-            if( *x->data.out == 0 )    { x=y; continue; }
-          elif( !x->data.clb(args...) ){ x=y; continue; } x=y; }
+            if( *x->data.out == 0 )    { /*-----------*/ }
+          elif( !x->data.clb(args...) ){ *x->data.out=0; } 
+        x=y; }
     }
 
     /*─······································································─*/

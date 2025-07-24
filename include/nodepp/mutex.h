@@ -14,9 +14,9 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if   _KERNEL == NODEPP_KERNEL_WINDOWS
+#if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
     #include "windows/mutex.cpp"
-#elif _KERNEL == NODEPP_KERNEL_POSIX
+#elif _KERNEL_ == NODEPP_KERNEL_POSIX
     #include "posix/mutex.cpp"
 #else
     #error "This OS Does not support mutex.h"

@@ -10,7 +10,6 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #pragma once
-
 #include <sys/file.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -18,6 +17,12 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { class file_t {
+private:
+
+    virtual void kill() const noexcept {
+    if( !is_std() ){ ::close(obj->fd); } 
+    }
+
 protected:
 
     struct NODE {
@@ -28,7 +33,10 @@ protected:
         int          feof     =  1;
         ptr_t<char>  buffer;
         string_t     borrow;
-    };  ptr_t<NODE> obj = new NODE();
+        limit::probe_t limit_probe;
+    };  ptr_t<NODE> obj;
+
+    bool is_std() const noexcept { return obj->fd>0 && obj->fd<3; }
 
     /*─······································································─*/
 
@@ -58,7 +66,7 @@ protected:
         return  _flag;
     }
 
-public: file_t() noexcept {}
+public:
 
     event_t<>          onUnpipe;
     event_t<>          onResume;
@@ -72,22 +80,24 @@ public: file_t() noexcept {}
 
     /*─······································································─*/
 
-    virtual ~file_t() noexcept { if( obj.count() > 1 || obj->fd < 3 ){ return; } free(); }
+   ~file_t() noexcept { if( obj.count()>1 || is_std() ){ return; } free(); }
 
     /*─······································································─*/
 
-    file_t( const string_t& path, const string_t& mode, const ulong& _size=CHUNK_SIZE ){
+    file_t( const string_t& path, const string_t& mode, const ulong& _size=CHUNK_SIZE ) : obj( new NODE() ) {
             obj->fd = open( path.data(), get_fd_flag( mode ), 0644 );
-        if( obj->fd < 0 ){
-            process::error("such file or directory does not exist");
-        }   set_nonbloking_mode(); set_buffer_size( _size );
+        if( obj->fd < 0 ){ throw except_t("such file or directory does not exist"); }
+        set_nonbloking_mode(); set_buffer_size( _size );
+        if(!limit::fileno_ready() ){ except_t(" max fileno reached "); }
     }
 
-    file_t( const int& fd, const ulong& _size=CHUNK_SIZE ){
-        if( fd < 0 ){
-            process::error("such file or directory does not exist");
-        }   obj->fd = fd; set_nonbloking_mode(); set_buffer_size( _size );
+    file_t( const int& fd, const ulong& _size=CHUNK_SIZE ) : obj( new NODE() ) {
+        if( fd<0 ){ throw except_t("such file or directory does not exist"); }
+        obj->fd = fd; set_nonbloking_mode(); set_buffer_size( _size );
+        if(!limit::fileno_ready() ){ except_t(" max fileno reached "); }
     }
+     
+    file_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
@@ -98,8 +108,8 @@ public: file_t() noexcept {}
 
     /*─······································································─*/
 
-    void  resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume .emit(); }
-    void    stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop   .emit(); }
+    void  resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume.emit(); }
+    void    stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop  .emit(); }
     void   reset() const noexcept { if(obj->state!=-2) { return; } resume(); pos(0); }
     void   flush() const noexcept { obj->buffer.fill(0); }
 
@@ -151,13 +161,14 @@ public: file_t() noexcept {}
     virtual void free() const noexcept {
 
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
-        if( obj->state == -2 ){ return; } close(); obj->state = -2;
-        if( obj->fd    >=  3 ){ ::close(obj->fd); } onClose.emit();
-
+        if( obj->state == -2 ){ return; } obj->state = -2;
+       
         onUnpipe.clear(); onResume.clear();
         onError .clear(); onStop  .clear();
         onOpen  .clear(); onPipe  .clear();
-        onData  .clear();
+        onData  .clear(); /*-------------*/
+        
+        onDrain.emit(); onClose.emit(); kill();
 
     }
 
@@ -178,21 +189,21 @@ public: file_t() noexcept {}
     char read_char() const noexcept { return read(1)[0]; }
 
     string_t read_until( string_t ch ) const noexcept {
-        auto gen = nodepp::_file_::until();
+        auto gen = generator::file::until();
         while( gen( this, ch ) == 1 )
              { process::next(); }
         return gen.data;
     }
 
     string_t read_until( char ch ) const noexcept {
-        auto gen = nodepp::_file_::until();
+        auto gen = generator::file::until();
         while( gen( this, ch ) == 1 )
              { process::next(); }
         return gen.data;
     }
 
     string_t read_line() const noexcept {
-        auto gen = nodepp::_file_::line();
+        auto gen = generator::file::line();
         while( gen( this ) == 1 )
              { process::next(); }
         return gen.data;
@@ -201,14 +212,14 @@ public: file_t() noexcept {}
     /*─······································································─*/
 
     string_t read( ulong size=CHUNK_SIZE ) const noexcept {
-        auto gen = nodepp::_file_::read();
+        auto gen = generator::file::read();
         while( gen( this, size ) == 1 )
              { process::next(); }
         return gen.data;
     }
 
     ulong write( const string_t& msg ) const noexcept {
-        auto gen = nodepp::_file_::write();
+        auto gen = generator::file::write();
         while( gen( this, msg ) == 1 )
              { process::next(); }
         return gen.data;
@@ -224,7 +235,7 @@ public: file_t() noexcept {}
     virtual int __read( char* bf, const ulong& sx ) const noexcept {
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
         obj->feof = ::read( obj->fd, bf, sx );
-        obj->feof = is_blocked(obj->feof) ?-2 : obj->feof;
+        obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
         if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
         return obj->feof;
     }
@@ -232,7 +243,7 @@ public: file_t() noexcept {}
     virtual int __write( char* bf, const ulong& sx ) const noexcept {
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
         obj->feof = ::write( obj->fd, bf, sx );
-        obj->feof = is_blocked(obj->feof) ?-2 : obj->feof;
+        obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
         if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
         return obj->feof;
     }

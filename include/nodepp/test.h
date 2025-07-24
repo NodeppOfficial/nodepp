@@ -78,69 +78,75 @@ namespace nodepp {
         
         /*-------------------------------------------------------------------*/
 
-        void await() const noexcept {
+        void await() const noexcept { auto self = type::bind(this);
 
-            auto x = obj->queue.first(); int result = 0;
+            process::await( coroutine::add( COROUTINE(){ int c = 0;
+            coBegin; 
+                self->obj->queue.set( self->obj->queue.first() ); 
+            coYield(1);
 
-            while( x != nullptr && obj->state != -1 ){
+                if( self->obj->state != 1 ){ coEnd; }
+
                 conio::done("\nTEST:> "); conio::log( x->data.name, "\n" );
-                result = x->data.callback(); if ( result == 1 ){
-                    conio::done( "DONE: " ); 
-                    conio::log( x->data.name );
+                c = x->data.callback(); if ( c == 1 ){
+                    conio::done( "DONE: " );
+                    console::done( x->data.name ); 
                     conio::done( "PASSED\n\n" ); 
-                    this->onDone.emit();
-                } elif ( result == -1 ) {
-                    conio::error( "ERROR: " ); 
-                    conio::log( x->data.name );
+                    self->onDone.emit();
+                } elif ( c == -1 ) {
+                    conio::error( "ERROR: " );
+                    console::error( x->data.name );
                     conio::error( "FAILED\n\n" ); 
-                    this->onFail.emit();
+                    self->onFail.emit();
                 } else {
                     conio::warn( "WARNING: " );
                     console::warning( x->data.name );
                     conio::warn( "SKIPPED\n\n" ); 
-                    this->onSkip.emit();
-                }   
-            x = x->next; process::next(); }
+                    self->onSkip.emit();
+                }   x = x->next;
 
-            onClose.emit();
+                if( self->obj->queue->next==nullptr )
+                  { self->onClose.emit(); coEnd; } 
+                  
+            coGoto(1) ; coFinish
+            }));
 
         }
         
         /*-------------------------------------------------------------------*/
 
-        void run() const noexcept {
-            auto self = type::bind( this );
+        void run() const noexcept { auto self = type::bind(this);
 
-            process::add([=](){
-                if( self->obj->state != 1 ){ return -1; }
-                static auto x = self->obj->queue.first();
-                int result = 0;
-            coStart
+            process::add( coroutine::add( COROUTINE(){ int c = 0;
+            coBegin; 
+                self->obj->queue.set( self->obj->queue.first() ); 
+            coYield(1);
 
-                while( x != nullptr ){
-                    conio::done("\nTEST:> "); conio::log( x->data.name, "\n" );
-                    result = x->data.callback(); if ( result == 1 ){
-                        conio::done( "DONE: " );
-                        console::done( x->data.name ); 
-                        conio::done( "PASSED\n\n" ); 
-                        self->onDone.emit();
-                    } elif ( result == -1 ) {
-                        conio::error( "ERROR: " );
-                        console::error( x->data.name );
-                        conio::error( "FAILED\n\n" ); 
-                        self->onFail.emit();
-                    } else {
-                        conio::warn( "WARNING: " );
-                        console::warning( x->data.name );
-                        conio::warn( "SKIPPED\n\n" ); 
-                        self->onSkip.emit();
-                    }   x = x->next; coNext;
-                }
+                if( self->obj->state != 1 ){ coEnd; }
 
-                self->onClose.emit();
+                conio::done("\nTEST:> "); conio::log( x->data.name, "\n" );
+                c = x->data.callback(); if ( c == 1 ){
+                    conio::done( "DONE: " );
+                    console::done( x->data.name ); 
+                    conio::done( "PASSED\n\n" ); 
+                    self->onDone.emit();
+                } elif ( c == -1 ) {
+                    conio::error( "ERROR: " );
+                    console::error( x->data.name );
+                    conio::error( "FAILED\n\n" ); 
+                    self->onFail.emit();
+                } else {
+                    conio::warn( "WARNING: " );
+                    console::warning( x->data.name );
+                    conio::warn( "SKIPPED\n\n" ); 
+                    self->onSkip.emit();
+                }   x = x->next;
 
-            coStop
-            });
+                if( self->obj->queue->next==nullptr )
+                  { self->onClose.emit(); coEnd; } 
+                  
+            coGoto(1) ; coFinish
+            }));
 
         }
 

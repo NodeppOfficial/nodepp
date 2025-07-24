@@ -48,6 +48,8 @@ public:
 
     int get_state() const noexcept { return obj->state; }
 
+    void free() const noexcept { off(); }
+
     /*─······································································─*/
 
     bool is_closed() const noexcept { return !is_available(); }

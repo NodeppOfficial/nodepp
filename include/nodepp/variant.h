@@ -26,7 +26,7 @@ public:
     template< class T > 
     variant_t( const T& V ) : any_t(V), idx(is_valid(V)) {}
 
-    variant_t() : any_t(), idx(new int(-1)) {}
+    variant_t() : any_t(), idx( new int(-1) ) {}
     
     /*─······································································─*/
 
@@ -45,7 +45,7 @@ protected:
     int* is_valid( T /*unused*/ ) { 
         int *idx = new int( get_index<T,Types...>::value );
         if (*idx > (int) sizeof...(Types) ){
-             process::error("invalid data type");
+             throw except_t("invalid data type");
         }    return idx;
     }
     

@@ -25,8 +25,8 @@ namespace nodepp { class ws_t : public socket_t {
 protected:
 
     struct NODE {
-        _ws_::write write;
-        _ws_::read  read ;
+        generator::ws::write write;
+        generator::ws::read  read ;
     };  ptr_t<NODE> ws;
 
 public:
@@ -55,11 +55,10 @@ namespace nodepp { namespace ws {
     tcp_t server( const tcp_t& skt ){ skt.onSocket([=]( socket_t cli ){
 
         auto hrv = type::cast<http_t>(cli);
-        if( !_ws_::server( hrv ) ){ skt.onConnect.skip(); return; }
-        process::poll::add([=](){ skt.onConnect.emit(cli); return -1; }); 
+        if( !generator::ws::server(hrv) ){ skt.onConnect.skip(); return; }
+        process::add([=](){ skt.onConnect.emit(cli); return -1; }); 
 
     }); skt.onConnect([=]( ws_t cli ){
-        cli.onDrain.once([=](){ cli.free(); });
         cli.set_timeout(0); cli.resume(); stream::pipe(cli); 
     }); return skt; }
 
@@ -77,8 +76,8 @@ namespace nodepp { namespace ws {
     skt.onSocket.once([=]( socket_t cli ){
 
         auto hrv = type::cast<http_t> (cli);
-        if( !_ws_::client( hrv, uri ) ){ skt.onConnect.skip(); return; }
-        process::poll::add([=](){ skt.onConnect.emit(cli); return -1; }); 
+        if(!generator::ws::client( hrv, uri ) ){ skt.onConnect.skip(); return; }  
+        process::add([=](){ skt.onConnect.emit(cli); return -1; }); 
 
     }); skt.onConnect.once([=]( ws_t cli ){
         cli.onDrain.once([=](){ cli.free(); });

@@ -9,17 +9,12 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#pragma once
+#ifndef NODEPP_LOOP
+#define NODEPP_LOOP
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { enum POLL_STATE {
-    READ = 1, WRITE = 2, DUPLEX = 3
-};}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-namespace nodepp { class poll_t {
+namespace nodepp { class loop_t {
 private:
 
     struct waiter { bool blk; bool out; };
@@ -27,14 +22,40 @@ private:
 
 protected:
 
-    struct NODE { bool blk;
+    struct NODE {
         queue_t<CALLBACK> queue;
     };  ptr_t<NODE> obj;
+
+public:
+
+    loop_t() noexcept : obj( new NODE() ) {}
+
+    /*─······································································─*/
+
+    void clear() const noexcept { /*--*/ obj->queue.clear(); }
+
+    ulong size() const noexcept { return obj->queue.size (); }
+
+    bool empty() const noexcept { return obj->queue.empty(); }
+
+    /*─······································································─*/
+
+    int next() const noexcept {    
+    auto x = obj->queue.get(); if( x==nullptr ){ return -1; } 
+    auto b = x->next==nullptr; /*--------------------------*/
+
+        switch( x->data() ){
+            case -1: obj->queue.erase(x); break;
+            case  1: obj->queue.next();   break;
+            default: b=0; /*-----------*/ break;
+        } 
+        
+    return b ? -1 : 1; }
 
     /*─······································································─*/
 
     template< class T, class... V >
-    void* push( T cb, const V&... arg ) const noexcept {
+    void* add( T cb, const V&... arg ) const noexcept {
 
         ptr_t<waiter> tsk = new waiter();
         auto clb=type::bind(cb); tsk->blk=0; tsk->out=1; 
@@ -50,40 +71,8 @@ protected:
         return (void*) &tsk->out;
     }
 
-public:
-
-    poll_t() noexcept : obj( new NODE() ) {}
-
-    /*─······································································─*/
-
-    void clear() const noexcept { /*--*/ obj->queue.clear(); }
-
-    ulong size() const noexcept { return obj->queue.size (); }
-
-    bool empty() const noexcept { return obj->queue.empty(); }
-
-    /*─······································································─*/
-
-    int next() const noexcept {    
-    if( obj->blk   ){ return  1; } auto x = obj->queue.get(); 
-    if( x==nullptr ){ return -1; } bool y = x->next==nullptr;
-        
-        switch( x->data() ){
-            case -1: obj->queue.erase(x); break;
-            case  1: obj->queue.next();   break;
-            default: /*----------------*/ break;
-        }
-        
-    return y ? -1 : 1; }
-
-    /*─······································································─*/
-
-    template< class T, class U, class... W >
-    void* add( T, uchar, U cb, const W&... args ) noexcept {
-        if( !limit::fileno_ready() ){ return nullptr; }
-        return push( cb, args... );
-    }
-
 };}
 
 /*────────────────────────────────────────────────────────────────────────────*/
+
+#endif

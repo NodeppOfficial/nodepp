@@ -10,30 +10,101 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #pragma once
-#include "limit.cpp"
 #include <sys/epoll.h>
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { using EPOLLFD = struct epoll_event; class poll_t: public generator_t {
+namespace nodepp { enum POLL_STATE {
+    READ = 1, WRITE = 2, DUPLEX = 3
+};}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { using EPOLLFD= struct epoll_event; }
+namespace nodepp { class poll_t : public generator_t {
+private:
+
+    using CALLBACK = function_t<int>;
+    using DATA     = type::pair<int,CALLBACK>;
+
+    struct waiter { bool blk; bool out; }; 
+    
 protected:
 
     struct NODE {
-        ptr_t<int>     ls;
+        queue_t<DATA>  queue;
+        map_t<int,void*> mem;
+        int        len,pd;
+        bool          blk;
         ptr_t<EPOLLFD> ev;
-        int            pd;
     };  ptr_t<NODE>   obj;
 
-    void remove( EPOLLFD x ) const noexcept {
-         epoll_ctl( obj->pd, EPOLL_CTL_DEL, x.data.fd, &x );
+    /*─······································································─*/
+
+    int emit() const noexcept { 
+    auto z =obj->mem.raw(); if( z.empty()  ){ return -1; } 
+    auto x =z.get(); /*--*/ if( x==nullptr ){ return -1; }
+    auto y =obj->queue.as( x->data.second );
+        
+        obj->blk = 1; bool out = x->next==nullptr;
+        
+        switch( type::cast<CALLBACK>( y->data.second ).emit() ){
+            case -1: remove( y ); z.next(); break;
+            case  1: /*--------*/ z.next(); break;
+            default: /*------------------*/ break;
+        }
+
+        obj->blk = 0;
+    
+    return out ? -1 : 1; }
+
+    /*─······································································─*/
+    
+    bool listen( const int fd, const int flags, void* ptr ) noexcept { bool x=1, y=1;
+        if( flags & POLL_STATE::READ  ){ x = append( fd, EPOLLIN  | EPOLLET, ptr )!=-1; }
+        if( flags & POLL_STATE::WRITE ){ y = append( fd, EPOLLOUT | EPOLLET, ptr )!=-1; }
+        return ( x && y );
     }
 
-public:
+    int append( const int fd, const int flags, void* ptr ) const noexcept {
+        EPOLLFD event; if( !limit::fileno_ready() ){ return -1; }
+        event.data.fd=fd; event.data.ptr=ptr; event.events=flags;
+        return epoll_ctl( obj->pd, EPOLL_CTL_ADD, fd, &event );
+    }
 
-    wait_t<ptr_t<int>> onEvent;
-    wait_t<int>        onWrite;
-    wait_t<int>        onError;
-    wait_t<int>        onRead;
+    int remove( void* ptr ) const noexcept {
+        auto pt = obj->queue.as( ptr );
+        auto fd = pt->data.first; obj->queue.erase(pt);
+        EPOLLFD event; event.data.fd=fd; event.events=0;
+        return epoll_ctl( obj->pd, EPOLL_CTL_DEL, fd, &event );
+    }
+
+    /*─······································································─*/
+
+    template< class T, class... V >
+    void* push( int fd, T cb, const V&... arg ) const noexcept {
+
+        ptr_t<waiter> tsk = new waiter();
+        auto clb=type::bind( cb );
+        tsk->blk=0; tsk->out=1; 
+
+        obj->queue.push({ fd, [=](){
+            if( tsk->out==0 ){ return -1; }
+            if( tsk->blk==1 ){ return  1; } 
+                tsk->blk =1; int rs=(*clb)( arg... );
+            if( clb.null () ){ return -1; }  
+                tsk->blk =0; return !tsk->out ? -1 : rs;
+        } }); 
+        
+        return (void*) &tsk->out;
+    }
+
+    /*─······································································─*/
+
+    void clear( void* address ){
+         if( address == nullptr ){ return; }
+         memset( address, 0, sizeof(bool) );
+    }
 
 public:
 
@@ -41,44 +112,42 @@ public:
 
     poll_t() : obj( new NODE() ) {
         obj->pd = epoll_create1(0); if( obj->pd==-1 )
-        { process::error("Can't open an epoll fd"); }
+      { throw except_t("Can't open more epoll fd"); }
         obj->ev.resize( limit::get_soft_fileno() );
     }
 
     /*─······································································─*/
 
-    ptr_t<int> get_last_poll() const noexcept { return obj->ls; }
+    void clear() const noexcept { /*--*/ obj->queue.clear(); }
+
+    ulong size() const noexcept { return obj->queue.size (); }
+
+    bool empty() const noexcept { return obj->queue.empty(); }
 
     /*─······································································─*/
 
-    int next () noexcept {
-        static int c=0; static EPOLLFD x;
+    template< class T, class U, class... W >
+    void* add( T& inp, uchar imode, U cb, const W&... args ) noexcept {
+    auto addr = push( inp.get_fd(), cb, args... ); /*----------*/
+    bool    x = listen( inp.get_fd(), imode, obj->queue.last() );
+    if( !x ){ clear( addr ); } return addr; }
+
+    /*─······································································─*/
+
+    int next() noexcept {
+        if( obj->blk ){ return 1; }
     coBegin
 
-        if( (c=epoll_wait( obj->pd, &obj->ev, obj->ev.size(), 0 ))<=0 ) { coEnd; } while( c-->0 ){ x = obj->ev[c];
-              if( x.events & EPOLLIN  ){ remove(x);  onRead.emit(x.data.fd); obj->ls={{ 0, x.data.fd }}; onEvent.emit(obj->ls); coNext; }
-            elif( x.events & EPOLLOUT ){ remove(x); onWrite.emit(x.data.fd); obj->ls={{ 1, x.data.fd }}; onEvent.emit(obj->ls); coNext; }
-            else                       { remove(x); onError.emit(x.data.fd); obj->ls={{-1, x.data.fd }}; onEvent.emit(obj->ls); coNext; }
-        }
+        if((obj->len=epoll_wait( obj->pd, &obj->ev, obj->ev.size(), 0 ))<=0 )
+          { coEnd; } obj->mem.clear();
 
-    coFinish
-    };
+        do{ auto y=0; while( y < obj->len ){ auto x = obj->ev[y];
+            obj->mem.append({ x.data.fd, x.data.ptr });
+        ++y; }} while(0);
 
-    /*─······································································─*/
+        coWait( emit()>=0 );
 
-    bool push_write( const int& fd ) noexcept {
-         EPOLLFD event;
-                 event.data.fd = fd;
-                 event.events  = EPOLLOUT;
-         return epoll_ctl( obj->pd, EPOLL_CTL_ADD, fd, &event )!=-1;
-    }
-
-    bool push_read( const int& fd ) noexcept {
-         EPOLLFD event;
-                 event.data.fd = fd;
-                 event.events  = EPOLLIN;
-         return epoll_ctl( obj->pd, EPOLL_CTL_ADD, fd, &event )!=-1;
-    }
+    coFinish }
 
 };}
 

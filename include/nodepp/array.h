@@ -106,50 +106,64 @@ public: array_t() noexcept {};
 
     /*─······································································─*/
 
-    long index_of( function_t<bool,T> func ) const noexcept { long i=0;
-        for( auto& x : *this ){ if( func(x) ){ return i; } ++i; } return -1;
+    int index_of( function_t<bool,T> func ) const noexcept {
+        int out=0; auto addr = begin(); while( addr != end() ){
+            if( func( *addr ) ){ return out; }
+        ++addr; ++out; } return -1;
     }
 
-    ulong count( function_t<bool,T> func ) const noexcept { ulong n=0;
-        for( auto& x : *this ){ if( func(x) ){ ++n; }} return n;
+    int count( function_t<bool,T> func ) const noexcept {
+        int out=0; auto addr = begin(); while( addr != end() ){
+            if( func( *addr ) ){ ++out; }
+        ++addr; } return -1;
     }
 
     /*─······································································─*/
 
-    T reduce( function_t<T,T,T> func ) const noexcept { T act = (*this)[0];
-        for( auto x=this->begin() + 1; x != this->end(); ++x )
-           { act = func( act, *x ); } return act;
+    T reduce( function_t<T,T,T> func ) const noexcept {
+        auto out = *begin(); auto addr = begin();
+        while( addr != end() ){ ++addr;
+             out = func( out, *addr );
+        } return out;
     }
 
     bool some( function_t<bool,T> func ) const noexcept {
-        for( auto& x : *this ){ if( func(x)==1 ){ return 1; }} return 0;
+        auto addr = begin(); while( addr != end() ){
+            if( func(*addr)==1 ){ return 1; }
+        ++addr; } return 0;
     }
 
     bool none( function_t<bool,T> func ) const noexcept {
-        for( auto& x : *this ){ if( func(x)==1 ){ return 0; }} return 1;
+        auto addr = begin(); while( addr != end() ){
+            if( func(*addr)==1 ){ return 0; }
+        ++addr; } return 1;
     }
 
     bool every( function_t<bool,T> func ) const noexcept {
-        for( auto& x : *this ){ if( func(x)==0 ){ return 0; }} return 1;
+        auto addr = begin(); while( addr != end() ){
+            if( func(*addr)==0 ){ return 0; }
+        ++addr; } return 1;
     }
 
     void map( function_t<void,T&> func ) const noexcept {
-        for( auto& x : *this ){ func(x); }
+        auto addr = begin(); while( addr != end() ){
+        func(*addr); ++addr; }
     }
 
     /*─······································································─*/
 
     ptr_t<int> find( const array_t& data, ulong offset=0 ) const noexcept {
-        if ( data.empty() ){ return nullptr; }
-        ulong x=0; int n=0; ptr_t<int> pos ({ 0, 0 });
-        for( ulong i=offset; i<buffer.size(); ++i ){
-            if ( buffer[i] == data[x] ){
-                pos[n]=i; ++x; n=1;
-            } elif ( x==data.size() ){
-                pos[n]=i; ++x; n=1; 
-            break; } else { n=0; x=0; }
-        }
-        return !x ? nullptr : pos;
+        if( data.empty() || empty() ){ return nullptr; } /*------*/
+        int pos = min( offset, size() ); auto addr = begin() + pos;
+        ptr_t<int> idx ({ pos, pos }); ulong x=0;
+
+        while( addr != end() ){ ++pos;
+           if( data.size()== x ){ break; }
+         elif( *addr == data[x] ){ idx[1]=pos; ++x; }
+         else{ idx[0]=pos; idx[1]=pos; x=0; }
+        ++addr; }
+        
+        return idx[0]!=idx[1] ? idx : nullptr;
     }
 
     ptr_t<int> find( const T& data, ulong offset=0 ) const noexcept {
@@ -159,15 +173,17 @@ public: array_t() noexcept {};
     /*─······································································─*/
 
     int compare( const array_t& oth ) const noexcept {
-        if( size()<oth.size() ){ return -1; }
-        if( size()>oth.size() ){ return  1; }
+        if( size() < oth.size() ){ return -1; }
+        if( size() > oth.size() ){ return  1; }
         return type::compare( begin(), end(), oth.begin() );
     }
 
     /*─······································································─*/
 
-    array_t remove( function_t<bool,T> func ) noexcept {
-        ulong n=size(); while( n-->0 ){ if( func((*this)[n]) ){ erase(n); }} return (*this);
+    array_t replace( function_t<bool,T> func, const T& targ ) const noexcept {
+        auto addr = begin(); while( addr != end() ){
+            if( func(*addr)==1 ){ *addr = targ; }
+        ++addr; } return (*this);
     }
 
     array_t reverse() const noexcept { auto n_buffer = copy();
@@ -175,8 +191,10 @@ public: array_t() noexcept {};
         return n_buffer;
     }
 
-    array_t replace( function_t<bool,T> func, const T& targ ) const noexcept {
-        for( auto& x : *this ){ if(func(x)){ x=targ; }} return (*this);
+    array_t remove( function_t<bool,T> func ) noexcept {
+        ulong n=size(); while( n-->0 ){ 
+            if( func((*this)[n]) ){ erase(n); }
+        } return (*this);
     }
 
     array_t copy() const noexcept { return buffer.copy(); }
@@ -301,10 +319,11 @@ public: array_t() noexcept {};
     /*─······································································─*/
 
     string_t join( string_t c=", " ) const noexcept {
-        if( empty() ){ return nullptr; } string_t result;
-        for( auto x=begin(); x!=end(); ++x ){
-            result += string::to_string(*x) + ((x==end()-1)?"":c);
-        }   return result;
+        if( empty() ){ return nullptr; } string_t out;
+        auto addr = begin(); while( addr != end() ){
+             out += string::to_string( *addr );
+             out += addr+1 == end() ? nullptr : c;
+        ++addr; } return out;
     }
 
     /*─······································································─*/
@@ -383,22 +402,15 @@ namespace nodepp { namespace string {
 
     /*─······································································─*/
 
-    array_t<string_t> split( string_t _str, char ch ){
-        queue_t<string_t> result; int c; while( !_str.empty() ){
-            while((c=_str.index_of([=]( char c ){ return c==ch; }))==0 )
-                 { _str.erase(0); continue; }
-            if( c != -1 ){ result.push(_str.splice( 0, c )); }
-            else         { result.push(_str); break; }
-        }   return result.data();
-    }
+    template< class T >
+    array_t<string_t> split( string_t _str, const T& pattern ){
+        queue_t<string_t> out; ulong offset=0; ptr_t<int> idx;
+        
+        while( (idx=_str.find( pattern, offset )) != nullptr ){
+            out.push( _str.slice( offset, idx[0] ) ); offset=idx[1];
+        }   out.push( _str.slice( offset ) );
 
-    /*─······································································─*/
-
-    array_t<string_t> split( string_t _str, int ch ){
-        ch = clamp( (ulong)ch, 1UL, _str.size() );
-        queue_t<string_t> result; while( !_str.empty() ){
-            result.push( _str.splice( 0, ch ) );
-        }   return result.data();
+        return out.data();
     }
 
 }}
