@@ -269,7 +269,11 @@ protected:
     coFinish
     }
 
-public: regex_t (): obj( new NODE() ){}
+public: 
+
+    virtual ~regex_t() noexcept {}
+
+    regex_t (): obj( new NODE() ){}
 
     regex_t ( const string_t& reg, bool icase=false ): obj( new NODE() )
             { obj->i = icase; obj->regex = reg; }
@@ -471,7 +475,7 @@ namespace nodepp { namespace regex {
 
     template< class... T > 
     string_t format( const string_t& val, const T&... args ){
-        auto count = string::count( [](...){ return true; }, args... );
+        auto count = string::count( []( string_t ){ return true; }, args... );
         queue_t<string_t> out; ulong idx=0;
         string_t ptt = "\\$\\{\\d+\\}";
 

@@ -30,8 +30,8 @@ protected:
     static void* callback( void* arg ){
         auto self = type::cast<worker_t>(arg); self->obj->state=1;
         while( self->obj->cb.emit()>=0 ){ worker::yield(); } 
-        delete self; worker::exit(); return nullptr;
-    }
+        self->free(); delete self; worker::exit(); 
+    return nullptr; }
 
 public:
 
@@ -42,8 +42,6 @@ public:
         auto clb = type::bind(cb);
         wrk->blk = 0; wrk->out =1;
         obj->out = &wrk->out;
-
-        ++_TASK_;
 
         obj->cb = function_t<int>([=](){ 
             if( wrk->out==0 ){ return -1; }
@@ -57,15 +55,15 @@ public:
     
     /*─······································································─*/
 
-    worker_t() noexcept : obj( new NODE ) { ++_TASK_; }
+    worker_t() noexcept : obj( new NODE ) {}
 
     virtual ~worker_t() noexcept { if( obj.count()>1 ){ return; } free(); }
     
     /*─······································································─*/
 
-    void free() const noexcept { 
-        if( obj->state == 0 ){ return; }
-        --_TASK_; obj->state = 0;
+    void free() const noexcept {
+        if( obj->state == 0 ){ return; } 
+            obj->state=0; --_TASK_; 
     }
     
     /*─······································································─*/
@@ -82,7 +80,7 @@ public:
         auto pth = pthread_create( &obj->id, NULL, &callback, (void*)self );
         if( pth!= 0 ){ delete self; return -1; }
         
-        pthread_detach( obj->id );
+        pthread_detach( obj->id ); ++_TASK_;
 
         while( obj->state==0 ){ /*------------*/ } 
     //  while( obj->state==1 ){ process::next(); } 
@@ -98,7 +96,7 @@ public:
         auto pth = pthread_create( &obj->id, NULL, &callback, (void*)self );
         if( pth!= 0 ){ delete self; return -1; }
 
-        pthread_detach( obj->id );
+        pthread_detach( obj->id ); ++_TASK_;
 
         while( obj->state==0 ){ /*------------*/ } 
         while( obj->state==1 ){ process::next(); } 

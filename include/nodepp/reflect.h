@@ -29,6 +29,8 @@ public:
 
     reflect_t () noexcept : obj( new NODE() ) {}
 
+    virtual ~reflect_t() noexcept {}
+
     /*─······································································─*/
 
     template < typename V >

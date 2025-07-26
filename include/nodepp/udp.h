@@ -26,14 +26,14 @@ namespace nodepp {
 class udp_t {
 private:
 
-    using MAIN_CLB = function_t<void,socket_t>;
+    using NODE_CLB = function_t<void,socket_t>;
 
 protected:
 
     struct NODE {
         int      state = 0;
         agent_t  agent ;
-        MAIN_CLB func  ;
+        NODE_CLB func  ;
     };  ptr_t<NODE> obj;
 
 public: udp_t() noexcept : obj( new NODE() ) {}
@@ -46,7 +46,7 @@ public: udp_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    udp_t( MAIN_CLB _func, agent_t* opt=nullptr ) noexcept : obj( new NODE() )
+    udp_t( NODE_CLB _func, agent_t* opt=nullptr ) noexcept : obj( new NODE() )
          { obj->func=_func; obj->agent=opt==nullptr?agent_t():*opt;  }
 
     virtual ~udp_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
@@ -58,7 +58,7 @@ public: udp_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    void listen( const string_t& host, int port, MAIN_CLB cb ) const noexcept {
+    void listen( const string_t& host, int port, NODE_CLB cb ) const noexcept {
         if( obj->state == 1 ) { return; } if( dns::lookup(host).empty() )
           { onError.emit("dns couldn't get ip"); close(); return; }
 
@@ -102,7 +102,7 @@ public: udp_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    void connect( const string_t& host, int port, MAIN_CLB cb ) const noexcept {
+    void connect( const string_t& host, int port, NODE_CLB cb ) const noexcept {
         if( obj->state == 1 ){ return; } if( dns::lookup(host).empty() )
           { onError.emit("dns couldn't get ip"); close(); return; }
 
