@@ -77,7 +77,7 @@ protected:
 
     ptr_t<ulong> get_slice_range( long x, long y ) const noexcept {
 
-        if( empty() || x == y ){ return nullptr; } if( y>0 ){ y--; }
+        if( empty() || x == y ){ return nullptr; } if( y>0 ){ --y; }
 
         if( x < 0 ){ x = size() + x; } if( (ulong)x > last() ){ return nullptr; }
         if( y < 0 ){ y = last() + y; } if( (ulong)y > last() ){ y = last(); }
@@ -106,6 +106,8 @@ protected:
     }
 
 public:
+
+    virtual ~string_t() noexcept {}
 
     string_t() noexcept { buffer = nullptr; }
 
@@ -158,6 +160,9 @@ public:
     bool operator>=( const string_t& oth ) const noexcept { return compare( oth ) >= 0; }
     bool operator<=( const string_t& oth ) const noexcept { return compare( oth ) <= 0; }
     bool operator< ( const string_t& oth ) const noexcept { return compare( oth ) ==-1; }
+
+    /*─······································································─*/
+
     bool operator==( const string_t& oth ) const noexcept { return compare( oth ) == 0; }
     bool operator!=( const string_t& oth ) const noexcept { return compare( oth ) != 0; }
 
@@ -165,50 +170,64 @@ public:
 
     /*─······································································─*/
 
-    long index_of( function_t<bool,char> func ) const noexcept { long i=0;
-        for( auto& x : *this ){ if( func(x) ){ return i; } ++i; } return -1;
+    int index_of( function_t<bool,char> func ) const noexcept {
+        int out=0; auto addr = begin(); while( addr != end() ){
+            if( func( *addr ) ){ return out; }
+        ++addr; ++out; } return -1;
     }
 
-    ulong count( function_t<bool,char> func ) const noexcept { ulong n=0;
-        for( auto& x : *this ){ if( func(x) ){ ++n; }} return n;
+    int count( function_t<bool,char> func ) const noexcept {
+        int out=0; auto addr = begin(); while( addr != end() ){
+            if( func( *addr ) ){ ++out; }
+        ++addr; } return -1;
     }
 
     /*─······································································─*/
 
-    char reduce( function_t<char,char,char> func ) const noexcept { char act = (*this)[0];
-        for( auto x=this->begin() + 1; x != this->end(); ++x )
-           { act = func( act, *x ); } return act;
+    char reduce( function_t<char,char,char> func ) const noexcept {
+        auto out = *begin(); auto addr = begin();
+        while( addr != end() ){ ++addr;
+             out = func( out, *addr );
+        } return out;
     }
 
     bool some( function_t<bool,char> func ) const noexcept {
-        for( auto& x : *this ){ if( func(x)==1 ){ return 1; }} return 0;
+        auto addr = begin(); while( addr != end() ){
+            if( func(*addr)==1 ){ return 1; }
+        ++addr; } return 0;
     }
 
     bool none( function_t<bool,char> func ) const noexcept {
-        for( auto& x : *this ){ if( func(x)==1 ){ return 0; }} return 1;
+        auto addr = begin(); while( addr != end() ){
+            if( func(*addr)==1 ){ return 0; }
+        ++addr; } return 1;
     }
 
     bool every( function_t<bool,char> func ) const noexcept {
-        for( auto& x : *this ){ if(!func(x)==0 ){ return 0; }} return 1;
+        auto addr = begin(); while( addr != end() ){
+            if( func(*addr)==0 ){ return 0; }
+        ++addr; } return 1;
     }
 
     void map( function_t<void,char&> func ) const noexcept {
-        for( auto& x : *this ) func(x);
+        auto addr = begin(); while( addr != end() ){
+        func(*addr); ++addr; }
     }
 
     /*─······································································─*/
 
     ptr_t<int> find( const string_t& data, ulong offset=0 ) const noexcept {
-        if ( data.empty() ){ return nullptr; }
-        ulong x=0; int n=0; ptr_t<int> pos ({ 0, 0 });
-        for( ulong i=offset; i<buffer.size(); ++i ){
-            if ( buffer[i] == data[x] ){
-                pos[n]=i; ++x; n=1;
-            } elif ( x==data.size() ){
-                pos[n]=i; ++x; n=1; 
-            break; } else { n=0; x=0; }
-        }
-        return !x ? nullptr : pos;
+        if( data.empty() || empty() ){ return nullptr; } /*------*/
+        int pos = min( offset, size() ); auto addr = begin() + pos;
+        ptr_t<int> idx ({ pos, pos }); ulong x=0;
+
+        while( addr != end() ){ ++pos; 
+           if( data.size() == x ){ break; }
+         elif( *addr == data[x] ){ idx[1]=pos; ++x; }
+         else{ idx[0]=pos; idx[1]=pos; x=0; }
+        ++addr; }
+        
+        return idx[0]!=idx[1] ? idx : nullptr;
     }
 
     ptr_t<int> find( const char& data, ulong offset=0 ) const noexcept {
@@ -225,17 +244,21 @@ public:
 
     /*─······································································─*/
 
-    string_t remove( function_t<bool,char> func ) noexcept {
-        ulong n=size(); while( n-->0 ){ if( func((*this)[n]) ){ erase(n); }} return (*this);
-    }
-
     string_t replace( function_t<bool,char> func, char targ ) const noexcept {
-        for( auto& x : *this ){ if(func(x)){ x=targ; }} return (*this);
+        auto addr = begin(); while( addr != end() ){
+            if( func(*addr)==1 ){ *addr = targ; }
+        ++addr; } return (*this);
     }
 
     string_t reverse() const noexcept { auto n_buffer = copy();
-        type::reverse( begin(), end(), n_buffer.begin() ); 
+        type::reverse( begin(), end(), n_buffer.begin() );
         return n_buffer;
+    }
+
+    string_t remove( function_t<bool,char> func ) noexcept {
+        ulong n=size(); while( n-->0 ){ 
+            if( func((*this)[n]) ){ erase(n); }
+        } return (*this);
     }
 
     string_t copy() const noexcept { return buffer.copy(); }
@@ -401,33 +424,35 @@ public:
     /*─······································································─*/
 
     string_t to_capital_case() const noexcept {
-        if ( empty() ){ return nullptr; } bool b=1; ptr_t<char> res (size()+1,0);
-        for( ulong x=0; x<res.size(); ++x ){ auto y = buffer[x];
-            if( string::is_alpha(y) && b==1 ){ res[x] = string::to_upper(y); b=0; continue; }
-            if(!string::is_alpha(y) ){ b =1;}  res[x] = string::to_lower(y);
-        }   return res;
+        if ( empty() ){ return nullptr; } bool b=1;
+        auto out=string::buffer( size() );
+        auto y=out.begin(); auto x=begin();
+        while( x != end() ){
+           if( string::is_alpha(*x) && b==1 ){ *y=string::to_upper(*x); b=0; goto DONE; }
+           if(!string::is_alpha(*x) ){ b =1;}  *y=string::to_lower(*x);
+        DONE:; ++x; ++y; } return out;
     }
 
-    string_t to_lower_case() const noexcept {
-        if ( empty() ){ return nullptr; } ptr_t<char> res (size()+1,0);
-        for( ulong x=0; x<res.size(); ++x ){
-             res[x] = string::to_lower( buffer[x] );
-        }    return res;
+    string_t to_slugify() const noexcept { if( empty() ){ return nullptr; } 
+        auto out=string::buffer( size() ); ulong z=1; /*------*/
+        auto y=out.begin(); auto x=begin(); while( x != end() ){ 
+              if (!string::is_alnum(*x) ){ goto DONE; }
+            else { *y = string::to_lower(*x); ++z; }
+        DONE:; ++x; ++y; } return string_t( &out,z );
     }
 
-    string_t to_upper_case() const noexcept {
-        if ( empty() ){ return nullptr; } ptr_t<char> res (size()+1,0);
-        for( ulong x=0; x<res.size(); ++x ){
-             res[x] = string::to_upper( buffer[x] );
-        }    return res;
+    string_t to_lower_case() const noexcept { if( empty() ){ return nullptr; } 
+        auto out=string::buffer( size() ); /*-----------------*/
+        auto y=out.begin(); auto x=begin(); while( x != end() ){ 
+            *y=string::to_lower(*x); 
+        ++x; ++y; } return out;
     }
 
-    string_t to_slugify() const noexcept { ulong z=0;
-        if ( empty() ){ return nullptr; } ptr_t<char> res (size()+1,0);
-        for( ulong x=0; x<res.size(); ++x ){ auto y = buffer[x];
-              if ( !string::is_alnum(y) ) { continue; }
-            else { res[z] = string::to_lower(y); ++z; }
-        }   return { &res, z };
+    string_t to_upper_case() const noexcept { if ( empty() ){ return nullptr; } 
+        auto out=string::buffer( size() ); /*-----------------*/
+        auto y=out.begin(); auto x=begin(); while( x != end() ){ 
+            *y=string::to_upper(*x); 
+        ++x; ++y; } return out;
     }
 
     /*─······································································─*/
@@ -451,14 +476,14 @@ string_t operator+( const string_t& A, const string_t& B ){
 
 string_t operator^( const string_t& A, const string_t& B ){
     string_t C = string::buffer( A.size() );
-    for( ulong x=0; x<C.size(); ++x )
-       { C[x] = A[x] ^ B[x%B.size()]; }
-    return C;
+    char *a=A.begin(), *b=B.begin(), *c=C.begin();
+    while( c != C.end() ){ *c = *a ^ *b;
+    ++a; ++b; ++c; } return C;
 }
 
 void operator^=( string_t& A, const string_t& B ){
-    for( ulong x=0; x<A.size(); ++x )
-       { A[x] = A[x] ^ B[x%B.size()]; }
+    char *a=A.begin(), *b=B.begin(); /*-----------*/
+    while( a != A.end() ){ *a = *a ^ *b; ++a; ++b; }
 }
 
 /*────────────────────────────────────────────────────────────────────────────*/

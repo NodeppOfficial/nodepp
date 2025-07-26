@@ -21,7 +21,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace { 
+namespace nodepp { namespace type { 
 
     template< class T > struct obj_type_id                    { static constexpr int value = 0x0000 |  0; };
 
@@ -79,45 +79,50 @@ protected:
 public:
 
     template< ulong N >
-    object_t( const T (&arr) [N] ) noexcept : obj(new NODE()) {
+    object_t( const T (&arr) [N] ) : obj(new NODE()) {
         QUEUE mem; for( ulong x=0; x<N; ++x )
             { mem[arr[x].first]= arr[x].second; }
         obj->mem = mem; obj->type = 20;
     }
 
     template< class U >
-    object_t( const U& any ) noexcept : obj(new NODE()) {
+    object_t( const U& any ) : obj(new NODE()) {
         if( type::is_same<U,ARRAY>::value )
           { obj->type = 21; goto BACK; }
-        obj->type = obj_type_id<U>::value;
+        obj->type = type::obj_type_id<U>::value;
         BACK:; obj->mem = any;
     }
 
-    object_t() noexcept : obj( new NODE() ) {}
+    object_t() : obj( new NODE() ) {}
+
+    virtual ~object_t() noexcept {}
 
     /*─······································································─*/
 
     template< class U > bool is() const {
         if( get_type_id()==21 && type::is_same<U,ARRAY>::value ){ return true; }
       elif( get_type_id()==20 && type::is_same<U,QUEUE>::value ){ return true; }
-      elif( obj_type_id<U>::value == get_type_id()             ){ return true; } return false;
+      elif( get_type_id()     == type::obj_type_id<U>::value   ){ return true; } return false;
     }
 
     template< class U >
-    explicit operator U() const noexcept { return obj->mem.as<U>();     }
-    bool has_value()      const noexcept { return obj->mem.has_value(); }
-    uint type_size()      const noexcept { return obj->mem.type_size(); }
+    explicit operator U() const { return obj->mem.as<U>();     }
+    bool has_value()      const { return obj->mem.has_value(); }
+    uint type_size()      const { return obj->mem.type_size(); }
 
     template< class U > U as() const {
       if( get_type_id() <20 && get_type_id() >21 &&
-          obj_type_id<U>::value != get_type_id() ){
-          process::error( "not valid object type" );
-      }   return obj->mem.as<U>();
+          get_type_id() != type::obj_type_id<U>::value 
+      ) {
+        throw except_t( "not valid object type" );
+      } try { return obj->mem.as<U>(); } catch(...) {
+        throw except_t( "item does not exists" );
+      }   
     }
 
     /*─······································································─*/
 
-    object_t& operator[]( const string_t& name ) const noexcept {
+    object_t& operator[]( const string_t& name ) const {
         if( !has_value() || obj->type != 20  )
           { obj->mem=QUEUE(); obj->type= 20; }
 
@@ -136,8 +141,8 @@ public:
     }
 
     object_t& operator[]( const ulong& idx ) const {
-        if( !has_value() ){ process::error("item is empty"); }
-        if( !is<ARRAY>() ){ process::error("item isn't an array"); }
+        if( !has_value() ){ throw except_t("item is empty"); }
+        if( !is<ARRAY>() ){ throw except_t("item isn't an array"); }
         return obj->mem.as<ARRAY>()[idx];
     }
 
@@ -148,7 +153,7 @@ public:
         return obj->mem.as<ARRAY>().size()>=idx;
     }
 
-    bool has( const string_t& name ) const noexcept {
+    bool has( const string_t& name ) const {
         if( !has_value() || obj->type != 20  )
           { obj->mem=QUEUE(); obj->type= 20; }
         return obj->mem.as<QUEUE>().has(name);
@@ -156,25 +161,25 @@ public:
 
     /*─······································································─*/
 
-    array_t<string_t> keys() const noexcept { queue_t<string_t> res;
+    array_t<string_t> keys() const { queue_t<string_t> res;
         if( obj->type == 20 ){ auto mem = obj->mem.as<QUEUE>();
             mem.map([&]( T item ){ res.push( item.first ); });
         }   return res.data();
     }
 
-    int get_type_id() const noexcept { return obj->type; }
+    int get_type_id() const { return obj->type; }
 
     /*─······································································─*/
 
-    bool empty() const noexcept {
+    bool empty() const {
         if( obj->type == 21 )
           { return obj->mem.as<ARRAY>().empty(); }
         if( obj->type == 20 )
           { return obj->mem.as<QUEUE>().empty(); }
-        return has_value();
+        return obj->mem.empty();
     }
 
-    ulong size() const noexcept {
+    ulong size() const {
         if( obj->type == 21 )
           { return obj->mem.as<ARRAY>().size(); }
         if( obj->type == 20 )
@@ -184,13 +189,15 @@ public:
 
     /*─······································································─*/
 
-    void erase( const string_t& name ) const noexcept {
+    void erase( const string_t& name ) const {
         if( !has_value() || obj->type != 20  )
           { obj->mem=QUEUE(); obj->type= 20; }
             obj->mem.as<QUEUE>().erase(name);
     }
 
-    void erase() noexcept { obj = new NODE(); }
+    void erase() { obj = new NODE(); }
+
+    void clear() { obj = new NODE(); }
 
 };}
 

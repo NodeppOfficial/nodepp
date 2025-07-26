@@ -27,60 +27,44 @@ namespace nodepp { namespace stream {
     
     /*─······································································─*/
     
-    template< class T >
-    file_t until( const string_t& path, const string_t& mode, const T& search ){
-        auto inp = file_t( path, mode ); _stream_::until arg;
-        process::poll::add( arg, inp, search ); return inp;
-    }
-    
     template< class... T >
-    void until( const T&... inp ){ _stream_::until arg;
-        process::poll::add( arg, inp... );
-    }
-    
-    /*─······································································─*/
-    
-    file_t pipe( const string_t& path, const string_t& mode ){
-        auto inp = file_t( path, mode ); _stream_::pipe arg;
-        process::poll::add( arg, inp ); return inp;
-    }
-    
-    template< class... T >
-    void pipe( const T&... inp ){ _stream_::pipe arg;
-        process::poll::add( arg, inp... );
-    }
-    
-    /*─······································································─*/
-    
-    file_t line( const string_t& path, const string_t& mode ){
-        auto inp = file_t( path, mode ); _stream_::line arg;
-        process::poll::add( arg, inp ); return inp;
-    }
-    
-    template< class... T >
-    void line( const T&... inp ){ _stream_::line arg;
-        process::poll::add( arg, inp... );
+    void until( const T&... inp ){ generator::stream::until arg;
+        process::foop.add( arg, inp... );
     }
     
     /*─······································································─*/
     
     template< class... T >
-    void duplex( const T&... inp ){ _stream_::duplex arg;
-        process::poll::add( arg, inp... );
+    void pipe( const T&... inp ){ generator::stream::pipe arg;
+        process::foop.add( arg, inp... );
+    }
+    
+    /*─······································································─*/
+    
+    template< class... T >
+    void line( const T&... inp ){ generator::stream::line arg;
+        process::foop.add( arg, inp... );
+    }
+    
+    /*─······································································─*/
+    
+    template< class... T >
+    void duplex( const T&... inp ){ generator::stream::duplex arg;
+        process::foop.add( arg, inp... );
     }
     
     /*─······································································─*/
     
     template< class T, class V >
-    ulong await( const T& fa, const V& fb ){ ulong result; _stream_::pipe _read;
-        fa.onData([&]( string_t chunk ){ result += chunk.size(); });
-        process::await( _read, fa, fb ); return result;
+    ulong await( const T& fa, const V& fb ){ ulong out; generator::stream::pipe _read;
+        fa.onData([&]( string_t chunk ){ out += chunk.size(); });
+        process::await( _read, fa, fb ); return out;
     }
     
     template< class T >
-    string_t await( const T& fp ){ string_t result; _stream_::pipe _read;
-        fp.onData([&]( string_t chunk ){ result += chunk; });
-        process::await( _read, fp ); return result;
+    string_t await( const T& fp ){ string_t out; generator::stream::pipe _read;
+        fp.onData([&]( string_t chunk ){ out += chunk; });
+        process::await( _read, fp ); return out;
     }
 
 }}

@@ -27,9 +27,12 @@ public: ptr_t<ssl_t> ssl;
     
     /*─······································································─*/
 
-    ssocket_t( ssl_t& ctx, int df, ulong size=CHUNK_SIZE ) noexcept 
-    :socket_t( df, size ), ssl( new ssl_t( ctx, df ) ) {}
-    ssocket_t() noexcept : socket_t() {}
+    ssocket_t( ssl_t ssl, int df, ulong size=CHUNK_SIZE ) noexcept :
+     socket_t( df, size ), ssl( new ssl_t( ssl, df ) ) {}
+
+    ssocket_t() noexcept : socket_t(), ssl( new ssl_t() ) {}
+
+    virtual ~ssocket_t() noexcept {}
     
     /*─······································································─*/
 

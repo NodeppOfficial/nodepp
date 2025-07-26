@@ -26,7 +26,7 @@ public: debug_t() noexcept : obj(new NODE()) { }
     
     /*─······································································─*/
 
-   ~debug_t() noexcept { 
+    virtual ~debug_t() noexcept { 
         if ( obj.count() == 2 ){ 
 	         console::log( obj->msg, "closed" );  
         }    process::onSIGERR.off( obj->ev );

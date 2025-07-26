@@ -10,31 +10,33 @@ void onMain(){
     mutex_t mut;
 
     worker::add( coroutine::add( COROUTINE(){
-        mut.lock();
     coBegin
 
-        while( *x > 0 ){ *x-=1;
-            console::info("Hello World",*x);
-            coDelay( 100 ); mut.unlock(); 
-            coNext;
-        }
+        while( *x > 0 ){ mut.emit([&](){
+            console::log( "wrk2>> Hello World", *x );
+        *x-=1; }); coDelay(100); }
 
     coFinish
     }));
 
-    auto wrk = worker::add( coroutine::add( COROUTINE(){
-        mut.lock();
+    worker::add( coroutine::add( COROUTINE(){
     coBegin
 
-        while( *x > 0 ){ *x-=1;
-            console::done("Hello World",*x);
-            coDelay( 100 ); mut.unlock(); 
-            coNext;
-        }
+        while( *x > 0 ){ mut.emit([&](){
+            console::log( "wrk1>> Hello World", *x );
+        *x-=1; }); coDelay(100); }
 
     coFinish
     }));
 
-    timer::timeout([=](){ wrk.off(); }, 1000 );
+    process::add( coroutine::add( COROUTINE(){
+    coBegin
+
+        while( *x > 0 ){ mut.emit([&](){
+            console::log( "task>> Hello World", *x );
+        *x-=1; }); coDelay(100); }
+
+    coFinish
+    }));
 
 }

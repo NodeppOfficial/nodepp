@@ -30,10 +30,11 @@ void server( int process ){
 
 void onMain(){
 
-    if( process::is_child() ){ server( os::pid() ); } else {
-        for( auto x = os::cpus(); x--; ){
-             auto y = cluster::add();
-        }
-    }
+    if ( process::is_child() ){ server( os::pid() ); } else {
+    for( auto x = os::cpus(); x--; ){
+         cluster::add().onData([=]( string_t data ){
+            conio::log( data );
+         });
+    }}
 
 }

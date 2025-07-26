@@ -10,8 +10,7 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #pragma once
-#include "limit.cpp"
-
+#include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -21,35 +20,14 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace _socket_ {
-
-    void start_device(){ static bool sockets=false;
-        if( sockets == false ){
-
-            process::onSIGEXIT([=](){
-                #ifdef SIGPIPE
-                    process::signal::unignore( SIGPIPE );
-                #endif
-            });
-
-                #ifdef SIGPIPE
-                    process::signal::ignore( SIGPIPE );
-                #endif
-
-        }   sockets = true;
-    }
-
-}}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
 namespace nodepp {
 
 struct agent_t {
     bool  reuse_address = 1;
-    uint  conn_timeout  = 0; //10000
-    uint  recv_timeout  = 0; //120000
-    uint  send_timeout  = 0; //120000
+    bool  no_delay_mode = 0;
+    uint  conn_timeout  = 0;//10000 ;
+    uint  recv_timeout  = 0;//120000;
+    uint  send_timeout  = 0;//120000;
     ulong buffer_size   = CHUNK_SIZE;
     bool  reuse_port    = 1;
     bool  keep_alive    = 0;
@@ -57,6 +35,13 @@ struct agent_t {
 };
 
 class socket_t : public file_t {
+private:
+
+    virtual void kill() const noexcept override { if( !is_std() ){ 
+        ::shutdown(obj->fd,SHUT_RDWR); 
+        ::close( obj->fd ); 
+    }}
+
 protected:
 
     using TIMEVAL     = struct timeval;
@@ -68,7 +53,7 @@ protected:
         ulong recv_timeout=0; ulong send_timeout=0;
         ulong conn_timeout=0;
         SOCKADDR server_addr, client_addr;
-    };  ptr_t<DONE> skt = new DONE();
+    };  ptr_t<DONE> skt;
 
     /*─······································································─*/
 
@@ -81,7 +66,7 @@ protected:
         );
     }
 
-public: socket_t() noexcept { _socket_::start_device(); }
+public:
 
     int SOCK    = SOCK_STREAM;
     int AF      = AF_INET;
@@ -123,6 +108,11 @@ public: socket_t() noexcept { _socket_::start_device(); }
     }
 
     /*─······································································─*/
+
+    int set_no_delay_mode( uint en ) const noexcept { int c; if( IPPROTO != IPPROTO_TCP ){ return -1; }
+        while( is_blocked( c=setsockopt( obj->fd, IPPROTO, TCP_NODELAY, (char*)&en, sizeof(en) ) ) )
+             { process::next(); } return c;
+    }
 
     int set_recv_buff( uint en ) const noexcept { int c;
         while( is_blocked( c=setsockopt( obj->fd, SOL_SOCKET, SO_RCVBUF, (char*)&en, sizeof(en) ) ) )
@@ -170,6 +160,11 @@ public: socket_t() noexcept { _socket_::start_device(); }
              { process::next(); } return c;
     }
 #endif
+
+    int get_no_delay_mode() const noexcept { int c, en; socklen_t size = sizeof(en);
+        while( is_blocked( c=getsockopt( obj->fd, IPPROTO, TCP_NODELAY, (char*)&en, &size ) ) )
+             { process::next(); } return c==0 ? en : c;
+    }
 
     int get_error() const noexcept { int c, en; socklen_t size = sizeof(en);
         while( is_blocked( c=getsockopt(obj->fd, SOL_SOCKET, SO_ERROR, (char*)&en, &size) ) )
@@ -293,40 +288,41 @@ public: socket_t() noexcept { _socket_::start_device(); }
     }
 
     /*─······································································─*/
+    
+    socket_t() noexcept : skt( new DONE() ) {}
 
-    virtual ~socket_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
-
-    /*─······································································─*/
-
-    socket_t( int fd, ulong _size=CHUNK_SIZE ){ _socket_::start_device();
-        if( fd < 0 )  process::error("Such Socket has an Invalid fd");
-        obj->fd = fd; set_nonbloking_mode(); set_buffer_size(_size);
+    socket_t( int fd, ulong _size=CHUNK_SIZE ) : skt( new DONE() ) {
+        if( fd < 0 ){ throw except_t("Such Socket has an Invalid fd"); }
+        obj->fd=fd; set_nonbloking_mode(); set_buffer_size(_size);
+        if(!limit::fileno_ready() ){ free(); throw except_t(" max fileno reached "); }
     }
+
+    virtual ~socket_t() noexcept { if( obj.count()>1 || is_std() ){ return; } free(); }
 
     /*─······································································─*/
 
     virtual void free() const noexcept override {
 
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
-        if( obj->state == -2 ){ return; } close(); obj->state = -2;
-        ::shutdown(obj->fd,SHUT_RDWR); ::close( obj->fd );
-        onClose.emit();
-
+        if( obj->state == -2 ){ return; }
+       
         onUnpipe.clear(); onResume.clear();
         onError .clear(); onStop  .clear();
         onOpen  .clear(); onPipe  .clear();
-        onData  .clear();
+        onData  .clear(); /*-------------*/
+        
+        obj->state = -2; kill(); onDrain.emit(); onClose.emit();
 
     }
 
     /*─······································································─*/
 
     virtual int socket( const string_t& host, int port ) const noexcept {
-        if( host.empty() ){ _EERROR(onError,"dns coudn't found ip"); return -1; }
-            skt->addrlen = sizeof( skt->server_addr ); _socket_::start_device();
+        if( host.empty() ){ onError.emit("dns coudn't found ip"); return -1; }
+            skt->addrlen = sizeof( skt->server_addr );
 
         if((obj->fd=::socket( AF, SOCK, IPPROTO )) <= 0 )
-          { _EERROR(onError,"can't initializate socket fd"); return -1; }
+          { onError.emit("can't initializate socket fd"); return -1; }
 
         set_buffer_size( CHUNK_SIZE );
         set_nonbloking_mode();
@@ -394,7 +390,7 @@ public: socket_t() noexcept { _socket_::start_device(); }
 
     virtual int __read( char* bf, const ulong& sx ) const noexcept override {
         if ( process::millis() > get_recv_timeout() || is_closed() )
-           { close(); return -1; } if ( sx==0 ) { return 0; }
+           { return -1; } if ( sx==0 ) { return 0; }
         if ( SOCK != SOCK_DGRAM ){
             obj->feof = ::recv( obj->fd, bf, sx, 0 );
             obj->feof = is_blocked(obj->feof) ?-2 : obj->feof;
@@ -410,15 +406,15 @@ public: socket_t() noexcept { _socket_::start_device(); }
 
     virtual int __write( char* bf, const ulong& sx ) const noexcept override {
         if ( process::millis() > get_send_timeout() || is_closed() )
-           { close(); return -1; } if ( sx==0 ) { return 0; }
+           { return -1; } if ( sx==0 ) { return 0; }
         if ( SOCK != SOCK_DGRAM ){
             obj->feof = ::send( obj->fd, bf, sx, 0 );
-            obj->feof = is_blocked(obj->feof) ?-2 : obj->feof;
+            obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
             if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
             return obj->feof;
         } else { SOCKADDR* cli = skt->srv==1 ? &skt->client_addr : &skt->server_addr;
             obj->feof = ::sendto( obj->fd, bf, sx, 0, cli, skt->len );
-            obj->feof = is_blocked(obj->feof) ?-2 : obj->feof;
+            obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
             if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
             return obj->feof;
         }   return -1;

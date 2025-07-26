@@ -39,6 +39,8 @@ public:
     coroutine_t( T callback ) : obj( new NODE() ) { obj->callback = callback; }
 
     coroutine_t() : obj( new NODE() ) { obj->alive = 0; }
+
+    virtual ~coroutine_t() noexcept {}
     
     /*─······································································─*/
 
@@ -47,6 +49,8 @@ public:
     void set_state( int value ) const noexcept { obj->state = value; }
 
     int get_state() const noexcept { return obj->state; }
+
+    void free() const noexcept { off(); }
 
     /*─······································································─*/
 

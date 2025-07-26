@@ -23,8 +23,8 @@ public:
 
     semaphore_t() : obj( new NODE() ){}
 
-   ~semaphore_t() noexcept {
-        if( obj->addr == (void*)this )
+    virtual ~semaphore_t() noexcept {
+         if( obj->addr == (void*)this )
           { release(); }
     };
     

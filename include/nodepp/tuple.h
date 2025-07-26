@@ -22,7 +22,7 @@ template <typename... Types> class tuple_t {};
 
 template <typename Head, typename... Tail>
 class tuple_t<Head, Tail...> : public tuple_t<Tail...> {
-public: tuple_t() noexcept {} 
+public: tuple_t() noexcept {} virtual ~tuple_t() noexcept {}
     tuple_t( const Head& head, const Tail&... tail ) noexcept : tuple_t<Tail...>(tail...), head_(new Head(head)) {}
     tuple_t<Tail...> tail() const noexcept { return *this; }
     Head& head() const noexcept { return *head_; }

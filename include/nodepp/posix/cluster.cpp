@@ -15,10 +15,16 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { class cluster_t : public generator_t {
+private:
+
+    void kill() const noexcept { if( is_parent() ){ ::kill( obj->fd, SIGKILL ); } }
+
+    using _read_ = generator::file::read;
+
 protected:
 
-    ptr_t<_file_::read> _read1 = new _file_::read;
-    ptr_t<_file_::read> _read2 = new _file_::read;
+    ptr_t<_read_> _read1 = new _read_();
+    ptr_t<_read_> _read2 = new _read_();
 
     struct NODE {
         int          fd;
@@ -32,11 +38,8 @@ protected:
     void _init_( T& arg, T& env ) {
 
         if( process::is_child() ){
-            int fd[2] = { 0, 0 }; string_t ch = process::env::get("CHILD");
-            string::parse( ch.data(), "%d|%d", &fd[0], &fd[1] );
-            obj->output= { fd[0] }; obj->input = { fd[1] };
-            obj->error = { STDERR_FILENO }; 
-            obj->state = 1; return;
+            obj->input = fs::std_output(); obj->error = fs::std_error(); 
+            obj->output= fs::std_input (); obj->state = 1; return;
         }
 
         int fda[2]; ::pipe( fda );
@@ -44,16 +47,17 @@ protected:
         int fdc[2]; ::pipe( fdc ); obj->fd = ::fork();
 
         if( obj->fd == 0 ){
-            auto chl = string::format( "CHILD=%d|%d", fda[0], fdb[1] ); env.push( chl.c_str() );
-            arg.unshift( process::args[0].c_str() ); ::close( fda[1] ); arg.push( nullptr );
-                                                     ::close( fdb[0] ); env.push( nullptr );
-            ::dup2( fdc[1], STDERR_FILENO  );        ::close( fdc[0] );
-            ::execvpe( arg[0], (char**) arg.data(), (char**)env.data() );
-            process::error("while spawning new cluster"); process::exit(1);
-        } elif ( obj->fd > 0 ) { // Parent process
-            obj->input  = { fda[1] }; ::close( fda[0] );
-            obj->output = { fdb[0] }; ::close( fdb[1] );
-            obj->error  = { fdc[0] }; ::close( fdc[1] );
+            auto chl = string::format( "CHILD=TRUE", fda[0], fdb[1] ); 
+            arg.unshift( process::args[0].c_str() );            env.push( chl.c_str() );
+            ::dup2( fda[0], STDIN_FILENO  ); ::close( fda[1] ); arg.push( nullptr );
+            ::dup2( fdb[1], STDOUT_FILENO ); ::close( fdb[0] ); env.push( nullptr );
+            ::dup2( fdc[1], STDERR_FILENO ); ::close( fdc[0] ); 
+            ::execvpe( arg[0], (char**) arg.data(), (char**) env.data() );
+            throw except_t("while spawning new cluster"); process::exit(1);
+        } elif ( obj->fd > 0 ) {
+            obj->input  = file_t(fda[1]); ::close( fda[0] );
+            obj->output = file_t(fdb[0]); ::close( fdb[1] );
+            obj->error  = file_t(fdc[0]); ::close( fdc[1] );
             obj->state  = 1;
         } else {
             ::close( fda[0] ); ::close( fda[1] );
@@ -89,7 +93,7 @@ public:
         for( auto x : args ) { arg.push( x.get() ); } _init_( arg, env );
     }
 
-   ~cluster_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
+    virtual ~cluster_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
     cluster_t() : obj( new NODE() ) {
         array_t<const char*> arg; array_t<const char*> env; 
@@ -98,19 +102,20 @@ public:
 
     /*─······································································─*/
 
-    void free() const noexcept { 
+    void free() const noexcept {
         
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
-        if( obj->state == -2 ){ return; } close(); obj->state = -2;
+        if( obj->state == -2 ){ return; } obj->state = -2;
+        
         obj->input.close(); obj->output.close();
-        obj->error.close(); onClose.emit(); 
+        obj->error.close();
 
-        if( is_parent() ){ kill(); }
-
-        onResume.clear(); onError.clear();
+        onResume.clear(); onError.clear(); 
         onStop  .clear(); onOpen .clear();
         onData  .clear(); onDout .clear(); 
-        onDerr  .clear();
+        onDerr  .clear(); /*------------*/
+        
+        kill(); onDrain.emit(); onClose.emit();
 
     }
 
@@ -127,7 +132,7 @@ public:
         onDout.emit(_read1->data);
 
         coYield(2); if( !is_alive() )  { break; }
-        if( process::is_child() )      { coStay(1); }
+        if( process::is_child() )      { coGoto(1); }
 
         if((*_read2)(&std_error())==1 ){ coGoto(1); }
         if(  _read2->state <= 0 )      { coGoto(1); }
@@ -154,7 +159,6 @@ public:
     void  close() const noexcept { if(obj->state < 0) { return; } obj->state=-1; onDrain.emit(); }
     void   stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop.emit(); }
     void  flush() const noexcept { writable().flush(); readable().flush(); std_error().flush(); }
-    void   kill() const noexcept { ::kill( obj->fd, SIGKILL ); }
 
     /*─······································································─*/
 

@@ -12,6 +12,8 @@
 #pragma once
 #include <windows.h>
 
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #define C_BLACK   0x00
 #define C_WHITE   0x01
 #define C_GREEN   0x02
@@ -28,13 +30,23 @@ namespace nodepp { namespace conio { WORD attr = 0, dflt = 7;
 
     /*─······································································─*/
 
-    int perr( const string_t& args ){ return fprintf( stderr, "%s", args.c_str() ); }
+    int perr( const string_t& args ){ DWORD len=0;
+        auto fd = GetStdHandle( STD_ERROR_HANDLE );
+        WriteFile( fd, args.get(), args.size(), &len, NULL ); return len;
+    }
     
-    int pout( const string_t& args ){ return fprintf( stdout, "%s", args.c_str() ); }
+    int pout( const string_t& args ){ DWORD len=0;
+        auto fd = GetStdHandle( STD_OUTPUT_HANDLE );
+        WriteFile( fd, args.get(), args.size(), &len, NULL ); return len;
+    }
 
     template< class V, class... T >
-    int scan( const V& argc, const T&... args ){ 
-        return scanf( (const char*)argc, args... ); 
+    int scan( const V& argc, const T&... args ){ DWORD len=0;
+        auto bff = string::buffer( UNBFF_SIZE );
+        auto fd  = GetStdHandle( STD_INPUT_HANDLE );
+        ReadFile( fd, bff.get(), bff.size(), &len, NULL ); 
+        auto data= string_t( &bff, len );
+        return string::parse( data.get(), argc, args... );
     }
 
     /*─······································································─*/
@@ -111,9 +123,9 @@ namespace nodepp { namespace conio { WORD attr = 0, dflt = 7;
     
     /*─······································································─*/
 
-    int error( const char* msg ){ foreground( C_RED    | C_BOLD ); return log( msg ); }
-    int  info( const char* msg ){ foreground( C_CYAN   | C_BOLD ); return log( msg ); }
-    int  done( const char* msg ){ foreground( C_GREEN  | C_BOLD ); return log( msg ); }
-    int  warn( const char* msg ){ foreground( C_YELLOW | C_BOLD ); return log( msg ); }
+    int error( string_t msg ){ foreground( C_RED    | C_BOLD ); return log( msg ); }
+    int  info( string_t msg ){ foreground( C_CYAN   | C_BOLD ); return log( msg ); }
+    int  done( string_t msg ){ foreground( C_GREEN  | C_BOLD ); return log( msg ); }
+    int  warn( string_t msg ){ foreground( C_YELLOW | C_BOLD ); return log( msg ); }
 
 }}

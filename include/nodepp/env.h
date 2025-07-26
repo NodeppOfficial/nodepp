@@ -14,9 +14,11 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if   _KERNEL == NODEPP_KERNEL_WINDOWS
+#if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
+    #include "file.h"
     #include "windows/env.cpp"
-#elif _KERNEL == NODEPP_KERNEL_POSIX
+#elif _KERNEL_ == NODEPP_KERNEL_POSIX
+    #include "file.h"
     #include "posix/env.cpp"
 #else
     #error "This OS Does not support env.h"

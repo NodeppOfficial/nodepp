@@ -13,20 +13,28 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace limit {
+namespace nodepp { namespace limit { ulong _count_=0;
+    
+    /*─······································································─*/
+
+    int set_hard_fileno( uint value ) { return _setmaxstdio( value ); }
+    int set_soft_fileno( uint value ) { return _setmaxstdio( value ); }
 
     uint get_hard_fileno() { return _getmaxstdio(); }
-
     uint get_soft_fileno() { return _getmaxstdio(); }
-
-    int set_hard_fileno( uint value ) {
-        return _setmaxstdio( value );
-    }
-
-    int set_soft_fileno( uint value ) {
-        return _setmaxstdio( value );
-    }
+    
+    /*─······································································─*/
+    
+    ulong fileno_count(){ return _count_; }
+    bool  fileno_ready(){ return _count_ < get_soft_fileno(); }
 
 }}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace limit { class probe_t{ public:
+    /*----*/ probe_t() noexcept { ++_count_; }
+    virtual ~probe_t() noexcept { --_count_; }
+};}}
 
 /*────────────────────────────────────────────────────────────────────────────*/

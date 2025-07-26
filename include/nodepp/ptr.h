@@ -27,8 +27,8 @@ public:
         reset(); resize(N); type::copy( value, value+N, begin() );
     }
 
-    ptr_t() noexcept {                reset(); }
-   ~ptr_t() noexcept { if( !null() ){ reset(); } }
+    ptr_t() noexcept { reset(); }
+    virtual ~ptr_t() noexcept { if( !null() ){ reset(); } }
 
     /*─······································································─*/
 
@@ -69,8 +69,7 @@ public:
     /*─······································································─*/
 
     T& operator[]( ulong i ) const noexcept {
-       return size()!=0 ? *(data()+(i%size()))
-                        : *(data()+i);
+       return size() !=0 ? data()[i%size()] : data()[i];
     }
 
     /*─······································································─*/
@@ -94,11 +93,11 @@ public:
 
     template < class V, ulong N >
     void resize( const V (&value)[N] ) noexcept {
-        reset(); resize(N); type::copy( value, value+N, begin() );
+         reset(); resize(N); type::copy( value, value+N, begin() );
     }
 
     void resize( ulong n, const T& c ) noexcept {
-        reset(); resize(n); fill(c);
+         reset(); resize(n); fill(c);
     }
 
     void resize( ulong n ) noexcept { reset();
@@ -189,23 +188,23 @@ protected:
     /*─······································································─*/
 
     void cpy( const ptr_t& other ) noexcept {
-        if( other.null() ){ return; }
-        length_ = other.length_;
-        count_  = other. count_; used_ = true;
-        value_  = other. value_; 
-        free_   = other.  free_; ++(*count_ );
+         if ( other.null() ){ return; }
+         length_ = other.length_;
+         count_  = other. count_; used_ = true;
+         value_  = other. value_; 
+         free_   = other.  free_; ++(*count_ );
     }
 
     void mve( ptr_t&& other ) noexcept {
-        if( other.null() ){ return; }
-        length_ = other.length_;
-        count_  = other .count_;
-        value_  = other .value_;
-        free_   = other .free_ ; this->used_ = true;
-        other.  free_ = nullptr;
-        other.length_ = nullptr;
-        other. count_ = nullptr; 
-        other. value_ = nullptr; other.used_ = false;
+         if ( other.null() ){ return; }
+         length_ = other.length_;
+         count_  = other .count_;
+         value_  = other .value_;
+         free_   = other .free_ ; this->used_ = true;
+         other.  free_ = nullptr;
+         other.length_ = nullptr;
+         other. count_ = nullptr; 
+         other. value_ = nullptr; other.used_ = false;
     }
 
 };}

@@ -10,66 +10,80 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #pragma once
-#include <poll.h>
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { using POLLFD = struct pollfd; class poll_t: public generator_t {
+namespace nodepp { enum POLL_STATE {
+    READ = 1, WRITE = 2, DUPLEX = 3
+};}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { class poll_t {
+private:
+
+    struct waiter { bool blk; bool out; };
+    using NODE_CLB = function_t<int>;
+
 protected:
 
     struct NODE {
-        array_t<POLLFD> ev;
-        ptr_t<int>      ls;
-    };  ptr_t<NODE>    obj;
+        queue_t<NODE_CLB> queue;
+    };  ptr_t<NODE> obj;
 
-    void remove( int fd ) const noexcept { obj->ev.erase( fd ); }
+    /*─······································································─*/
+
+    template< class T, class... V >
+    void* push( T cb, const V&... arg ) const noexcept {
+
+        ptr_t<waiter> tsk = new waiter();
+        auto clb=type::bind(cb); tsk->blk=0; tsk->out=1; 
+
+        obj->queue.push([=](){
+            if( tsk->out==0 ){ return -1; }
+            if( tsk->blk==1 ){ return  1; } 
+                tsk->blk =1; int rs=(*clb)( arg... );
+            if( clb.null()  ){ return -1; }  
+                tsk->blk =0;   return !tsk->out?-1:rs;
+        }); 
+        
+        return (void*) &tsk->out;
+    }
 
 public:
 
-    wait_t<ptr_t<int>> onEvent;
-    wait_t<int>        onWrite;
-    wait_t<int>        onError;
-    wait_t<int>        onRead;
-
-public: poll_t() noexcept : obj( new NODE() ) {}
-
-   ~poll_t() noexcept { 
-        if ( obj.count() > 1 ){ return; }
-        for( auto x : obj->ev ) onError.emit(x.fd); 
-    }
+    virtual ~poll_t() noexcept {}
+    /*----*/ poll_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    ptr_t<int> get_last_poll() const noexcept { return obj->ls; }
+    void clear() const noexcept { /*--*/ obj->queue.clear(); }
+
+    ulong size() const noexcept { return obj->queue.size (); }
+
+    bool empty() const noexcept { return obj->queue.empty(); }
 
     /*─······································································─*/
 
-    int next () noexcept { 
-        static ulong s=0; static POLLFD x;
-    coBegin
-
-        if( obj->ev.empty() )                               { coEnd; }
-        if( ::poll( obj->ev.data(), obj->ev.size(), 0 )<=0 ){ coEnd; } 
+    int next() const noexcept {   
+    if( empty() )   { return -1; } auto x = obj->queue.get();
+    if( x==nullptr ){ return -1; } bool y = x->next==nullptr;
+                                   int  c = 0;
         
-        s = obj->ev.size(); while( s-->0 ){ x = obj->ev[s]; 
-              if( x.revents & POLLERR ){ remove(s); onError.emit(x.fd); obj->ls={{-1, x.fd }}; onEvent.emit(obj->ls); coNext; }
-            elif( x.revents & POLLIN  ){ remove(s);  onRead.emit(x.fd); obj->ls={{ 0, x.fd }}; onEvent.emit(obj->ls); coNext; }
-            elif( x.revents & POLLOUT ){ remove(s); onWrite.emit(x.fd); obj->ls={{ 1, x.fd }}; onEvent.emit(obj->ls); coNext; }
+        switch( c=x->data() ){
+            case -1: obj->queue.erase(x); /*-----*/ break;
+            case  1: obj->queue.next();   /*-----*/ break;
+            default: /*----------------*/ return 0; break;
         }
 
-    coFinish
-    };
+    return y ? -1 : c; }
 
     /*─······································································─*/
 
-    bool push_write( const int& fd ) noexcept { 
-         for( auto &x: obj->ev ){ if( x.fd==fd ){ return false; } }
-	     obj->ev.unshift({ fd, POLLOUT, 0 }); return true;
-    }
-
-    bool push_read( const int& fd ) noexcept { 
-         for( auto &x: obj->ev ){ if( x.fd==fd ){ return false; } }
-         obj->ev.unshift({ fd, POLLIN, 0 }); return true;
+    template< class T, class U, class... W >
+    void* add( T, uchar, U cb, const W&... args ) noexcept {
+        if( !limit::fileno_ready() ){ return nullptr; }
+        return push( cb, args... );
     }
 
 };}

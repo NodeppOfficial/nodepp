@@ -47,6 +47,8 @@ public:
         obj->table = ptr_t<LIST>( HASH_TABLE_SIZE );
     }
 
+    virtual ~map_t() noexcept {} 
+
     /*─······································································─*/
 
     V& operator[]( const U& id ) const noexcept {
@@ -129,11 +131,13 @@ public:
         obj->queue.erase();
     }
 
+    void clear() const noexcept { erase(); }
+
     /*─······································································─*/
 
     template< class... O >
     void append( const T& argc, const O&... args ) const noexcept {
-         iterator::map([&](U arg){ append(arg); }, argc, args... );
+         iterator::map([&](T arg){ append(arg); }, argc, args... );
     }
 
     void append( const T& pair ) const noexcept {

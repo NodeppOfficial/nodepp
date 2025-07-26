@@ -13,7 +13,7 @@ void onMain(){
 
     console::log( tuple::get<0>(tp) );
     console::log( tuple::get<1>(tp) );
-    console::log( tuple::get<2>(tp) );    
+    console::log( tuple::get<2>(tp) );
 
 }
 

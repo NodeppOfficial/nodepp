@@ -16,7 +16,7 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace worker {
-    
+
     void delay( ulong time ){ process::delay(time); }
     void yield(){ delay(TIMEOUT); SwitchToThread(); }
     int    pid(){ return GetCurrentThreadId(); }
@@ -42,36 +42,41 @@ public:
         mutex->addr = nullptr;
         mutex->state= 1;
         if( mutex->fd == NULL )
-          { process::error("Cant Start Mutex"); }
+          { throw except_t("Cant Start Mutex"); }
     }
 
-   ~mutex_t() noexcept {
+    virtual ~mutex_t() noexcept {
         if( mutex->state== 0 )          { return;   }
         if( mutex->addr == (void*)this ){ unlock(); }
-        if( mutex.count() > 1 )         { return;   }
-            free();
+        if( mutex.count() > 1 )         { return;   } free();
     }
     
     /*─······································································─*/
 
     void free() const noexcept {
          if( mutex->state == 0 ){ return; }
-             mutex->state =  0;
-         CloseHandle( mutex->fd );
+             mutex->state =  0; CloseHandle( mutex->fd );
+    }
+    
+    /*─······································································─*/
+
+    template< class T, class... V >
+    void emit( T callback, const V&... args ) const noexcept {
+         lock(); callback( args... ); unlock();
     }
     
     /*─······································································─*/
 
     void unlock() const noexcept { 
-        while( ReleaseMutex( mutex->fd ) == 0 )
+        while( ReleaseMutex( mutex->fd )==0 )
              { worker::yield(); }
-               mutex->addr = nullptr;
+        mutex->addr = nullptr;
     }
 
     void lock() const noexcept { 
-        while( WaitForSingleObject( mutex->fd, INFINITE ) != 0 )
+        while( WaitForSingleObject( mutex->fd, 0 ) != 0 )
              { worker::yield(); }
-               mutex->addr = (void*)this;
+        mutex->addr = (void*)this;
     }
 
 };}

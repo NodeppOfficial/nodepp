@@ -14,17 +14,28 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-using TIMEVAL = struct timeval;
+using NODE_INTERVAL = struct timeval;
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace process {
+namespace nodepp { namespace process { 
 
-    TIMEVAL _time_;
+    NODE_INTERVAL get_new_interval(){ NODE_INTERVAL interval;
+        gettimeofday( &interval, NULL );
+        return interval;
+    }
     
-    ulong  millis(){ return _time_.tv_sec * 1000 + _time_.tv_usec / 1000; }
-    ulong seconds(){ return _time_.tv_sec + _time_.tv_usec / 1000000; }
-    ulong  micros(){ return _time_.tv_sec * 1000000 + _time_.tv_usec; }
+    ulong micros(){ NODE_INTERVAL time = get_new_interval();
+        return time.tv_sec * 1000000 + time.tv_usec; 
+    }
+    
+    ulong seconds(){ NODE_INTERVAL time = get_new_interval();
+        return time.tv_sec + time.tv_usec / 1000000; 
+    }
+    
+    ulong millis(){ NODE_INTERVAL time = get_new_interval();
+        return time.tv_sec * 1000 + time.tv_usec / 1000; 
+    }
 
 }}
 
@@ -32,17 +43,11 @@ namespace nodepp { namespace process {
 
 namespace nodepp { namespace process {
 
+    void delay( ulong time ){ ::usleep( time * 1000 ); }
+
+    void yield(){ delay( TIMEOUT ); }
+
     ulong now(){ return millis(); }
-
-    void delay( ulong time ){ 
-        if( time == 0 ){ return; }
-        ::usleep( time * 1000 ); 
-    }
-
-    void yield(){ 
-        gettimeofday( &_time_, NULL );
-        delay( TIMEOUT ); 
-    }
 
 }}
 

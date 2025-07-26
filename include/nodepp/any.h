@@ -22,7 +22,7 @@ public: any_t() noexcept {};
     template< class T >
     any_t( const T& f ) noexcept { set( f ); }
 
-   ~any_t() noexcept {}
+    virtual ~any_t() noexcept {}
 
     /*─······································································─*/
 
@@ -54,9 +54,9 @@ public: any_t() noexcept {};
     template< class T >
     T get() const {
         char any [ sizeof(T)/sizeof(char) ]; if( !has_value() )
-            process::error("any_t is null");
+          { throw except_t("any_t is null"); }  
         if( *any_sz != sizeof(any)*sizeof(char) )
-            process::error("any_t incompatible sizetype");
+          { throw except_t("any_t incompatible sizetype"); }
         any_ptr->get((void*)&any); return *(T*)(any);
     }
 

@@ -14,7 +14,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if   _KERNEL == NODEPP_KERNEL_WINDOWS
+#if _KERNEL_ == NODEPP_KERNEL_WINDOWS
     
     #include "fs.h"
     #include "worker.h"
@@ -45,7 +45,7 @@
     }}
 
 
-#elif _KERNEL == NODEPP_KERNEL_POSIX
+#elif _KERNEL_ == NODEPP_KERNEL_POSIX
 
     #include "fs.h"
     #include "initializer.h"
@@ -56,7 +56,7 @@
         template< class... T > cluster_t async( const T&... args ){
         auto pid = type::bind( cluster_t(args...) ); 
         if( process::is_parent() ) { 
-            process::poll::add([=](){ return pid->next(); }); 
+            process::add([=](){ return pid->next(); }); 
         } return *pid; }
 
         template< class... T > cluster_t add( const T&... args ){

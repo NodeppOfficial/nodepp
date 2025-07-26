@@ -25,8 +25,8 @@ namespace nodepp { namespace promise {
         function_t<void,function_t<void,T>,function_t<void,V>> func,
         function_t<void,T> res, function_t<void,V> rej
     ){  
-        ptr_t<bool> state = new bool(1); _promise_::resolve task;
-        return process::task::add( task, state, func, [=]( T data ){
+        ptr_t<bool> state = new bool(1); generator::promise::resolve task;
+        return process::add( task, state, func, [=]( T data ){
            if( *state!=1 ){ return; } res(data); *state=0;
         }, [=]( V data ) {
            if( *state!=1 ){ return; } rej(data); *state=0;
@@ -37,8 +37,8 @@ namespace nodepp { namespace promise {
         function_t<void,function_t<void,T>> func,
         function_t<void,T> res
     ){  
-        ptr_t<bool> state = new bool(1); _promise_::resolve task;
-        return process::task::add( task, state, func, [=]( T data ){
+        ptr_t<bool> state = new bool(1); generator::promise::resolve task;
+        return process::add( task, state, func, [=]( T data ){
            if( *state!=1 ){ return; } res(data); *state=0;
         } ); return (void*) &state;
     }
@@ -49,7 +49,7 @@ namespace nodepp { namespace promise {
         function_t<void,function_t<void,T>,function_t<void,V>> func 
     ){   
         ptr_t<bool> state = new bool(1); T res; V rej; bool x=0;
-        _promise_::resolve task;
+        generator::promise::resolve task;
         process::await( task, state, func, [&]( T data ){
             if( *state!=1 ){ return; } res = data; *state=0; x=1;
         }, [&]( V data ){
@@ -60,11 +60,11 @@ namespace nodepp { namespace promise {
     template< class T > T await( 
         function_t<void,function_t<void,T>> func 
     ){  
-        ptr_t<bool> state = new bool(1); T result; 
-        _promise_::resolve task;
+        ptr_t<bool> state = new bool(1); T out; 
+        generator::promise::resolve task;
         process::await( task, state, func, [&]( T data ){
-            if( *state!=1 ){ return; } result = data; *state=0;
-        }); return result;
+            if( *state!=1 ){ return; } out = data; *state=0;
+        }); return out;
     }
     
     /*─······································································─*/
@@ -76,11 +76,18 @@ namespace nodepp { namespace promise {
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { template< class T, class V > class promise_t { 
+private:
+
+    using REJECT   = function_t<void,V>;
+    using RESOLVE  = function_t<void,T>;
+    using NODE_CLB = function_t<void,RESOLVE,REJECT>;
+
 protected:
 
     struct NODE {
-        function_t<void,function_t<void,T>,function_t<void,V>> main_func;
-        void* addr = nullptr; uchar state=0;
+        void* addr = nullptr; 
+        NODE_CLB node_func;
+        uchar state=0;
     };  ptr_t<NODE> obj;
 
     event_t<T> onDone; 
@@ -96,13 +103,13 @@ public:
     promise_t& fail( const U cb )    noexcept { obj->state=1; onFail.once(cb);    return (*this); }
     
     template< class U >
-    promise_t& finally( const U cb ) noexcept { /*         */ onFinally.once(cb); return (*this); }
+    promise_t& finally( const U cb ) noexcept { /*---------*/ onFinally.once(cb); return (*this); }
 
     /*─······································································─*/
 
     void resolve() const noexcept { if( obj->state!=1 ){ return; }
         obj->state= 0; auto self = type::bind(this);
-        obj->addr = promise::resolve<T,V>( obj->main_func, 
+        obj->addr = promise::resolve<T,V>( obj->node_func, 
             [=]( T res ){ self->onDone.emit(res); self->onFinally.emit(); self->free(); },
             [=]( V rej ){ self->onFail.emit(rej); self->onFinally.emit(); self->free(); }
         ); 
@@ -110,13 +117,13 @@ public:
 
     void clear() const noexcept { process::clear( obj->addr ); }
     void  free() const noexcept { onDone.clear(); onFail.clear(); onFinally.clear(); }
-    expected_t<T,V> await() const noexcept { return promise::await<T,V>( obj->main_func ); }
+    expected_t<T,V> await() const noexcept { return promise::await<T,V>( obj->node_func ); }
 
     /*─······································································─*/
 
     promise_t() noexcept : obj( new NODE ) {}
-   ~promise_t() noexcept { if( obj.count()>1 ){ return; } resolve(); }
-    promise_t( const decltype(NODE::main_func)& cb ) noexcept : obj( new NODE ) { obj->main_func=cb; }
+    virtual ~promise_t() noexcept { if( obj.count()>1 ){ return; } resolve(); }
+    promise_t( const NODE_CLB& cb ) noexcept : obj( new NODE ) { obj->node_func=cb; }
 
 };}
 

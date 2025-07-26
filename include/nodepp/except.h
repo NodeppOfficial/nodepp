@@ -24,7 +24,7 @@ protected:
 
 public:
 
-    ~except_t() noexcept {
+    virtual ~except_t() noexcept {
         if( obj->ev == nullptr ){ return; }
    	    process::onSIGERR.off( obj->ev );
     }

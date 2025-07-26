@@ -14,15 +14,15 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if   _KERNEL == NODEPP_KERNEL_WINDOWS
+#if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
     #include "os.h"
+    #include "limit.h"
     #include "stream.h"
-    #include "generator.h"
     #include "windows/socket.cpp"
-#elif _KERNEL == NODEPP_KERNEL_POSIX
+#elif _KERNEL_ == NODEPP_KERNEL_POSIX
     #include "os.h"
+    #include "limit.h"
     #include "stream.h"
-    #include "generator.h"
     #include "posix/socket.cpp"
 #else
     #error "This OS Does not support socket.h"

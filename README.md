@@ -40,6 +40,11 @@ One of the standout features of Nodepp is its 100% asynchronous architecture, po
 🪟: g++ -o main main.cpp -I ./include -lws2_32 ; ./main
 ```
 
+## Test Unit
+```bash
+( cd ./test; g++ -o main main.cpp -I../include -lssl -lcrypto ; ./main )
+```
+
 ## Examples
 ### Hello world
 ```cpp

@@ -22,7 +22,7 @@ public:
    
     function_t() noexcept : func_ptr(nullptr) {}
     
-   ~function_t() noexcept {}
+    virtual ~function_t() noexcept {}
     
     /*─······································································─*/
 

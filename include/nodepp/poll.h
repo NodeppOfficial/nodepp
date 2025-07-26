@@ -11,18 +11,16 @@
 
 #ifndef  NODEPP_POLL
 #define  NODEPP_POLL
+
+#include "limit.h"
 #include "wait.h"
 
-#if   _POLL == NODEPP_POLL_WPOLL
-    #include "windows/poll.cpp"
-#elif _POLL == NODEPP_POLL_EPOLL
+#if   _POLL_ == NODEPP_POLL_EPOLL
     #include "posix/epoll.cpp"
-#elif _POLL == NODEPP_POLL_KPOLL
+#elif _POLL_ == NODEPP_POLL_KPOLL
     #include "posix/kpoll.cpp"
-#elif _POLL == NODEPP_POLL_POLL
-    #include "posix/poll.cpp"
 #else
-    #include "posix/npoll.cpp"
+    #include "posix/poll.cpp"
 #endif
 
 #endif

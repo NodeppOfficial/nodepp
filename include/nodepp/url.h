@@ -17,15 +17,11 @@
 #include "encoder.h"
 #include "query.h"
 #include "regex.h"
+#include "map.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp {
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-ptr_t<string_t> prot ({ "https", "http", "wss", "ws", "ftp", "ftps", "tcp", "tls", "udp", "dtls" });
-ptr_t<int>      prts ({  443   ,  80   ,  443 ,  80 ,  21  ,  21   ,  80  ,  443 ,  80  ,  443   });
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -48,10 +44,20 @@ struct url_t {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+map_t<string_t,uint> protocols ({
+     { "https", 443 }, { "wss" , 443 },
+     { "tls"  , 443 }, { "dtls", 443 },
+     { "http" ,  80 }, { "ws"  ,  80 },
+     { "tcp"  ,  80 }, { "udp" ,  80 },
+     { "ftp"  ,  21 }, { "ssh" ,  22 } 
+});
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 namespace url {
 
     bool is_valid( const string_t& URL ){
-        return regex::test( URL, "^\\w+://([^.]+)", 1 );
+        return regex::test( URL, "^\\w+://[^.]+", 1 );
     }
 
     /*.........................................................................*/
@@ -130,7 +136,7 @@ namespace url {
     }
 
     string_t host( const string_t& URL ){ 
-        regex_t _a("(/|@)[^/#?]+");
+        regex_t _a("[/@][^/#?]+");
         if(!is_valid(URL) ){ return nullptr; }
             auto data = _a.match( URL ).slice(1);
         if( regex::test( data, "@" ) )
@@ -155,10 +161,7 @@ namespace url {
         if( !_host.empty() && _a.test( _host ) ){
             return string::to_uint( _a.match( _host ).slice(1) );
         } elif( !_prot.empty() ) {
-            for( ulong i=0; i<prot.size(); ++i ) {
-             if( _prot.find( prot[i] ) != nullptr )
-               { return prts[i]; }
-            }
+            if( protocols.has(_prot) ){ return protocols[_prot]; }
         }   
         
         return 8000;

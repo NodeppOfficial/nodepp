@@ -14,8 +14,8 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define coDelay(VALUE)  do { _time_=process::millis()+VALUE; while( process::millis()<_time_ ){ coNext; } } while (0)
-#define coUDelay(VALUE) do { _time_=process::micros()+VALUE; while( process::micros()<_time_ ){ coNext; } } while (0)
+#define coDelay(VALUE)  do { _time_=process::millis()+VALUE; coWait( process::millis()<_time_ ); } while (0)
+#define coUDelay(VALUE) do { _time_=process::micros()+VALUE; coWait( process::micros()<_time_ ); } while (0)
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -26,24 +26,18 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define coNext         do { _state_ = _LINE_; return  1; case _LINE_:; } while(0)
-#define coYield(VALUE) do { _state_ = VALUE ; return  1; case VALUE :; } while(0)
-#define coWait(VALUE)  do { while   ( VALUE ){ coNext; }               } while(0)
-#define coGoto(VALUE)  do { _state_ = VALUE ; return  1;               } while(0)
-#define coStay(VALUE)  do { _state_ = VALUE ; return  0;               } while(0)
-#define coEnd          do { _state_ = 0;      return -1;               } while(0)
-#define coStop            } _state_ = 0;      return -1;               }
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-#define _EERROR( EV, ... ) if  ( EV.empty() ){ console::error(__VA_ARGS__); } \
-                           else{ EV.emit( except_t(__VA_ARGS__) ); }
-#define _ERROR( ... )      throw except_t (__VA_ARGS__)
+#define coNext         do { _state_ = _LINE_; return  1; case _LINE_:; } while(0);
+#define coYield(VALUE) do { _state_ = VALUE ; return  1; case VALUE :; } while(0);
+#define coWait(VALUE)  do {  while  ( VALUE ){ coNext; }               } while(0);
+#define coGoto(VALUE)  do { _state_ = VALUE ; /*-----*/ return  1;     } while(0);
+#define coStay(VALUE)  do { _state_ = VALUE ; /*-----*/ return  0;     } while(0);
+#define coEnd          do { _time_ = 0; _state_=_time_; return -1;     } while(0);
+#define coStop            } _time_ = 0; _state_=_time_; return -1;     } while(0);
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #define coStart  static int _state_=0; static ulong _time_=0; coBegin
-#define coBegin  { switch(_state_) { case 0:;
+#define coBegin  do { switch(_state_) { case 0:;
 #define coEmit   int operator()
 
 #define coSet(VALUE) _state_ = VALUE
@@ -91,7 +85,11 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 #define _FILE_  __FILE__
 #define _LINE_  __LINE__
 #define _TIME_  __TIME__
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 bool    _EXIT_ = false;
+int     _TASK_ = 0;
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -101,7 +99,7 @@ bool    _EXIT_ = false;
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define HASH_TABLE_SIZE 255
+#define HASH_TABLE_SIZE 64
 #define UNBFF_SIZE      4096
 #define CHUNK_SIZE      65536
 
@@ -121,23 +119,23 @@ bool    _EXIT_ = false;
 #define NODEPP_KERNEL_WASM    1
 #define NODEPP_KERNEL_UNKNOWN 0
 
-#ifndef    _KERNEL
+#ifndef    _KERNEL_
 #if defined(WINDOWS) || defined(_WIN32) || defined(_WIN64)
-   #define _KERNEL NODEPP_KERNEL_WINDOWS
+   #define _KERNEL_ NODEPP_KERNEL_WINDOWS
 #elif defined(ARDUINO)
-   #define _KERNEL NODEPP_KERNEL_ARDUINO
+   #define _KERNEL_ NODEPP_KERNEL_ARDUINO
 #elif defined(__EMSCRIPTEN__)
-   #define _KERNEL  NODEPP_KERNEL_WASM
+   #define _KERNEL_  NODEPP_KERNEL_WASM
 #elif defined(__FreeBSD__)
-   #define _KERNEL NODEPP_KERNEL_POSIX
+   #define _KERNEL_ NODEPP_KERNEL_POSIX
 #elif defined(__APPLE__)
-   #define _KERNEL NODEPP_KERNEL_POSIX
+   #define _KERNEL_ NODEPP_KERNEL_POSIX
 #elif defined(__linux__)
-   #define _KERNEL NODEPP_KERNEL_POSIX
+   #define _KERNEL_ NODEPP_KERNEL_POSIX
 #elif defined(__unix__)
-   #define _KERNEL NODEPP_KERNEL_POSIX
+   #define _KERNEL_ NODEPP_KERNEL_POSIX
 #else
-   #define _KERNEL NODEPP_KERNEL_UNKNOWN
+   #define _KERNEL_ NODEPP_KERNEL_UNKNOWN
 #endif
 #endif
 
@@ -154,27 +152,27 @@ bool    _EXIT_ = false;
 #define NODEPP_OS_ARDUINO 1
 #define NODEPP_OS_UNKNOWN 0
 
-#ifndef    _OS
+#ifndef    _OS_
 #if defined(WINDOWS) || defined(_WIN32) || defined(_WIN64)
-   #define _OS NODEPP_OS_WINDOWS
+   #define _OS_ NODEPP_OS_WINDOWS
 #elif defined(__APPLE__) && defined(__MACH__)
-   #define _OS NODEPP_OS_IOS
+   #define _OS_ NODEPP_OS_IOS
 #elif defined(__TIZEN__)
-   #define _OS NODEPP_OS_TIZEN
+   #define _OS_ NODEPP_OS_TIZEN
 #elif defined(__ANDROID__)
-   #define _OS NODEPP_OS_ANDROID
+   #define _OS_ NODEPP_OS_ANDROID
 #elif defined(__FreeBSD__)
-   #define _OS NODEPP_OS_FRBSD
+   #define _OS_ NODEPP_OS_FRBSD
 #elif defined(__APPLE__)
-   #define _OS NODEPP_OS_APPLE
+   #define _OS_ NODEPP_OS_APPLE
 #elif defined(__linux__)
-   #define _OS NODEPP_OS_LINUX
+   #define _OS_ NODEPP_OS_LINUX
 #elif defined(__unix__)
-   #define _OS NODEPP_OS_UNIX
+   #define _OS_ NODEPP_OS_UNIX
 #elif defined(ARDUINO)
-   #define _OS NODEPP_OS_ARDUINO
+   #define _OS_ NODEPP_OS_ARDUINO
 #else
-   #define _OS NODEPP_OS_UNKNOWN
+   #define _OS_ NODEPP_OS_UNKNOWN
 #endif
 #endif
 
@@ -186,58 +184,31 @@ bool    _EXIT_ = false;
 #define NODEPP_ARCH_ARM_32  1
 #define NODEPP_ARCH_UNKNOWN 0
 
-#ifndef       _ARCH
+#ifndef       _ARCH_
 #if defined(__GNUC__)
    #if defined(__x86_64__)
-      #define _ARCH NODEPP_ARCH_CPU_64
+      #define _ARCH_ NODEPP_ARCH_CPU_64
    #elif defined(__aarch64__)
-      #define _ARCH NODEPP_ARCH_ARM_64
+      #define _ARCH_ NODEPP_ARCH_ARM_64
    #elif defined(__i386__)
-      #define _ARCH NODEPP_ARCH_CPU_32
+      #define _ARCH_ NODEPP_ARCH_CPU_32
    #elif defined(__arm__)
-      #define _ARCH NODEPP_ARCH_ARM_64
+      #define _ARCH_ NODEPP_ARCH_ARM_64
    #else
-      #define _ARCH NODEPP_ARCH_UNKNOWN
+      #define _ARCH_ NODEPP_ARCH_UNKNOWN
    #endif
 #else
    #if defined(_M_IX86)
-      #define _ARCH NODEPP_ARCH_CPU_32
+      #define _ARCH_ NODEPP_ARCH_CPU_32
    #elif defined(_M_ARM64)
-      #define _ARCH NODEPP_ARCH_ARM_64
+      #define _ARCH_ NODEPP_ARCH_ARM_64
    #elif defined(_M_X64)
-      #define _ARCH NODEPP_ARCH_CPU_64
+      #define _ARCH_ NODEPP_ARCH_CPU_64
    #elif defined(_M_ARM)
-      #define _ARCH NODEPP_ARCH_ARM_32
+      #define _ARCH_ NODEPP_ARCH_ARM_32
    #else
-      #define _ARCH NODEPP_ARCH_UNKNOWN
+      #define _ARCH_ NODEPP_ARCH_UNKNOWN
    #endif
-#endif
-#endif
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-#define NODEPP_ENVIRONMENT_GNU     6
-#define NODEPP_ENVIRONMENT_WASM    5
-#define NODEPP_ENVIRONMENT_MSYS2   4
-#define NODEPP_ENVIRONMENT_MINGW   3
-#define NODEPP_ENVIRONMENT_CYWIN   2
-#define NODEPP_ENVIRONMENT_UNKNOWN 0
-
-#ifndef    _ENVIRONMENT
-#elif defined(__EMSCRIPTEN__)
-   #define _ENVIRONMENT NODEPP_ENVIRONMENT_WASM
-#if defined(__MSYS__)
-   #define _ENVIRONMENT NODEPP_ENVIRONMENT_MSYS2
-#elif defined(__CYGWIN__)
-   #define _ENVIRONMENT NODEPP_ENVIRONMENT_CYWIN
-/*
-#elif defined(__MINGW32__) || defined(__MINGW64__)
-   #define _ENVIRONMENT NODEPP_ENVIRONMENT_MINGW
-#elif defined(__GNUC__)
-   #define _ENVIRONMENT NODEPP_ENVIRONMENT_GNU
-*/
-#else
-   #define _ENVIRONMENT NODEPP_ENVIRONMENT_UNKNOWN
 #endif
 #endif
 
@@ -249,17 +220,21 @@ bool    _EXIT_ = false;
 #define NODEPP_POLL_POLL  1
 #define NODEPP_POLL_NONE  0
 
-#ifndef    _POLL
-#if   _OS == NODEPP_OS_WINDOWS
-   #define _POLL NODEPP_POLL_WPOLL
-#elif _OS == NODEPP_OS_APPLE
-   #define _POLL NODEPP_POLL_KPOLL
-#elif _OS == NODEPP_OS_FRBSD
-   #define _POLL NODEPP_POLL_KPOLL
-#elif _OS == NODEPP_OS_LINUX
-   #define _POLL NODEPP_POLL_EPOLL
+#define NODEPP_POLL_READ  0x01
+#define NODEPP_POLL_WRITE 0x02
+#define NODEPP_POLL_ERROR 0x04
+
+#ifndef    _POLL_
+#if   _OS_ == NODEPP_OS_WINDOWS
+   #define _POLL_ NODEPP_POLL_WPOLL
+#elif _OS_ == NODEPP_OS_APPLE
+   #define _POLL_ NODEPP_POLL_KPOLL
+#elif _OS_ == NODEPP_OS_FRBSD
+   #define _POLL_ NODEPP_POLL_KPOLL
+#elif _OS_ == NODEPP_OS_LINUX
+   #define _POLL_ NODEPP_POLL_EPOLL
 #else
-   #define _POLL NODEPP_POLL_POLL
+   #define _POLL_ NODEPP_POLL_POLL
 #endif
 #endif
 
@@ -289,7 +264,7 @@ bool    _EXIT_ = false;
 #define uchar16 unsigned int
 #define uchar32 unsigned long int
 
-#if !defined(_SYS_TYPES_H_) || _OS == NODEPP_OS_ANDROID
+#if !defined(_SYS_TYPES_H_) || _OS_ == NODEPP_OS_ANDROID
     #define  _SYS_TYPES_H_
 
 #define ushort unsigned short

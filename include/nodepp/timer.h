@@ -22,14 +22,14 @@ namespace nodepp { namespace timer {
     
     template< class V, class... T >
     void* add ( V func, ulong* time, const T&... args ){
-        auto prs = _timer_::timer();
-        return process::task::add( prs, func, time, args... ); 
+        auto prs = generator::timer::timer();
+        return process::add( prs, func, time, args... ); 
     };
     
     template< class V, class... T >
     void* add ( V func, ulong time, const T&... args ){
-        auto prs = _timer_::timer();
-        return process::task::add( prs, func, time, args... ); 
+        auto prs = generator::timer::timer();
+        return process::add( prs, func, time, args... ); 
     };
     
     /*─······································································─*/
@@ -58,13 +58,10 @@ namespace nodepp { namespace timer {
     
     /*─······································································─*/
     
-    void await( ulong* time ){
-        ulong stamp = process::millis() + *time;
-        while( process::millis() < stamp )
-             { process::next(); }
-    };
+    void await( ulong* time ){ process::await( coroutine::add( COROUTINE(){
+    coBegin ; coDelay( *time ) ; coFinish }) ); }
 
-    void await( ulong time ){ await( (ulong*) &time ); }
+    void await( ulong time ){ await( type::cast<ulong>( &time ) ); }
     
     /*─······································································─*/
 
@@ -78,14 +75,14 @@ namespace nodepp { namespace utimer {
     
     template< class V, class... T >
     void* add ( V func, ulong* time, const T&... args ){
-        auto prs = _timer_::utimer();
-        return process::task::add( prs, func, time, args... ); 
+        auto prs = generator::timer::utimer();
+        return process::add( prs, func, time, args... ); 
     };
     
     template< class V, class... T >
     void* add ( V func, ulong time, const T&... args ){
-        auto prs = _timer_::utimer();
-        return process::task::add( prs, func, time, args... ); 
+        auto prs = generator::timer::utimer();
+        return process::add( prs, func, time, args... ); 
     };
     
     /*─······································································─*/
@@ -114,13 +111,10 @@ namespace nodepp { namespace utimer {
     
     /*─······································································─*/
     
-    void await( ulong* time ){
-        ulong stamp = process::micros() + *time;
-        while( process::micros() < stamp )
-             { process::next(); }
-    };
+    void await( ulong* time ){ process::await( coroutine::add( COROUTINE(){
+    coBegin ; coUDelay( *time ) ; coFinish }) ); }
 
-    void await( ulong time ){ await( (ulong*) &time ); }
+    void await( ulong time ){ await( type::cast<ulong>( &time ) ); }
     
     /*─······································································─*/
 

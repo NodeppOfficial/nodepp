@@ -35,7 +35,7 @@ protected:
 
         if( empty() || x == y ){ return nullptr; } if( y>0 ){ --y; }
 
-        if( x < 0 ){ x = size()-1+x; } if( (ulong)x > size()-1 ){ return nullptr; }
+        if( x < 0 ){ x = size()+0+x; } if( (ulong)x > size()-1 ){ return nullptr; }
         if( y < 0 ){ y = size()-1+y; } if( (ulong)y > size()-1 ){ y = size() - 1; }
         if( y < x ){ return nullptr; }
 
@@ -63,7 +63,7 @@ protected:
 
 public:
 
-    ~queue_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
+    virtual ~queue_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
     /*─······································································─*/
 
@@ -77,8 +77,8 @@ public:
         auto i=N; while( i-->0 ){ unshift(value[i]); }
     }
 
-    queue_t( const ptr_t<V>& argc ) noexcept: obj( new DONE ) {
-        forEach( x, argc ){ push( x ); }
+    queue_t( const ptr_t<V>& args ) noexcept: obj( new DONE ) {
+        for( auto &x: args ){ push( x ); }
     }
 
     queue_t( const ulong& n, const V& c ) noexcept {
@@ -100,7 +100,7 @@ public:
                  { n = n->next; continue; } break;
             }
 
-            V item; n_buffer.insert( n, item ); x = x->next;
+            n_buffer.insert( n, x->data ); x = x->next;
         }
 
         return n_buffer;
@@ -108,7 +108,7 @@ public:
 
     /*─······································································─*/
 
-    NODE* operator[]( ulong idx ) const noexcept { return this->get( idx ); }
+    V& operator[]( ulong idx ) const noexcept { return this->get( idx )->data; }
 
     /*─······································································─*/
 
@@ -120,33 +120,33 @@ public:
     /*─······································································─*/
 
     ptr_t<V> data() const noexcept {
-        if( empty() ){ return nullptr; } 
-        ptr_t<V> out(size()); V* addr = out.begin();
+        if( empty() ){ return nullptr; } /*---------*/
+        ptr_t<V> out( size() ); V* addr = out.begin();
         auto n = first(); while( n!=nullptr ){
-         *addr = n->data; ++addr;
+            *addr = n->data; ++addr;
         n = n->next; } return out;
     }
 
     /*─······································································─*/
 
-    long index_of( function_t<bool,V> func ) const noexcept {
-        long i=0; if( empty() ){ return -1; }
-        auto n = first(); while( n != nullptr ) {
+    int index_of( function_t<bool,V> func ) const noexcept {
+        int  i=0; auto n= first(); if( empty() ){ return -1; }
+        while( n != nullptr ) { /*--------------------------*/
         if( func(n->data) == 1 ){ return i; }
         if( n->next == nullptr ){ break; }
         ++i; n = n->next; } return -1;
     }
 
-    ulong count( function_t<bool,V> func ) const noexcept {
-        ulong i=0; if( empty() ){ return 0; }
-        auto n = first(); while( n != nullptr ) {
+    int count( function_t<bool,V> func ) const noexcept {
+        int  i=0; auto n = first(); if( empty() ){ return 0; }
+        while( n != nullptr ) { /*--------------------------*/
         if( func(n->data) == 1 ){ ++i; }
         n = n->next; } return i;
     }
 
     queue_t reverse() const noexcept { 
-        auto n_buffer=queue_t<V>(); auto n =first();
-        while( n!=nullptr ){
+        auto n_buffer=queue_t<V>(); auto n=first();
+        while( n!=nullptr ){ /*------------------*/
             n_buffer.unshift( n->data );
         n=n->next; } return n_buffer;
     }
@@ -154,34 +154,34 @@ public:
     /*─······································································─*/
 
     bool some( function_t<bool,V> func ) const noexcept {
-        if( empty() ){ return false; }
+        if( empty() ){ return false; } /*------*/
         auto n = first(); while( n != nullptr ) {
         if( func(n->data) == 1 ){ return 1; }
         n = n->next; } return false;
     }
 
     bool none( function_t<bool,V> func ) const noexcept {
-        if( empty() ){ return false; }
+        if( empty() ){ return false; } /*------*/
         auto n = first(); while( n != nullptr ) {
         if( func(n->data) == 1 ){ return 0; }
         n = n->next; } return true;
     }
 
     bool every( function_t<bool,V> func ) const noexcept {
-        if( empty() ){ return false; }
+        if( empty() ){ return false; } /*------*/
         auto n = first(); while( n != nullptr ) {
         if( func(n->data) == 0 ){ return 0; }
         n = n->next; } return true;
     }
 
     void map( function_t<void,V&> func ) const noexcept {
-        if( empty() ){ return; } auto n = first();
+        if( empty() ){ return; } auto n = first(); /*-----*/
         while( n!=nullptr ){ func( n->data ); n = n->next; }
     }
 
     /*─······································································─*/
 
-    bool is_item( NODE* item ) const noexcept {
+    bool is_item( void* item ) const noexcept {
         if( empty() || item==nullptr ){ return false; }
         auto n = first(); while( n!=nullptr ){
          if( n == item ){ return true; }
@@ -198,11 +198,11 @@ public:
 
     queue_t slice( long start ) const noexcept {
 
-        auto n_buffer = queue_t<V>(); uint idx =0;
-	    auto r = get_slice_range( start, size() );
+        auto n_buffer = queue_t<V>(); uint idx=0;
+	    auto r = get_slice_range( start,size() );
          if( r == nullptr ){ return nullptr; }
 
-        auto n = get( r[0] ); while( n!=nullptr && idx<=r[1] )
+        auto n = get( r[0] ); while( n!=nullptr && idx<r[2] )
            { n_buffer.push( n->data ); n=n->next; ++idx; }
         return n_buffer;
 
@@ -210,13 +210,13 @@ public:
 
     queue_t slice( long start, long end ) const noexcept {
 
-        auto n_buffer = queue_t<V>(); uint idx =0;
+        auto n_buffer = queue_t<V>(); uint idx=0;
 	    auto r = get_slice_range( start, end );
          if( r == nullptr ){ return nullptr; }
 
-       auto n = get( r[0] ); while( n!=nullptr && idx<=r[1] )
-          { n_buffer.push( n->data ); n=n->next; ++idx; }
-       return n_buffer;
+        auto n = get( r[0] ); while( n!=nullptr && idx<r[2] )
+           { n_buffer.push( n->data ); n=n->next; ++idx; }
+        return n_buffer;
 
     }
 
@@ -278,27 +278,28 @@ public:
 
     template< class T, ulong N >
     void insert( ulong index, const T(&value)[N] ) const noexcept {
-	    index = clamp( index, 0UL, size() - 1 );
+	    index = clamp( index, 0UL, size() );
     	ulong i=index; for( ulong x=0; x<N; ++x )
         { insert( i+x, value[x] ); }
     }
 
-    void insert( ulong index, V* value, ulong N ) const noexcept {
-	    index = clamp( index, 0UL, size() - 1 );
+    void insert( ulong index, ulong N, V* value ) const noexcept {
+	    index = clamp( index, 0UL, size() );
     	ulong i=index; for( ulong x=0; x<N; ++x )
         { insert( i+x, value[x] ); }
     }
 
     void insert( ulong index, const V& value ) const noexcept {
-	    index = clamp( index, 0UL, size() - 1 );
-	    insert( get(index), value );
+	    index = clamp( index, 0UL, size() );
+        if( index>=size() ){ insert( nullptr   , value ); }
+        else /*---------*/ { insert( get(index), value ); }
     }
 
     void insert( NODE* n, const V& value ) const noexcept {
         if( empty() ){
             obj->fst = new NODE( value ); obj->lst=first();
         } elif ( is_item(n) ) {
-            auto  m = new NODE( value ); m->prev = n->prev;
+            auto m = new NODE( value ); m->prev = n->prev;
             if ( n->prev!= nullptr ){ n->prev->next = m; }
             if ( n->next== nullptr ){ obj->lst = n; }
             if ( m->prev== nullptr ){ obj->fst = m; }
@@ -338,11 +339,12 @@ public:
 
     /*─······································································─*/
 
-    void  set( NODE* x ) const noexcept { if( is_item(x) ){ obj->act = x; } }
+    void set( NODE* x ) const noexcept { if( is_item(x) ){ obj->act = x; } }
 
     NODE* get( ulong x ) const noexcept {
-        if( empty() ){ return nullptr; } auto n=first();
-        while( n != nullptr && x-->0 )
+        if( empty() ){ return nullptr; } 
+        auto y = x%size(); auto n=first();
+        while( n != nullptr && y-->0 )
              { n=n->next; } return n;
     }
 
@@ -361,7 +363,7 @@ public:
 
     NODE* as( void* x ) const noexcept {
         if( x == nullptr ){ return nullptr; }
-        return (NODE*)(x);
+        return type::cast<NODE>(x);
     }
 
 };}
