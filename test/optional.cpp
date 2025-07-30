@@ -4,7 +4,7 @@
 
 using namespace nodepp;
 
-namespace TEST { namespace OPTIONAL {
+namespace TEST { namespace OPTION {
 
     void TEST_RUNNER(){
         ptr_t<uint> totl = new uint(0);

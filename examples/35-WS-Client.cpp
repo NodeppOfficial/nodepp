@@ -11,8 +11,8 @@ void onMain() {
     auto cin    = fs::std_input();
     
     client.onConnect([=]( ws_t cli ){ 
-        
-        console::log("connected"); 
+
+        console::log("connected", cli.get_peername() );
 
         cli.onData([]( string_t chunk ){ 
             console::log("client:>",chunk); 

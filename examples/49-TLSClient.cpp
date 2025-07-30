@@ -8,24 +8,31 @@ ssl_t ssl; // ( "./ssl/cert.key", "./ssl/cert.crt" );
 void onMain(){
 
     auto client = tls::client( ssl );
+    auto cin    = fs::std_input();
 
-    client.onOpen([=]( ssocket_t cli ){
+    client.onConnect([=]( ssocket_t cli ){
+
+        console::log("connected", cli.get_peername() );
     
         cli.onData([=]( string_t data ){
             console::log( data );
+        });
+
+        cin.onData([=]( string_t data ){
+            cli.write( data );
         });
 
         cli.onClose.once([=](){
             console::log("closed");
         });
 
-        cli.write("hola mundo");
         stream::pipe( cli );
+        stream::pipe( cin );
 
     });
 
     client.connect( "localhost", 8000, []( socket_t cli ){
-        console::log("client started at tls://localhost:8000");
+        console::log("-> tls://localhost:8000");
     });
 
 }

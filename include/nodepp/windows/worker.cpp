@@ -31,8 +31,8 @@ protected:
     static DWORD WINAPI callback( LPVOID arg ){
         auto self = type::cast<worker_t>(arg); self->obj->state=1;
         while( self->obj->cb.emit()>=0 ){ worker::yield(); } 
-        delete self; worker::exit(); return 0; 
-    }
+        self->free(); delete self; worker::exit(); 
+    return 0; }
 
 public:
 
@@ -43,8 +43,6 @@ public:
         auto clb = type::bind(cb);
         wrk->blk = 0; wrk->out =1;
         obj->out = &wrk->out;
-
-        ++_TASK_;
 
         obj->cb = function_t<int>([=](){ 
             if( wrk->out==0 ){ return -1; }
@@ -58,16 +56,15 @@ public:
     
     /*─······································································─*/
 
-    worker_t() noexcept : obj( new NODE ) { ++_TASK_; }
+    worker_t() noexcept : obj( new NODE ) {}
 
     virtual ~worker_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
     
     /*─······································································─*/
 
-    void free() const noexcept { 
-        if( obj->state == 0 ){ return; }
+    void free() const noexcept {
+        if( obj->state == 0 ){ return; } --_TASK_; obj->state=0;
         if( obj->thread!= nullptr ){ CloseHandle( obj->thread ); }
-        --_TASK_; obj->state = 0;
     }
     
     /*─······································································─*/
@@ -84,7 +81,7 @@ public:
         obj->thread = CreateThread( NULL, 0, &callback, (void*)self, 0, &obj->id );
         if( obj->thread == NULL ){ delete self; return -1; }
         
-        WaitForSingleObject( obj->thread, 0 );
+        WaitForSingleObject( obj->thread, 0 ); ++_TASK_;
 
         while( obj->state==0 ){ /*------------*/ } 
     //  while( obj->state==1 ){ process::next(); } 
@@ -100,7 +97,7 @@ public:
         obj->thread = CreateThread( NULL, 0, &callback, (void*)self, 0, &obj->id );
         if( obj->thread == NULL ){ delete self; return -1; }
 
-        WaitForSingleObject( obj->thread, 0 );
+        WaitForSingleObject( obj->thread, 0 ); ++_TASK_;
 
         while( obj->state==0 ){ /*------------*/ } 
         while( obj->state==1 ){ process::next(); } 

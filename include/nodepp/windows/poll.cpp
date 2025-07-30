@@ -10,7 +10,8 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #pragma once
-#include <poll.h>
+#include <winsock.h>
+#include <winsock2.h>
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -39,7 +40,7 @@ protected:
     /*─······································································─*/
     
     template< class T, class... V >
-    void* listen( const int fd, const int flag, T& clb, const V&... args ) noexcept {
+    void* listen( const ulong fd, const int flag, T& clb, const V&... args ) noexcept {
         if( flag & POLL_STATE::READ  ){ return push( fd, POLLIN , clb, args... ); }
       elif( flag & POLL_STATE::WRITE ){ return push( fd, POLLOUT, clb, args... ); }
     return nullptr; }
@@ -52,7 +53,7 @@ protected:
     /*─······································································─*/
 
     template< class T, class... V >
-    void* push( int fd, int flag, T cb, const V&... arg ) const noexcept {
+    void* push( ulong fd, int flag, T cb, const V&... arg ) const noexcept {
 
         ptr_t<waiter> tsk = new waiter();
         auto clb=type::bind( cb );
@@ -101,13 +102,13 @@ public:
 
     /*─······································································─*/
 
-    int next() noexcept {
+    int next() noexcept { 
     coBegin
 
-        if((obj->len=::poll( obj->mem.data(), obj->mem.size(), 0 ))<=0 )
+        if((obj->len=::WSAPoll( obj->mem.data(), obj->mem.size(), 0 ))<=0 )
           { coEnd; } obj->y=obj->mem.last(); coNext;
         
-        while( obj->y >= 0 && obj->len >= 0 ){ 
+        while( obj->y >= 0 && obj->len >= 0 ){
            if( obj->mem[ obj->y ].revents == 0 ){ --obj->y; continue; } 
         do   {
 
@@ -120,7 +121,7 @@ public:
                 case  1: /*-------------*/ --obj->y; --obj->len; break;
                 default: /*-----------------------------------*/ break;
             }
-            
+
         } while(0); coNext; }
 
     coFinish }

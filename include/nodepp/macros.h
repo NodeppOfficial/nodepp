@@ -14,8 +14,8 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define coDelay(VALUE)  do { _time_=process::millis()+VALUE; coWait( process::millis()<_time_ ); } while (0)
-#define coUDelay(VALUE) do { _time_=process::micros()+VALUE; coWait( process::micros()<_time_ ); } while (0)
+#define coDelay(VALUE)  do { _time_=process::millis()+VALUE; coWait( process::millis()<_time_ ); } while(0)
+#define coUDelay(VALUE) do { _time_=process::micros()+VALUE; coWait( process::micros()<_time_ ); } while(0)
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -26,13 +26,13 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define coNext         do { _state_ = _LINE_; return  1; case _LINE_:; } while(0);
-#define coYield(VALUE) do { _state_ = VALUE ; return  1; case VALUE :; } while(0);
-#define coWait(VALUE)  do {  while  ( VALUE ){ coNext; }               } while(0);
-#define coGoto(VALUE)  do { _state_ = VALUE ; /*-----*/ return  1;     } while(0);
-#define coStay(VALUE)  do { _state_ = VALUE ; /*-----*/ return  0;     } while(0);
-#define coEnd          do { _time_ = 0; _state_=_time_; return -1;     } while(0);
-#define coStop            } _time_ = 0; _state_=_time_; return -1;     } while(0);
+#define coNext         do { coSet( _LINE_); return 1; case _LINE_:; } while(0);
+#define coYield(VALUE) do { coSet( VALUE ); return 1; case VALUE :; } while(0);
+#define coWait(VALUE)  do { while( VALUE ){ /*----------*/ coNext; }} while(0);
+#define coGoto(VALUE)  do { coSet( VALUE ); /*-------*/ return  1;  } while(0);
+#define coStay(VALUE)  do { coSet( VALUE ); /*-------*/ return  0;  } while(0);
+#define coEnd          do { _time_ = 0; _state_=_time_; return -1;  } while(0);
+#define coStop            } _time_ = 0; _state_=_time_; return -1;  } while(0);
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -219,10 +219,6 @@ int     _TASK_ = 0;
 #define NODEPP_POLL_EPOLL 2
 #define NODEPP_POLL_POLL  1
 #define NODEPP_POLL_NONE  0
-
-#define NODEPP_POLL_READ  0x01
-#define NODEPP_POLL_WRITE 0x02
-#define NODEPP_POLL_ERROR 0x04
 
 #ifndef    _POLL_
 #if   _OS_ == NODEPP_OS_WINDOWS

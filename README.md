@@ -42,7 +42,7 @@ One of the standout features of Nodepp is its 100% asynchronous architecture, po
 
 ## Test Unit
 ```bash
-( cd ./test; g++ -o main main.cpp -I../include -lssl -lcrypto ; ./main )
+( cd ./test; g++ -o main main.cpp -I../include -lssl -lcrypto -lpthread ; ./main )
 ```
 
 ## Examples

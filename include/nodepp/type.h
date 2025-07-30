@@ -188,7 +188,7 @@ namespace nodepp { namespace type {
 
     template<typename T> struct add_lvalue_reference { using type = T&; };
     template<typename T> struct add_rvalue_reference { using type = T&&; };
-    template<typename T> typename add_rvalue_reference<T>::type add_rvalue_reference_fn(T&& t) { return static_cast<typename add_rvalue_reference<T>::type>(t); };
+    template<typename T> typename add_rvalue_reference<T>::type add_rvalue_reference_fn(T&& t) { return static_cast<typename add_rvalue_reference<T>::type>(t); }
     template<typename T> struct add_reference : public conditional<is_lvalue_reference<T>::value, add_lvalue_reference<typename remove_reference<T>::type>, add_rvalue_reference<typename remove_reference<T>::type>>::type {};
     
     /*─······································································─*/

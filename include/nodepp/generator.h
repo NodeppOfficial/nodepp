@@ -65,34 +65,6 @@ namespace nodepp { namespace generator { namespace timer {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if !defined(GENERATOR_PROMISE) && defined(NODE_PROMISE) && defined(NODEPP_GENERATOR)
-    #define  GENERATOR_PROMISE
-namespace nodepp { namespace generator { namespace promise {
-
-    GENERATOR( resolve ){ public:
-
-        template< class T, class U, class V >
-        coEmit( ptr_t<bool> state, const T& func, const U& res, const V& rej ){
-        coBegin
-            func( res, rej ); coWait( *state==1 );
-        coFinish
-        }
-
-        template< class T, class U >
-        coEmit( ptr_t<bool> state, const T& func, const U& res ){
-        coBegin
-            func( res ); coWait( *state==1 );
-        coFinish
-        }
-
-    };
-
-}}}
-#undef NODEPP_GENERATOR
-#endif
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
 #if !defined(GENERATOR_FILE) && defined(NODEPP_FILE) && defined(NODEPP_GENERATOR)
     #define  GENERATOR_FILE
 namespace nodepp { namespace generator { namespace file {
@@ -113,7 +85,8 @@ namespace nodepp { namespace generator { namespace file {
 
         if( data.empty() ){ 
             coWait((state=str->_read(str->get_buffer_data(),min(d,size)))==-2);
-        if( state>0 ){ data=string_t(str->get_buffer_data(),(ulong)state); }}
+        if( state<=0 ){ coEnd; }
+        if( state >0 ){ data=string_t(str->get_buffer_data(),(ulong)state); }}
 
         state = min( data.size(), size );
         str->set_borrow( data.splice( state, data.size() ) );
@@ -132,7 +105,8 @@ namespace nodepp { namespace generator { namespace file {
         if(!str->is_available() || msg.empty() ){ coEnd; }
 
         do{ coWait((state=str->_write( msg.data()+data, msg.size()-data ))==-2 );
-        if( state>0 ){ data += state; }} while ( state>=0 && data<msg.size() );
+        if( state<=0 ){ coEnd; }
+        if( state >0 ){ data += state; }} while ( state>=0 && data<msg.size() );
 
     coFinish
     }};
@@ -141,13 +115,13 @@ namespace nodepp { namespace generator { namespace file {
 
     GENERATOR( until ){
     protected: ulong pos; file::read _read;
-    public: ulong state; string_t data;
+    public: int state; string_t data;
 
     template< class T > coEmit( T* str, string_t ch ){
     coBegin; state=0; pos=0; data.clear();
 
         coWait( _read(str) ==1 );
-            if( _read.state<=0 ){ coEnd; }
+            if( _read.state<=0 ){ state=-1; coEnd; }
         str->set_borrow( _read.data );
 
         do{for( auto x: _read.data ){ ++state;
@@ -157,7 +131,7 @@ namespace nodepp { namespace generator { namespace file {
 
         if( memcmp( _read.data.get(), ch.get(), ch.size() )==0 ){
                  data=str->get_borrow().splice( 0, ch.size() );
-        } elif( state > pos ) {
+        } elif( (ulong) state > pos ) {
                  data=str->get_borrow().splice( 0, state-pos );
         } else { data=str->get_borrow().splice( 0, state     ); }
 

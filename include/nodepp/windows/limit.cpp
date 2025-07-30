@@ -15,19 +15,22 @@
 
 namespace nodepp { namespace limit { ulong _count_=0;
     
+    int set_hard_fileno( uint value ) { return _setmaxstdio( value ); }
+
+    int set_soft_fileno( uint value ) { return _setmaxstdio( value ); }
+    
     /*─······································································─*/
 
-    int set_hard_fileno( uint value ) { return _setmaxstdio( value ); }
-    int set_soft_fileno( uint value ) { return _setmaxstdio( value ); }
-
     uint get_hard_fileno() { return _getmaxstdio(); }
+
     uint get_soft_fileno() { return _getmaxstdio(); }
     
     /*─······································································─*/
     
     ulong fileno_count(){ return _count_; }
-    bool  fileno_ready(){ return _count_ < get_soft_fileno(); }
 
+    bool  fileno_ready(){ return _count_ < get_soft_fileno(); }
+    
 }}
 
 /*────────────────────────────────────────────────────────────────────────────*/
