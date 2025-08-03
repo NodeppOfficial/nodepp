@@ -23,15 +23,18 @@ protected:
 
     struct NODE {
         function_t<int> cb;
-        HANDLE      thread;
-        bool* out; bool state=0;
-        DWORD id; mutex_t mtx;
+        HANDLE /**/ thread;
+        bool *out, state=0;
+        DWORD /*-----*/ id; 
+        mutex_t /*--*/ mtx;
     };  ptr_t<NODE> obj;
 
     static DWORD WINAPI callback( LPVOID arg ){
-        auto self = type::cast<worker_t>(arg); self->obj->state=1;
+        auto self = type::cast<worker_t>(arg);
+        self->obj->mtx.emit([=](){ self->obj->state=1; });
         while( self->obj->cb.emit()>=0 ){ worker::yield(); } 
-        self->free(); delete self; worker::exit(); 
+        self->obj->mtx.emit([=](){ self->free(); });
+        /*-------*/ delete self; worker::exit(); 
     return 0; }
 
 public:

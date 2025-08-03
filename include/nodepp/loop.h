@@ -42,7 +42,7 @@ public:
 
     /*─······································································─*/
 
-    int next() const noexcept { if( obj->queue.empty() ){ return -1; }
+    inline int next() const noexcept { if( obj->queue.empty() ){ return -1; }
     auto x = obj->queue.get();  if( x==nullptr ) /*--*/ { return -1; }
     int  y = 0; bool z = x->next==nullptr;
 
@@ -57,7 +57,7 @@ public:
     /*─······································································─*/
 
     template< class T, class... V >
-    void* add( T cb, const V&... arg ) const noexcept {
+    inline void* add( T cb, const V&... arg ) const noexcept {
 
         ptr_t<waiter> tsk = new waiter();
         auto clb=type::bind(cb); tsk->blk=0; tsk->out=1; 

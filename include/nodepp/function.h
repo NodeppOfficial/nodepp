@@ -28,9 +28,9 @@ public:
 
     bool has_value() const noexcept { return func_ptr.has_value(); }
     ulong    count() const noexcept { return func_ptr.count(); }
-    bool     empty() const noexcept { return func_ptr.null();  }
-    bool      null() const noexcept { return func_ptr.null();  }
-    void      free() const noexcept {        func_ptr.free();  }
+    bool     empty() const noexcept { return func_ptr.null (); }
+    bool      null() const noexcept { return func_ptr.null (); }
+    void      free() const noexcept { /*--*/ func_ptr.free (); }
     
     /*─······································································─*/
 

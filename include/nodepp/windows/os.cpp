@@ -51,9 +51,9 @@ namespace nodepp { namespace os {
     
     /*─······································································─*/
 
-    void exec( string_t cmd ){ ::system( cmd.get() ); }
+    int exec( string_t cmd ){ return ::system( cmd.get() ); }
 
-    void call( string_t cmd ){ ::system( cmd.get() ); }
+    int call( string_t cmd ){ return ::system( cmd.get() ); }
 
     /*─······································································─*/
 

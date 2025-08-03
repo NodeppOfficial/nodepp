@@ -302,8 +302,8 @@ public:
 
     /*─······································································─*/
 
-    void  resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume .emit(); }
-    void    stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop   .emit(); }
+    void  resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume.emit(); }
+    void    stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop  .emit(); }
     void   reset() const noexcept { if(obj->state!=-2) { return; } resume(); pos(0); }
     void   flush() const noexcept { obj->buffer.fill(0); }
 
@@ -437,21 +437,21 @@ public:
 
     /*─······································································─*/
 
-    int _connect() const noexcept { int c=0;
+    inline int _connect() const noexcept { int c=0;
         if( process::millis() > get_conn_timeout() || obj->srv == 1 ){ return -1; }
         return is_blocked( c=::connect( obj->fd, &obj->server_addr, obj->addrlen ) ) ? -2 : c>=0 ? 1: -1;
     }
 
-    int _accept() const noexcept { int c=0; if( obj->srv == 0 ){ return -1; }
+    inline int _accept() const noexcept { int c=0; if( obj->srv == 0 ){ return -1; }
         return is_blocked( c=::accept( obj->fd, &obj->server_addr, &obj->addrlen ) ) ? -2 : c;
     }
 
-    int _bind() const noexcept {
+    inline int _bind() const noexcept {
         if( process::millis() > get_conn_timeout() ){ return -1; } int c=0; obj->srv = 1;
         return is_blocked( c=::bind( obj->fd, &obj->server_addr, obj->addrlen ) ) ? -2 : c;
     }
 
-    int _listen() const noexcept { int c = 0;
+    inline int _listen() const noexcept { int c = 0;
         if( process::millis() > get_conn_timeout() || obj->srv == 0 ){ return -1; }
         return is_blocked( c=::listen( obj->fd, limit::get_soft_fileno() ) ) ? -2 : c;
     }

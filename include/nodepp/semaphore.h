@@ -19,29 +19,31 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { class semaphore_t {
+protected:
+
+    struct NODE {
+        uchar /*--*/ ctx=0;
+        mutex_t /**/ mtx  ;
+    };  ptr_t<NODE>  obj  ;
+
 public:
 
-    semaphore_t() : obj( new NODE() ){}
-
-    virtual ~semaphore_t() noexcept {
-         if( obj->addr == (void*)this )
-          { release(); }
-    };
+    semaphore_t() :obj( new NODE() ){}
+    virtual ~semaphore_t() noexcept {}
     
     /*─······································································─*/
 
-    void wait( uchar count ) const noexcept { 
-        
-        goto check; loop: worker::yield();
+    void wait( uchar count ) const noexcept { goto check; 
 
-        check:
-            obj->mutex.lock(); 
-            if( obj->ctx >= obj.count() ) obj->ctx = 0;
-            if( obj.count()>0 ) obj->ctx%=obj.count(); 
-            if( obj->ctx != count%obj.count() ) 
-              { obj->mutex.unlock(); goto loop; }
-            obj->addr=(void*)this;
-            obj->mutex.unlock();
+        loop : worker::yield();
+        check: obj->mtx.lock();
+
+          if( obj->ctx >= obj.count() ){ obj->ctx =0; }
+          if( obj.count()>0 ){ obj->ctx%=obj.count(); } 
+          if( obj->ctx != count % obj.count() ) 
+            { obj->mtx.unlock(); goto loop; }
+
+        obj->mtx.unlock();
 
     }
     
@@ -49,31 +51,20 @@ public:
 
     void wait() const noexcept { goto check;
 
-        loop: worker::yield();
-        
-        check:
-            obj->mutex.lock(); 
-            if((obj->ctx%2) != 0 )
-              { obj->mutex.unlock(); goto loop; }
-          ++obj->ctx; obj->addr=(void*)this;
-            obj->mutex.unlock();
+        loop : worker::yield();
+        check: obj->mtx.lock(); 
+
+          if( obj->ctx % 2 != 0 )
+            { obj->mtx.unlock(); goto loop; }
+            
+        obj->mtx.unlock();
 
     }
 
     void release() const noexcept {
-        obj->mutex.lock();
-        obj->addr=nullptr; 
-      ++obj->ctx; 
-        obj->mutex.unlock();
+        obj->mtx.lock  (); ++obj->ctx;
+        obj->mtx.unlock();
     }
-
-protected:
-
-    struct NODE {
-        void*   addr=nullptr;
-        uchar   ctx=0;
-        mutex_t mutex;
-    };  ptr_t<NODE> obj;
 
 };}
 

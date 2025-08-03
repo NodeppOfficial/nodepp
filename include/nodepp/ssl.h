@@ -217,7 +217,7 @@ public:
     
     /*─······································································─*/
 
-    int _accept() const noexcept { if( !obj->stt ){ return -1; }
+    inline int _accept() const noexcept { if( !obj->stt ){ return -1; }
         if( obj->ssl == nullptr ){ return -1; }
         int c = SSL_accept( obj->ssl );
         if( c > 0 ){ obj->cnn = 1; }
@@ -226,7 +226,7 @@ public:
     
     /*─······································································─*/
 
-    int _connect() const noexcept { if( !obj->stt ){ return -1; }
+    inline int _connect() const noexcept { if( !obj->stt ){ return -1; }
         if( obj->ssl == nullptr ){ return -1; } 
         int c = SSL_connect( obj->ssl );
         if( c > 0 ){ obj->cnn = 1; }
@@ -269,7 +269,7 @@ public:
         return is_blocked( c=SSL_read( obj->ssl, bf, sx ) ) ? -2 : c;
     }
     
-    int __write( char* bf, ulong sx ) const noexcept {
+    virtual int __write( char* bf, ulong sx ) const noexcept {
         if( !obj->stt || obj->ssl == nullptr ){ return -1; } int c = 0;
         if( obj->cnn == 0 ){while( _accept()==-2 ){ return -2; }}
         return is_blocked( c=SSL_write( obj->ssl, bf, sx ) ) ? -2 : c;

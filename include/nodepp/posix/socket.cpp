@@ -292,7 +292,7 @@ public:
 
     socket_t( int fd, ulong _size=CHUNK_SIZE ) : skt( new DONE() ) {
         if( fd < 0 ){ throw except_t("Such Socket has an Invalid fd"); }
-        obj->fd=fd; set_nonbloking_mode(); set_buffer_size(_size);
+        obj->fd=fd; set_nonbloking_mode(); set_buffer_size( _size );
     }
 
     virtual ~socket_t() noexcept { if( obj.count()>1 ){ return; } free(); }
@@ -347,21 +347,21 @@ public:
 
     /*─······································································─*/
 
-    int _connect() const noexcept { int c=0;
+    inline int _connect() const noexcept { int c=0;
         if( process::millis() > get_conn_timeout() || skt->srv == 1 ){ return -1; }
         return is_blocked( c=::connect( obj->fd, &skt->server_addr, skt->addrlen ) ) ? -2 : c>=0 ? 1: -1;
     }
 
-    int _accept() const noexcept { int c=0; if( skt->srv == 0 ){ return -1; }
+    inline int _accept() const noexcept { int c=0; if( skt->srv == 0 ){ return -1; }
         return is_blocked( c=::accept( obj->fd, &skt->server_addr, &skt->addrlen ) ) ? -2 : c;
     }
 
-    int _bind() const noexcept {
+    inline int _bind() const noexcept {
         if( process::millis() > get_conn_timeout() ){ return -1; } int c=0; skt->srv = 1;
         return is_blocked( c=::bind( obj->fd, &skt->server_addr, skt->addrlen ) ) ? -2 : c;
     }
 
-    int _listen() const noexcept { int c = 0;
+    inline int _listen() const noexcept { int c = 0;
         if( process::millis() > get_conn_timeout() || skt->srv == 0 ){ return -1; }
         return is_blocked( c=::listen( obj->fd, limit::get_soft_fileno() ) ) ? -2 : c;
     }

@@ -364,7 +364,7 @@ namespace nodepp { namespace type {
     }
 
     template < class A >
-    int compare( A src_first, A src_last, A dst_first ) {
+    inline int compare( A src_first, A src_last, A dst_first ) {
         while ( src_first != src_last ){
            if (*src_first <*dst_first ){ return -1; }
            if (*src_first >*dst_first ){ return  1; }
@@ -373,7 +373,7 @@ namespace nodepp { namespace type {
     }
 
     template < class A, class B >
-    void reverse( A src_first, A src_last, B dst_first ) {
+    inline void reverse( A src_first, A src_last, B dst_first ) {
         while ( src_first != src_last ) {
           --src_last;
            *dst_first=*src_last;
@@ -382,7 +382,7 @@ namespace nodepp { namespace type {
     }
 
     template < class A, class B >
-    void copy( A src_first, A src_last, B dst_first ) {
+    inline void copy( A src_first, A src_last, B dst_first ) {
         while ( src_first != src_last ) {
            *dst_first =*src_first;
           ++src_first;++dst_first;
@@ -390,7 +390,7 @@ namespace nodepp { namespace type {
     }
 
     template < class A, class B >
-    void fill( A src_first, A src_last, B value ) {
+    inline void fill( A src_first, A src_last, B value ) {
         while ( src_first != src_last ) {
            *src_first = value;
           ++src_first;

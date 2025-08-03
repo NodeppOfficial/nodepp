@@ -36,8 +36,8 @@ One of the standout features of Nodepp is its 100% asynchronous architecture, po
 
 ## Build & Run
 ```bash
-🐧: g++ -o main main.cpp -I ./include ; ./main
-🪟: g++ -o main main.cpp -I ./include -lws2_32 ; ./main
+🐧: g++ -o main main.cpp -O3 -I ./include ; ./main
+🪟: g++ -o main main.cpp -O3 -I ./include -lws2_32 ; ./main
 ```
 
 ## Test Unit

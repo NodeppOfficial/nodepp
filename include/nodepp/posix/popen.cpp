@@ -118,7 +118,7 @@ public:
 
     /*─······································································─*/
 
-    int next() noexcept {
+    inline int next() noexcept {
     coBegin; if( !is_closed() ){
         
         onOpen.emit(); coYield(1);
@@ -153,8 +153,8 @@ public:
 
     void  flush() const noexcept { std_input().flush(); std_output().flush(); std_error().flush(); }
     void resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume.emit(); }
-    void  close() const noexcept { if(obj->state < 0) { return; } obj->state=-1; onDrain.emit(); }
-    void   stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop.emit(); }
+    void  close() const noexcept { if(obj->state < 0) { return; } obj->state=-1; onDrain .emit(); }
+    void   stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop  .emit(); }
 
     /*─······································································─*/
 

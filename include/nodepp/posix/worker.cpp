@@ -23,14 +23,17 @@ protected:
 
     struct NODE {
         function_t<int> cb;
-        bool* out; bool state=0;
-        pthread_t id; mutex_t mtx;
+        bool* out, state=0;
+        pthread_t /*-*/ id;
+        mutex_t /*--*/ mtx;
     };  ptr_t<NODE> obj;
 
     static void* callback( void* arg ){
-        auto self = type::cast<worker_t>(arg); self->obj->state=1;
+        auto self = type::cast<worker_t>(arg);
+        self->obj->mtx.emit([=](){ self->obj->state=1; });
         while( self->obj->cb.emit()>=0 ){ worker::yield(); } 
-        self->free(); delete self; worker::exit(); 
+        self->obj->mtx.emit([=](){ self->free(); });
+        /*-------*/ delete self; worker::exit(); 
     return nullptr; }
 
 public:

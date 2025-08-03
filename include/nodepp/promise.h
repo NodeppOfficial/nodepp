@@ -67,10 +67,12 @@ protected:
             self->obj->res_clb(res); /*--------------*/
             self->obj->state = PROMISE_STATE::FINISHED;
             self->obj->state|= PROMISE_STATE::RESOLVED;
+            self->obj->state|= PROMISE_STATE::CLOSED; 
         },[=]( V rej ){
             self->obj->rej_clb(rej); /*--------------*/
             self->obj->state = PROMISE_STATE::FINISHED; 
             self->obj->state|= PROMISE_STATE::REJECTED; 
+            self->obj->state|= PROMISE_STATE::CLOSED; 
         });
 
     }
@@ -105,10 +107,12 @@ public:
             res = value; /*--------------------------*/
             self->obj->state = PROMISE_STATE::FINISHED;
             self->obj->state|= PROMISE_STATE::RESOLVED;
+            self->obj->state|= PROMISE_STATE::CLOSED; 
         },[&]( V value ){
             rej = value; /*--------------------------*/
             self->obj->state = PROMISE_STATE::FINISHED; 
             self->obj->state|= PROMISE_STATE::REJECTED; 
+            self->obj->state|= PROMISE_STATE::CLOSED; 
         });
 
         process::await( coroutine::add( COROUTINE(){
@@ -142,8 +146,6 @@ public:
         coWait(( self->obj->state & PROMISE_STATE::PENDING )!=0);
 
         coFinish }));
-
-        obj->state |= PROMISE_STATE::CLOSED; 
 
     }
 

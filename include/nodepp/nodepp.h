@@ -42,7 +42,7 @@ namespace nodepp { namespace process { loop_t _loop_; poll_t _poll_;
     /*─······································································─*/
 
     int next(){ static ulong count = 0;
-        if(( ++count % 32 ) == 0 ){ yield(); }
+        if(( ++count % 64 ) == 0 ){ yield(); }
     coStart
         coWait( _poll_.next()==1 ); /*------*/
         coWait( _loop_.next()==1 ); /*------*/

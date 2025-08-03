@@ -115,7 +115,7 @@ public:
 
     /*─······································································─*/
 
-    int next() noexcept {
+    inline int next() noexcept {
     coBegin
 
         if((obj->len=kevent( obj->pd, NULL, 0, &obj->ev, obj->ev.size(), 0 ))<=0 )

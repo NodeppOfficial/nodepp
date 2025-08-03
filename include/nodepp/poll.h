@@ -18,7 +18,7 @@
 #if   _POLL_ == NODEPP_POLL_WPOLL
     #include "posix/npoll.cpp"
 #elif _POLL_ == NODEPP_POLL_EPOLL
-    #include "posix/poll.cpp"
+    #include "posix/epoll.cpp"
 #elif _POLL_ == NODEPP_POLL_KPOLL
     #include "posix/kpoll.cpp"
 #elif _POLL_ == NODEPP_POLL_POLL

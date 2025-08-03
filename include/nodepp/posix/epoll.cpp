@@ -113,7 +113,7 @@ public:
 
     /*─······································································─*/
 
-    int next() noexcept {
+    inline int next() noexcept {
     coBegin
 
         if((obj->len=epoll_wait( obj->pd, &obj->ev, obj->ev.size(), 0 ))<=0 )

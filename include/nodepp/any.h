@@ -30,10 +30,7 @@ public: any_t() noexcept {};
     ulong    count() const noexcept { return  any_ptr.count(); }
     bool     empty() const noexcept { return  any_ptr.null (); }
     bool has_value() const noexcept { return !any_ptr.null (); }
-
-    /*─······································································─*/
-
-    void free() const noexcept { any_ptr.free(); }
+    void      free() const noexcept { /*--*/  any_ptr.free (); }
 
     /*─······································································─*/
 

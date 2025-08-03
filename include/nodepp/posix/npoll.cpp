@@ -65,7 +65,7 @@ public:
 
     /*─······································································─*/
 
-    int next() const noexcept {
+    inline int next() const noexcept {
     if( empty() )   { return -1; } auto x = obj->queue.get();
     if( x==nullptr ){ return -1; } bool y = x->next==nullptr;
     /*--------------------------*/ int  c = 0;
