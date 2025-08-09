@@ -330,28 +330,31 @@ namespace nodepp { namespace type {
 
     /*─······································································─*/
 
-    template<typename T, typename U>
-    struct pair { T first; U second; };
+    template< typename T > 
+    class optional { 
+    protected: 
+
+        bool has; T value; 
+
+    public:
+
+        optional( const T& val ) noexcept { memcpy( &value, &val, sizeof(T) ); has=true;  }
+    template< typename V >
+        optional( const V& val ) noexcept { /*------------------------------*/ has=false; }
+        optional( /*--------*/ ) noexcept { /*------------------------------*/ has=false; }
+
+        bool has_value() const noexcept { return has; }
+
+        const T* get() const noexcept {
+            if( has_value() ){ return &value;  } 
+            else /*-------*/ { return nullptr; }
+        }
+
+    };
 
     /*─······································································─*/
 
-    template< typename T, ulong N > 
-    struct list { T buffer[N];
-
-        const T  operator []( ulong i ) const noexcept { return       buffer[i%N]; }
-        explicit operator bool()        const noexcept { return (bool)buffer;      }
-        const T* operator &()           const noexcept { return       buffer;      }
-
-        /*─······································································─*/
-
-        T* begin() const noexcept { return buffer + 0; }
-        T* end()   const noexcept { return buffer + N; }
-
-        /*─······································································─*/
-
-        ulong size()   const noexcept { return N; }
-
-    };
+    template<typename T, typename U> struct pair { T first; U second; };
 
 }}
 
@@ -396,7 +399,6 @@ namespace nodepp { namespace type {
           ++src_first;
         }
     }
-
 
 }}
 

@@ -22,8 +22,7 @@
 namespace nodepp { class https_t : public ssocket_t, public generator_t {
 protected:
 
-    generator::file::line line;
-    string_t raw;
+    generator::file::line line; string_t raw;
     
 public:
 
@@ -44,7 +43,7 @@ public:
     template< class... T > 
     https_t( const T&... args ) noexcept : ssocket_t( args... ) {}
 
-    virtual ~https_t() noexcept {}
+    virtual ~https_t() noexcept { /*--------------------------*/ }
 
     /*─······································································─*/
 
@@ -62,21 +61,22 @@ public:
 
         do{ coWait( line( this )==1 ); if( line.state<=0 ){ coEnd; } do {
             auto x = line.data; auto y = x.find( ": " ); 
-        if( y==nullptr ){ b=0; break; }
+        if( y.null() ){ b=0; break; }
             headers[ x.slice( 0, y[0] ).to_capital_case() ] = x.slice( y[1], -2 );
         } while(0); } while(b); 
 
-        do{ auto base= regex::get_memory( raw,"^([^ ]+) ([^ ]+) ([^\r]+)" );
-        if( base.size() != 3 ){ break; } protocol = "HTTP";
+        do{ http::reg0.search_all(raw); auto base=http::reg0.get_memory(); 
+            http::reg0.clear_memory( ); protocol = "HTTP";
+        if( base.size() != 3 ){ break; } /*-------------*/
 
-        if( !regex::test( base[1], "^\\d+" ) ) {
+        if( !http::reg1.test( base[1] ) ){
             string_t host = headers.has("Host")? headers["Host"] : "localhost";
             url    = string::format("http://%s%s", host.get(), base[1].get() );
-            path   = regex::match( base[1],"^[^?#]+" );
-            search = regex::match( base[1], "?[^#]+" );
-            hash   = regex::match( base[1],  "#\\w+" );
+            path   = http::reg2.match( base[1] );
+            search = http::reg3.match( base[1] );
+            hash   = http::reg4.match( base[1] );
             query  = query::parse( search );
-            version= base[2]; method = base[0]; 
+            version= base[2]; method=base[0]; 
 
         } else { version = base[0]; status = string::to_uint( base[1] ); }
         } while(0);

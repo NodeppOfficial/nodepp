@@ -12,38 +12,31 @@
 #ifndef NODEPP_OPTIONAL
 #define NODEPP_OPTIONAL
 
+#include "any.h"
+
 namespace nodepp { 
 template< class T > class optional_t {
 protected:
 
-    struct NODE {
-        bool has; T data;
-    };  ptr_t<NODE>obj;
+    bool has; any_t data;
 
 public:
 
-    optional_t( const T& val ) noexcept : obj(new NODE()) {
-        obj->has = true; obj->data = val;
-    }
+    optional_t( const T& val ) noexcept { has = true; data = val; }
 
-    optional_t() noexcept : obj(new NODE()) {
-        obj->has = false;
-    }
+    optional_t() noexcept { has = false; }
 
     virtual ~optional_t() noexcept {}
 
     /*─······································································─*/
 
-    bool has_value() const noexcept { 
-        if( obj == nullptr ){ return false; }
-            return obj->has;
-    }
+    bool has_value() const noexcept { return has; }
 
     /*─······································································─*/
 
-    T& value() const { if ( !has_value() ) {
-        throw except_t("Optional does not have a value");
-    }   return obj->data; }
+    T value() const { if ( !has_value() || !data.has_value() ) {
+        throw  except_t("Optional does not have a value");
+    }   return data.as<T>(); }
     
 };}
 

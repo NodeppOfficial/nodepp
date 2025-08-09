@@ -63,9 +63,9 @@ namespace nodepp { namespace stream {
     
     template< class T >
     string_t await( const T& fp ){ 
-        string_t out; generator::stream::pipe _read;
-        while( fp.is_available() ){ out += fp.read(); } 
-    return out; }
+        queue_t<string_t> out; generator::stream::pipe _read;
+        while( fp.is_available() ){ out.push( fp.read() ); } 
+    return array_t<string_t>( out.data() ).join(""); }
 
 }}
 

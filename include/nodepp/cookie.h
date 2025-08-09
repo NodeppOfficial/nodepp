@@ -19,33 +19,31 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp {
+namespace nodepp { using cookie_t = map_t< string_t, string_t >;
+namespace cookie { regex_t reg    = regex_t( "([^= ;]+)=([^;]+)" );
 
-    using cookie_t = map_t< string_t, string_t >;
+    query_t parse( string_t data ){
+        if( data.empty() ){ return query_t(); } query_t out;
 
-    namespace cookie {
-
-        query_t parse( string_t data ){
-            if( data.empty() ){ return query_t(); } query_t out;
-            auto mem = regex::get_memory( data, "([^= ;]+)=([^;]+)" );
-            while( !mem.empty() ){ auto data = mem.splice( 0, 2 );
-               if( data.size()!=2 ){ break; } 
-                   out[ data[0] ] = data[1];
-            }  return out;
-        }
+        reg.search_all( data ); auto mem = reg.get_memory();
+        reg.clear_memory();
         
-        /*─······································································─*/
-        
-        string_t format( const cookie_t& data ){
-            if( data.empty() ){ return nullptr; } /*------*/
-            array_t<string_t> out; for( auto x:data.data() ) 
-                 { out.push( x.first + "=" + x.second ); }
-            return string::format("%s",out.join("; ").c_str());
-        }
-
+        while( !mem.empty() ){ auto data = mem.splice( 0, 2 );
+           if( data.size()!=2 ){ break; } 
+               out[ data[0] ] = data[1];
+        }  return out;
+    }
+    
+    /*─······································································─*/
+    
+    string_t format( const cookie_t& data ){
+        if( data.empty() ){ return nullptr; } /*------*/
+        array_t<string_t> out; for( auto x:data.data() ) 
+             { out.push( x.first + "=" + x.second ); }
+        return string::format("%s",out.join("; ").c_str());
     }
 
-}
+}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

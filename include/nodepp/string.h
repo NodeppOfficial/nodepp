@@ -75,7 +75,7 @@ protected:
 
     ptr_t<char> buffer;
 
-    ptr_t<ulong> get_slice_range( long x, long y ) const noexcept {
+    type::optional<ulong[3]> get_slice_range( long x, long y ) const noexcept {
 
         if( empty() || x == y ){ return nullptr; } if( y>0 ){ --y; }
 
@@ -87,10 +87,13 @@ protected:
         ulong b = clamp( first() + x, 0UL, a      );
         ulong c = a - b + 1;
 
-        return ptr_t<ulong>({ b, a, c });
+        ulong arr[3]; /*-----------------------*/
+              arr[0] = b; arr[1] = a; arr[2] = c;
+
+        return arr;
     }
 
-    ptr_t<ulong> get_splice_range( long x, ulong y ) const noexcept {
+    type::optional<ulong[3]> get_splice_range( long x, ulong y ) const noexcept {
 
         if( empty() || y == 0 ){ return nullptr; }
 
@@ -102,30 +105,33 @@ protected:
         ulong b = clamp( first() + x, 0UL, a      );
         ulong c = a - b + 1;
 
-        return ptr_t<ulong>({ b, a, c });
+        ulong arr[3]; /*-----------------------*/
+              arr[0] = b; arr[1] = a; arr[2] = c;
+
+        return arr;
     }
 
 public:
 
     virtual ~string_t() noexcept {}
 
-    string_t() noexcept { buffer = nullptr; }
+    string_t() noexcept { buffer.clear(); }
 
     string_t( const char* argc ) noexcept {
         if( argc == nullptr ){
-            buffer = nullptr; return;
+            buffer.clear(); return;
         }   buffer = string::buffer( argc, strlen(argc) );
     }
 
     string_t( const ulong& n, const char& c ) noexcept {
         if( n == 0 ){
-            buffer = nullptr; return;
+            buffer.clear(); return;
         }   buffer = string::buffer( n, c );
     }
 
     string_t( const char* argc, const ulong& n ) noexcept {
         if( argc == nullptr || n == 0 ){
-            buffer = nullptr; return;
+            buffer.clear(); return;
         }   buffer = string::buffer( argc, n );
     }
 
@@ -218,6 +224,7 @@ public:
 
     ptr_t<int> find( const string_t& data, ulong offset=0 ) const noexcept {
         if( data.empty() || empty() ){ return nullptr; } /*------*/
+
         int pos = min( offset, size() ); auto addr = begin() + pos;
         ptr_t<int> idx ({ pos, pos }); ulong x=0;
 
@@ -361,20 +368,20 @@ public:
 
     void erase( ulong index ) noexcept {
 	    auto r = get_slice_range( index, size() );
-         if( r == nullptr ){ return; } else {
-            auto n_buffer = string::buffer( size() - 1 );
-            memcpy( &n_buffer+r[0], &buffer+r[0]+1, size()-r[0]-1 );
-            memcpy( &n_buffer     , &buffer       , r[0] );
+        if( !r.has_value() ){ return; } else {
+            auto z = *r.get(); auto n_buffer = string::buffer( size() - 1 );
+            memcpy( &n_buffer+z[0], &buffer+z[0]+1, size()-z[0]-1 );
+            memcpy( &n_buffer     , &buffer       , z[0] );
             buffer = n_buffer;
         }
     }
 
     void erase( ulong start, ulong stop  ) noexcept {
 	    auto r = get_slice_range( start, stop );
-         if( r == nullptr ){ return; } else {
-            auto n_buffer = string::buffer( size() - r[2] );
-            memcpy( &n_buffer+r[0], &buffer+r[1]+1, size()-r[1]-1 );
-            memcpy( &n_buffer     , &buffer       , r[0] );
+        if( !r.has_value() ){ return; } else {
+            auto z = *r.get(); auto n_buffer = string::buffer( size() - z[2] );
+            memcpy( &n_buffer+z[0], &buffer+z[1]+1, size()-z[1]-1 );
+            memcpy( &n_buffer     , &buffer       , z[0] );
             buffer = n_buffer;
         }
     }
@@ -384,10 +391,13 @@ public:
     string_t slice( long start ) const noexcept {
 
         auto r = get_slice_range( start, size() );
-         if( r == nullptr ){ return nullptr; }
-
-        auto n_buffer = string_t( buffer.data()+r[0], r[2] );
+        if( !r.has_value() ){ return nullptr; }
+        
+        auto z = *r.get(); /*------------------------------*/
+        auto n_buffer = string_t( buffer.data()+z[0], z[2] );
+        
         return n_buffer;
+
     }
 
     /*─······································································─*/
@@ -395,9 +405,11 @@ public:
     string_t slice( long start, long stop ) const noexcept {
 
         auto r = get_slice_range( start, stop );
-         if( r == nullptr ){ return nullptr; }
+        if( !r.has_value() ){ return nullptr; }
 
-        auto n_buffer = string_t( buffer.data()+r[0], r[2] );
+        auto z = *r.get(); /*------------------------------*/
+        auto n_buffer = string_t( buffer.data()+z[0], z[2] );
+
         return n_buffer;
     }
 
@@ -406,19 +418,23 @@ public:
     string_t splice( long start, ulong stop ) noexcept {
 
         auto r = get_splice_range( start, stop );
-         if( r == nullptr ){ return nullptr; }
+        if( !r.has_value() ){ return nullptr; }
 
-        auto n_buffer = string_t( buffer.data()+r[0], r[2] );
-        erase( r[0], r[0]+r[2] ); return n_buffer;
+        auto z = *r.get(); /*------------------------------*/
+        auto n_buffer = string_t( buffer.data()+z[0], z[2] );
+
+        erase( z[0], z[0]+z[2] ); return n_buffer;
     }
 
     string_t splice( long start, ulong stop, string_t value ) noexcept {
 
         auto r = get_splice_range( start, stop );
-         if( r == nullptr ){ return nullptr; }
+        if( !r.has_value() ){ return nullptr; }
 
-        auto n_buffer = string_t( buffer.data()+r[0], r[2] );
-        erase( r[0], r[0]+r[2] ); insert( r[0], value ); return n_buffer;
+        auto z = *r.get(); /*------------------------------*/
+        auto n_buffer = string_t( buffer.data()+z[0], z[2] );
+
+        erase( z[0], z[0]+z[2] ); insert( z[0], value ); return n_buffer;
     }
 
     /*─······································································─*/
@@ -458,10 +474,12 @@ public:
     /*─······································································─*/
 
     explicit operator char* (void) const noexcept { return empty() ? nullptr : &buffer; }
+    explicit operator bool  (void) const noexcept { return empty(); }
+    
           char*  data() const noexcept { return empty() ? nullptr : &buffer; }
           char*   get() const noexcept { return empty() ? nullptr : &buffer; }
     const char* c_str() const noexcept { return empty() ? nullptr : &buffer; }
-    explicit operator bool(void) const noexcept { return empty(); }
+
     ptr_t<char>&  ptr() noexcept { return buffer; }
 
 };
@@ -469,6 +487,7 @@ public:
 /*────────────────────────────────────────────────────────────────────────────*/
 
 string_t operator+( const string_t& A, const string_t& B ){
+    if( A.empty() ){ return B; } if( B.empty() ){ return A; }
     string_t C = string::buffer( A.size() + B.size() );
     memcpy( C.get()+ A.size(), B.get(), B.size() );
     memcpy( C.get(), A.get() , A.size() ); return C;
@@ -566,7 +585,7 @@ namespace string {
 
     template< class... T >
     string_t format( const string_t& str, const T&... args ){
-        char buffer[UNBFF_SIZE]; 
+        char buffer[UNBFF_SIZE]; /*-----------------------*/
         snprintf( buffer, UNBFF_SIZE, (char*)str, args... );
         return buffer;
     }
@@ -578,9 +597,9 @@ namespace string {
 
     /*─······································································─*/
 
-    inline string_t to_string( char* num ){ return num; }
+    inline string_t to_string( char* num )/*------*/{ return num; }
 
-    inline string_t to_string( const char* num ){ return num; }
+    inline string_t to_string( const char* num )/**/{ return num; }
 
     inline string_t to_string( const string_t& num ){ return num; }
 

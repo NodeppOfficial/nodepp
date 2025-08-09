@@ -99,7 +99,7 @@ int     _TASK_ = 0;
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define HASH_TABLE_SIZE 64
+#define HASH_TABLE_SIZE 16
 #define UNBFF_SIZE      4096
 #define CHUNK_SIZE      65536
 

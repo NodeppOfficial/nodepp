@@ -43,8 +43,8 @@ private:
     return 1; }
 
     inline int _set_( NODE*& address, T* value, ulong size ) noexcept {
+        if( value  == nullptr ){ return -1; /*----------------------*/ }
         if( address== nullptr ){ return _new_( address, value, size ); }
-        if( value  == nullptr ){ return -1; }
 
         if( _del_( address ) /*-------*/ ==-1 )
           { address = nullptr; return -1; }
@@ -54,8 +54,8 @@ private:
     return 1; }
 
     inline int _new_( NODE*& address, T* value, ulong size ) noexcept {
-        if( address!= nullptr ){ return -1; }
         if( value  == nullptr ){ return -1; }
+        if( address!= nullptr ){ return -1; }
 
         address = new NODE();
 
@@ -68,12 +68,14 @@ private:
     inline int _cpy_( NODE* address, NODE*& output ) const noexcept {
         if( address /*--*/ == nullptr ){ return -1; }
         if( address->count == 0 /*-*/ ){ return -1; }
+        if( address->value == nullptr ){ return -1; }
         output = address; ++address->count;
     return 1; }
 
     inline int _mve_( NODE*& address, NODE*& output ) noexcept {
-        if( address == nullptr ){ return -1; }
-        if( address->count ==0 ){ return -1; }
+        if( address /*--*/ == nullptr ){ return -1; }
+        if( address->count == 0 /*-*/ ){ return -1; }
+        if( address->value == nullptr ){ return -1; }
         output = address; address = nullptr;
     return 1; }
 
@@ -218,11 +220,11 @@ public:
     /*─······································································─*/
 
     explicit operator bool(void) const noexcept { return  has_value(); }
-    explicit operator   T*(void) const          { return  data(); }
+    explicit operator   T*(void) const /*----*/ { return  data(); }
 
-    T* operator->()              const noexcept { return  data(); }
-    T& operator* ()              const noexcept { return *data(); }
-    T* operator& ()              const noexcept { return  data(); }
+    T* operator->() /*--------*/ const noexcept { return  data(); }
+    T& operator* () /*--------*/ const noexcept { return *data(); }
+    T* operator& () /*--------*/ const noexcept { return  data(); }
 
     /*─······································································─*/
 
