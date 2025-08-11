@@ -392,14 +392,14 @@ public:
     virtual void free() const noexcept {
 
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
-        if( obj->state == -2 ){ return; } obj->state = -2;
+        if( obj->state == -2 ){ return; } close(); obj->state = -2;
 
         onUnpipe.clear(); onResume.clear();
         onStop  .clear(); onError .clear();
         onOpen  .clear(); onPipe  .clear();
         onData  .clear(); /*-------------*/
         
-        kill(); onDrain.emit(); onClose.emit();
+        kill(); onClose.emit();
 
     }
 
