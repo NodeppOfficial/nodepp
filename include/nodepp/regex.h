@@ -44,14 +44,15 @@ protected:
     return nullptr; }
 
     ptr_t<int> get_rep( const string_t& pattern, int start, int end ) const noexcept {
-    ptr_t<int>     rep( 2, 0x00 ); bool b=0; string_t num[2];
+    ptr_t<int>     rep({ 0, 0 }); bool b=0; string_t num[2];
 
         pattern.slice( start+1, end ).map([&]( char& data ){
             if  (!string::is_digit(data) ){ b =! b; }
             elif( string::is_digit(data) ){ num[b].push(data); }
         });
 
-        if( !num[0].empty() ){ rep[0] =string::to_int(num[0]); }
+        if( !num[0].empty() ){ rep[0] =string::to_int(num[0]); 
+        /*------------------*/ rep[1] =string::to_int(num[0]); }
         if( !num[1].empty() ){ rep[1] =string::to_int(num[1]); }
 
     return rep; }
@@ -217,13 +218,27 @@ protected:
 
         /*─·································································─*/
 
-        elif( item.flag==0x08 && item.data==0x00 ){
-        if  ( item.next.some([&]( REGEX x ){ return x.data==value[offset]; }) )
-            { return 1; }}
+        elif( item.flag==0x08 && item.data==0xff && !obj->icase ){
+        if  ( item.next.none([&]( REGEX x ){ 
+              return x.data==value[offset]; 
+        }) ){ return 1; }}
 
-        elif( item.flag==0x08 && item.data==0xff ){
-        if  ( item.next.none([&]( REGEX x ){ return x.data==value[offset]; }) )
-            { return 1; }}
+        elif( item.flag==0x08 && item.data==0x00 && !obj->icase ){
+        if  ( item.next.some([&]( REGEX x ){ 
+              return x.data==value[offset]; 
+        }) ){ return 1; }}
+
+        /*─·································································─*/
+
+        elif( item.flag==0x08 && item.data==0xff && obj->icase ){
+        if  ( item.next.none([&]( REGEX x ){ 
+            return string::to_lower(x.data)==string::to_lower(value[offset]); 
+        }) ){ return 1; }}
+
+        elif( item.flag==0x08 && item.data==0x00 && obj->icase ){
+        if  ( item.next.some([&]( REGEX x ){ 
+              return string::to_lower(x.data)==string::to_lower(value[offset]); 
+        }) ){ return 1; }}
 
         /*─·································································─*/
 
