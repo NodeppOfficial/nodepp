@@ -47,7 +47,7 @@ public:
         obj->table = ptr_t<LIST>( HASH_TABLE_SIZE );
     }
 
-    virtual ~map_t() noexcept {} 
+    virtual ~map_t() noexcept {}
 
     /*─······································································─*/
 

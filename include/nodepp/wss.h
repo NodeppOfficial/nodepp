@@ -11,7 +11,7 @@
 
 #ifndef NODEPP_WSS
 #define NODEPP_WSS
-#define SECRET "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+#define NODEPP_WS_SECRET "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -64,7 +64,7 @@ namespace nodepp { namespace wss {
             skt.onConnect.resume( );
             skt.onConnect.emit(cli); 
             return -1;
-        }); 
+        });
 
     }); skt.onConnect([=]( wss_t cli ){
         cli.onDrain.once([=](){ cli.free(); });
@@ -86,9 +86,13 @@ namespace nodepp { namespace wss {
 
         auto hrv = type::cast<https_t>(cli);
         if( !generator::ws::client( hrv, uri ) )
-          { skt.onConnect.skip(); /**/ return; }
+          { skt.onConnect.skip(); return; }   
 
-        process::add([=](){ skt.onConnect.emit(cli); return -1; }); 
+        process::add([=](){ 
+            skt.onConnect.resume( );
+            skt.onConnect.emit(cli); 
+            return -1;
+        });
 
     }); skt.onConnect.once([=]( wss_t cli ){
         cli.onDrain.once([=](){ cli.free(); });
@@ -97,5 +101,5 @@ namespace nodepp { namespace wss {
 
 }}
 
-#undef SECRET
+#undef NODEPP_WS_SECRET
 #endif

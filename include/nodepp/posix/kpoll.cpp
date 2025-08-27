@@ -35,37 +35,20 @@ protected:
 
     struct NODE {
         queue_t<DATA>  queue;
-        map_t<int,void*> mem;
-        int        len,pd;
+        int      y,len,pd;
         ptr_t<KPOLLFD> ev;
     };  ptr_t<NODE>   obj;
-
-    /*─······································································─*/
-
-    int emit() const noexcept { 
-    auto z =obj->mem.raw(); if( z.empty()  ){ return -1; } 
-    auto x =z.get(); /*--*/ if( x==nullptr ){ return -1; }
-    auto y =obj->queue.as( x->data.second );
-    int  c =0; bool w = x->next==nullptr;
-        
-        switch( c=type::cast<NODE_CLB>( y->data.second ).emit() ){
-            case -1: remove( y ); z.next(); /*-----*/ break;
-            case  1: /*--------*/ z.next(); /*-----*/ break;
-            default: /*------------------*/ return 0; break;
-        }
-
-    return w ? -1 : c; }
 
     /*─······································································─*/
     
     bool listen( const int fd, const int flags, void* ptr ) noexcept { bool x=1, y=1;
         if( flags & POLL_STATE::READ  ){ x = append( fd, EVFILT_READ , ptr )!=-1; }
-        if( flags & POLL_STATE::WRITE ){ y = append( fd, EVFILT_WRITE, ptr )!=-1; }
+      elif( flags & POLL_STATE::WRITE ){ y = append( fd, EVFILT_WRITE, ptr )!=-1; }
         return ( x && y );
     }
 
     int append( const int fd, const int flags, void* ptr ) const noexcept {
-        KPOLLFD event; if( !limit::fileno_ready() ){ return -1; }
+        KPOLLFD event; /*--------------------------------------*/
         EV_SET( &event, fd, flags, EV_ADD|EV_ENABLE, 0, 0, ptr );
         return kevent( obj->pd, &event, 1, NULL, 0, NULL );
     }
@@ -128,21 +111,32 @@ public:
     void* add( T& inp, uchar imode, U cb, const W&... args ) noexcept {
     auto addr = push( inp.get_fd(), cb, args... ); /*----------*/
     bool    x = listen( inp.get_fd(), imode, obj->queue.last() );
-    if( !x ){ clear( addr ); } return addr; }
+    if( !x ){ obj->queue.pop(); } return addr; }
 
     /*─······································································─*/
 
-    int next() noexcept {
+    inline int next() noexcept {
     coBegin
 
         if((obj->len=kevent( obj->pd, NULL, 0, &obj->ev, obj->ev.size(), 0 ))<=0 )
-          { coEnd; } obj->mem.clear();
+          { coEnd; } obj->y=0; coNext;
 
-        do{ auto y=0; while( y < obj->len ){ auto x = obj->ev[y];
-            obj->mem.append({ x.ident, obj->ev[y] });
-        ++y; }} while(0);
+        while( obj->y < obj->len ){ do { 
+            
+            auto x = obj->ev[ obj->y ];
+            auto y = obj->queue.as( x.udata );
 
-        coWait( emit()>=0 );
+            if( x.flags & ( EV_ERROR    | EV_EOF       ) &&
+              ( x.filter& ( EVFILT_READ | EVFILT_WRITE ))==0
+            ) { remove( y ); ++obj->y; break; }
+            
+            switch( type::cast<NODE_CLB>( y->data.second ).emit() ){
+                case -1: remove( y ); ++obj->y; break;
+                case  1: /*--------*/ ++obj->y; break;
+                default: /*------------------*/ break;
+            }
+
+        } while(0); coNext; }
 
     coFinish }
 

@@ -11,7 +11,7 @@
 
 #ifndef NODEPP_WS
 #define NODEPP_WS
-#define SECRET "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+#define NODEPP_WS_SECRET "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -58,9 +58,13 @@ namespace nodepp { namespace ws {
 
         auto hrv = type::cast<http_t>(cli);
         if( !generator::ws::server( hrv ) )
-          { skt.onConnect.skip(); return; }
+          { skt.onConnect.skip(); return; }   
 
-        process::add([=](){ skt.onConnect.emit(cli); return -1; }); 
+        process::add([=](){ 
+            skt.onConnect.resume( );
+            skt.onConnect.emit(cli); 
+            return -1;
+        });
 
     }); skt.onConnect([=]( ws_t cli ){
         cli.onDrain.once([=](){ cli.free(); });
@@ -82,9 +86,13 @@ namespace nodepp { namespace ws {
 
         auto hrv = type::cast<http_t> (cli);
         if( !generator::ws::client( hrv, uri ) )
-          { skt.onConnect.skip(); /**/ return; }
-            
-        process::add([=](){ skt.onConnect.emit(cli); return -1; }); 
+          { skt.onConnect.skip(); return; }   
+
+        process::add([=](){ 
+            skt.onConnect.resume( );
+            skt.onConnect.emit(cli); 
+            return -1;
+        });
 
     }); skt.onConnect.once([=]( ws_t cli ){
         cli.onDrain.once([=](){ cli.free(); });
@@ -93,5 +101,5 @@ namespace nodepp { namespace ws {
 
 }}
 
-#undef SECRET
+#undef NODEPP_WS_SECRET
 #endif

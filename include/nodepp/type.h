@@ -188,7 +188,7 @@ namespace nodepp { namespace type {
 
     template<typename T> struct add_lvalue_reference { using type = T&; };
     template<typename T> struct add_rvalue_reference { using type = T&&; };
-    template<typename T> typename add_rvalue_reference<T>::type add_rvalue_reference_fn(T&& t) { return static_cast<typename add_rvalue_reference<T>::type>(t); };
+    template<typename T> typename add_rvalue_reference<T>::type add_rvalue_reference_fn(T&& t) { return static_cast<typename add_rvalue_reference<T>::type>(t); }
     template<typename T> struct add_reference : public conditional<is_lvalue_reference<T>::value, add_lvalue_reference<typename remove_reference<T>::type>, add_rvalue_reference<typename remove_reference<T>::type>>::type {};
     
     /*─······································································─*/
@@ -330,28 +330,32 @@ namespace nodepp { namespace type {
 
     /*─······································································─*/
 
-    template<typename T, typename U>
-    struct pair { T first; U second; };
+    template< typename T > 
+    class optional { 
+    protected: 
+
+        bool has; T value; 
+
+    public:
+
+        optional( const T& val ) noexcept { memcpy( &value, &val, sizeof(T) ); has=true;  }
+        
+    template< typename V >
+        optional( const V&     ) noexcept { /*------------------------------*/ has=false; }
+        optional( /*--------*/ ) noexcept { /*------------------------------*/ has=false; }
+
+        bool has_value() const noexcept { return has; }
+
+        const T* get() const noexcept {
+            if( has_value() ){ return &value;  } 
+            else /*-------*/ { return nullptr; }
+        }
+
+    };
 
     /*─······································································─*/
 
-    template< typename T, ulong N > 
-    struct list { T buffer[N];
-
-        const T  operator []( ulong i ) const noexcept { return       buffer[i%N]; }
-        explicit operator bool()        const noexcept { return (bool)buffer;      }
-        const T* operator &()           const noexcept { return       buffer;      }
-
-        /*─······································································─*/
-
-        T* begin() const noexcept { return buffer + 0; }
-        T* end()   const noexcept { return buffer + N; }
-
-        /*─······································································─*/
-
-        ulong size()   const noexcept { return N; }
-
-    };
+    template<typename T, typename U> struct pair { T first; U second; };
 
 }}
 
@@ -364,7 +368,7 @@ namespace nodepp { namespace type {
     }
 
     template < class A >
-    int compare( A src_first, A src_last, A dst_first ) {
+    inline int compare( A src_first, A src_last, A dst_first ) {
         while ( src_first != src_last ){
            if (*src_first <*dst_first ){ return -1; }
            if (*src_first >*dst_first ){ return  1; }
@@ -373,7 +377,7 @@ namespace nodepp { namespace type {
     }
 
     template < class A, class B >
-    void reverse( A src_first, A src_last, B dst_first ) {
+    inline void reverse( A src_first, A src_last, B dst_first ) {
         while ( src_first != src_last ) {
           --src_last;
            *dst_first=*src_last;
@@ -382,7 +386,7 @@ namespace nodepp { namespace type {
     }
 
     template < class A, class B >
-    void copy( A src_first, A src_last, B dst_first ) {
+    inline void copy( A src_first, A src_last, B dst_first ) {
         while ( src_first != src_last ) {
            *dst_first =*src_first;
           ++src_first;++dst_first;
@@ -390,13 +394,12 @@ namespace nodepp { namespace type {
     }
 
     template < class A, class B >
-    void fill( A src_first, A src_last, B value ) {
+    inline void fill( A src_first, A src_last, B value ) {
         while ( src_first != src_last ) {
            *src_first = value;
           ++src_first;
         }
     }
-
 
 }}
 

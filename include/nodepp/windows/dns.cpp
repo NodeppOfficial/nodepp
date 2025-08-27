@@ -10,7 +10,7 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #pragma once
-#include <Windows.h>
+#include <windows.h>
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -47,7 +47,7 @@ namespace nodepp { namespace dns {
 
         char ipstr[INET6_ADDRSTRLEN]; string_t ipAddress;
         while ( res != nullptr ) { void *addr = nullptr; 
-            if ( res->ai_family == AF_INET6 ) {
+            if( res->ai_family == AF_INET6 ) {
                 struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)res->ai_addr;
                 addr = &(ipv6->sin6_addr);
             } if ( addr != nullptr ){
@@ -79,7 +79,7 @@ namespace nodepp { namespace dns {
 
         char ipstr[INET_ADDRSTRLEN]; string_t ipAddress;
         while ( res != nullptr ) { void *addr = nullptr; 
-            if ( res->ai_family == AF_INET ) {
+            if( res->ai_family == AF_INET ) {
                 struct sockaddr_in *ipv4 = (struct sockaddr_in *)res->ai_addr;
                 addr = &(ipv4->sin_addr);
             } if ( addr != nullptr ){

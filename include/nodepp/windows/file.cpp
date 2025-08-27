@@ -57,9 +57,9 @@ protected:
         if ( x || c != 0 ){ return 0; }
         if ( GetOverlappedResult( obj->fd, &obj->ov, &c, 0 ) )
            { obj->ov.Offset += c; } 
-        return os::error() == ERROR_IO_INCOMPLETE ? 1 :
+        return os::error() == ERROR_IO_INCOMPLETE ? 1 : //c==0
                os::error() == ERROR_HANDLE_EOF    ? 0 :
-               os::error() == ERROR_IO_PENDING    ? 1 : c < 0;
+               os::error() == ERROR_IO_PENDING    ? 1 : 0;
     }
     
 public:
@@ -76,7 +76,7 @@ public:
     
     /*─······································································─*/
     
-    virtual ~file_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
+    virtual ~file_t() noexcept { if( obj.count()>1 ){ return; } free(); }
     
     /*─······································································─*/
 
@@ -84,13 +84,11 @@ public:
         auto fg = get_fd_flag( mode ); obj->fd = CreateFileA( path.c_str(), fg[0], fg[1], NULL, fg[2], fg[3], NULL ); 
         if( obj->fd == INVALID_HANDLE_VALUE ){ throw except_t("such file or directory does not exist"); }
         set_nonbloking_mode(); set_buffer_size( _size ); 
-        if(!limit::fileno_ready() ){ except_t(" max fileno reached "); }
     }
 
     file_t( const HANDLE& fd, const ulong& _size=CHUNK_SIZE ) : obj( new NODE() ) {
         if( fd == INVALID_HANDLE_VALUE ){ throw except_t("such file or directory does not exist"); }
         obj->fd = fd; set_nonbloking_mode(); set_buffer_size( _size ); 
-        if(!limit::fileno_ready() ){ except_t(" max fileno reached "); }
     }
 
     file_t() noexcept : obj( new NODE() ) {}
@@ -160,7 +158,7 @@ public:
     virtual void free() const noexcept {
 
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
-        if( obj->state == -2 ){ return; } obj->state = -2;
+        if( obj->state == -2 ){ return; } obj->state=-2;
        
         onUnpipe.clear(); onResume.clear();
         onError .clear(); onStop  .clear();
@@ -223,7 +221,7 @@ public:
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; } DWORD c = 0; 
         obj->feof = ReadFile( obj->fd, bf, sx, &c, &obj->ov );
         obj->feof = is_blocked( obj->feof, c ) ? -2 : c;
-        if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+        if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
         return obj->feof;
     }
 
@@ -231,7 +229,7 @@ public:
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; } DWORD c = 0; 
         obj->feof = WriteFile( obj->fd, bf, sx, &c, &obj->ov );
         obj->feof = is_blocked( obj->feof, c ) ? -2 : c;
-        if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+        if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
         return obj->feof;
     }
 

@@ -14,13 +14,13 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { template< class T, class... A > class wait_t { 
+namespace nodepp { template< class T, class... A > class wait_t {
 protected:
 
     struct DONE {  bool        *out;
         function_t<bool,T,A...> clb;
-    };  
-    
+    };
+
     struct NODE {
         char skip     = 1;
         queue_t<DONE> que;
@@ -28,7 +28,7 @@ protected:
 
 public:
 
-    wait_t() noexcept : obj( new NODE() ) {} 
+    wait_t() noexcept : obj( new NODE() ) {}
 
     virtual ~wait_t() noexcept { free(); }
 
@@ -56,7 +56,7 @@ public:
         }); obj->que.push(ctx); return &out;
     }
 
-    void off( void* address ) const noexcept { 
+    void off( void* address ) const noexcept {
         if( address == nullptr ){ return; }
         memset( address, 0, sizeof(bool) );
     }
@@ -74,7 +74,7 @@ public:
         auto y=x->next; if( *x->data.out==0 ){ obj->que.erase(x); } x=y; }
     }
 
-    void clear() const noexcept { 
+    void clear() const noexcept {
         auto x=obj->que.first(); while( x!=nullptr && !obj->que.empty() ){
         auto y=x->next; *x->data.out=0; x=y;
     }}
@@ -82,22 +82,22 @@ public:
     /*─······································································─*/
 
     void emit( const T& arg, const A&... args ) const noexcept {
-        if( is_paused() ){ return; } auto x=obj->que.first(); 
-        while( x!=nullptr && !obj->que.empty() ){   auto y=x->next; 
-            if( *x->data.out == 0 )/*----*/{ *x->data.out=0; }
-          elif( !x->data.clb(arg,args...) ){ *x->data.out=0; } 
-        x=y; }
-    }
+        if( obj.null() || is_paused() ){ return; } auto x=obj->que.first( );
+        while( x!=nullptr && !obj->que.empty() ) { auto y=x->next; bool z=0;
+          if  ( *x->data.out == 0 ) /*-------------*/ { z=1; }
+          elif( !x->data.clb(arg,args...) ) /*-----*/ { z=1; }
+          if  ( !x->data.clb.null() && z ) { *x->data.out=0; }
+    x=y; }}
 
     /*─······································································─*/
 
     bool is_paused() const noexcept { return obj->skip<=0; }
 
-    void resume() const noexcept { obj->skip = 1; }
+    void    resume() const noexcept { obj->skip = 1; }
 
-    void stop() const noexcept { obj->skip = 0; }
+    void      stop() const noexcept { obj->skip = 0; }
 
-    void skip() const noexcept { obj->skip =-1; }
+    void      skip() const noexcept { obj->skip =-1; }
 
 };}
 

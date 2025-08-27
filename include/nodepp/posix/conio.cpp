@@ -17,15 +17,13 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define C_BLACK   0x00
-#define C_WHITE   0x01
-#define C_GREEN   0x02
-#define C_RED     0x03
-#define C_BLUE    0x04
-#define C_CYAN    0x05
-#define C_YELLOW  0x06
-#define C_MAGENTA 0x07
-#define C_BOLD    0x10
+namespace nodepp { namespace conio { enum color {
+    black = 0x00, white  = 0x01,
+    green = 0x02, red    = 0x03,
+    blue  = 0x04, cyan   = 0x05,
+    yellow= 0x06, magenta= 0x07,
+    bold  = 0x10  /*----------*/
+};}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -53,22 +51,14 @@ namespace nodepp { namespace conio {
 
     template< class... T >
     int log( const T&... args ){
-        int last = sizeof...( args ), size = 0;
-        string::map([&]( string_t arg ){ 
-            size += pout( arg + ( --last<1 ? "" : " " ) ); 
-        },  args... ); 
-            size += pout("\033[0m"); 
-        return size;
+        auto data = string::join( " ", args... ) + "\033[0m";
+        pout( data ); return data.size();
     }
 
     template< class... T >
     int err( const T&... args ){
-        int last = sizeof...( args ), size = 0;
-        string::map([&]( string_t arg ){ 
-            size += perr( arg + ( --last<1 ? "" : " " ) ); 
-        },  args... ); 
-            size += perr("\033[0m"); 
-        return size;
+        auto data = string::join( " ", args... ) + "\033[0m";
+        perr( data ); return data.size();
     }
 
     /*─······································································─*/
@@ -85,39 +75,39 @@ namespace nodepp { namespace conio {
 
     /*─······································································─*/
 
-    int background( int color ){ 
-        if( color & 0x10 ){ pout("\033[1m"); color &= 0x0f; }
-        switch( color ) {
-            case C_BLACK:   return pout("\033[40m"); break;
-            case C_WHITE:   return pout("\033[47m"); break;
-            case C_GREEN:   return pout("\033[42m"); break;
-            case C_RED:     return pout("\033[41m"); break;
-            case C_BLUE:    return pout("\033[44m"); break;
-            case C_CYAN:    return pout("\033[46m"); break;
-            case C_YELLOW:  return pout("\033[43m"); break;
-            case C_MAGENTA: return pout("\033[45m"); break;
+    int background( int state ){ 
+        if( state & 0x10 ){ pout("\033[1m"); state &= 0x0f; }
+        switch( state )   {
+            case color::black:   return pout("\033[40m"); break;
+            case color::white:   return pout("\033[47m"); break;
+            case color::green:   return pout("\033[42m"); break;
+            case color::red:     return pout("\033[41m"); break;
+            case color::blue:    return pout("\033[44m"); break;
+            case color::cyan:    return pout("\033[46m"); break;
+            case color::yellow:  return pout("\033[43m"); break;
+            case color::magenta: return pout("\033[45m"); break;
         }   return -1;
     }
 
-    int foreground( int color ){
-        if( color & 0x10 ){ pout("\033[1m"); color &= 0x0f; }
-        switch( color ) {
-            case C_BLACK:   return pout("\033[30m"); break;
-            case C_WHITE:   return pout("\033[37m"); break;
-            case C_GREEN:   return pout("\033[32m"); break;
-            case C_RED:     return pout("\033[31m"); break;
-            case C_BLUE:    return pout("\033[34m"); break;
-            case C_CYAN:    return pout("\033[36m"); break;
-            case C_YELLOW:  return pout("\033[33m"); break;
-            case C_MAGENTA: return pout("\033[35m"); break;
+    int foreground( int state ){
+        if( state & 0x10 ){ pout("\033[1m"); state &= 0x0f; }
+        switch( state )   {
+            case color::black:   return pout("\033[30m"); break;
+            case color::white:   return pout("\033[37m"); break;
+            case color::green:   return pout("\033[32m"); break;
+            case color::red:     return pout("\033[31m"); break;
+            case color::blue:    return pout("\033[34m"); break;
+            case color::cyan:    return pout("\033[36m"); break;
+            case color::yellow:  return pout("\033[33m"); break;
+            case color::magenta: return pout("\033[35m"); break;
         }   return -1;
     }
 
     /*─······································································─*/
 
-    int error( string_t msg ){ foreground( C_RED    | C_BOLD ); return log( msg ); }
-    int  info( string_t msg ){ foreground( C_CYAN   | C_BOLD ); return log( msg ); }
-    int  done( string_t msg ){ foreground( C_GREEN  | C_BOLD ); return log( msg ); }
-    int  warn( string_t msg ){ foreground( C_YELLOW | C_BOLD ); return log( msg ); }
+    int error( string_t msg ){ foreground( color::red    | color::bold ); return log( msg ); }
+    int  info( string_t msg ){ foreground( color::cyan   | color::bold ); return log( msg ); }
+    int  done( string_t msg ){ foreground( color::green  | color::bold ); return log( msg ); }
+    int  warn( string_t msg ){ foreground( color::yellow | color::bold ); return log( msg ); }
 
 }}

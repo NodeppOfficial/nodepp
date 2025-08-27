@@ -36,13 +36,14 @@ One of the standout features of Nodepp is its 100% asynchronous architecture, po
 
 ## Build & Run
 ```bash
-🐧: g++ -o main main.cpp -I ./include ; ./main
-🪟: g++ -o main main.cpp -I ./include -lws2_32 ; ./main
+🐧: g++ -o main main.cpp -O3 -I ./include ; ./main
+🪟: g++ -o main main.cpp -O3 -I ./include -lws2_32 ; ./main
 ```
 
 ## Test Unit
 ```bash
-( cd ./test; g++ -o main main.cpp -I../include -lssl -lcrypto ; ./main )
+🐧: ( cd ./test; g++ -o main main.cpp -I../include -lssl -lcrypto -lpthread ; ./main )
+🪟: ( cd ./test; g++ -o main main.cpp -I../include -lssl -lcrypto -lws2_32  ; ./main )
 ```
 
 ## Examples
@@ -61,6 +62,8 @@ void onMain() {
 
 ### HTTP Client
 ```cpp
+//#pragma comment(lib, "Ws2_32.lib") msvc compiler
+
 #include <nodepp/nodepp.h>
 #include <nodepp/http.h>
 
@@ -90,6 +93,8 @@ void onMain(){
 
 ### HTTP Server
 ```cpp
+//#pragma comment(lib, "Ws2_32.lib") msvc compiler
+
 #include <nodepp/nodepp.h>
 #include <nodepp/http.h>
 #include <nodepp/date.h>
@@ -134,7 +139,6 @@ Check out some articles on [Medium](https://medium.com/@EDBCBlog)
 ## Compatibility
 - 🔗: [NodePP for Window | Linux | Mac | Bsd ](https://github.com/NodeppOfficial/nodepp)
 - 🔗: [NodePP for Arduino](https://github.com/NodeppOfficial/nodepp-arduino)
-- 🔗: [Nodepp for ESP32](https://github.com/NodeppOfficial/nodepp-ESPXX)
 - 🔗: [Nodepp for WASM](https://github.com/NodeppOfficial/nodepp-wasm)
 
 ## Official Libraries for Nodepp

@@ -28,44 +28,44 @@ namespace nodepp { namespace stream {
     /*─······································································─*/
     
     template< class... T >
+    void duplex( const T&... inp ){ generator::stream::duplex arg;
+         process::add( arg, inp... );
+    }
+    
+    /*─······································································─*/
+    
+    template< class... T >
     void until( const T&... inp ){ generator::stream::until arg;
-        process::foop.add( arg, inp... );
+         process::add( arg, inp... );
     }
     
     /*─······································································─*/
     
     template< class... T >
     void pipe( const T&... inp ){ generator::stream::pipe arg;
-        process::foop.add( arg, inp... );
+         process::add( arg, inp... );
     }
     
     /*─······································································─*/
     
     template< class... T >
     void line( const T&... inp ){ generator::stream::line arg;
-        process::foop.add( arg, inp... );
-    }
-    
-    /*─······································································─*/
-    
-    template< class... T >
-    void duplex( const T&... inp ){ generator::stream::duplex arg;
-        process::foop.add( arg, inp... );
+         process::add( arg, inp... );
     }
     
     /*─······································································─*/
     
     template< class T, class V >
-    ulong await( const T& fa, const V& fb ){ ulong out; generator::stream::pipe _read;
-        fa.onData([&]( string_t chunk ){ out += chunk.size(); });
-        process::await( _read, fa, fb ); return out;
-    }
+    ulong await( const T& fa, const V& fb ){ 
+        ulong out; /*-----------*/ generator::stream::pipe _read;
+        while( fa.is_available() ){ out += fb.write( fa.read() ); } 
+    return out; }
     
     template< class T >
-    string_t await( const T& fp ){ string_t out; generator::stream::pipe _read;
-        fp.onData([&]( string_t chunk ){ out += chunk; });
-        process::await( _read, fp ); return out;
-    }
+    string_t await( const T& fp ){ 
+        queue_t<string_t> out; generator::stream::pipe _read;
+        while( fp.is_available() ){ out.push( fp.read() ); } 
+    return array_t<string_t>( out.data() ).join(""); }
 
 }}
 

@@ -22,8 +22,8 @@ namespace nodepp { enum POLL_STATE {
 namespace nodepp { class poll_t {
 private:
 
-    struct waiter { bool blk; bool out; };
     using NODE_CLB = function_t<int>;
+    struct waiter { bool blk; bool out; };
 
 protected:
 
@@ -65,15 +65,15 @@ public:
 
     /*─······································································─*/
 
-    int next() const noexcept {   
+    inline int next() const noexcept {
     if( empty() )   { return -1; } auto x = obj->queue.get();
     if( x==nullptr ){ return -1; } bool y = x->next==nullptr;
-                                   int  c = 0;
+    /*--------------------------*/ int  c = 0;
         
         switch( c=x->data() ){
-            case -1: obj->queue.erase(x); /*-----*/ break;
-            case  1: obj->queue.next();   /*-----*/ break;
-            default: /*----------------*/ return 0; break;
+            case -1: obj->queue.erase(x); break;
+            case  1: obj->queue.next();   break;
+            default: /*----------------*/ break;
         }
 
     return y ? -1 : c; }
@@ -82,7 +82,6 @@ public:
 
     template< class T, class U, class... W >
     void* add( T, uchar, U cb, const W&... args ) noexcept {
-        if( !limit::fileno_ready() ){ return nullptr; }
         return push( cb, args... );
     }
 

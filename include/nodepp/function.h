@@ -28,25 +28,25 @@ public:
 
     bool has_value() const noexcept { return func_ptr.has_value(); }
     ulong    count() const noexcept { return func_ptr.count(); }
-    bool     empty() const noexcept { return func_ptr.null();  }
-    bool      null() const noexcept { return func_ptr.null();  }
-    void      free() const noexcept {        func_ptr.free();  }
+    bool     empty() const noexcept { return func_ptr.null (); }
+    bool      null() const noexcept { return func_ptr.null (); }
+    void      free() const noexcept { /*--*/ func_ptr.free (); }
     
     /*─······································································─*/
 
     explicit operator bool(void)    const noexcept { return func_ptr.null(); }
     
-    V operator()( const T&... arg ) const          { return emit( arg... ); }
+    V operator()( const T&... arg ) const /*----*/ { return emit( arg... );  }
     
     V emit( const T&... arg ) const { 
         if( !has_value() ){ return V(); }
-        return func_ptr->invoke(arg...); 
+        return func_ptr->invoke( arg... ); 
     }
     
 private:
 
     class func_base { public:
-        virtual ~func_base() {}
+        virtual ~func_base() { /*-----------------*/ }
         virtual V invoke( const T&... arg ) const = 0;
     };
     
@@ -57,7 +57,7 @@ private:
 
     public:
 
-        func_impl( const F& f ) : func(f) {}
+        func_impl( const F& f ) : func(f) { /*------------------------*/ }
         virtual V invoke( const T&... arg ) const { return func(arg...); }
 
     private:

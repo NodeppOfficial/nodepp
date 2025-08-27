@@ -18,11 +18,11 @@
 
 namespace nodepp { namespace os {
     
-    string_t hostname(){ char buff[UNBFF_SIZE]; ::gethostname(buff,UNBFF_SIZE); return buff; }
+    string_t hostname(){ char buff[UNBFF_SIZE]; return ::gethostname(buff,UNBFF_SIZE)==0 ? buff : nullptr; }
     
     /*─······································································─*/
 
-    string_t cwd(){ char buff[UNBFF_SIZE]; ::getcwd(buff,UNBFF_SIZE); return buff; }
+    string_t cwd(){ char buff[UNBFF_SIZE]; return ::getcwd(buff,UNBFF_SIZE)==nullptr ? nullptr : buff; }
     
     /*─······································································─*/
 
@@ -30,9 +30,9 @@ namespace nodepp { namespace os {
     
     /*─······································································─*/
 
-    void exec( string_t cmd ){ ::system( cmd.get() ); }
+    int exec( string_t cmd ){ return ::system( cmd.get() ); }
 
-    void call( string_t cmd ){ ::system( cmd.get() ); }
+    int call( string_t cmd ){ return ::system( cmd.get() ); }
     
     /*─······································································─*/
 

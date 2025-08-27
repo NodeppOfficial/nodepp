@@ -108,30 +108,31 @@ namespace _path_ { map_t<string_t,string_t> mimetype ({
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace path {
-
-namespace {
+namespace path { namespace {
 #if false // _KERNEL_ == NODEPP_KERNEL_WINDOWS
     string_t sep  = "\\\\";
     string_t root = "c:\\\\";
     string_t  one = "[^\\\\]+";
-    string_t init = "\\w:\\\\";
     string_t _beg = "\\w:\\\\";
     string_t  beg = "^\\w:\\\\";
 #else
-    string_t init = "";
     string_t  sep = "/";
     string_t _beg = "/";
     string_t root = "./";
     string_t  beg = "^/";
     string_t  one = "[^/]+";
 #endif
+} namespace {
+    regex_t reg0 = regex_t( "/+|\\\\+" );
+    regex_t reg1 = regex_t( one );
+    regex_t reg2 = regex_t( beg );
+    regex_t reg3 = regex_t("^"+beg); 
 }
     
     /*─······································································─*/
 
     string_t normalize( string_t path ){ 
-        auto sec = regex::split( path, "/+|\\\\+" );
+        auto sec = reg0.split( path );
         queue_t<string_t> nsec; ulong y=0;
 
         for ( ulong x=0; x<sec.size(); ++x ){
@@ -152,9 +153,7 @@ namespace {
     
     /*─······································································─*/
 
-    bool is_absolute( const string_t& path ){
-        regex_t reg("^"+beg); return reg.test( path );
-    }
+    bool is_absolute( const string_t& path ){ return reg3.test(path); }
     
     /*─······································································─*/
 
@@ -182,14 +181,14 @@ namespace {
     /*─······································································─*/
 
     string_t dirname( const string_t& path ){ 
-        auto vec = regex::split( path, "/+|\\\\+" );
+        auto vec = reg0.split( path );
         vec.pop(); return vec.join( sep );
     }
     
     /*─······································································─*/
 
     string_t basename( const string_t& path ){ 
-        auto vec = regex::match_all( path, one );
+        auto vec = reg1.match_all( path );
         if ( vec.empty() ){ return nullptr; }
         return vec[ vec.last() ];
     }
@@ -197,7 +196,7 @@ namespace {
     /*─······································································─*/
 
     string_t basename( const string_t& path, const string_t& del ){ 
-        auto vec = regex::match_all( path, one );
+        auto vec = reg1.match_all( path );
         if ( vec.empty() ){ return nullptr; }
         return regex::replace( vec[ vec.last() ], del, "" );
     }
@@ -226,8 +225,8 @@ namespace {
 
     path_t parse( const string_t& path ) { path_t out;
 
-        if( regex::test( path, beg ) ) out.root = _beg;
-        else                           out.root = root;
+        if( reg2.test( path ) ) out.root = _beg;
+        else /*--------------*/ out.root = root;
 
         out.path = path;
         out.ext  = extname ( path ); 
@@ -237,14 +236,14 @@ namespace {
         out.name = basename( path, "\\."+out.ext );
 
         return out;
-    };
+    }
 
     /*─······································································─*/
 
     string_t relative( const string_t& path_a, const string_t& path_b ){
 
-        auto secA = regex::split( path::normalize(path_a), "/+|\\\\+" );
-        auto secB = regex::split( path::normalize(path_b), "/+|\\\\+" );
+        auto secA = reg0.split( path::normalize(path_a) );
+        auto secB = reg0.split( path::normalize(path_b) );
         auto sec  = queue_t<string_t>(); ulong y=0;
 
         for ( ulong x=0; x<secA.size() && x<secB.size(); ++x ){
@@ -260,31 +259,31 @@ namespace {
     /*─······································································─*/
 
     string_t push( const string_t& path, const string_t& dir ){
-        auto sec = regex::split( path::normalize(path), "/+|\\\\+" );
+        auto sec = reg0.split( path::normalize(path) );
              sec.push( dir ); return sec.join( sep );
     }
 
     string_t unshift( const string_t& path, const string_t& dir ){
-        auto sec = regex::split( path::normalize(path), "/+|\\\\+" );
+        auto sec = reg0.split( path::normalize(path) );
              sec.unshift( dir ); return sec.join( sep );
     }
     
     /*─······································································─*/
 
     string_t pop( const string_t& path ){
-        auto sec = regex::split( path::normalize(path), "/+|\\\\+" );
+        auto sec = reg0.split( path::normalize(path) );
              sec.pop(); return sec.join( sep );
     }
 
     string_t shift( const string_t& path ){
-        auto sec = regex::split( path::normalize(path), "/+|\\\\+" );
+        auto sec = reg0.split( path::normalize(path) );
              sec.shift(); return sec.join( sep );
     }
     
     /*─······································································─*/
 
     array_t<string_t> split( const string_t& path ){ 
-        return regex::split( path::normalize(path), "/+|\\\\+" );
+        return reg0.split( path::normalize(path) );
     }
 
     template< class T, class... V > 

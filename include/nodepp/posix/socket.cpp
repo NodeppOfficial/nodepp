@@ -38,8 +38,7 @@ class socket_t : public file_t {
 private:
 
     virtual void kill() const noexcept override { if( !is_std() ){ 
-        ::shutdown(obj->fd,SHUT_RDWR); 
-        ::close( obj->fd ); 
+        ::shutdown(obj->fd,SHUT_RDWR); ::close( obj->fd ); 
     }}
 
 protected:
@@ -293,25 +292,24 @@ public:
 
     socket_t( int fd, ulong _size=CHUNK_SIZE ) : skt( new DONE() ) {
         if( fd < 0 ){ throw except_t("Such Socket has an Invalid fd"); }
-        obj->fd=fd; set_nonbloking_mode(); set_buffer_size(_size);
-        if(!limit::fileno_ready() ){ free(); throw except_t(" max fileno reached "); }
+        obj->fd=fd; set_nonbloking_mode(); set_buffer_size( _size );
     }
 
-    virtual ~socket_t() noexcept { if( obj.count()>1 || is_std() ){ return; } free(); }
+    virtual ~socket_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     /*─······································································─*/
 
     virtual void free() const noexcept override {
 
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
-        if( obj->state == -2 ){ return; }
+        if( obj->state == -2 ){ return; } obj->state=-2;
        
         onUnpipe.clear(); onResume.clear();
         onError .clear(); onStop  .clear();
         onOpen  .clear(); onPipe  .clear();
         onData  .clear(); /*-------------*/
         
-        obj->state = -2; kill(); onDrain.emit(); onClose.emit();
+        kill(); onDrain.emit(); onClose.emit();
 
     }
 
@@ -349,21 +347,21 @@ public:
 
     /*─······································································─*/
 
-    int _connect() const noexcept { int c=0;
+    inline int _connect() const noexcept { int c=0;
         if( process::millis() > get_conn_timeout() || skt->srv == 1 ){ return -1; }
         return is_blocked( c=::connect( obj->fd, &skt->server_addr, skt->addrlen ) ) ? -2 : c>=0 ? 1: -1;
     }
 
-    int _accept() const noexcept { int c=0; if( skt->srv == 0 ){ return -1; }
+    inline int _accept() const noexcept { int c=0; if( skt->srv == 0 ){ return -1; }
         return is_blocked( c=::accept( obj->fd, &skt->server_addr, &skt->addrlen ) ) ? -2 : c;
     }
 
-    int _bind() const noexcept {
+    inline int _bind() const noexcept {
         if( process::millis() > get_conn_timeout() ){ return -1; } int c=0; skt->srv = 1;
         return is_blocked( c=::bind( obj->fd, &skt->server_addr, skt->addrlen ) ) ? -2 : c;
     }
 
-    int _listen() const noexcept { int c = 0;
+    inline int _listen() const noexcept { int c = 0;
         if( process::millis() > get_conn_timeout() || skt->srv == 0 ){ return -1; }
         return is_blocked( c=::listen( obj->fd, limit::get_soft_fileno() ) ) ? -2 : c;
     }
@@ -394,12 +392,12 @@ public:
         if ( SOCK != SOCK_DGRAM ){
             obj->feof = ::recv( obj->fd, bf, sx, 0 );
             obj->feof = is_blocked(obj->feof) ?-2 : obj->feof;
-            if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+            if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
             return obj->feof;
         } else { SOCKADDR* cli = skt->srv==1 ? &skt->client_addr : &skt->server_addr;
             obj->feof = ::recvfrom( obj->fd, bf, sx, 0, cli, &skt->len );
             obj->feof = is_blocked(obj->feof) ?-2 : obj->feof;
-            if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+            if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
             return obj->feof;
         }   return -1;
     }
@@ -410,12 +408,12 @@ public:
         if ( SOCK != SOCK_DGRAM ){
             obj->feof = ::send( obj->fd, bf, sx, 0 );
             obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
-            if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+            if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
             return obj->feof;
         } else { SOCKADDR* cli = skt->srv==1 ? &skt->client_addr : &skt->server_addr;
             obj->feof = ::sendto( obj->fd, bf, sx, 0, cli, skt->len );
             obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
-            if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+            if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
             return obj->feof;
         }   return -1;
     }

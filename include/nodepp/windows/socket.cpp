@@ -10,6 +10,7 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #pragma once
+
 #include <ws2tcpip.h>
 #include <winsock2.h>
 #include <winsock.h>
@@ -62,6 +63,7 @@ protected:
 
         ulong recv_timeout=0; ulong send_timeout=0;
         ulong conn_timeout=0;
+
         SOCKADDR server_addr, client_addr;
         int addrlen; bool srv=0; int len;
         int feof = 1;
@@ -301,8 +303,8 @@ public:
 
     /*─······································································─*/
 
-    void  resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume .emit(); }
-    void    stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop   .emit(); }
+    void  resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume.emit(); }
+    void    stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop  .emit(); }
     void   reset() const noexcept { if(obj->state!=-2) { return; } resume(); pos(0); }
     void   flush() const noexcept { obj->buffer.fill(0); }
 
@@ -375,7 +377,7 @@ public:
 
     /*─······································································─*/
 
-    virtual ~socket_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
+    virtual ~socket_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     /*─······································································─*/
 
@@ -384,7 +386,6 @@ public:
     socket_t( SOCKET fd, ulong _size=CHUNK_SIZE ){ _socket_::start_device();
         if( fd == INVALID_SOCKET ){ throw except_t("Such Socket has an Invalid fd"); }
         obj->fd = fd; set_nonbloking_mode(); set_buffer_size(_size);
-        if(!limit::fileno_ready() ){ free(); throw except_t(" max fileno reached "); }
     }
 
     /*─······································································─*/
@@ -392,14 +393,14 @@ public:
     virtual void free() const noexcept {
 
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
-        if( obj->state == -2 ){ return; } 
+        if( obj->state == -2 ){ return; } obj->state = -2;
 
         onUnpipe.clear(); onResume.clear();
         onStop  .clear(); onError .clear();
         onOpen  .clear(); onPipe  .clear();
         onData  .clear(); /*-------------*/
         
-        close(); obj->state = -2; kill(); onClose.emit();
+        kill(); onDrain.emit(); onClose.emit();
 
     }
 
@@ -437,21 +438,21 @@ public:
 
     /*─······································································─*/
 
-    int _connect() const noexcept { int c=0;
+    inline int _connect() const noexcept { int c=0;
         if( process::millis() > get_conn_timeout() || obj->srv == 1 ){ return -1; }
         return is_blocked( c=::connect( obj->fd, &obj->server_addr, obj->addrlen ) ) ? -2 : c>=0 ? 1: -1;
     }
 
-    int _accept() const noexcept { int c=0; if( obj->srv == 0 ){ return -1; }
+    inline int _accept() const noexcept { int c=0; if( obj->srv == 0 ){ return -1; }
         return is_blocked( c=::accept( obj->fd, &obj->server_addr, &obj->addrlen ) ) ? -2 : c;
     }
 
-    int _bind() const noexcept {
+    inline int _bind() const noexcept {
         if( process::millis() > get_conn_timeout() ){ return -1; } int c=0; obj->srv = 1;
         return is_blocked( c=::bind( obj->fd, &obj->server_addr, obj->addrlen ) ) ? -2 : c;
     }
 
-    int _listen() const noexcept { int c = 0;
+    inline int _listen() const noexcept { int c = 0;
         if( process::millis() > get_conn_timeout() || obj->srv == 0 ){ return -1; }
         return is_blocked( c=::listen( obj->fd, limit::get_soft_fileno() ) ) ? -2 : c;
     }
@@ -528,12 +529,12 @@ public:
         if ( SOCK != SOCK_DGRAM ){
             obj->feof = ::recv( obj->fd, bf, sx, 0 );
             obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
-            if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+            if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
             return obj->feof;
         } else { SOCKADDR* cli = obj->srv==1 ? &obj->client_addr : &obj->server_addr;
             obj->feof = ::recvfrom( obj->fd, bf, sx, 0, cli, &obj->len );
             obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
-            if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+            if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
             return obj->feof;
         }   return -1;
     }
@@ -544,12 +545,12 @@ public:
         if ( SOCK != SOCK_DGRAM ){
             obj->feof = ::send( obj->fd, bf, sx, 0 );
             obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
-            if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+            if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
             return obj->feof;
         } else { SOCKADDR* cli = obj->srv==1 ? &obj->client_addr : &obj->server_addr;
             obj->feof = ::sendto( obj->fd, bf, sx, 0, cli, obj->len );
             obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
-            if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+            if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
             return obj->feof;
         }   return -1;
     }

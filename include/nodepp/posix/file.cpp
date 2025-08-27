@@ -80,7 +80,7 @@ public:
 
     /*─······································································─*/
 
-    virtual ~file_t() noexcept { if( obj.count()>1 || is_std() ){ return; } free(); }
+    virtual ~file_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     /*─······································································─*/
 
@@ -88,13 +88,11 @@ public:
             obj->fd = open( path.data(), get_fd_flag( mode ), 0644 );
         if( obj->fd < 0 ){ throw except_t("such file or directory does not exist"); }
         set_nonbloking_mode(); set_buffer_size( _size );
-        if(!limit::fileno_ready() ){ except_t(" max fileno reached "); }
     }
 
     file_t( const int& fd, const ulong& _size=CHUNK_SIZE ) : obj( new NODE() ) {
         if( fd<0 ){ throw except_t("such file or directory does not exist"); }
         obj->fd = fd; set_nonbloking_mode(); set_buffer_size( _size );
-        if(!limit::fileno_ready() ){ except_t(" max fileno reached "); }
     }
      
     file_t() noexcept : obj( new NODE() ) {}
@@ -161,14 +159,14 @@ public:
     virtual void free() const noexcept {
 
         if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
-        if( obj->state == -2 ){ return; } obj->state = -2;
+        if( obj->state == -2 ){ return; } obj->state=-2;
        
         onUnpipe.clear(); onResume.clear();
         onError .clear(); onStop  .clear();
         onOpen  .clear(); onPipe  .clear();
         onData  .clear(); /*-------------*/
         
-        onDrain.emit(); onClose.emit(); kill();
+        kill(); onDrain.emit(); onClose.emit();
 
     }
 
@@ -236,7 +234,7 @@ public:
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
         obj->feof = ::read( obj->fd, bf, sx );
         obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
-        if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+        if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
         return obj->feof;
     }
 
@@ -244,7 +242,7 @@ public:
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
         obj->feof = ::write( obj->fd, bf, sx );
         obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
-        if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+        if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
         return obj->feof;
     }
 

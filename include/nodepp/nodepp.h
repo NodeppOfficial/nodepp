@@ -18,13 +18,13 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace process { loop_t loop; poll_t poll; loop_t foop;
+namespace nodepp { namespace process { loop_t _loop_; poll_t _poll_;
 
     /*─······································································─*/
 
-    ulong size(){ return _TASK_ + foop.size() + loop.size() + poll.size(); }
+    ulong size(){ return _TASK_ + _loop_.size() + _poll_.size(); }
 
-    void clear(){ _TASK_=0; loop.clear(); foop.clear(); poll.clear(); }
+    void clear(){ _TASK_=0; _loop_.clear(); _poll_.clear(); }
 
     bool empty(){ return size() <= 0; }
 
@@ -34,16 +34,6 @@ namespace nodepp { namespace process { loop_t loop; poll_t poll; loop_t foop;
 
     bool should_close(){ return _EXIT_ || empty(); }
 
-    /*─······································································─*/
-
-    int next(){ static ulong count = 0;
-        if(( ++count % 64 )==0){ yield(); }
-    coStart
-        coWait( foop.next()==1 );
-        coWait( poll.next()==1 );
-        coWait( loop.next()==1 );
-    coStop }
-
     void clear( void* address ){
          if( address == nullptr ){ return; }
          memset( address, 0, sizeof(bool) );
@@ -51,20 +41,31 @@ namespace nodepp { namespace process { loop_t loop; poll_t poll; loop_t foop;
 
     /*─······································································─*/
 
+    int next(){ static ulong count = 0;
+        if(( ++count % 64 ) == 0 ){ yield(); }
+    coStart
+        coWait( _poll_.next()==1 ); /*------*/
+        coWait( _loop_.next()==1 ); /*------*/
+    coStop }
+
+    /*─······································································─*/
+
     template< class... T >
-    void* add( const T&... args ){ return loop.add( args... ); }
+    void* loop( const T&... args ){ return _loop_.add( args... ); }
+
+    template< class... T >
+    void* poll( const T&... args ){ return _poll_.add( args... ); }
+
+    template< class... T >
+    void* add ( const T&... args ){ return _loop_.add( args... ); }
+
+    /*─······································································─*/
 
     template< class T, class... V >
     void await( T cb, const V&... args ){ ++_TASK_;
-    while( !should_close() && ([&](){
-
-        switch( cb( args... ) ){
-            case  1: next(); return 1; break;
-            case  0: /*---*/ return 0; break;
-            default: /*-------------*/ break;
-        }
-
-    return -1; })()>=0 ){} --_TASK_; }
+         while( cb( args... )>=0 && !should_close() )
+              { process::next(); } 
+    --_TASK_; }
 
 }}
 
@@ -89,7 +90,7 @@ namespace nodepp { namespace process { array_t<string_t> args;
             for( auto &x: query::parse( args[i] ).data() )
                { env::set( x.first, x.second ); }
         }
-    } while( i ++< argc-1 ); signal::start(); }
+    } while( i ++< argc - 1 ); signal::start(); }
 
     /*─······································································─*/
 
@@ -98,6 +99,8 @@ namespace nodepp { namespace process { array_t<string_t> args;
              { process::next(); }
         process::exit(1);
     }
+
+    /*─······································································─*/
 
 }}
 

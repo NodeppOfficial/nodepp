@@ -26,38 +26,29 @@ public: any_t() noexcept {};
 
     /*─······································································─*/
 
-    uint type_size() const noexcept { return  any_sz.null()?0: *any_sz; }
-    ulong    count() const noexcept { return  any_ptr.count(); }
-    bool     empty() const noexcept { return  any_ptr.null (); }
-    bool has_value() const noexcept { return !any_ptr.null (); }
+    ulong type_size() const noexcept { return  empty() ?0 : any_ptr->size(); }
+    ulong     count() const noexcept { return  any_ptr.count(); } /*--------*/
+    bool      empty() const noexcept { return  any_ptr.null (); } /*--------*/
+    bool  has_value() const noexcept { return !any_ptr.null (); } /*--------*/
+    void       free() const noexcept { /*--*/  any_ptr.free (); } /*--------*/
 
     /*─······································································─*/
-
-    void free() const noexcept { any_ptr.free(); }
-
-    /*─······································································─*/
-
-    void operator=( const char* f ) noexcept { set( string::to_string(f) ); }
-
-    template< class T >
-    void operator=( const T& f ) noexcept { set( f ); }
 
     template< class T >
     T as() const { return get<T>(); }
 
     template< class T >
-    void set( const T& f ) noexcept {
-        any_sz  = new uint(sizeof(T));
-        any_ptr = new any_impl<T>(f);
-    }
+    void set( const T& f ) noexcept { any_ptr = new any_impl<T>(f); }
 
     template< class T >
-    T get() const {
-        char any [ sizeof(T)/sizeof(char) ]; if( !has_value() )
-          { throw except_t("any_t is null"); }  
-        if( *any_sz != sizeof(any)*sizeof(char) )
-          { throw except_t("any_t incompatible sizetype"); }
-        any_ptr->get((void*)&any); return *(T*)(any);
+    T get() const { const ulong size = sizeof(T) / sizeof( char );
+
+        if( !has_value() ) /*----*/ { throw except_t("any_t is null"); } /*---------*/
+        if( type_size()!=sizeof(T) ){ throw except_t("any_t incompatible sizetype"); }
+
+        char any [ size ]; any_ptr->get((void*)&any);
+        return *(T*)(any); /*----------------------*/
+
     }
 
     /*─······································································─*/
@@ -70,8 +61,9 @@ private:
     class any_base {
     public:
         virtual ~any_base() noexcept {}
-        virtual void get( void* /*unused*/ ) const noexcept {}
-        virtual void set( void* /*unused*/ )       noexcept {}
+        virtual void  get( void* /*unused*/ ) const noexcept {}
+        virtual void  set( void* /*unused*/ ) /*-*/ noexcept {}
+        virtual ulong size() /*------------*/ const noexcept = 0;
     };
 
     /*─······································································─*/
@@ -80,8 +72,9 @@ private:
     class any_impl : public any_base {
     public:
         any_impl( const T& f ) noexcept : any( f ) {}
-        virtual void get( void* argc ) const noexcept { memcpy( argc, (void*)&any, sizeof(T) ); }
-        virtual void set( void* argc )       noexcept { memcpy( (void*)&any, argc, sizeof(T) ); }
+        virtual ulong size() /*------*/ const noexcept { return sizeof(T); } /*-----------------*/
+        virtual void  get( void* argc ) const noexcept { memcpy( argc, (void*)&any, sizeof(T) ); }
+        virtual void  set( void* argc ) /*-*/ noexcept { memcpy( (void*)&any, argc, sizeof(T) ); }
     private:
         T any;
     };
@@ -89,7 +82,6 @@ private:
     /*─······································································─*/
 
     ptr_t<any_base> any_ptr;
-    ptr_t<uint>     any_sz;
 
 };}
 

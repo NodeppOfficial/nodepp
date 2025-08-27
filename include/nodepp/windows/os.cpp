@@ -31,7 +31,7 @@ namespace nodepp { namespace os {
     /*─······································································─*/
 
     string_t cwd(){ char buffer[ UNBFF_SIZE ];
-        DWORD length = GetCurrentDirectory( UNBFF_SIZE, buffer );
+        DWORD length = GetCurrentDirectoryA( UNBFF_SIZE, buffer );
         return string_t( buffer, length );
     }
     
@@ -45,15 +45,15 @@ namespace nodepp { namespace os {
     /*─······································································─*/
 
     string_t tmp(){ string_t tmp (MAX_PATH);
-        GetTempPath( MAX_PATH, tmp.data() );
+        GetTempPathA( MAX_PATH, tmp.data() );
         return tmp;
     }
     
     /*─······································································─*/
 
-    void exec( string_t cmd ){ ::system( cmd.get() ); }
+    int exec( string_t cmd ){ return ::system( cmd.get() ); }
 
-    void call( string_t cmd ){ ::system( cmd.get() ); }
+    int call( string_t cmd ){ return ::system( cmd.get() ); }
 
     /*─······································································─*/
 

@@ -11,8 +11,8 @@
 
 #ifndef NODEPP_ENCODER
 #define NODEPP_ENCODER
-#define BASE8  "0123456789abcdef"
-#define BASE64 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+#define NODEPP_BASE8  "0123456789abcdef"
+#define NODEPP_BASE64 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -28,7 +28,7 @@ namespace nodepp { namespace encoder { namespace key {
         x = alph[rand()%(alph.size())]; ++idx; } return data;
     }
 
-    string_t generate( int x=32 ) { return generate( BASE64, x ); }
+    string_t generate( int x=32 ) { return generate( NODEPP_BASE64, x ); }
 
 }}}
 
@@ -143,7 +143,7 @@ namespace nodepp { namespace encoder { namespace hex {
 
     template< class T, class = typename type::enable_if<type::is_integral<T>::value,T>::type >
     string_t get( T num ){ string_t out; do {
-             out.unshift( BASE8[num&(T)(0xf)] ); num >>= 4;
+             out.unshift( NODEPP_BASE8[num&(T)(0xf)] ); num >>= 4;
         } while( num != 0 ); if( out.size()%2!=0 ){
              out.unshift( '0' );
         } return out;
@@ -244,12 +244,12 @@ namespace nodepp { namespace encoder { namespace base64 {
         for ( uchar c: in ) {
             pos1= ( pos1 << 8 ) + c; pos2 += 8;
             while ( pos2 >= 0 ) {
-                out.push(BASE64[(pos1>>pos2)&0x3F]);
+                out.push(NODEPP_BASE64[(pos1>>pos2)&0x3F]);
                 pos2 -= 6;
             }
         }
 
-        if (pos2>-6) out.push(BASE64[((pos1<<8)>>(pos2+8))&0x3F]);
+        if (pos2>-6) out.push(NODEPP_BASE64[((pos1<<8)>>(pos2+8))&0x3F]);
         while (out.size()%4){ out.push('='); }
 
         out.push('\0'); return string_t( out.data() );
@@ -260,7 +260,7 @@ namespace nodepp { namespace encoder { namespace base64 {
         queue_t<char> out; int pos1=0, pos2=-8;
         array_t<int> T( 256, -1 );
 
-        for ( int i=0; i<64; ++i ) T[BASE64[i]] = i;
+        for ( int i=0; i<64; ++i ) T[NODEPP_BASE64[i]] = i;
         for ( uchar c: in ) { if ( T[c]==-1 ) break;
             pos1 = ( pos1 << 6 ) + T[c]; pos2 += 6;
             if (pos2 >= 0) {
@@ -303,6 +303,6 @@ namespace nodepp { namespace encoder { namespace utf32 {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#undef BASE64
-#undef BASE8
+#undef NODEPP_BASE64
+#undef NODEPP_BASE8
 #endif

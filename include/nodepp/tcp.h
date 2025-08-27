@@ -61,7 +61,7 @@ public:
     /*─······································································─*/
 
     void listen( const string_t& host, int port, NODE_CLB cb ) const noexcept {
-        if( obj->state == 1 ) { return; } if( dns::lookup(host).empty() )
+        if( obj->state == 1 ){ return; } if( dns::lookup(host).empty() )
           { onError.emit("dns couldn't get ip"); close(); return; }
 
         auto self = type::bind( this ); auto clb = [=](){
@@ -85,30 +85,20 @@ public:
                 self->close(); sk.free(); return; 
             }   cb( sk ); self->onOpen.emit( sk ); 
             
-        process::add( coroutine::add( COROUTINE(){
-        int c=-1; coBegin; coWait(!limit::fileno_ready());
+        process::poll( sk, POLL_STATE::READ, coroutine::add( COROUTINE(){
+        int c=-1; coBegin
 
-            while(!self->is_closed() && !sk.is_closed() ){ 
-               if((c=sk._accept())!=-2 ){ break; }
-            coNext; }
-
-            if( c<0 ){ 
+            coWait((c=sk._accept()) == -2 ); if( c<0 ){ 
                 self->onError.emit("Error while accepting TCP"); 
-            coEnd; } socket_t cli(c); 
+            coEnd; }
+            
+            socket_t cli(c); 
 
-            process::poll.add( cli, POLL_STATE::READ, coroutine::add( COROUTINE(){
-            coBegin cli.set_sockopt( self->obj->agent );
-                    self->onSocket.emit(cli); self->obj->func (cli);
-                if( cli.is_available() ){ self->onConnect.emit(cli); }
-            coFinish; }));
+            cli.set_sockopt( self->obj->agent );
+            self->onSocket.emit(cli); self->obj->func(cli);
+            if( cli.is_available() ){ self->onConnect.emit(cli); }
 
-        coStay(0); coFinish })); };
-
-        process::add( coroutine::add( COROUTINE(){
-        coBegin; coWait( !limit::fileno_ready() );
-                 clb();
-        coFinish
-        }));
+        coStay(0); coFinish })); }; clb();
 
     }
 
@@ -129,16 +119,12 @@ public:
                 self->close(); sk.free(); return; 
             }   sk.set_sockopt( self->obj->agent );
 
-        process::add( coroutine::add( COROUTINE(){
-        int c=0; coBegin; coWait(!limit::fileno_ready());
+        process::poll( sk, POLL_STATE::WRITE, coroutine::add( COROUTINE(){
+        int c=0; coBegin
 
-            coWait( (c=sk._connect())==-2 ); if( c<=0 ){
+            coWait((c=sk._connect()) == -2 ); if( c<=0 ){
                 self->onError.emit("Error while connecting TCP");
-                self->close(); coEnd;
-            }
-        
-        process::poll.add( sk, POLL_STATE::WRITE, coroutine::add( COROUTINE(){
-        coBegin
+            coEnd; }
 
             sk.onDrain.once([=](){ self->close(); }); cb(sk);
             self->onSocket.emit(sk); self->obj->func(sk);
@@ -149,14 +135,7 @@ public:
                 self->onConnect.emit(sk); 
             }
 
-        coFinish }));
-        coFinish })); };
-
-        process::add( coroutine::add( COROUTINE(){
-        coBegin; coWait( !limit::fileno_ready() );
-                 clb();
-        coFinish
-        }));
+        coFinish })); }; clb();
 
     }
 

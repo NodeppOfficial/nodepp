@@ -14,15 +14,13 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define C_BLACK   0x00
-#define C_WHITE   0x01
-#define C_GREEN   0x02
-#define C_RED     0x03
-#define C_BLUE    0x04
-#define C_CYAN    0x05
-#define C_YELLOW  0x06
-#define C_MAGENTA 0x07
-#define C_BOLD    0x10
+namespace nodepp { namespace conio { enum color {
+    black = 0x00, white  = 0x01,
+    green = 0x02, red    = 0x03,
+    blue  = 0x04, cyan   = 0x05,
+    yellow= 0x06, magenta= 0x07,
+    bold  = 0x10  /*----------*/
+};}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -55,26 +53,22 @@ namespace nodepp { namespace conio { WORD attr = 0, dflt = 7;
     int log( const T&... args ){ if( attr != 0 ){
         SetConsoleTextAttribute( GetStdHandle( STD_OUTPUT_HANDLE ), attr ); }
 
-        int last = sizeof...( args ), size = 0;
-        string::map([&]( string_t arg ){ 
-            size += pout( arg + ( --last<1 ? "" : " " ) ); 
-        },  args... );
+        auto data = string::join( " ", args... );
+        pout( data );
         
         SetConsoleTextAttribute( GetStdHandle( STD_OUTPUT_HANDLE ), dflt ); 
-        attr = 0; return size;
+        attr = 0; return data.size();
     }
 
     template< class... T >
     int err( const T&... args ){ if( attr != 0 ){
         SetConsoleTextAttribute( GetStdHandle( STD_ERROR_HANDLE ), attr ); }
 
-        int last = sizeof...( args ), size = 0;
-        string::map([&]( string_t arg ){ 
-            size += perr( arg + ( --last<1 ? "" : " " ) ); 
-        },  args... );
+        auto data = string::join( " ", args... );
+        perr( data );
         
         SetConsoleTextAttribute( GetStdHandle( STD_ERROR_HANDLE ), dflt ); 
-        attr = 0; return size;
+        attr = 0; return data.size();
     }
     
     /*─······································································─*/
@@ -93,39 +87,39 @@ namespace nodepp { namespace conio { WORD attr = 0, dflt = 7;
     
     /*─······································································─*/
 
-    int background( int color ){
-        if( color & 0x10 ){ attr |= BACKGROUND_INTENSITY; color &= 0x0f; }
-        switch( color ) {
-            case C_BLACK:   attr |= 0; return 1; break;
-            case C_WHITE:   attr |= BACKGROUND_BLUE | BACKGROUND_GREEN| BACKGROUND_RED; return 1; break;
-            case C_CYAN:    attr |= BACKGROUND_GREEN| BACKGROUND_BLUE; return 1; break;
-            case C_YELLOW:  attr |= BACKGROUND_GREEN| BACKGROUND_RED;  break;
-            case C_MAGENTA: attr |= BACKGROUND_BLUE | BACKGROUND_RED;  break;
-            case C_GREEN:   attr |= BACKGROUND_GREEN; return 1; break;
-            case C_RED:     attr |= BACKGROUND_RED;   return 1; break;
-            case C_BLUE:    attr |= BACKGROUND_BLUE;  return 1; break;
+    int background( int state ){
+        if( state & 0x10 ){ attr |= BACKGROUND_INTENSITY; state &= 0x0f; }
+        switch( state )   {
+            case color::black:   attr |= 0; return 1; break;
+            case color::white:   attr |= BACKGROUND_BLUE | BACKGROUND_GREEN| BACKGROUND_RED; return 1; break;
+            case color::cyan:    attr |= BACKGROUND_GREEN| BACKGROUND_BLUE; return 1; break;
+            case color::yellow:  attr |= BACKGROUND_GREEN| BACKGROUND_RED;  break;
+            case color::magenta: attr |= BACKGROUND_BLUE | BACKGROUND_RED;  break;
+            case color::green:   attr |= BACKGROUND_GREEN; return 1; break;
+            case color::red:     attr |= BACKGROUND_RED;   return 1; break;
+            case color::blue:    attr |= BACKGROUND_BLUE;  return 1; break;
         }   return -1;
     }
 
-    int foreground( int color ){
-        if( color & 0x10 ){ attr |= FOREGROUND_INTENSITY; color &= 0x0f; }
-        switch( color ) {
-            case C_BLACK:   attr |= 0; return 1; break;
-            case C_WHITE:   attr |= FOREGROUND_BLUE | FOREGROUND_GREEN| FOREGROUND_RED; return 1; break;
-            case C_CYAN:    attr |= FOREGROUND_GREEN| FOREGROUND_BLUE; return 1; break;
-            case C_YELLOW:  attr |= FOREGROUND_GREEN| FOREGROUND_RED;  break;
-            case C_MAGENTA: attr |= FOREGROUND_BLUE | FOREGROUND_RED;  break;
-            case C_GREEN:   attr |= FOREGROUND_GREEN; return 1; break;
-            case C_RED:     attr |= FOREGROUND_RED;   return 1; break;
-            case C_BLUE:    attr |= FOREGROUND_BLUE;  return 1; break;
+    int foreground( int state ){
+        if( state & 0x10 ){ attr |= FOREGROUND_INTENSITY; state &= 0x0f; }
+        switch( state )   {
+            case color::black:   attr |= 0; return 1; break;
+            case color::white:   attr |= FOREGROUND_BLUE | FOREGROUND_GREEN| FOREGROUND_RED; return 1; break;
+            case color::cyan:    attr |= FOREGROUND_GREEN| FOREGROUND_BLUE; return 1; break;
+            case color::yellow:  attr |= FOREGROUND_GREEN| FOREGROUND_RED;  break;
+            case color::magenta: attr |= FOREGROUND_BLUE | FOREGROUND_RED;  break;
+            case color::green:   attr |= FOREGROUND_GREEN; return 1; break;
+            case color::red:     attr |= FOREGROUND_RED;   return 1; break;
+            case color::blue:    attr |= FOREGROUND_BLUE;  return 1; break;
         }   return -1;
     }
     
     /*─······································································─*/
 
-    int error( string_t msg ){ foreground( C_RED    | C_BOLD ); return log( msg ); }
-    int  info( string_t msg ){ foreground( C_CYAN   | C_BOLD ); return log( msg ); }
-    int  done( string_t msg ){ foreground( C_GREEN  | C_BOLD ); return log( msg ); }
-    int  warn( string_t msg ){ foreground( C_YELLOW | C_BOLD ); return log( msg ); }
+    int error( string_t msg ){ foreground( color::red    | color::bold ); return log( msg ); }
+    int  info( string_t msg ){ foreground( color::cyan   | color::bold ); return log( msg ); }
+    int  done( string_t msg ){ foreground( color::green  | color::bold ); return log( msg ); }
+    int  warn( string_t msg ){ foreground( color::yellow | color::bold ); return log( msg ); }
 
 }}

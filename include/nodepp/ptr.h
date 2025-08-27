@@ -15,38 +15,118 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { template< class T > class ptr_t {
+private:
+
+    struct NODE { ulong count, length; T* value; };
+
+    inline int _free_( NODE* address ) const noexcept {
+        if( address /*--*/ == nullptr ){ return -1; }
+        if( address->value == nullptr ){ return -1; }
+
+        if( address->length!= 0 ){ delete [] address->value; }
+        if( address->length== 0 ){ delete    address->value; }
+        
+            address->count = 0; /*-*/
+            address->value = nullptr;
+    return 1; }
+
+    inline int _del_( NODE*& address ) const noexcept {
+        if( address == nullptr ){ return -1; }
+        if( address->count ==0 ){ return -1; }
+          --address->count;
+        
+        if( address->count == 0 )
+          { _free_(address); delete address; }
+
+        address = nullptr;
+
+    return 1; }
+
+    inline int _set_( NODE*& address, T* value, ulong size ) noexcept {
+        if( value  == nullptr ){ return -1; /*----------------------*/ }
+        if( address== nullptr ){ return _new_( address, value, size ); }
+
+        if( _del_( address ) /*-------*/ ==-1 )
+          { address = nullptr; return -1; }
+        if( _new_( address, value, size )==-1 )
+          { address = nullptr; return -1; }
+        
+    return 1; }
+
+    inline int _new_( NODE*& address, T* value, ulong size ) noexcept {
+        if( value  == nullptr ){ return -1; }
+        if( address!= nullptr ){ return -1; }
+
+        address = new NODE();
+
+        address->value = value;
+        address->length= size;
+        address->count = 1;
+
+    return 1; }
+
+    inline int _cpy_( NODE* address, NODE*& output ) const noexcept {
+        if( address /*--*/ == nullptr ){ return -1; }
+        if( address->count == 0 /*-*/ ){ return -1; }
+        if( address->value == nullptr ){ return -1; }
+        output = address; ++address->count;
+    return 1; }
+
+    inline int _mve_( NODE*& address, NODE*& output ) noexcept {
+        if( address /*--*/ == nullptr ){ return -1; }
+        if( address->count == 0 /*-*/ ){ return -1; }
+        if( address->value == nullptr ){ return -1; }
+        output = address; address = nullptr;
+    return 1; }
+
+    inline bool _null_( NODE* address ) const noexcept {
+        if( address /*-*/ ==nullptr ){ return true; }
+        if( address->value==nullptr ){ return true; }    
+    return false; }
+
+private:
+    
+    NODE* address = nullptr;
+
+protected:
+
+    void cpy( const ptr_t& other ) noexcept {
+         reset(); _cpy_( other.address, address );
+    }
+
+    void mve( ptr_t&& other ) noexcept {
+         reset(); _mve_( other.address, address );
+    }
+
 public:
 
     ptr_t( ulong n, const T& value ) noexcept { resize( n, value ); }
-    ptr_t( T* value, ulong n )       noexcept { resize( value, n ); }
-    ptr_t( T* value )                noexcept { resize( value ); }
-    ptr_t( ulong n )                 noexcept { resize( n ); }
-
-    template < class V, ulong N >
-    ptr_t( const V (&value)[N] ) noexcept {
-        reset(); resize(N); type::copy( value, value+N, begin() );
-    }
-
-    ptr_t() noexcept { reset(); }
-    virtual ~ptr_t() noexcept { if( !null() ){ reset(); } }
+    ptr_t( T* value, ulong n ) /*-*/ noexcept { resize( value, n ); }
+    ptr_t( T* value ) /*----------*/ noexcept { resize( value ); }
+    ptr_t( ulong n ) /*-----------*/ noexcept { resize( n ); }
 
     /*─······································································─*/
 
-    ptr_t& operator=( ptr_t&& other ) noexcept {
-       if( data() != &other ){ reset(); mve(type::move(other)); } return *this;
-    }
+    template < class V, ulong N >
+    ptr_t( const V (&value)[N] ) noexcept
+    /*-*/{ resize(N); type::copy( value, value+N, begin() ); }
 
-    ptr_t& operator=( const ptr_t& other ) noexcept {
-       if( data() != &other ){ reset(); cpy(other); } return *this;
-    }
+    /*─······································································─*/
 
-    ptr_t( ptr_t&& other ) noexcept {
-       if( data() != &other ){ reset(); mve(type::move(other)); }
-    }
+    /*----*/ ptr_t() noexcept { /*----*/ }
+    virtual ~ptr_t() noexcept { clear(); }
 
-    ptr_t( const ptr_t& other ) noexcept {
-       if( data() != &other ){ reset(); cpy(other); }
-    }
+    /*─······································································─*/
+
+    ptr_t& operator=( ptr_t&& other ) noexcept { mve(type::move(other)); return *this; }
+
+    ptr_t& operator=( const ptr_t& other ) noexcept { cpy(other); return *this; }
+
+    /*─······································································─*/
+
+    ptr_t( ptr_t&& other ) noexcept { mve(type::move(other)); }
+
+    ptr_t( const ptr_t& other ) noexcept { cpy(other); }
 
     /*─······································································─*/
 
@@ -59,17 +139,18 @@ public:
 
     /*─······································································─*/
 
-    bool operator> ( T* value )   const noexcept { return data()> value; }
-    bool operator>=( T* value )   const noexcept { return data()>=value; }
-    bool operator< ( T* value )   const noexcept { return data()< value; }
-    bool operator<=( T* value )   const noexcept { return data()<=value; }
-    bool operator==( T* value )   const noexcept { return data()==value; }
-    bool operator!=( T* value )   const noexcept { return data()!=value; }
+    bool operator> ( T* value ) const noexcept { return data()> value; }
+    bool operator>=( T* value ) const noexcept { return data()>=value; }
+    bool operator< ( T* value ) const noexcept { return data()< value; }
+    bool operator<=( T* value ) const noexcept { return data()<=value; }
+    bool operator==( T* value ) const noexcept { return data()==value; }
+    bool operator!=( T* value ) const noexcept { return data()!=value; }
 
     /*─······································································─*/
 
     T& operator[]( ulong i ) const noexcept {
-       return size() !=0 ? data()[i%size()] : data()[i];
+       return size() !=0 ? data()[i%size()] 
+       /*-------------*/ : data()[i]; 
     }
 
     /*─······································································─*/
@@ -93,119 +174,59 @@ public:
 
     template < class V, ulong N >
     void resize( const V (&value)[N] ) noexcept {
-         reset(); resize(N); type::copy( value, value+N, begin() );
+         resize(N); type::copy( value, value+N, begin() );
     }
 
     void resize( ulong n, const T& c ) noexcept {
-         reset(); resize(n); fill(c);
+         resize(n); fill(c);
     }
 
     void resize( ulong n ) noexcept { reset();
-        if( n == 0 ){
-            free_  = new bool( false ); 
-            value_ = new T();
-            length_= new ulong( n );
-            count_ = new ulong( 1 ); used_ = true;
-        } else {
-            free_  = new bool( false ); 
-            value_ = new T[n];
-            length_= new ulong( n );
-            count_ = new ulong( 1 ); used_ = true;
-        }
+        if( n == 0 )
+        /**/ { _set_( address, new T() , 0 ); } 
+        else { _set_( address, new T[n], n ); }
     }
 
     void resize( T* c, ulong n ) noexcept {
-        if( c == nullptr ){ return; } reset();
-        free_  = new bool( false ); 
-        length_= new ulong( n );
-        count_ = new ulong( 1 );
-        value_ = c; used_ =true;
+         if( c == nullptr ){ _del_( address ); }
+         else /*--*/ { _set_( address, c, n ); }
     }
 
     void resize( T* c ) noexcept {
-        if( c == nullptr ){ return; } reset();
-        free_  = new bool( false ); 
-        length_= new ulong( 0 );
-        count_ = new ulong( 1 );
-        value_ = c; used_ =true;
+         if( c == nullptr ){ _del_( address ); }
+         else /*--*/ { _set_( address, c, 0 ); }
     }
 
     /*─······································································─*/
 
-    void reset() noexcept {
-
-        if( null () )    { return; }
-        if( count() !=0 && !null() ){
-        if( --(*count_)==0 ){
-            if(*length_==0 ){
-                     delete    data();
-            } else { delete [] data(); }
-                     delete     free_;
-                     delete    count_;
-                     delete   length_;
-        }}
-
-        length_= nullptr;
-        count_ = nullptr;
-        value_ = nullptr;
-        free_  = nullptr; used_ = false;
-    }
+    void clear() noexcept { _del_( address ); }
+    void reset() noexcept { _del_( address ); }
 
     /*─······································································─*/
 
-    ulong    count() const noexcept { return null() ? 0 : ( _EXIT_||*free_ ) ? 1 : *count_ ; }
-    T*         end() const noexcept { return null() ? nullptr : value_+size(); }
-    T*       begin() const noexcept { return null() ? nullptr : value_; }
-    ulong     size() const noexcept { return null() ? 0 : *length_; }
-    bool      null() const noexcept { return used_ ==false; }
+    ulong     size() const noexcept { return null() ? 0 /*-*/ : address->length; }
+    ulong    count() const noexcept { return null() ? 0 /*-*/ : address->count;  }
+    T*        data() const noexcept { return null() ? nullptr : address->value;  }
+    T*         get() const noexcept { return null() ? nullptr : address->value;  }
 
-    void      free() const noexcept {    if( !null() ){ * free_ = 1; } }
+    T*         end() const noexcept { return null() ? nullptr : data() + size(); }
+    T*       begin() const noexcept { return null() ? nullptr : data() ; }
+    void      free() const noexcept { _free_( address ); }
+
     bool     empty() const noexcept { return  null() ||  size()== 0; }
     bool has_value() const noexcept { return !null() && count()!= 0; }
-
-    T*        data() const noexcept { return  begin(); }
-    T*         get() const noexcept { return  begin(); }
+    bool      null() const noexcept { return _null_(address); }
 
     /*─······································································─*/
 
     explicit operator bool(void) const noexcept { return  has_value(); }
-    explicit operator   T*(void) const          { return  data(); }
+    explicit operator   T*(void) const /*----*/ { return  data(); }
 
-    T* operator->()              const noexcept { return  data(); }
-    T& operator* ()              const noexcept { return *data(); }
-    T* operator& ()              const noexcept { return  data(); }
-
-    /*─······································································─*/
-
-protected:
-
-    ulong* length_ = nullptr;
-    ulong*  count_ = nullptr;
-     bool*   free_ = nullptr;
-        T*  value_ = nullptr;
-    bool     used_ = false  ;
+    T* operator->() /*--------*/ const noexcept { return  data(); }
+    T& operator* () /*--------*/ const noexcept { return *data(); }
+    T* operator& () /*--------*/ const noexcept { return  data(); }
 
     /*─······································································─*/
-
-    void cpy( const ptr_t& other ) noexcept {
-         if ( other.null() ){ return; }
-         length_ = other.length_;
-         count_  = other. count_; used_ = true;
-         value_  = other. value_; 
-         free_   = other.  free_; ++(*count_ );
-    }
-
-    void mve( ptr_t&& other ) noexcept {
-         if ( other.null() ){ return; }
-         length_ = other.length_;
-         count_  = other .count_;
-         value_  = other .value_;
-         free_   = other .free_ ; this->used_ = true;
-         other.  free_ = nullptr;
-         other.length_ = nullptr;
-         other. count_ = nullptr; 
-         other. value_ = nullptr; other.used_ = false;
-    }
 
 };}
 

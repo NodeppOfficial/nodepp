@@ -65,34 +65,6 @@ namespace nodepp { namespace generator { namespace timer {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if !defined(GENERATOR_PROMISE) && defined(NODE_PROMISE) && defined(NODEPP_GENERATOR)
-    #define  GENERATOR_PROMISE
-namespace nodepp { namespace generator { namespace promise {
-
-    GENERATOR( resolve ){ public:
-
-        template< class T, class U, class V >
-        coEmit( ptr_t<bool> state, const T& func, const U& res, const V& rej ){
-        coBegin
-            func( res, rej ); coWait( *state==1 );
-        coFinish
-        }
-
-        template< class T, class U >
-        coEmit( ptr_t<bool> state, const T& func, const U& res ){
-        coBegin
-            func( res ); coWait( *state==1 );
-        coFinish
-        }
-
-    };
-
-}}}
-#undef NODEPP_GENERATOR
-#endif
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
 #if !defined(GENERATOR_FILE) && defined(NODEPP_FILE) && defined(NODEPP_GENERATOR)
     #define  GENERATOR_FILE
 namespace nodepp { namespace generator { namespace file {
@@ -113,7 +85,8 @@ namespace nodepp { namespace generator { namespace file {
 
         if( data.empty() ){ 
             coWait((state=str->_read(str->get_buffer_data(),min(d,size)))==-2);
-        if( state>0 ){ data=string_t(str->get_buffer_data(),(ulong)state); }}
+        if( state<=0 ){ coEnd; }
+        if( state >0 ){ data=string_t(str->get_buffer_data(),(ulong)state); }}
 
         state = min( data.size(), size );
         str->set_borrow( data.splice( state, data.size() ) );
@@ -132,7 +105,8 @@ namespace nodepp { namespace generator { namespace file {
         if(!str->is_available() || msg.empty() ){ coEnd; }
 
         do{ coWait((state=str->_write( msg.data()+data, msg.size()-data ))==-2 );
-        if( state>0 ){ data += state; }} while ( state>=0 && data<msg.size() );
+        if( state<=0 ){ coEnd; }
+        if( state >0 ){ data += state; }} while ( state>=0 && data<msg.size() );
 
     coFinish
     }};
@@ -141,13 +115,13 @@ namespace nodepp { namespace generator { namespace file {
 
     GENERATOR( until ){
     protected: ulong pos; file::read _read;
-    public: ulong state; string_t data;
+    public: int state; string_t data;
 
     template< class T > coEmit( T* str, string_t ch ){
     coBegin; state=0; pos=0; data.clear();
 
         coWait( _read(str) ==1 );
-            if( _read.state<=0 ){ coEnd; }
+            if( _read.state<=0 ){ state=-1; coEnd; }
         str->set_borrow( _read.data );
 
         do{for( auto x: _read.data ){ ++state;
@@ -157,7 +131,7 @@ namespace nodepp { namespace generator { namespace file {
 
         if( memcmp( _read.data.get(), ch.get(), ch.size() )==0 ){
                  data=str->get_borrow().splice( 0, ch.size() );
-        } elif( state > pos ) {
+        } elif( (ulong) state > pos ) {
                  data=str->get_borrow().splice( 0, state-pos );
         } else { data=str->get_borrow().splice( 0, state     ); }
 
@@ -464,7 +438,7 @@ namespace nodepp { namespace generator { namespace ws {
         if( cli.headers.has("Sec-Websocket-Key") ){
 
             string_t sec = cli.headers["Sec-Websocket-Key"];
-                auto sha = crypto::hash::SHA1(); sha.update( sec + SECRET );
+                auto sha = crypto::hash::SHA1(); sha.update( sec + NODEPP_WS_SECRET );
             string_t enc = encoder::base64::get( encoder::buffer::hex2buff(sha.get()) );
 
             cli.write_header( 101, header_t({
@@ -507,7 +481,7 @@ namespace nodepp { namespace generator { namespace ws {
         if( cli.headers.has("Sec-Websocket-Accept") ){
 
             string_t dta = cli.headers["Sec-Websocket-Accept"];
-                auto sha = crypto::hash::SHA1(); sha.update( key + SECRET );
+                auto sha = crypto::hash::SHA1(); sha.update( key + NODEPP_WS_SECRET );
             string_t enc = encoder::base64::get( encoder::buffer::hex2buff(sha.get()) );
 
             if( dta != enc ){
@@ -552,28 +526,24 @@ namespace nodepp { namespace generator { namespace ws {
 
             if ( frame.LEN  > 125 ){
             if ( frame.LEN == 126 ){ size =2; }
-            if ( frame.LEN == 127 ){ size =4; }}
+            if ( frame.LEN == 127 ){ size =8; }}
             if ( frame.MSK == 1   ){ size+=4; }
 
         }
 
-        void read_ws_hdr_lensk( char* bf, ulong& size ){ size=0;
+        void read_ws_hdr_lensk( char* bf, ulong& size ){
 
-            if ( frame.LEN  > 125 ){
-            if ( frame.LEN == 126 ){ size=2; }
-            if ( frame.LEN == 127 ){ size=4; } frame.LEN=0;
-            for( ulong x=0; x < size; ++x )  { frame.LEN=frame.LEN << 8 | (uchar) bf[x]; }
-            }
+            if ( frame.MSK == 1 ){ size -= 4;
+            for( ulong x=0; x<4; ++x ){ frame.KEY[x] = bf[x+size]; }}
 
-            if ( frame.MSK == 1 ){ size=4; 
-            for( ulong x=0; x<size; ++x ){ frame.KEY[x] = bf[x]; }
-            }
+            if ( frame.LEN  > 125 ){ /*---*/ frame.LEN=0;
+            for( ulong x=0; x < size; ++x ){ frame.LEN=frame.LEN << 8 | (uchar) bf[x]; }}
 
         }
 
     public:
 
-    template<class T> coEmit( T* str, char* bf, const ulong& sx ) {
+    template<class T> coEmit( T* str, char* bf, const ulong& sx ) { int c=0;
     coBegin ; memset( bf, 0, sx ); size=0; data=0; len=0; key=0;
               memset( &frame, 0, sizeof(ws_frame_t) );
 
@@ -590,7 +560,7 @@ namespace nodepp { namespace generator { namespace ws {
         coWait( str->_read_( bf, sz, len )==1 );
 
         if( frame.MSK ){ for( ulong x=0; x<len; ++x ){
-            bf[x]=bf[x]^frame.KEY[key]; key=(key+1)%4;
+            bf[x]=bf[x]^frame.KEY[key]; key++; key%=4;
         }}
 
             frame.LEN -= len; data = len;
@@ -623,6 +593,10 @@ namespace nodepp { namespace generator { namespace ws {
                 bfx[idx] = (uchar)(byt[byt.size()-1]); ++idx;
             } else {
                 bfx[idx] = (uchar)( 127 ); ++idx;
+                bfx[idx] = (uchar)(byt[byt.size()-8]); ++idx;
+                bfx[idx] = (uchar)(byt[byt.size()-7]); ++idx;
+                bfx[idx] = (uchar)(byt[byt.size()-6]); ++idx;
+                bfx[idx] = (uchar)(byt[byt.size()-5]); ++idx;
                 bfx[idx] = (uchar)(byt[byt.size()-4]); ++idx;
                 bfx[idx] = (uchar)(byt[byt.size()-3]); ++idx;
                 bfx[idx] = (uchar)(byt[byt.size()-2]); ++idx;

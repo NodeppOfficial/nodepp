@@ -29,31 +29,29 @@ namespace nodepp { class mutex_t {
 protected:
 
     struct NODE {
-        void* addr = nullptr;
-        bool  state= 0;
+        bool /*-*/ state=0;
         pthread_mutex_t fd;
-    };  ptr_t<NODE> mutex;
+    };  ptr_t<NODE> obj;
 
 public:
 
-    mutex_t() : mutex( new NODE() ) {
-        if( pthread_mutex_init(&mutex->fd,NULL) != 0 )
-          { throw except_t("Cant Start Mutex"); }
-            mutex->addr=nullptr; mutex->state=1;
+    mutex_t() : obj( new NODE() ) {
+        if( pthread_mutex_init(&obj->fd,NULL)!=0 )
+          { throw except_t("Cant Start Mutex");  }
+            /*-----------------*/ obj->state=1;
     }
 
     virtual ~mutex_t() noexcept {
-        if( mutex->state== 0 )          { return;   }
-        if( mutex->addr == (void*)this ){ unlock(); }
-        if( mutex.count() > 1 )         { return;   } free();
-    }
+        if( obj->state == 0 ){ return; }
+        if( obj.count() > 1 ){ return; } 
+    free(); }
     
     /*─······································································─*/
 
     void free() const noexcept {
-        if( mutex->state == 0 ){ return; }
-            mutex->state =  0;
-        pthread_mutex_destroy(&mutex->fd);
+        if( obj->state == 0 ){ return; }
+        /*----------*/ obj->state = 0;
+        pthread_mutex_destroy(&obj->fd);
     }
     
     /*─······································································─*/
@@ -65,17 +63,13 @@ public:
     
     /*─······································································─*/
 
-    void unlock() const noexcept { 
-        while( pthread_mutex_unlock(&mutex->fd)!=0 )
-             { worker::yield(); }
-        mutex->addr = nullptr;
-    }
+    void unlock() const noexcept { while( !_unlock() ){ worker::yield(); } }
+    void lock()   const noexcept { while( !_lock  () ){ worker::yield(); } }
+    
+    /*─······································································─*/
 
-    void lock() const noexcept { 
-        while( pthread_mutex_lock(&mutex->fd)!=0 )
-             { worker::yield(); }
-        mutex->addr = (void*)this;
-    }
+    inline bool _unlock() const noexcept { return pthread_mutex_unlock(&obj->fd)==0; }
+    inline bool _lock()   const noexcept { return pthread_mutex_lock  (&obj->fd)==0; }
 
 };}
 
