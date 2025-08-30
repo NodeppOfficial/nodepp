@@ -84,9 +84,9 @@ public:
     void emit( const T& arg, const A&... args ) const noexcept {
         if( obj.null() || is_paused() ){ return; } auto x=obj->que.first( );
         while( x!=nullptr && !obj->que.empty() ) { auto y=x->next; bool z=0;
-          if  ( *x->data.out == 0 ) /*-------------*/ { z=1; }
-          elif( !x->data.clb(arg,args...) ) /*-----*/ { z=1; }
-          if  ( !x->data.clb.null() && z ) { *x->data.out=0; }
+        if   ( *x->data.out == 0 ) /*---------*/ { z=1; }
+        elif ( !x->data.clb(arg,args...) ) /*-*/ { z=1; }
+        if   ( !x->data.clb.null() && z ) /*--*/ { *x->data.out=0; }
     x=y; }}
 
     /*─······································································─*/

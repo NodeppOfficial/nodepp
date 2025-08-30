@@ -110,15 +110,12 @@ public:
     bool has_value()      const { return obj->mem.has_value(); }
     uint type_size()      const { return obj->mem.type_size(); }
 
-    template< class U > U as() const {
-      if( get_type_id() <20 && get_type_id() >21 &&
-          get_type_id() != type::obj_type_id<U>::value 
-      ) {
-        throw except_t( "not valid object type" );
-      } try { return obj->mem.as<U>(); } catch(...) {
+    template< class U > U as() const { 
+    try { 
+        return obj->mem.as<U>(); 
+    } catch(...) {
         throw except_t( "item does not exists" );
-      }   
-    }
+    } }
 
     /*─······································································─*/
 
