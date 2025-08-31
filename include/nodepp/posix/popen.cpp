@@ -15,10 +15,32 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { class popen_t : public generator_t {
-private:
+protected:
 
-    void kill() const noexcept { ::kill( obj->fd, SIGKILL ); }
+    void kill() const noexcept {
+        ::kill( obj->fd, SIGKILL );
+        obj->state |= FILE_STATE::KILL;
+    }
+
     using _read_ = generator::file::read;
+
+    bool is_state( uchar value ) const noexcept {
+        if( obj->state & value ){ return true; }
+    return false; }
+
+    void set_state( uchar value ) const noexcept {
+    if( obj->state & KILL ){ return; }
+        obj->state = value;
+    }
+
+    enum FILE_STATE {
+        UNKNOWN = 0b00000000,
+        OPEN    = 0b00000001,
+        CLOSE   = 0b00000010,
+        KILL    = 0b00000100,
+        REUSE   = 0b00001000,
+        DISABLE = 0b00001110
+    };
 
 protected:
 
@@ -26,8 +48,8 @@ protected:
     ptr_t<_read_> _read2 = new _read_();
 
     struct NODE {
-        int           fd;
-        int     state =0;
+        uchar       state=FILE_STATE::CLOSE;
+        int            fd;
         file_t  std_input;
         file_t  std_error;
         file_t  std_output;
@@ -50,12 +72,12 @@ protected:
             obj->std_input  = file_t( fda[1] ); ::close( fda[0] );
             obj->std_output = file_t( fdb[0] ); ::close( fdb[1] );
             obj->std_error  = file_t( fdc[0] ); ::close( fdc[1] );
-            obj->state      = 1;
+            set_state( FILE_STATE::OPEN );
         } else {
             ::close( fda[0] ); ::close( fda[1] );
             ::close( fdb[0] ); ::close( fdb[1] );
             ::close( fdc[0] ); ::close( fdc[1] );
-            obj->state      = 0;
+            set_state( FILE_STATE::CLOSE );
         }
 
     }
@@ -93,26 +115,24 @@ public:
         _init_( path, arg, env );
     }
 
-    virtual ~popen_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
-
     popen_t() noexcept : obj( new NODE() ) {}
+
+    virtual ~popen_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
     /*─······································································─*/
 
     void free() const noexcept {
         
-        if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
-        if( obj->state == -2 ){ return; } obj->state=-2;
+        if( is_state( FILE_STATE::REUSE ) && obj.count()>1 ){ resume(); return; }
+        if( is_state( FILE_STATE::KILL  ) ){ return; } close(); kill();
         
         obj->std_error.close(); obj->std_output.close();
-        obj->std_input.close();
+        obj->std_input.close(); /*--------------------*/
     
         onResume.clear(); onError.clear(); 
         onStop  .clear(); onOpen .clear();
         onData  .clear(); onDout .clear(); 
-        onDerr  .clear(); /*------------*/
-
-        kill(); onDrain.emit(); onClose.emit();
+        onDerr  .clear(); /*------------*/ onClose.emit();
 
     }
 
@@ -145,16 +165,16 @@ public:
         if( std_output().is_available() ){ return true; } return false; 
     }
 
+    bool is_closed()    const noexcept { return is_state( FILE_STATE::DISABLE ); }
     bool is_available() const noexcept { return is_closed()== false; }
-    bool is_closed()    const noexcept { return obj->state <= 0; }
     int  get_fd()       const noexcept { return obj->fd; }
 
     /*─······································································─*/
 
+    void resume() const noexcept { if(is_state(FILE_STATE::OPEN) ){ return; } set_state(FILE_STATE::OPEN ); onResume.emit(); }
+    void  close() const noexcept { if(is_closed())/*------------*/{ return; } set_state(FILE_STATE::CLOSE); onDrain .emit(); }
+    void   stop() const noexcept { if(is_state(FILE_STATE::REUSE)){ return; } set_state(FILE_STATE::REUSE); onStop  .emit(); }
     void  flush() const noexcept { std_input().flush(); std_output().flush(); std_error().flush(); }
-    void resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume.emit(); }
-    void  close() const noexcept { if(obj->state < 0) { return; } obj->state=-1; onDrain .emit(); }
-    void   stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop  .emit(); }
 
     /*─······································································─*/
 

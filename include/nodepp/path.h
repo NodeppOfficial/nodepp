@@ -255,17 +255,19 @@ namespace path { namespace {
 
         return array_t<string_t>( sec.data() ).join( sep );
     }
-    
+
     /*─······································································─*/
 
     string_t push( const string_t& path, const string_t& dir ){
         auto sec = reg0.split( path::normalize(path) );
-             sec.push( dir ); return sec.join( sep );
+             sec.push( dir ); /*---------------------*/
+             return path::normalize( sec.join( sep ) );
     }
 
     string_t unshift( const string_t& path, const string_t& dir ){
         auto sec = reg0.split( path::normalize(path) );
-             sec.unshift( dir ); return sec.join( sep );
+             sec.unshift( dir ); /*------------------*/
+             return path::normalize( sec.join( sep ) );
     }
     
     /*─······································································─*/

@@ -35,11 +35,11 @@ struct agent_t {
 };
 
 class socket_t : public file_t {
-private:
+protected:
 
     virtual void kill() const noexcept override { if( !is_std() ){ 
         ::shutdown(obj->fd,SHUT_RDWR); ::close( obj->fd ); 
-    }}
+    } obj->state |= FILE_STATE::KILL; }
 
 protected:
 
@@ -287,29 +287,27 @@ public:
     }
 
     /*─······································································─*/
-    
-    socket_t() noexcept : skt( new DONE() ) {}
 
-    socket_t( int fd, ulong _size=CHUNK_SIZE ) : skt( new DONE() ) {
+    socket_t( int fd, ulong _size=CHUNK_SIZE ) : file_t(), skt( new DONE() ) {
         if( fd < 0 ){ throw except_t("Such Socket has an Invalid fd"); }
         obj->fd=fd; set_nonbloking_mode(); set_buffer_size( _size );
     }
 
     virtual ~socket_t() noexcept { if( obj.count()>1 ){ return; } free(); }
+    
+    socket_t() noexcept : file_t(), skt( new DONE() ) {}
 
     /*─······································································─*/
 
     virtual void free() const noexcept override {
 
-        if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
-        if( obj->state == -2 ){ return; } obj->state=-2;
+        if( is_state(FILE_STATE::REUSE) && obj.count() > 1 ){ resume(); return; }
+        if( is_state(FILE_STATE::KILL ) ){ return; } close(); kill();
        
         onUnpipe.clear(); onResume.clear();
         onError .clear(); onStop  .clear();
         onOpen  .clear(); onPipe  .clear();
-        onData  .clear(); /*-------------*/
-        
-        kill(); onDrain.emit(); onClose.emit();
+        onData  .clear(); /*-------------*/ onClose.emit();
 
     }
 

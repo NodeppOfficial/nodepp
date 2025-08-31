@@ -31,7 +31,7 @@ private:
 protected:
 
     struct NODE {
-        int      state= 0;
+        char     state= 0;
         agent_t  agent;
         ssl_t    ctx  ;
         NODE_CLB func ;

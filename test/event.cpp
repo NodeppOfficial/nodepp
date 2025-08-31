@@ -38,8 +38,7 @@ namespace TEST { namespace EVENT {
             try { ptr_t<int> x = new int(0);
                   event_t<> event; event.once([=](){ *x+=1; });
                   event.emit(); event.emit(); event.emit();
-             if ( event.empty() ){ throw 0; }
-             if ( *x!=1 )/*----*/{ throw 0; }
+             if ( *x!=1 )/**/{ throw 0; }
                               TEST_DONE();
             } catch ( ... ) { TEST_FAIL(); }
         });

@@ -15,17 +15,38 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { class file_t {
-private:
+protected:
 
-    void kill() const noexcept { CloseHandle( obj->fd ); }
+    void kill() const noexcept { 
+        obj->state |= FILE_STATE::KILL;
+        CloseHandle( obj->fd ); 
+    }
+
+    bool is_state( uchar value ) const noexcept {
+        if( obj->state & value ){ return true; }
+    return false; }
+
+    void set_state( uchar value ) const noexcept {
+    if( obj->state & KILL ){ return; }
+        obj->state = value;
+    }
+
+    enum FILE_STATE {
+        UNKNOWN = 0b00000000,
+        OPEN    = 0b00000001,
+        CLOSE   = 0b00000010,
+        KILL    = 0b00000100,
+        REUSE   = 0b00001000,
+        DISABLE = 0b00001110
+    };
 
 protected:
 
     struct NODE {
         HANDLE       fd       = INVALID_HANDLE_VALUE;
+        uchar        state    = FILE_STATE::OPEN;
         ulong        range[2] = { 0, 0 };
         bool         keep     = false;
-        int          state    =   0;
         int          feof     =   1;
         OVERLAPPED   ov    ;
         ptr_t<char>  buffer;
@@ -95,31 +116,30 @@ public:
 
     /*─······································································─*/
 
-    bool     is_closed() const noexcept { return obj->state <  0 ||  is_feof() || obj->fd == INVALID_HANDLE_VALUE; }
-    bool       is_feof() const noexcept { return obj->feof  <= 0 && obj->feof  != -2; }
-    bool  is_available() const noexcept { return obj->state >= 0 && !is_closed(); }
+    bool     is_closed() const noexcept { return is_state(FILE_STATE::DISABLE) || is_feof() || obj->fd==INVALID_HANDLE_VALUE; }
+    bool       is_feof() const noexcept { return obj->feof <= 0 && obj->feof != -2; }
+    bool  is_available() const noexcept { return !is_closed(); }
     bool is_persistent() const noexcept { return obj->keep; }
 
     /*─······································································─*/
-    
-    void  resume() const noexcept { if(obj->state== 0) { return; } obj->state= 0; onResume .emit(); }
-    void    stop() const noexcept { if(obj->state==-3) { return; } obj->state=-3; onStop   .emit(); }
-    void   reset() const noexcept { if(obj->state!=-2) { return; } resume(); pos(0); }
+
+    void  resume() const noexcept { if(is_state(FILE_STATE::OPEN )){ return; } set_state(FILE_STATE::OPEN ); onResume.emit(); }
+    void    stop() const noexcept { if(is_state(FILE_STATE::REUSE)){ return; } set_state(FILE_STATE::REUSE); onStop  .emit(); }
+    void   reset() const noexcept { if(is_state(FILE_STATE::KILL )){ return; } resume(); pos(0); }
     void   flush() const noexcept { obj->buffer.fill(0); }
 
     /*─······································································─*/
 
     void close() const noexcept { 
-        if( obj->state< 0 ){ return; } 
-        if( obj->keep== 1 ){ stop(); goto DONE; }
-            obj->state=-1; DONE:; onDrain.emit();
-    }
+        if( is_closed()  ){ return; } 
+        if( obj->keep==1 ){ stop(); goto DONE; }
+         set_state( FILE_STATE::CLOSE ); DONE:; 
+    onDrain.emit(); }
     
     /*─······································································─*/
 
     void set_range( ulong x, ulong y ) const noexcept { obj->range[0] = x; obj->range[1] = y; }
     ulong* get_range() const noexcept { return obj == nullptr ? nullptr : obj->range; }
-    int    get_state() const noexcept { return obj == nullptr ?      -1 : obj->state; }
     HANDLE    get_fd() const noexcept { return obj == nullptr ? nullptr : obj->fd; }
     
     /*─······································································─*/
@@ -157,15 +177,13 @@ public:
 
     virtual void free() const noexcept {
 
-        if( obj->state == -3 && obj.count() > 1 ){ resume(); return; }
-        if( obj->state == -2 ){ return; } obj->state=-2;
+        if( is_state(FILE_STATE::REUSE) && obj.count() > 1 ){ resume(); return; }
+        if( is_state(FILE_STATE::KILL ) ){ return; } close(); kill();
        
         onUnpipe.clear(); onResume.clear();
         onError .clear(); onStop  .clear();
         onOpen  .clear(); onPipe  .clear();
-        onData  .clear(); /*-------------*/
-        
-        kill(); onDrain.emit(); onClose.emit();
+        onData  .clear(); /*-------------*/ onClose.emit();
 
     }
     
@@ -221,7 +239,7 @@ public:
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; } DWORD c = 0; 
         obj->feof = ReadFile( obj->fd, bf, sx, &c, &obj->ov );
         obj->feof = is_blocked( obj->feof, c ) ? -2 : c;
-        if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
+        if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
         return obj->feof;
     }
 
@@ -229,7 +247,7 @@ public:
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; } DWORD c = 0; 
         obj->feof = WriteFile( obj->fd, bf, sx, &c, &obj->ov );
         obj->feof = is_blocked( obj->feof, c ) ? -2 : c;
-        if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
+        if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
         return obj->feof;
     }
 
