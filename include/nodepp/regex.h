@@ -149,7 +149,7 @@ protected:
         if( pattern[off+1] == '+' || pattern[off+1] == '?' ||
             pattern[off+1] == '*' || pattern[off+1] == '{' //
         ) { off++; item.rep=get_next_repeat( pattern,off ); }
-        
+
         node.next.push(item); 
 
     } while( ++off < pattern.size() ); return node; }
@@ -260,7 +260,11 @@ protected:
         /*─·································································─*/
 
         else{ auto x = item.next.first(); int out=0; while( x != nullptr ){
-        if ( offset>value.size() ){ break; } auto z=_search( value, offset, x->data );
+        if  ( offset>value.size() ){  
+        if  ( x->next != nullptr  ){ return -1; }
+        else /*-----------------*/ { break/**/; }}
+         
+        /*-------------*/ auto z=_search( value, offset, x->data );
         if ( z>=1 ){ offset +=z; } /*-----*/ auto y=x->next; ++rep;
         /**/ out = type::cast<int>( offset - tmp ); 
 

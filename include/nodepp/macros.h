@@ -270,6 +270,10 @@ int     _TASK_ = 0;
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+using null_t = decltype( nullptr );
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #if _OS_ == NODEPP_OS_WINDOWS
 #define WIN32_LEAN_AND_MEAN 
 #define sscanff( BUFFER, FORMAT, ... ) sscanf_s( BUFFER, FORMAT, __VA_ARGS__ )

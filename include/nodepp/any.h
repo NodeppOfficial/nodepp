@@ -19,6 +19,8 @@ public: any_t() noexcept {};
 
     any_t( const char* f ) noexcept { set( string::to_string(f) ); }
 
+    any_t( null_t f ) noexcept { /*----------------*/ }
+
     template< class T >
     any_t( const T& f ) noexcept { set( f ); }
 
@@ -63,7 +65,7 @@ private:
         virtual ~any_base() noexcept {}
         virtual void  get( void* /*unused*/ ) const noexcept {}
         virtual void  set( void* /*unused*/ ) /*-*/ noexcept {}
-        virtual ulong size() /*------------*/ const noexcept = 0;
+        virtual ulong size() /*------------*/ const noexcept =0;
     };
 
     /*─······································································─*/
@@ -71,12 +73,12 @@ private:
     template< class T >
     class any_impl : public any_base {
     public:
-        any_impl( const T& f ) noexcept : any( f ) {}
+        any_impl( const T& f ) noexcept : any( type::bind(f) ) {}
         virtual ulong size() /*------*/ const noexcept { return sizeof(T); } /*-----------------*/
         virtual void  get( void* argc ) const noexcept { memcpy( argc, (void*)&any, sizeof(T) ); }
         virtual void  set( void* argc ) /*-*/ noexcept { memcpy( (void*)&any, argc, sizeof(T) ); }
     private:
-        T any;
+        ptr_t<T> any;
     };
 
     /*─······································································─*/
