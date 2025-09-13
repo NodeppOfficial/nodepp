@@ -47,17 +47,36 @@ One of the standout features of Nodepp is its 100% asynchronous architecture, po
 ```
 
 ## Examples
-### Hello world
+
+### Reading JSON
 ```cpp
 #include <nodepp/nodepp.h>
+#include <nodepp/json.h>
 
 using namespace nodepp;
 
-void onMain() { 
-    console::log("Hello World!");
-}
+void onMain() {
 
-// note that we are using onMain() instead of main()
+    auto data = json::parse( R"({
+        "var1": 10,
+        "var2": false,
+        "var3": "hello world",
+        "var4": { "var5": "nested object" },
+        "var5": [ 10, 20, 30, 40, 50, 60, 70 ]
+    })" );
+
+    console::log( "var1:", data["var1"].as<uint>() );
+    console::log( "var2:", data["var2"].as<bool>() );
+    console::log( "var3:", data["var3"].as<string_t>() );
+    console::log( "var4:", data["var4"]["var5"].as<string_t>() );
+
+    console::log( "\n --- \n" );
+
+    for( auto x: data["var5"].as<array_t<object_t>>() ){
+         console::log( "var5", x.as<uint>() );
+    }
+
+}
 ```
 
 ### HTTP Client
@@ -125,6 +144,40 @@ void onMain(){
 
 ### More Examples [here](https://github.com/NodeppOfficial/Nodepp/tree/main/examples)
 
+## Installing Nodepp
+
+### Clone The Repository
+```bash
+#!/usr/bin/env bash
+git clone https://github.com/NodeppOfficial/nodepp ; cd nodepp
+```
+
+### Create a main.cpp File
+```bash
+#!/usr/bin/env bash
+touch main.cpp
+```
+```cpp
+#include <nodepp/nodepp.h>
+
+using namespace nodepp;
+
+void onMain() { 
+    console::log("Hello World!");
+}
+```
+### Build Your Code
+```bash
+#!/usr/bin/env bash
+🐧: g++ -o main main.cpp -O3 -I ./include          ; ./main #(Linux)
+🪟: g++ -o main main.cpp -O3 -I ./include -lws2_32 ; ./main #(Windows)
+```
+
+## Nodepp Supports Other Platforms Too
+- 🔗: [NodePP for Window | Linux | Mac | Bsd ](https://github.com/NodeppOfficial/nodepp)
+- 🔗: [NodePP for Arduino](https://github.com/NodeppOfficial/nodepp-arduino)
+- 🔗: [Nodepp for WASM](https://github.com/NodeppOfficial/nodepp-wasm)
+
 ## Projects made with NodePP
 - 🔗: [Draw on your PC using your smartphone](https://github.com/ScreenDraw/PCDraw)
 - 🔗: [Simple multiplayer Game With Raylib](https://medium.com/@EDBCBlog/create-your-own-online-multiplayer-small-fast-and-fun-with-raylib-nodepp-and-websockets-190f5c174094)
@@ -135,11 +188,6 @@ void onMain(){
 - 🔗: [Simple Bitget Trading Bot](https://github.com/EDBCREPO/simple-binance-bot-nodepp)
 
 Check out some articles on [Medium](https://medium.com/@EDBCBlog)
-
-## Compatibility
-- 🔗: [NodePP for Window | Linux | Mac | Bsd ](https://github.com/NodeppOfficial/nodepp)
-- 🔗: [NodePP for Arduino](https://github.com/NodeppOfficial/nodepp-arduino)
-- 🔗: [Nodepp for WASM](https://github.com/NodeppOfficial/nodepp-wasm)
 
 ## Official Libraries for Nodepp
 - 🔗: [ExpressPP](https://github.com/NodeppOfficial/nodepp-express) -> Express equivalent for Nodepp
