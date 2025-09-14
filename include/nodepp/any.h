@@ -15,14 +15,18 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { class any_t {
-public: any_t() noexcept {};
+public:
 
     any_t( const char* f ) noexcept { set( string::to_string(f) ); }
+
+    any_t( null_t ) noexcept { /*---------*/ }
 
     template< class T >
     any_t( const T& f ) noexcept { set( f ); }
 
     virtual ~any_t() noexcept {}
+
+    /*----*/ any_t() noexcept {}
 
     /*─······································································─*/
 
@@ -35,19 +39,20 @@ public: any_t() noexcept {};
     /*─······································································─*/
 
     template< class T >
-    T as() const { return get<T>(); }
-
-    template< class T >
     void set( const T& f ) noexcept { any_ptr = new any_impl<T>(f); }
 
     template< class T >
-    T get() const { const ulong size = sizeof(T) / sizeof( char );
+    T as() const { return get<T>(); }
+
+    template< class T >
+    T get() const {
 
         if( !has_value() ) /*----*/ { throw except_t("any_t is null"); } /*---------*/
         if( type_size()!=sizeof(T) ){ throw except_t("any_t incompatible sizetype"); }
 
-        char any [ size ]; any_ptr->get((void*)&any);
-        return *(T*)(any); /*----------------------*/
+        const ulong size = sizeof(T) / sizeof(char);
+        char any[ size ]; any_ptr->get((void*)&any);
+        return *(T*)(any); /*---------------------*/
 
     }
 
@@ -63,7 +68,7 @@ private:
         virtual ~any_base() noexcept {}
         virtual void  get( void* /*unused*/ ) const noexcept {}
         virtual void  set( void* /*unused*/ ) /*-*/ noexcept {}
-        virtual ulong size() /*------------*/ const noexcept = 0;
+        virtual ulong size() /*------------*/ const noexcept =0;
     };
 
     /*─······································································─*/
@@ -71,12 +76,12 @@ private:
     template< class T >
     class any_impl : public any_base {
     public:
-        any_impl( const T& f ) noexcept : any( f ) {}
-        virtual ulong size() /*------*/ const noexcept { return sizeof(T); } /*-----------------*/
+        any_impl( const T& f ) noexcept : any( type::bind(f) ) {}
+        virtual ulong size() /*------*/ const noexcept { return any.null(/**/) ?0 : sizeof(T)  ; }
         virtual void  get( void* argc ) const noexcept { memcpy( argc, (void*)&any, sizeof(T) ); }
         virtual void  set( void* argc ) /*-*/ noexcept { memcpy( (void*)&any, argc, sizeof(T) ); }
     private:
-        T any;
+        ptr_t<T> any;
     };
 
     /*─······································································─*/

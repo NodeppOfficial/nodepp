@@ -111,7 +111,7 @@ protected:
             pattern[off] == '}' || pattern[off] == ')' // regex error handling
         ) { throw except_t(string::format( "regex: %d %c", off, pattern[off] )); }
 
-        elif( pattern[off]== '[' ){
+        elif( pattern[off]=='[' ){
         int end=0; if(( end=get_next_key(pattern,off) )==-1 ){ /*-------------*/ 
             throw except_t(string::format( "regex: %d %c", off, pattern[off] )); 
         }   int beg = pattern[off+1]=='^'? off+2:off+1;
@@ -149,7 +149,7 @@ protected:
         if( pattern[off+1] == '+' || pattern[off+1] == '?' ||
             pattern[off+1] == '*' || pattern[off+1] == '{' //
         ) { off++; item.rep=get_next_repeat( pattern,off ); }
-        
+
         node.next.push(item); 
 
     } while( ++off < pattern.size() ); return node; }
@@ -184,7 +184,7 @@ protected:
 
         /*─·································································─*/
 
-          if( item.flag==0x0c && item.data==0x00 ){ return 1; }
+        if  ( item.flag==0x0c && item.data==0x00 ){ return 1; }
 
         elif( item.flag==0x03 && item.data==0x00 ){ 
         if(!( offset==0|| offset>=value.last() ) ){ return 1; }}
@@ -232,7 +232,7 @@ protected:
 
         elif( item.flag==0x08 && item.data==0xff && obj->icase ){
         if  ( item.next.none([&]( REGEX x ){ 
-            return string::to_lower(x.data)==string::to_lower(value[offset]); 
+              return string::to_lower(x.data)==string::to_lower(value[offset]); 
         }) ){ return 1; }}
 
         elif( item.flag==0x08 && item.data==0x00 && obj->icase ){
@@ -251,8 +251,8 @@ protected:
 
         elif( item.flag==0x09 && item.data==0xff ){ auto x=item.next.first();
         while( x != nullptr ){ /*----------------*/ auto y=x->next;
-            /*-----------------------------------*/ auto z=_search( value, offset, x->data );
-            if( z==0 ){ /*-------------------------------------------------*/ x=y; continue; }
+        /*---------------------------------------*/ auto z=_search( value, offset, x->data );
+          if  ( z==0 ){ /*-------------------------------------------------*/ x=y; continue; }
           elif( z>=1 ){ obj->memory.push(value.slice(tmp, tmp+z)); offset=tmp +z ; return z; }
           else/*----*/{ /*--------------------------------------*/ offset=tmp;x=y; continue; }
         } return -1; }
@@ -260,24 +260,31 @@ protected:
         /*─·································································─*/
 
         else{ auto x = item.next.first(); int out=0; while( x != nullptr ){
-        if ( offset>value.size() ){ break; } auto z=_search( value, offset, x->data );
-        if ( z>=1 ){ offset +=z; } /*-----*/ auto y=x->next; ++rep;
+
+        if  ( offset>value.size() ){  
+        if  ( x->next != nullptr  ){ return -1; }
+        else /*-----------------*/ { break/**/; }}
+
+        /*-------------*/ auto z =_search( value, offset, x->data );
+        if ( z>= 1 ){ offset +=z; } auto y=x->next; ++rep;
         /**/ out = type::cast<int>( offset - tmp ); 
 
-        if( z>=1 && !x->data.rep.null() ){
+        if  ( x->data.data==0x00 && x->data.flag==0x09 && z>=1 ){ return out; }
 
+        if  ( z>=1 && !x->data.rep.null() ){
         if  ( -1 ==x->data.rep[1] ){ continue ; }
         elif( rep>=x->data.rep[1] ){ goto NEXT; }
-        else /*------------------*/{ continue ; } 
+        else /*------------------*/{ continue ; }}
         
-        } elif( z<0 && !x->data.rep.null() ) {
-
-        if  ( -1==x->data.rep[1] ){ 
+        elif( z<0 && !x->data.rep.null() ) {
+        if  ( -1==x->data.rep[1] ){
         if  ( rep>x->data.rep[0] ){ goto NEXT; } /*-----*/ return  0; }
         elif( rep>x->data.rep[0] && rep<=x->data.rep[1] ){ goto NEXT; }
-        else /*----------------------------------------*/{ return  0; }
-            
-        } if( z==-1 ){ return 0; } NEXT:; x=y; rep=0; } return out; }
+        else /*----------------------------------------*/{ return  0; }} 
+        
+        if  ( z<0 ){ return 0; } 
+        
+        NEXT:; x=y; rep=0; } return out; }
 
         /*─·································································─*/
 
