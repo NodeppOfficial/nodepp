@@ -122,16 +122,16 @@ using namespace nodepp;
 
 void onMain(){
 
-    auto server = http::server([=]( http_t cli ){ 
+    auto server = http::server([=]( http_t cli ){
 
         console::log( cli.path, cli.get_fd() );
-        
+
         cli.write_header( 200, header_t({
             { "content-type", "text/html" }
         }));
-        
+
         cli.write( date::fulltime() );
-        cli.close(); // optional | GC automaticaly close unused sockets
+        cli.close(); // optional
 
     });
 
@@ -142,7 +142,7 @@ void onMain(){
 }
 ```
 
-### More Examples [here](https://github.com/NodeppOfficial/Nodepp/tree/main/examples)
+### More Examples [here](https://nodeppofficial.github.io/nodepp-doc/guide.html)
 
 ## Installing Nodepp
 
@@ -162,7 +162,7 @@ touch main.cpp
 
 using namespace nodepp;
 
-void onMain() { 
+void onMain() {
     console::log("Hello World!");
 }
 ```
@@ -198,13 +198,14 @@ Check out some articles on [Medium](https://medium.com/@EDBCBlog)
 - 🔗: [Torify](https://github.com/NodeppOfficial/nodepp-torify)     -> HTTP|Ws over Tor
 - 🔗: [NginxPP](https://github.com/NodeppOfficial/nodepp-nginx)     -> Reverse Proxy
 - 🔗: [InputPP](https://github.com/NodeppOfficial/nodepp-input)     -> Fake Inputs
+- 🔗: [XML](https://github.com/NodeppOfficial/nodepp-xml)           -> XML for Nodepp
 - 🔗: [JWT](https://github.com/NodeppOfficial/nodepp-jwt)           -> JSON Web Token
 - 🔗: [NmapPP](https://github.com/NodeppOfficial/nodepp-nmap)       -> Scan IPs and Ports
 - 🔗: [Redis](https://github.com/NodeppOfficial/nodepp-redis)       -> Redis Client for Nodepp
 - 🔗: [Sqlite](https://github.com/NodeppOfficial/nodepp-sqlite)     -> Sqlite Client for Nodepp
 - 🔗: [MariaDB](https://github.com/NodeppOfficial/nodepp-mariadb)   -> MariaDB Client for Nodepp
 - 🔗: [Postgres](https://github.com/NodeppOfficial/nodepp-postgres) -> Postgres Client for Nodepp
-  
+
 ## Contribution
 
 If you want to contribute to **Nodepp**, you are welcome to do so! You can contribute in several ways:

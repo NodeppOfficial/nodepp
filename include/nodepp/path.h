@@ -26,7 +26,7 @@ namespace nodepp {
 struct path_t {
     string_t type;
     string_t path;
-    string_t root; 
+    string_t root;
     string_t base;
     string_t name;
     string_t dir;
@@ -126,53 +126,53 @@ namespace path { namespace {
     regex_t reg0 = regex_t( "/+|\\\\+" );
     regex_t reg1 = regex_t( one );
     regex_t reg2 = regex_t( beg );
-    regex_t reg3 = regex_t("^"+beg); 
+    regex_t reg3 = regex_t("^"+beg);
 }
-    
+
     /*─······································································─*/
 
-    string_t normalize( string_t path ){ 
+    string_t normalize( string_t path ){
         auto sec = reg0.split( path );
         queue_t<string_t> nsec; ulong y=0;
 
         for ( ulong x=0; x<sec.size(); ++x ){
-         if ( sec[x] == ".." ){ 
+         if ( sec[x] == ".." ){
               nsec.push( sec[x] );
-              ++y; continue; 
+              ++y; continue;
             } break;
         }
 
         for ( ulong x=y; x<sec.size(); ++x ){
          if ( sec[x] == ".." && !nsec.empty() ){
-              nsec.pop(); continue; 
+              nsec.pop(); continue;
             } nsec.push( sec[x] );
         }
 
         return array_t<string_t>( nsec.data() ).join( sep );
     }
-    
+
     /*─······································································─*/
 
     bool is_absolute( const string_t& path ){ return reg3.test(path); }
-    
+
     /*─······································································─*/
 
     string_t extname( const string_t& path ){ string_t m;
-        regex_t reg("\\.\\w+$"); if( !reg.test( path ) ) 
+        regex_t reg("\\.\\w+$"); if( !reg.test( path ) )
           { return m; } return reg.match( path ).slice(1);
     }
-    
+
     /*─······································································─*/
 
     string_t mimetype( const string_t& path ){
-        string_t ext = extname( path ); if( ext.empty() ) 
+        string_t ext = extname( path ); if( ext.empty() )
         { return ext; } if( !_path_::mimetype.has( ext ) )
         { return string::format("aplication/%s",ext.c_str()); }
           return _path_::mimetype[ ext ];
     }
 
     string_t mimetype( const path_t& path ){
-        if( path.ext.empty() ) { return path.ext; } 
+        if( path.ext.empty() ) { return path.ext; }
         if( !_path_::mimetype.has( path.ext ) )
           { return string::format("aplication/%s",path.ext.c_str()); }
             return _path_::mimetype[ path.ext ];
@@ -180,22 +180,22 @@ namespace path { namespace {
 
     /*─······································································─*/
 
-    string_t dirname( const string_t& path ){ 
+    string_t dirname( const string_t& path ){
         auto vec = reg0.split( path );
         vec.pop(); return vec.join( sep );
     }
-    
+
     /*─······································································─*/
 
-    string_t basename( const string_t& path ){ 
+    string_t basename( const string_t& path ){
         auto vec = reg1.match_all( path );
         if ( vec.empty() ){ return nullptr; }
         return vec[ vec.last() ];
     }
-    
+
     /*─······································································─*/
 
-    string_t basename( const string_t& path, const string_t& del ){ 
+    string_t basename( const string_t& path, const string_t& del ){
         auto vec = reg1.match_all( path );
         if ( vec.empty() ){ return nullptr; }
         return regex::replace( vec[ vec.last() ], del, "" );
@@ -206,7 +206,7 @@ namespace path { namespace {
     string_t format( path_t& obj ) { string_t _path;
 
         if( !obj.path.empty() ){ return obj.path;   }
-        
+
         if( !obj.root.empty() ){ _path += obj.root; }
         else                   { _path += root;     }
 
@@ -217,10 +217,10 @@ namespace path { namespace {
           if ( !obj.name.empty() ){ _path += obj.name + string::to_string("."); }
           if ( !obj.ext .empty() ){ _path += obj.ext; }
         }
-        
+
         return _path;
     }
-    
+
     /*─······································································─*/
 
     path_t parse( const string_t& path ) { path_t out;
@@ -229,7 +229,7 @@ namespace path { namespace {
         else /*--------------*/ out.root = root;
 
         out.path = path;
-        out.ext  = extname ( path ); 
+        out.ext  = extname ( path );
         out.dir  = dirname ( path );
         out.base = basename( path );
         out.type = mimetype( path );
@@ -269,7 +269,7 @@ namespace path { namespace {
              sec.unshift( dir ); /*------------------*/
              return path::normalize( sec.join( sep ) );
     }
-    
+
     /*─······································································─*/
 
     string_t pop( const string_t& path ){
@@ -281,18 +281,23 @@ namespace path { namespace {
         auto sec = reg0.split( path::normalize(path) );
              sec.shift(); return sec.join( sep );
     }
-    
+
     /*─······································································─*/
 
-    array_t<string_t> split( const string_t& path ){ 
+    array_t<string_t> split( const string_t& path ){
         return reg0.split( path::normalize(path) );
     }
 
-    template< class T, class... V > 
-    string_t join( const T& argc, const V&... args ){ 
-      return normalize( string::join( sep, argc, args... ) ); 
+    template< class T, ulong N >
+    string_t join( string_t (& value)[N] ){
+      return array_t<string_t>( N, value ).join("/");
     }
-    
+
+    template< class T, class... V >
+    string_t join( const T& argc, const V&... args ){
+      return normalize( string::join( sep, argc, args... ) );
+    }
+
 }
 
 /*────────────────────────────────────────────────────────────────────────────*/
