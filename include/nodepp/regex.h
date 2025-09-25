@@ -292,7 +292,7 @@ protected:
 
 public:
 
-    virtual ~regex_t() noexcept {}
+    virtual ~regex_t() noexcept { clear_memory(); }
 
     regex_t (): obj( new NODE() ){}
 
