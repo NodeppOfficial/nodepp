@@ -20,12 +20,16 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { using query_t = map_t< string_t, string_t >;
-namespace query  { regex_t reg   = regex_t("[?&]([^= ]+)=([^?&]+)");
+namespace query  {
 
     query_t parse( string_t data ){
+        static regex_t reg("[?&]([^= ]+)=([^?&]+)");
+
         if( data.empty() || data[0]!='?' ){ return query_t(); } query_t out;
+        
         reg.search_all( data ); auto mem = reg.get_memory();
         reg.clear_memory();
+
         while( !mem.empty() ){ auto data = mem.splice( 0, 2 );
            if( data.size()!=2 ){ break; } 
                out[ data[0] ] = data[1];

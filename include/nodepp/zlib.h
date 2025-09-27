@@ -143,7 +143,7 @@ namespace nodepp { namespace zlib { namespace inflate {
     template< class... T >
     void pipe( const T&... file ){ 
          generator::zlib::pipe_inflate task; auto zlib = zlib_t(15);
-         process::add( task, zlib, file... );
+         process::foop( task, zlib, file... );
     }
 
     template< class V, class... T >
@@ -167,7 +167,7 @@ namespace nodepp { namespace zlib { namespace deflate {
     template< class... T >
     void pipe( const T&... file ){
          generator::zlib::pipe_deflate task; auto zlib = zlib_t(15);
-         process::add( task, zlib, file... );
+         process::foop( task, zlib, file... );
     }
 
     template< class V, class... T >
@@ -191,7 +191,7 @@ namespace nodepp { namespace zlib { namespace raw_inflate {
     template< class... T >
     void pipe( const T&... file ){ 
          generator::zlib::pipe_inflate task; auto zlib = zlib_t(-15);
-         process::add( task, zlib, file... );
+         process::foop( task, zlib, file... );
     }
 
     template< class V, class... T >
@@ -215,7 +215,7 @@ namespace nodepp { namespace zlib { namespace raw_deflate {
     template< class... T >
     void pipe( const T&... file ){
          generator::zlib::pipe_deflate task; auto zlib = zlib_t(-15);
-         process::add( task, zlib, file... );
+         process::foop( task, zlib, file... );
     }
 
     template< class V, class... T >
@@ -239,7 +239,7 @@ namespace nodepp { namespace zlib { namespace gunzip {
     template< class... T >
     void pipe( const T&... file ){
          generator::zlib::pipe_inflate arg; auto zlib = zlib_t(15|32);
-         process::add( arg, zlib, file... );
+         process::foop( arg, zlib, file... );
     }
 
     template< class V, class... T >
@@ -263,7 +263,7 @@ namespace nodepp { namespace zlib { namespace gzip {
     template< class... T >
     void pipe( const T&... file ){
          generator::zlib::pipe_deflate task; auto zlib = zlib_t(15|16);
-         process::add( task, zlib, file... );
+         process::foop( task, zlib, file... );
     }
 
     template< class V, class... T >

@@ -543,12 +543,12 @@ public:
         if ( SOCK != SOCK_DGRAM ){
             obj->feof = ::recv( obj->fd, bf, sx, 0 );
             obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
-            if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
+            if( obj->feof <= 0 && obj->feof != -2 ){ return -1; }
             return obj->feof;
         } else { SOCKADDR* cli = obj->srv==1 ? &obj->client_addr : &obj->server_addr;
             obj->feof = ::recvfrom( obj->fd, bf, sx, 0, cli, &obj->len );
             obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
-            if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
+            if( obj->feof <= 0 && obj->feof != -2 ){ return -1; }
             return obj->feof;
         }   return -1;
     }
@@ -559,12 +559,12 @@ public:
         if ( SOCK != SOCK_DGRAM ){
             obj->feof = ::send( obj->fd, bf, sx, 0 );
             obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
-            if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
+            if( obj->feof <= 0 && obj->feof != -2 ){ return -1; }
             return obj->feof;
         } else { SOCKADDR* cli = obj->srv==1 ? &obj->client_addr : &obj->server_addr;
             obj->feof = ::sendto( obj->fd, bf, sx, 0, cli, obj->len );
             obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
-            if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
+            if( obj->feof <= 0 && obj->feof != -2 ){ return -1; }
             return obj->feof;
         }   return -1;
     }
@@ -574,7 +574,7 @@ public:
     bool _write_( char* bf, const ulong& sx, ulong& sy ) const noexcept {
         if( sx==0 || is_closed() ){ return 1; } while( sy < sx ) {
             int c = __write( bf+sy, sx-sy );
-            if( c <= 0 && c != -2 )          { return 0; }
+            if( c <= 0 && c != -2 ) /*----*/ { return 0; }
             if( c >  0 ){ sy += c; continue; } return 1;
         }   return 0;
     }
@@ -582,7 +582,7 @@ public:
     bool _read_( char* bf, const ulong& sx, ulong& sy ) const noexcept {
         if( sx==0 || is_closed() ){ return 1; } while( sy < sx ) {
             int c = __read( bf+sy, sx-sy );
-            if( c <= 0 && c != -2 )          { return 0; }
+            if( c <= 0 && c != -2 ) /*----*/ { return 0; }
             if( c >  0 ){ sy += c; continue; } return 1;
         }   return 0;
     }

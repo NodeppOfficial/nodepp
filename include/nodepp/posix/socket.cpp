@@ -37,9 +37,9 @@ struct agent_t {
 class socket_t : public file_t {
 protected:
 
-    virtual void kill() const noexcept override { if( !is_std() ){ 
+    virtual void kill() const noexcept override { if( !is_std() ){
         ::shutdown(obj->fd,SHUT_RDWR); ::close( obj->fd ); 
-    } obj->state |= FILE_STATE::KILL; }
+    } obj->state = FILE_STATE::KILL; }
 
 protected:
 
@@ -288,10 +288,7 @@ public:
 
     /*─······································································─*/
 
-    socket_t( int fd, ulong _size=CHUNK_SIZE ) : file_t(), skt( new DONE() ) {
-        if( fd < 0 ){ throw except_t("Such Socket has an Invalid fd"); }
-        obj->fd=fd; set_nonbloking_mode(); set_buffer_size( _size );
-    }
+    socket_t( int fd, ulong _size=CHUNK_SIZE ) : file_t( fd, _size ), skt( new DONE() ) {}
 
     virtual ~socket_t() noexcept { if( obj.count()>1 ){ return; } free(); }
     
@@ -390,12 +387,12 @@ public:
         if ( SOCK != SOCK_DGRAM ){
             obj->feof = ::recv( obj->fd, bf, sx, 0 );
             obj->feof = is_blocked(obj->feof) ?-2 : obj->feof;
-            if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
+            if( obj->feof <= 0 && obj->feof != -2 ){ return -1; }
             return obj->feof;
         } else { SOCKADDR* cli = skt->srv==1 ? &skt->client_addr : &skt->server_addr;
             obj->feof = ::recvfrom( obj->fd, bf, sx, 0, cli, &skt->len );
             obj->feof = is_blocked(obj->feof) ?-2 : obj->feof;
-            if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
+            if( obj->feof <= 0 && obj->feof != -2 ){ return -1; }
             return obj->feof;
         }   return -1;
     }
@@ -406,12 +403,12 @@ public:
         if ( SOCK != SOCK_DGRAM ){
             obj->feof = ::send( obj->fd, bf, sx, 0 );
             obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
-            if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
+            if( obj->feof <= 0 && obj->feof != -2 ){ return -1; }
             return obj->feof;
         } else { SOCKADDR* cli = skt->srv==1 ? &skt->client_addr : &skt->server_addr;
             obj->feof = ::sendto( obj->fd, bf, sx, 0, cli, skt->len );
             obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
-            if( obj->feof <= 0 && obj->feof != -2 ){ free(); }
+            if( obj->feof <= 0 && obj->feof != -2 ){ return -1; }
             return obj->feof;
         }   return -1;
     }

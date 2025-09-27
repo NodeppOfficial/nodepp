@@ -279,11 +279,10 @@ namespace nodepp { namespace json {
 namespace nodepp { namespace json {
     template< class... T >
     string_t stringify( const T&... args ){ 
-      return format( args... ); 
+        return format( args... ); 
     }
 }}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
-

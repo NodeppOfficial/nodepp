@@ -239,7 +239,7 @@ public:
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; } DWORD c = 0; 
         obj->feof = ReadFile( obj->fd, bf, sx, &c, &obj->ov );
         obj->feof = is_blocked( obj->feof, c ) ? -2 : c;
-        if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+        if( obj->feof <= 0 && obj->feof != -2 ){ return -1; }
         return obj->feof;
     }
 
@@ -247,7 +247,7 @@ public:
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; } DWORD c = 0; 
         obj->feof = WriteFile( obj->fd, bf, sx, &c, &obj->ov );
         obj->feof = is_blocked( obj->feof, c ) ? -2 : c;
-        if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+        if( obj->feof <= 0 && obj->feof != -2 ){ return -1; }
         return obj->feof;
     }
 
@@ -256,7 +256,7 @@ public:
     bool _write_( char* bf, const ulong& sx, ulong& sy ) const noexcept {
         if( sx==0 || is_closed() ){ return 1; } while( sy < sx ) {
             int c = __write( bf+sy, sx-sy );
-            if( c <= 0 && c != -2 )          { return 0; }
+            if( c <= 0 && c != -2 ) /*----*/ { return 0; }
             if( c >  0 ){ sy += c; continue; } return 1;
         }   return 0;
     }
@@ -264,7 +264,7 @@ public:
     bool _read_( char* bf, const ulong& sx, ulong& sy ) const noexcept {
         if( sx==0 || is_closed() ){ return 1; } while( sy < sx ) {
             int c = __read( bf+sy, sx-sy );
-            if( c <= 0 && c != -2 )          { return 0; }
+            if( c <= 0 && c != -2 ) /*----*/ { return 0; }
             if( c >  0 ){ sy += c; continue; } return 1;
         }   return 0;
     }

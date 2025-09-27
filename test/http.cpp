@@ -64,7 +64,7 @@ namespace TEST { namespace HTTP {
                         args.url    = "https://www.google.com";
                         args.method = "GET";
 
-                https::fetch( args, ssl )
+                https::fetch( args, &ssl )
 
                 .then([=]( https_t cli ){
                     if( cli.status==200 ){ *x = 1; }
@@ -90,7 +90,7 @@ namespace TEST { namespace HTTP {
                         args.url    = "https://www.google.com";
                         args.method = "GET";
 
-                auto fetch = https::fetch( args, ssl ).await();
+                auto fetch = https::fetch( args, &ssl ).await();
 
                 if( !fetch.has_value() )/*---*/{ TEST_SKIP(); }
                 if( fetch.value().status==200 ){ TEST_DONE(); }

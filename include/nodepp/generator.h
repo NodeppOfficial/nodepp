@@ -88,7 +88,7 @@ namespace nodepp { namespace generator { namespace file {
         if( state<=0 ){ coEnd; }
         if( state >0 ){ data=string_t(str->get_buffer_data(),(ulong)state); }}
 
-        state = min( data.size(), size );
+        state = min( data.size(), size ); /*---------------*/
         str->set_borrow( data.splice( state, data.size() ) );
 
     coFinish

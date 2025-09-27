@@ -11,16 +11,17 @@
 
 #pragma once
 #include <unistd.h>
+#include <sys/wait.h>
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { class popen_t : public generator_t {
 protected:
 
-    void kill() const noexcept {
+    void kill() const noexcept { 
+    if( obj->fd != -1 ){
         ::kill( obj->fd, SIGKILL );
-        obj->state |= FILE_STATE::KILL;
-    }
+    }   obj->state |= FILE_STATE::KILL; }
 
     using _read_ = generator::file::read;
 
@@ -49,7 +50,7 @@ protected:
 
     struct NODE {
         uchar       state=FILE_STATE::CLOSE;
-        int            fd;
+        int       fd = -1;
         file_t  std_input;
         file_t  std_error;
         file_t  std_output;
@@ -125,10 +126,12 @@ public:
         
         if( is_state( FILE_STATE::REUSE ) && obj.count()>1 ){ resume(); return; }
         if( is_state( FILE_STATE::KILL  ) ){ return; } close(); kill();
-        
+
+    /*
         obj->std_error.close(); obj->std_output.close();
-        obj->std_input.close(); /*--------------------*/
-    
+        obj->std_input.close();
+    */
+
         onResume.clear(); onError.clear(); 
         onStop  .clear(); onOpen .clear();
         onData  .clear(); onDout .clear(); 
@@ -139,34 +142,35 @@ public:
     /*─······································································─*/
 
     inline int next() noexcept {
-    coBegin; if( !is_closed() ){
-        
-        onOpen.emit(); coYield(1);
+    coBegin ; onOpen.emit(); coYield(1);
+
+        if( !is_closed() ){ free(); coNext; do { int status=0;
+        if( ::waitpid( obj->fd, &status, WNOHANG ) == -1 )
+          { return 1; }} while(0); coEnd; }
 
         if((*_read1)(&std_output())==1){ coGoto(2); }
         if(  _read1->state <= 0 )      { coGoto(2); }
         onData.emit(_read1->data);
-        onDout.emit(_read1->data);
-
-        coYield(2); if( !is_alive() )  { break; }
+        onDout.emit(_read1->data);       coYield(2);
 
         if((*_read2)(&std_error())==1 ){ coGoto(1); }
         if(  _read2->state <= 0 )      { coGoto(1); }
         onData.emit(_read2->data);
         onDerr.emit(_read2->data);
         
-    coGoto(1); } coFinish
+    coGoto(1); coFinish
     }
 
     /*─······································································─*/
 
-    bool is_alive() const noexcept { 
-        if( std_error ().is_available() ){ return true; }
-        if( std_output().is_available() ){ return true; } return false; 
+    bool is_alive() const noexcept {
+        if( ::kill( obj->fd , 0 ) == -1 ){ return false; }
+        if( std_error ().is_available() ){ return true;  }
+        if( std_output().is_available() ){ return true;  } return false; 
     }
 
-    bool is_closed()    const noexcept { return is_state( FILE_STATE::DISABLE ); }
-    bool is_available() const noexcept { return is_closed()== false; }
+    bool is_closed()    const noexcept { return is_state( FILE_STATE::DISABLE ) || !is_alive(); }
+    bool is_available() const noexcept { return is_closed() == false; }
     int  get_fd()       const noexcept { return obj->fd; }
 
     /*─······································································─*/

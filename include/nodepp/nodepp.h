@@ -18,13 +18,17 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace process { loop_t _loop_; poll_t _poll_;
+namespace nodepp { namespace process { 
+
+    /*─······································································─*/
+    
+    loop_t _loop_; poll_t _poll_; loop_t _foop_;
 
     /*─······································································─*/
 
-    ulong size(){ return _TASK_ + _loop_.size() + _poll_.size(); }
+    ulong size(){ return _TASK_ + _loop_.size() + _poll_.size() + _foop_.size(); }
 
-    void clear(){ _TASK_=0; _loop_.clear(); _poll_.clear(); }
+    void clear(){ _TASK_=0; _loop_.clear(); _poll_.clear(); _foop_.clear(); }
 
     bool empty(){ return size() <= 0; }
 
@@ -41,14 +45,16 @@ namespace nodepp { namespace process { loop_t _loop_; poll_t _poll_;
 
     /*─······································································─*/
 
-    int next(){ static ulong count = 0;
-        if(( ++count % 64 ) == 0 ){ yield(); }
-    coStart
-        coWait( _poll_.next()==1 ); /*------*/
-        coWait( _loop_.next()==1 ); /*------*/
+    int next(){ coStart
+        if( !_poll_.empty() ) { _poll_.next(); coNext; } /*----*/
+        if( !_loop_.empty() ) { _loop_.next(); coNext; } /*----*/
+        if( !_foop_.empty() ) { _foop_.next(); coNext; } yield();
     coStop }
 
     /*─······································································─*/
+
+    template< class... T >
+    void* foop( const T&... args ){ return _foop_.add( args... ); }
 
     template< class... T >
     void* loop( const T&... args ){ return _loop_.add( args... ); }

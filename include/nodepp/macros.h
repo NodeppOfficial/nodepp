@@ -14,15 +14,15 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define coDelay(VALUE)  do { _time_=process::millis()+VALUE; coWait( process::millis()<_time_ ); } while(0)
-#define coUDelay(VALUE) do { _time_=process::micros()+VALUE; coWait( process::micros()<_time_ ); } while(0)
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
 #define rand_range( A, B ) clamp( rand()%B, A, B )
 template< class T > T   min( const T& min, const T& max ){ return min < max ? min : max; }
 template< class T > T   max( const T& min, const T& max ){ return max > min ? max : min; }
 template< class T > T clamp( const T& val, const T& _min, const T& _max ){ return max( _min, min( _max, val ) ); }
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+#define coDelay(VALUE)  do { _time_=process::millis()+VALUE; coWait( process::millis()<_time_ ); } while(0)
+#define coUDelay(VALUE) do { _time_=process::micros()+VALUE; coWait( process::micros()<_time_ ); } while(0)
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

@@ -104,7 +104,7 @@ public:
     /*─······································································─*/
 
     file_t( const string_t& path, const string_t& mode, const ulong& _size=CHUNK_SIZE ) : obj( new NODE() ) {
-            obj->fd = open( path.data(), get_fd_flag( mode ), 0644 );
+            obj->fd = open( path.data(), get_fd_flag( mode ), 0644 ); /*-----------*/
         if( obj->fd < 0 ){ throw except_t("such file or directory does not exist"); }
         set_nonbloking_mode(); set_buffer_size( _size );
     }
@@ -250,7 +250,7 @@ public:
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
         obj->feof = ::read( obj->fd, bf, sx );
         obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
-        if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+        if( obj->feof <= 0 && obj->feof != -2 ){ return -1; }
         return obj->feof;
     }
 
@@ -258,7 +258,7 @@ public:
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
         obj->feof = ::write( obj->fd, bf, sx );
         obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
-        if( obj->feof <= 0 && obj->feof != -2 ){ close(); }
+        if( obj->feof <= 0 && obj->feof != -2 ){ return -1; }
         return obj->feof;
     }
 

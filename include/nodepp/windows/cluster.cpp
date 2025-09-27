@@ -131,9 +131,11 @@ public:
         
         if( is_state( FILE_STATE::REUSE ) && obj.count()>1 ){ resume(); return; }
         if( is_state( FILE_STATE::KILL  ) ){ return; } close(); kill();
-        
+
+    /*
         obj->input.close(); obj->output.close();
-        obj->error.close(); /*----------------*/
+        obj->error.close();
+    */
 
         onResume.clear(); onError.clear(); 
         onStop  .clear(); onOpen .clear();
@@ -145,24 +147,22 @@ public:
     /*─······································································─*/
 
     inline int next() noexcept {
-    coBegin; if( !is_closed() ){ 
-
-        onOpen.emit(); coYield(1);
+        if( !is_closed() ){ return -1; }
+    coBegin ; onOpen.emit(); coYield(1);
 
         if((*_read1)(&readable())==1)  { coGoto(2); }
         if(  _read1->state <= 0 )      { coGoto(2); }
         onData.emit(_read1->data);
         onDout.emit(_read1->data);       coYield(2);
-
-        if( !is_alive()&&_read1->state<=0 ){ break; }
+        
         if( process::is_child() )      { coGoto(1); }
 
         if((*_read2)(&std_error())==1 ){ coGoto(1); }
         if(  _read2->state <= 0 )      { coGoto(1); }
         onData.emit(_read2->data);
-        onDerr.emit(_read2->data);       
+        onDerr.emit(_read2->data);
         
-    coGoto(1); } coFinish
+    coGoto(1); coFinish
     }
 
     /*─······································································─*/
@@ -172,7 +172,7 @@ public:
         if( exitCode == STILL_ACTIVE ) { return true; }} return false;
     }
 
-    bool is_closed()    const noexcept { return is_state( FILE_STATE::DISABLE ); }
+    bool is_closed()    const noexcept { return is_state( FILE_STATE::DISABLE ) || !is_alive(); }
     bool is_available() const noexcept { return is_closed()== false; }
     int  get_fd()       const noexcept { return obj->fd; }
 
