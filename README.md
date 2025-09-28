@@ -47,17 +47,36 @@ One of the standout features of Nodepp is its 100% asynchronous architecture, po
 ```
 
 ## Examples
-### Hello world
+
+### Reading JSON
 ```cpp
 #include <nodepp/nodepp.h>
+#include <nodepp/json.h>
 
 using namespace nodepp;
 
-void onMain() { 
-    console::log("Hello World!");
-}
+void onMain() {
 
-// note that we are using onMain() instead of main()
+    auto data = json::parse( R"({
+        "var1": 10,
+        "var2": false,
+        "var3": "hello world",
+        "var4": { "var5": "nested object" },
+        "var5": [ 10, 20, 30, 40, 50, 60, 70 ]
+    })" );
+
+    console::log( "var1:", data["var1"].as<uint>() );
+    console::log( "var2:", data["var2"].as<bool>() );
+    console::log( "var3:", data["var3"].as<string_t>() );
+    console::log( "var4:", data["var4"]["var5"].as<string_t>() );
+
+    console::log( "\n --- \n" );
+
+    for( auto x: data["var5"].as<array_t<object_t>>() ){
+         console::log( "var5", x.as<uint>() );
+    }
+
+}
 ```
 
 ### HTTP Client
@@ -103,16 +122,16 @@ using namespace nodepp;
 
 void onMain(){
 
-    auto server = http::server([=]( http_t cli ){ 
+    auto server = http::server([=]( http_t cli ){
 
         console::log( cli.path, cli.get_fd() );
-        
+
         cli.write_header( 200, header_t({
             { "content-type", "text/html" }
         }));
-        
+
         cli.write( date::fulltime() );
-        cli.close(); // optional | GC automaticaly close unused sockets
+        cli.close(); // optional
 
     });
 
@@ -123,7 +142,42 @@ void onMain(){
 }
 ```
 
-### More Examples [here](https://github.com/NodeppOfficial/Nodepp/tree/main/examples)
+### More Examples [here](https://nodeppofficial.github.io/nodepp-doc/guide.html)
+
+## Installing Nodepp
+
+### Clone The Repository
+```bash
+#!/usr/bin/env bash
+git clone https://github.com/NodeppOfficial/nodepp ; cd nodepp
+```
+
+### Create a main.cpp File
+```bash
+#!/usr/bin/env bash
+touch main.cpp
+```
+```cpp
+#include <nodepp/nodepp.h>
+
+using namespace nodepp;
+
+void onMain() {
+    console::log("Hello World!");
+}
+```
+
+### Build Your Code
+```bash
+#!/usr/bin/env bash
+🐧: g++ -o main main.cpp -O3 -I ./include          ; ./main #(Linux)
+🪟: g++ -o main main.cpp -O3 -I ./include -lws2_32 ; ./main #(Windows)
+```
+
+## Nodepp Supports Other Platforms Too
+- 🔗: [NodePP for Window | Linux | Mac | Bsd ](https://github.com/NodeppOfficial/nodepp)
+- 🔗: [NodePP for Arduino](https://github.com/NodeppOfficial/nodepp-arduino)
+- 🔗: [Nodepp for WASM](https://github.com/NodeppOfficial/nodepp-wasm)
 
 ## Projects made with NodePP
 - 🔗: [Draw on your PC using your smartphone](https://github.com/ScreenDraw/PCDraw)
@@ -136,11 +190,6 @@ void onMain(){
 
 Check out some articles on [Medium](https://medium.com/@EDBCBlog)
 
-## Compatibility
-- 🔗: [NodePP for Window | Linux | Mac | Bsd ](https://github.com/NodeppOfficial/nodepp)
-- 🔗: [NodePP for Arduino](https://github.com/NodeppOfficial/nodepp-arduino)
-- 🔗: [Nodepp for WASM](https://github.com/NodeppOfficial/nodepp-wasm)
-
 ## Official Libraries for Nodepp
 - 🔗: [ExpressPP](https://github.com/NodeppOfficial/nodepp-express) -> Express equivalent for Nodepp
 - 🔗: [ApifyPP](https://github.com/NodeppOfficial/nodepp-apify)     -> Socket.io equivalent for Nodepp
@@ -149,13 +198,14 @@ Check out some articles on [Medium](https://medium.com/@EDBCBlog)
 - 🔗: [Torify](https://github.com/NodeppOfficial/nodepp-torify)     -> HTTP|Ws over Tor
 - 🔗: [NginxPP](https://github.com/NodeppOfficial/nodepp-nginx)     -> Reverse Proxy
 - 🔗: [InputPP](https://github.com/NodeppOfficial/nodepp-input)     -> Fake Inputs
+- 🔗: [XML](https://github.com/NodeppOfficial/nodepp-xml)           -> XML for Nodepp
 - 🔗: [JWT](https://github.com/NodeppOfficial/nodepp-jwt)           -> JSON Web Token
 - 🔗: [NmapPP](https://github.com/NodeppOfficial/nodepp-nmap)       -> Scan IPs and Ports
 - 🔗: [Redis](https://github.com/NodeppOfficial/nodepp-redis)       -> Redis Client for Nodepp
 - 🔗: [Sqlite](https://github.com/NodeppOfficial/nodepp-sqlite)     -> Sqlite Client for Nodepp
 - 🔗: [MariaDB](https://github.com/NodeppOfficial/nodepp-mariadb)   -> MariaDB Client for Nodepp
 - 🔗: [Postgres](https://github.com/NodeppOfficial/nodepp-postgres) -> Postgres Client for Nodepp
-  
+
 ## Contribution
 
 If you want to contribute to **Nodepp**, you are welcome to do so! You can contribute in several ways:

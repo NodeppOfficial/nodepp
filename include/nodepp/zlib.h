@@ -138,18 +138,68 @@ public:
 
 namespace nodepp { namespace zlib { namespace inflate {
 
+    string_t get( const string_t& data ){ return zlib_t(15).update_inflate(data,Z_FINISH); }
+
+    template< class... T >
+    void pipe( const T&... file ){ 
+         generator::zlib::pipe_inflate task; auto zlib = zlib_t(15);
+         process::foop( task, zlib, file... );
+    }
+
+    template< class V, class... T >
+    string_t await( const V& file, const T&... args ){ string_t out;
+         generator::zlib::pipe_inflate task; auto zlib =zlib_t(15);
+         file.onData([&]( string_t data ){ out += data; });
+         process::await( task, zlib, file, args... );
+         return out;
+    }
+    
+    zlib_t get(){ return zlib_t(15); }
+
+}}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace zlib { namespace deflate {
+
+    string_t get( const string_t& data ){ return zlib_t(15).update_deflate(data,Z_FINISH); }
+
+    template< class... T >
+    void pipe( const T&... file ){
+         generator::zlib::pipe_deflate task; auto zlib = zlib_t(15);
+         process::foop( task, zlib, file... );
+    }
+
+    template< class V, class... T >
+    string_t await( const V& file, const T&... args ){ string_t out;
+         generator::zlib::pipe_deflate task; auto zlib =zlib_t(15);
+         file.onData([&]( string_t data ){ out += data; });
+         process::await( task, zlib, file, args... );
+         return out;
+    }
+    
+    zlib_t get(){ return zlib_t(15); }
+
+}}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace zlib { namespace raw_inflate {
+
     string_t get( const string_t& data ){ return zlib_t(-15).update_inflate(data,Z_FINISH); }
 
     template< class... T >
     void pipe( const T&... file ){ 
          generator::zlib::pipe_inflate task; auto zlib = zlib_t(-15);
-         process::add( task, zlib, file... );
+         process::foop( task, zlib, file... );
     }
 
-    template< class... T >
-    void await( const T&... file ){ 
-         generator::zlib::pipe_inflate task; auto zlib = zlib_t(-15);
-         process::await( task, zlib, file... );
+    template< class V, class... T >
+    string_t await( const V& file, const T&... args ){ string_t out;
+         generator::zlib::pipe_inflate task; auto zlib =zlib_t(-15);
+         file.onData([&]( string_t data ){ out += data; });
+         process::await( task, zlib, file, args... );
+         return out;
     }
     
     zlib_t get(){ return zlib_t(-15); }
@@ -158,20 +208,22 @@ namespace nodepp { namespace zlib { namespace inflate {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace zlib { namespace deflate {
+namespace nodepp { namespace zlib { namespace raw_deflate {
 
     string_t get( const string_t& data ){ return zlib_t(-15).update_deflate(data,Z_FINISH); }
 
     template< class... T >
     void pipe( const T&... file ){
          generator::zlib::pipe_deflate task; auto zlib = zlib_t(-15);
-         process::add( task, zlib, file... );
+         process::foop( task, zlib, file... );
     }
 
-    template< class... T >
-    void await( const T&... file ){
-         generator::zlib::pipe_deflate task; auto zlib = zlib_t(-15);
-         process::await( task, zlib, file... );
+    template< class V, class... T >
+    string_t await( const V& file, const T&... args ){ string_t out;
+         generator::zlib::pipe_deflate task; auto zlib =zlib_t(-15);
+         file.onData([&]( string_t data ){ out += data; });
+         process::await( task, zlib, file, args... );
+         return out;
     }
     
     zlib_t get(){ return zlib_t(-15); }
@@ -187,13 +239,15 @@ namespace nodepp { namespace zlib { namespace gunzip {
     template< class... T >
     void pipe( const T&... file ){
          generator::zlib::pipe_inflate arg; auto zlib = zlib_t(15|32);
-         process::add( arg, zlib, file... );
+         process::foop( arg, zlib, file... );
     }
 
-    template< class... T >
-    void await( const T&... file ){
-         generator::zlib::pipe_inflate arg; auto zlib = zlib_t(15|32);
-         process::await( arg, zlib, file... );
+    template< class V, class... T >
+    string_t await( const V& file, const T&... args ){ string_t out;
+         generator::zlib::pipe_inflate task;auto zlib=zlib_t(15|32);
+         file.onData([&]( string_t data ){ out += data; });
+         process::await( task, zlib, file, args... );
+         return out;
     }
     
     zlib_t get(){ return zlib_t(15|32); }
@@ -209,13 +263,15 @@ namespace nodepp { namespace zlib { namespace gzip {
     template< class... T >
     void pipe( const T&... file ){
          generator::zlib::pipe_deflate task; auto zlib = zlib_t(15|16);
-         process::add( task, zlib, file... );
+         process::foop( task, zlib, file... );
     }
 
-    template< class... T >
-    void await( const T&... file ){
-         generator::zlib::pipe_deflate task; auto zlib = zlib_t(15|16);
-         process::await( task, zlib, file... );
+    template< class V, class... T >
+    string_t await( const V& file, const T&... args ){ string_t out;
+         generator::zlib::pipe_deflate task;auto zlib=zlib_t(15|16);
+         file.onData([&]( string_t data ){ out += data; });
+         process::await( task, zlib, file, args... );
+         return out;
     }
     
     zlib_t get(){ return zlib_t(15|16); }

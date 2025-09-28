@@ -23,7 +23,7 @@ namespace nodepp { template< class T > using rej_t = function_t<void,T>; }
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { enum PROMISE_STATE {  
+namespace nodepp { enum PROMISE_STATE {
     UNDEFINED= 0b00000000,
     OPEN     = 0b00000001,
     PENDING  = 0b00000010,
@@ -37,12 +37,13 @@ namespace nodepp { enum PROMISE_STATE {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { template< class T, class V > class promise_t { 
+namespace nodepp { template< class T, class V > class promise_t {
 private:
 
-    using REJECT   = function_t<void,V>;
-    using RESOLVE  = function_t<void,T>;
-    using NODE_CLB = function_t<void,RESOLVE,REJECT>;
+    using FINALLY  = event_t< >; /*-------------------*/
+    using RESOLVE  = event_t<T>; /*-------------------*/
+    using REJECT   = event_t<V>; /*-------------------*/
+    using NODE_CLB = function_t<void,res_t<T>,rej_t<V>>;
 
 protected:
 
@@ -50,38 +51,15 @@ protected:
         NODE_CLB node_clb;
         REJECT    rej_clb;
         RESOLVE   res_clb;
+        FINALLY   fin_clb;
         uchar   state = 0;
     };  ptr_t<NODE> obj;
-
-    void invoke() const noexcept {
-
-        if( obj->state== PROMISE_STATE::UNDEFINED ){ return; }
-        if( obj->state&( PROMISE_STATE::FINISHED  | 
-            /*--------*/ PROMISE_STATE::CLOSED    |
-            /*--------*/ PROMISE_STATE::PENDING  )){ return; }
-        
-        obj->state|= PROMISE_STATE::PENDING;
-        auto self  = type::bind( this ); 
-
-        obj->node_clb([=]( T res ){
-            self->obj->res_clb(res); /*--------------*/
-            self->obj->state = PROMISE_STATE::FINISHED;
-            self->obj->state|= PROMISE_STATE::RESOLVED;
-            self->obj->state|= PROMISE_STATE::CLOSED; 
-        },[=]( V rej ){
-            self->obj->rej_clb(rej); /*--------------*/
-            self->obj->state = PROMISE_STATE::FINISHED; 
-            self->obj->state|= PROMISE_STATE::REJECTED; 
-            self->obj->state|= PROMISE_STATE::CLOSED; 
-        });
-
-    }
 
 public:
 
     virtual ~promise_t() noexcept { if( obj.count()>1 ){ return; } invoke(); }
-    
-    promise_t( const NODE_CLB& cb ) noexcept : obj( new NODE() ) { 
+
+    promise_t( const NODE_CLB& cb ) noexcept : obj( new NODE() ) {
         obj->node_clb=cb; obj->state=PROMISE_STATE::OPEN;
     }
 
@@ -91,37 +69,40 @@ public:
 
     uchar get_state() const noexcept { return obj->state; }
 
+    void close() const noexcept { off(); }
+
+    void off() const noexcept {
+        obj->state = PROMISE_STATE::CLOSED;
+        obj->node_clb.free(); /*---------*/
+    }
+
     /*─······································································─*/
 
     expected_t<T,V> await() const { do {
 
         if( obj->state== PROMISE_STATE::UNDEFINED ){ break; }
-        if( obj->state&( PROMISE_STATE::FINISHED  | 
+        if( obj->state&( PROMISE_STATE::FINISHED  |
             /*--------*/ PROMISE_STATE::CLOSED    |
             /*--------*/ PROMISE_STATE::PENDING  )){ break; }
-        
+
         obj->state|= PROMISE_STATE::PENDING; T res; V rej;
         auto self  = type::bind( this );
 
-        obj->node_clb([&]( T value ){ 
+        self->obj->node_clb([&]( T value ){
             res = value; /*--------------------------*/
             self->obj->state = PROMISE_STATE::FINISHED;
             self->obj->state|= PROMISE_STATE::RESOLVED;
-            self->obj->state|= PROMISE_STATE::CLOSED; 
+            self->obj->state|= PROMISE_STATE::CLOSED;
         },[&]( V value ){
             rej = value; /*--------------------------*/
-            self->obj->state = PROMISE_STATE::FINISHED; 
-            self->obj->state|= PROMISE_STATE::REJECTED; 
-            self->obj->state|= PROMISE_STATE::CLOSED; 
+            self->obj->state = PROMISE_STATE::FINISHED;
+            self->obj->state|= PROMISE_STATE::REJECTED;
+            self->obj->state|= PROMISE_STATE::CLOSED;
         });
 
-        process::await( coroutine::add( COROUTINE(){
-        coBegin
+        while((obj->state & PROMISE_STATE::PENDING)!= 0 )
+             { process::next(); }
 
-        coWait(( self->obj->state & PROMISE_STATE::PENDING )!=0);
-
-        coFinish }));
-        
         if( obj->state & PROMISE_STATE::RESOLVED ){ return res; }
         if( obj->state & PROMISE_STATE::REJECTED ){ return rej; }
 
@@ -133,11 +114,11 @@ public:
     void resolve() const noexcept {
 
         if( obj->state== PROMISE_STATE::UNDEFINED ){ return; }
-        if( obj->state&( PROMISE_STATE::FINISHED  | 
+        if( obj->state&( PROMISE_STATE::FINISHED  |
             /*--------*/ PROMISE_STATE::CLOSED   )){ return; }
 
         if((obj->state & PROMISE_STATE::PENDING)==0 ){ invoke(); }
-        
+
         auto self = type::bind( this );
 
         process::await( coroutine::add( COROUTINE(){
@@ -149,26 +130,65 @@ public:
 
     }
 
+    void invoke() const noexcept {
+
+        if( obj->state== PROMISE_STATE::UNDEFINED ){ return; }
+        if( obj->state&( PROMISE_STATE::FINISHED  |
+            /*--------*/ PROMISE_STATE::CLOSED    |
+            /*--------*/ PROMISE_STATE::PENDING  )){ return; }
+
+        obj->state|= PROMISE_STATE::PENDING;
+        auto self  = type::bind( this );
+
+        process::add([=](){
+
+        self->obj->node_clb([=]( T res ){
+            self->obj->res_clb.emit(res);
+            self->obj->fin_clb.emit(   ); /*---------*/
+            self->obj->state = PROMISE_STATE::FINISHED;
+            self->obj->state|= PROMISE_STATE::RESOLVED;
+            self->obj->state|= PROMISE_STATE::CLOSED;
+        },[=]( V rej ){
+            self->obj->rej_clb.emit(rej);
+            self->obj->fin_clb.emit(   ); /*---------*/
+            self->obj->state = PROMISE_STATE::FINISHED;
+            self->obj->state|= PROMISE_STATE::REJECTED;
+            self->obj->state|= PROMISE_STATE::CLOSED;
+        }); 
+
+        return -1; });
+
+    }
+
     /*─······································································─*/
 
     template< class U >
-    promise_t& then( const U cb ) noexcept { 
+    promise_t& then( const U cb ) noexcept {
         if( obj->state== PROMISE_STATE::UNDEFINED ){ return (*this); }
         if( obj->state&( PROMISE_STATE::FINISHED  |
             /*--------*/ PROMISE_STATE::CLOSED   )){ return (*this); }
 
-        obj->state |=PROMISE_STATE::RESOLVING; 
-        obj->res_clb=cb; return (*this); 
+        obj->state |=PROMISE_STATE::RESOLVING;
+        obj->res_clb.once(cb); return (*this);
     }
-    
+
     template< class U >
-    promise_t& fail( const U cb ) noexcept { 
+    promise_t& fail( const U cb ) noexcept {
         if( obj->state== PROMISE_STATE::UNDEFINED ){ return (*this); }
         if( obj->state&( PROMISE_STATE::FINISHED  |
             /*--------*/ PROMISE_STATE::CLOSED   )){ return (*this); }
 
-        obj->state |=PROMISE_STATE::REJECTING; 
-        obj->rej_clb=cb; return (*this); 
+        obj->state |=PROMISE_STATE::REJECTING;
+        obj->rej_clb.once(cb); return (*this);
+    }
+
+    template< class U >
+    promise_t& finally( const U cb ) noexcept {
+        if( obj->state== PROMISE_STATE::UNDEFINED ){ return (*this); }
+        if( obj->state&( PROMISE_STATE::FINISHED  |
+            /*--------*/ PROMISE_STATE::CLOSED   )){ return (*this); }
+
+        obj->fin_clb.once(cb); return (*this); 
     }
 
 };}
@@ -179,7 +199,7 @@ namespace nodepp { namespace promise {
 
     template< class V >
     promise_t<V,except_t> all( const V& prom ) {
-    return promise_t<V,except_t>([=]( res_t<V> res, rej_t<except_t>rej ){  
+    return promise_t<V,except_t>([=]( res_t<V> res, rej_t<except_t>rej ){
 
         if( prom.empty() ){ rej( "iterator is empty" ); return; }
 
@@ -188,8 +208,8 @@ namespace nodepp { namespace promise {
 
             do{ for( auto &x: prom ){
             if( x.get_state() & PROMISE_STATE::PENDING ){ coGoto(0); }
-            } } while(0); 
-            
+            } } while(0);
+
             coNext;
 
             do{ for( auto &x: prom ){
@@ -208,7 +228,7 @@ namespace nodepp { namespace promise {
 
     template< class V >
     promise_t<V,except_t> any( const V& prom ) {
-    return promise_t<V,except_t>([=]( res_t<V> res, rej_t<except_t>rej ){  
+    return promise_t<V,except_t>([=]( res_t<V> res, rej_t<except_t>rej ){
 
         if( prom.empty() ){ rej( "iterator is empty" ); return; }
 
@@ -217,8 +237,8 @@ namespace nodepp { namespace promise {
 
             do{ for( auto &x: prom ){
             if( x.get_state() & PROMISE_STATE::PENDING ){ coGoto(0); }
-            } } while(0); 
-            
+            } } while(0);
+
             coNext;
 
             do{ for( auto &x: prom ){

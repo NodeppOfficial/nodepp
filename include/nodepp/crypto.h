@@ -739,10 +739,10 @@ protected:
 
 public:
 
-    X509_t( uint rsa_size=2048 ) : obj( new NODE() ) { 
-
-        obj->ctx = X509_new(); obj->name = X509_NAME_new();  
-        obj->rsa = RSA_new(); obj->num = BN_new();
+    X509_t( uint rsa_size=2048 ) : obj( new NODE() ) {
+        
+        obj->ctx = X509_new(); obj->name= X509_NAME_new();  
+        obj->rsa = RSA_new();  obj->num = BN_new();
         obj->pkey= EVP_PKEY_new();
         
         BN_set_word( obj->num, RSA_F4 );

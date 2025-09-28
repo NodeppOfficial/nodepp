@@ -42,8 +42,8 @@ protected:
     /*─······································································─*/
     
     bool listen( const int fd, const int flags, void* ptr ) noexcept { bool x=1, y=1;
-        if( flags & POLL_STATE::READ  ){ x = append( fd, EVFILT_READ , ptr )!=-1; }
-      elif( flags & POLL_STATE::WRITE ){ y = append( fd, EVFILT_WRITE, ptr )!=-1; }
+        if  ( flags & POLL_STATE::READ  ){ x = append( fd, EVFILT_READ , ptr )!=-1; }
+        elif( flags & POLL_STATE::WRITE ){ y = append( fd, EVFILT_WRITE, ptr )!=-1; }
         return ( x && y );
     }
 

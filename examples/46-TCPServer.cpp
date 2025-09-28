@@ -1,16 +1,17 @@
 #include <nodepp/nodepp.h>
 #include <nodepp/tcp.h>
+#include <nodepp/fs.h>
 
 using namespace nodepp;
 
 void onMain(){
 
     auto server = tcp::server();
-    auto cin    = fs::std_input();
 
     server.onConnect([=]( socket_t cli ){
 
         console::log("connected", cli.get_peername() );
+        auto cin = fs::std_input();
 
         cli.onData([=]( string_t data ){
             console::log( data );
@@ -22,6 +23,7 @@ void onMain(){
 
         cli.onClose.once([=](){
             console::log("closed");
+            cin.close();
         });
 
         stream::pipe( cli );

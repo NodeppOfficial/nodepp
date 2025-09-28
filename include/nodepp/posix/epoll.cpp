@@ -40,8 +40,8 @@ protected:
     /*─······································································─*/
     
     bool listen( const int fd, const int flags, void* ptr ) noexcept { bool x=1, y=1;
-        if( flags & POLL_STATE::READ  ){ x = append( fd, EPOLLIN , ptr )!=-1; }
-      elif( flags & POLL_STATE::WRITE ){ y = append( fd, EPOLLOUT, ptr )!=-1; }
+        if  ( flags & POLL_STATE::READ  ){ x = append( fd, EPOLLIN , ptr )!=-1; }
+        elif( flags & POLL_STATE::WRITE ){ y = append( fd, EPOLLOUT, ptr )!=-1; }
         return ( x && y );
     }
 
@@ -119,7 +119,7 @@ public:
         if((obj->len=epoll_wait( obj->pd, &obj->ev, obj->ev.size(), 0 ))<=0 )
           { coEnd; } obj->y=0; coNext;
 
-        while( obj->y < obj->len ){ do { 
+        while( obj->y < obj->len ){ do {
             
             auto x = obj->ev[ obj->y ];
             auto y = obj->queue.as( x.data.ptr );
@@ -127,7 +127,7 @@ public:
             if( x.events & ( EPOLLERR | EPOLLHUP ) &&
               ( x.events & ( EPOLLIN  | EPOLLOUT ))==0
             ) { remove( y ); ++obj->y; break; }
-            
+
             switch( type::cast<NODE_CLB>( y->data.second ).emit() ){
                 case -1: remove( y ); ++obj->y; break;
                 case  1: /*--------*/ ++obj->y; break;

@@ -60,7 +60,7 @@ namespace nodepp { namespace wss {
         if( !generator::ws::server( hrv ) )
           { skt.onConnect.skip(); return; }   
 
-        process::add([=](){ 
+        process::foop([=](){ 
             skt.onConnect.resume( );
             skt.onConnect.emit(cli); 
             return -1;
@@ -73,14 +73,14 @@ namespace nodepp { namespace wss {
 
     /*─······································································─*/
 
-    tls_t server( const ssl_t& ssl, agent_t* opt=nullptr ){
+    tls_t server( ssl_t* ssl, agent_t* opt=nullptr ){
     auto skt = https::server( [=]( https_t ){}, ssl, opt );
                  wss::server( skt ); return skt;
     }
 
     /*─······································································─*/
 
-    tls_t client( const string_t& uri, const ssl_t& ssl, agent_t* opt=nullptr ){
+    tls_t client( const string_t& uri, ssl_t* ssl, agent_t* opt=nullptr ){
     tls_t skt   ( [=]( ssocket_t ){}, ssl, opt );
     skt.onSocket.once([=]( ssocket_t cli ){
 
@@ -88,7 +88,7 @@ namespace nodepp { namespace wss {
         if( !generator::ws::client( hrv, uri ) )
           { skt.onConnect.skip(); return; }   
 
-        process::add([=](){ 
+        process::foop([=](){ 
             skt.onConnect.resume( );
             skt.onConnect.emit(cli); 
             return -1;
