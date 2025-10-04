@@ -78,6 +78,11 @@ public:
       while( i-->0 ){ unshift(value[i]); }
     }
 
+    queue_t( const ulong& n, const V& c ) noexcept: obj( new DONE )  {
+        if ( n == 0 ){ return; }
+        auto i=n; while( i-->0 ){ unshift(c); }
+    }
+
     template < class T, ulong N >
     queue_t( const T (&value)[N] ) noexcept : obj( new DONE ) {
         auto i=N; while( i-->0 ){ unshift(value[i]); }
@@ -85,11 +90,6 @@ public:
 
     queue_t( const ptr_t<V>& args ) noexcept: obj( new DONE ) {
         for( auto &x: args ){ push( x ); }
-    }
-
-    queue_t( const ulong& n, const V& c ) noexcept {
-        if ( n == 0 ){ return; }
-        auto i=n; while( i-->0 ){ unshift(c); }
     }
 
     queue_t() noexcept : obj( new DONE ) {}

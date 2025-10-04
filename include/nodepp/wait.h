@@ -40,24 +40,28 @@ public:
     void* once( T val, function_t<void,A...> func ) const noexcept {
         ptr_t<bool> out = new bool(1); DONE ctx;
         ctx.out=&out; ctx.clb=([=]( T arg, A... args ){
-            if( val != arg ){ return true;   }
-            if(*out != 0   ){ func(args...); }
+            if( val != arg ){ return true;   } /*------------------*/
+            if(*out != 0   ){ func(args...); } /*------------------*/
             if( out.null() ){ return false;  } *out = 0; return *out;
-        }); obj->que.push(ctx); return &out;
+        }); obj->que.push(ctx); return obj->que.last();
     }
 
     void* on( T val, function_t<void,A...> func ) const noexcept {
         ptr_t<bool> out = new bool(1); DONE ctx;
         ctx.out=&out; ctx.clb=([=]( T arg, A... args ){
-            if( val != arg ){ return true;   }
-            if(*out != 0   ){ func(args...); }
+            if( val != arg ){ return true;   } /*--------*/
+            if(*out != 0   ){ func(args...); } /*--------*/
             if( out.null() ){ return false;  } return *out;
-        }); obj->que.push(ctx); return &out;
+        }); obj->que.push(ctx); return obj->que.last();
     }
 
     void off( void* address ) const noexcept {
         if( address == nullptr ){ return; }
-        memset( address, 0, sizeof(bool) );
+        auto w=obj->que.as(address); 
+        auto x=obj->que.first(); while( x!=nullptr ){
+        auto y=x->next; if( w==x )
+             { obj->que.erase( w ); break; }
+        x=y; }
     }
 
     /*─······································································─*/

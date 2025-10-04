@@ -60,7 +60,7 @@ namespace nodepp { namespace ws {
         if( !generator::ws::server( hrv ) )
           { skt.onConnect.skip(); return; }   
 
-        process::foop([=](){ 
+        process::add([=](){ 
             skt.onConnect.resume( );
             skt.onConnect.emit(cli); 
             return -1;
@@ -88,7 +88,7 @@ namespace nodepp { namespace ws {
         if( !generator::ws::client( hrv, uri ) )
           { skt.onConnect.skip(); return; }   
 
-        process::foop([=](){ 
+        process::add([=](){ 
             skt.onConnect.resume( );
             skt.onConnect.emit(cli); 
             return -1;

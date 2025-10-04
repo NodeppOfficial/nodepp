@@ -432,7 +432,8 @@ namespace nodepp { namespace generator { namespace ws {
     template< class T > bool server( T& cli ) { do {
         auto data = cli.read(); cli.set_borrow( data );
 
-        int c=0; while( (c=cli.read_header())==1 ){}
+        int c=0; while( (c=cli.read_header())==1 )
+        /*---------*/ { process::next(); }
         if( c != 0 ){ break; }
 
         if( cli.headers.has("Sec-Websocket-Key") ){
@@ -466,7 +467,8 @@ namespace nodepp { namespace generator { namespace ws {
         });
 
         cli.write_header( "GET", url::path(url), "HTTP/1.1", header );
-        int c=0; while( (c=cli.read_header())==1 ){}
+        int c=0; while( (c=cli.read_header())==1 )
+        /*---------*/ { process::next(); }
 
         if( c != 0 ){
             cli.onError.emit("Could not connect to server");

@@ -28,7 +28,7 @@ protected:
 
 public:
 
-    virtual ~loop_t() noexcept {}
+    virtual ~loop_t() noexcept { /*-----*/ }
 
     loop_t() noexcept : obj( new NODE() ) {}
 
