@@ -31,7 +31,7 @@ private:
 protected:
 
     struct NODE {
-        int      state = 0;
+        char     state = 0;
         agent_t  agent ;
         NODE_CLB func  ;
     };  ptr_t<NODE> obj;
@@ -73,7 +73,7 @@ public: udp_t() noexcept : obj( new NODE() ) {}
                 self->close(); sk.free(); return; 
             }   sk.set_sockopt( self->obj->agent );
 
-        process::add( coroutine::add( COROUTINE(){
+        process::foop( coroutine::add( COROUTINE(){
         int c=0; coBegin
 
             coWait( (c=sk._bind())==-2 ); if( c<0 ){ 
@@ -111,7 +111,7 @@ public: udp_t() noexcept : obj( new NODE() ) {}
                 self->close(); sk.free(); return; 
             }   sk.set_sockopt( self->obj->agent );
 
-        process::add( coroutine::add( COROUTINE(){
+        process::foop( coroutine::add( COROUTINE(){
         coBegin
 
             sk.onDrain.once([=](){ self->close(); }); cb(sk);

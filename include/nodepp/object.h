@@ -72,8 +72,8 @@ private:
 protected:
 
     struct NODE {
-        any_t  mem   ;
-        int   type =0;
+        any_t  mem     ;
+        int   type  =-1;
     };  ptr_t<NODE> obj;
 
 public:
@@ -85,10 +85,14 @@ public:
         obj->mem = mem; obj->type = 20;
     }
 
+    object_t( null_t ) : obj( new NODE() ) { /*---*/ }
+
     template< class U >
     object_t( const U& any ) : obj(new NODE()) {
         if( type::is_same<U,ARRAY>::value )
           { obj->type = 21; goto BACK; }
+      elif( type::is_same<U,QUEUE>::value )
+          { obj->type = 20; goto BACK; }
         obj->type = type::obj_type_id<U>::value;
         BACK:; obj->mem = any;
     }
@@ -106,38 +110,22 @@ public:
     }
 
     template< class U >
-    explicit operator U() const { return obj->mem.as<U>();     }
-    bool has_value()      const { return obj->mem.has_value(); }
-    uint type_size()      const { return obj->mem.type_size(); }
+    explicit operator U() const { return /*-------------*/ obj->mem.as<U>    (); }
+    bool has_value()      const { return obj->type<0?false:obj->mem.has_value(); }
+    uint type_size()      const { return obj->type<0?false:obj->mem.type_size(); }
 
-    template< class U > U as() const {
-      if( get_type_id() <20 && get_type_id() >21 &&
-          get_type_id() != type::obj_type_id<U>::value 
-      ) {
-        throw except_t( "not valid object type" );
-      } try { return obj->mem.as<U>(); } catch(...) {
-        throw except_t( "item does not exists" );
-      }   
-    }
+    template< class U > U as() const { 
+    try { return obj->mem.as<U>(); } catch( except_t ) {
+          throw except_t( "item does not exists" );
+    } }
 
     /*─······································································─*/
 
     object_t& operator[]( const string_t& name ) const {
-        if( !has_value() || obj->type != 20  )
-          { obj->mem=QUEUE(); obj->type= 20; }
-
-        auto mem = obj->mem.as<QUEUE>();
-        auto x   = mem.raw().first();
-
-        while( x != nullptr ){ auto y = x->next;
-           if( x->data.first == string::to_string(name) )
-             { return x->data.second; }
-           if(!x->data.second.has_value() )
-             { erase(name); } x = y;
-        }
-
-        mem[name] = object_t(); obj->mem = mem;
-        obj->type = 20; return mem[name];
+        if( obj->type != 20 ){ 
+            QUEUE mem; mem[name] = object_t();
+            obj->mem = mem; obj->type=20; /**/
+        }   return obj->mem.as<QUEUE>()[name];
     }
 
     object_t& operator[]( const ulong& idx ) const {

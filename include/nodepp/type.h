@@ -61,6 +61,11 @@ namespace nodepp { namespace type {
     
     /*─······································································─*/
 
+    template <typename T> struct is_null : false_type {};
+    template <> struct is_null<null_t> : true_type {};
+    
+    /*─······································································─*/
+
     template <typename T, T v> struct integral_constant {
         static constexpr T value = v;
 
