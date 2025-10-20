@@ -42,15 +42,15 @@ namespace nodepp { namespace process {
             ::signal( SIGILL,  []( int param ){ onSIGILL .emit(param); onSIGERR.emit(); conio::error("SIGILL: ");  console::log("Illegal Instruction");      onSIGEXIT.emit(); });
             ::signal( SIGTERM, []( int param ){ onSIGTERM.emit(param); onSIGERR.emit(); conio::error("SIGTERM: "); console::log("Process Terminated");       onSIGEXIT.emit(); });
             ::signal( SIGINT,  []( int param ){ onSIGSINT.emit(param); onSIGERR.emit(); conio::error("SIGINT: ");  console::log("Signal Interrupt");         onSIGEXIT.emit(); });
-    #ifdef SIGPIPE
+        #ifdef SIGPIPE
             ::signal( SIGPIPE, []( int param ){ onSIGPIPE.emit(param); onSIGERR.emit(); conio::error("SIGPIPE: "); console::log("Broked Pipeline");          onSIGEXIT.emit(); });
             ::signal( SIGKILL, []( int param ){ onSIGKILL.emit(param); onSIGERR.emit(); conio::error("SIGKILL: "); console::log("Process Killed");           onSIGEXIT.emit(); });
-    #endif
+        #endif
             ::signal( SIGABRT, []( int param ){ onSIGABRT.emit(param); onSIGERR.emit(); conio::error("SIGABRT: "); console::log("Process Abort");            onSIGEXIT.emit(); });
             ::atexit( /*----*/ []( /*-----*/ ){ onSIGEXIT.emit(/*-*/); });
-    #ifdef SIGPIPE
+        #ifdef SIGPIPE
             ::signal( SIGPIPE, SIG_IGN );
-    #endif
+        #endif
         }
 
         void unignore( int signal ){ ::signal( signal, SIG_DFL ); }

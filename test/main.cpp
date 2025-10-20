@@ -12,6 +12,7 @@ using namespace nodepp;
 #include "path.cpp"
 #include "loop.cpp"
 #include "wait.cpp"
+#include "file.cpp"
 #include "http.cpp"
 #include "tuple.cpp"
 #include "worker.cpp"
@@ -38,6 +39,7 @@ void onMain(){
     TEST::PATH    ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::LOOP    ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::WAIT    ::TEST_RUNNER(); conio::log("\n---\n");
+    TEST::FILE    ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::HTTP    ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::TUPLE   ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::COOKIE  ::TEST_RUNNER(); conio::log("\n---\n");

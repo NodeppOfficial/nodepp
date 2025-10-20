@@ -9,7 +9,7 @@ void onMain() {
 
     ssl_t ssl; //ssl_t ssl( "./ssl/cert.key", "./ssl/cert.crt" );
 
-    auto client = wss::client( "wss://localhost:8000/", ssl );
+    auto client = wss::client( "wss://localhost:8000/", &ssl );
     auto cin    = fs::std_input();
     
     client.onConnect([=]( wss_t cli ){ 

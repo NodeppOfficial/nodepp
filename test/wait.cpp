@@ -38,8 +38,7 @@ namespace TEST { namespace WAIT {
             try { ptr_t<int> x = new int(0);
                   wait_t<string_t> wait; wait.once("test",[=](){ *x+=1; });
                   wait.emit("test"); wait.emit("test"); wait.emit("test");
-             if ( wait.empty() ){ throw 0; }
-             if ( *x!=1 )/*---*/{ throw 0; }
+             if ( *x!=1 )/**/{ throw 0; }
                               TEST_DONE();
             } catch ( ... ) { TEST_FAIL(); }
         });

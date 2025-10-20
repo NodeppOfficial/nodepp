@@ -78,6 +78,11 @@ public:
       while( i-->0 ){ unshift(value[i]); }
     }
 
+    queue_t( const ulong& n, const V& c ) noexcept: obj( new DONE )  {
+        if ( n == 0 ){ return; }
+        auto i=n; while( i-->0 ){ unshift(c); }
+    }
+
     template < class T, ulong N >
     queue_t( const T (&value)[N] ) noexcept : obj( new DONE ) {
         auto i=N; while( i-->0 ){ unshift(value[i]); }
@@ -85,11 +90,6 @@ public:
 
     queue_t( const ptr_t<V>& args ) noexcept: obj( new DONE ) {
         for( auto &x: args ){ push( x ); }
-    }
-
-    queue_t( const ulong& n, const V& c ) noexcept {
-        if ( n == 0 ){ return; }
-        auto i=n; while( i-->0 ){ unshift(c); }
     }
 
     queue_t() noexcept : obj( new DONE ) {}
@@ -358,24 +358,21 @@ public:
 
     inline void set( NODE* x ) const noexcept { if( is_item(x) ){ obj->act = x; } }
 
+    inline NODE* get() const noexcept {
+        if( empty() )/*------*/{ return nullptr;   }
+        if( obj->act==nullptr ){ obj->act=first(); } return obj->act;
+    }
+
     inline NODE* get( ulong x ) const noexcept {
         if( empty() ){ return nullptr; } 
         auto y=x%size(); auto n=first();
-        while( n != nullptr && y-->0 )
-             { n=n->next; } return n;
-    }
-
-    inline NODE* get() const noexcept {
-        if( empty() )/*------*/{ return nullptr;   }
-        if( obj->act==nullptr ){ obj->act=first(); }
-        return obj->act;
+        while( n != nullptr && y-->0 ){ n=n->next; } return n;
     }
 
     inline NODE* get( void* x ) const noexcept {
         if( empty() )/*----*/{ return nullptr; }
         auto n = first(); while( n != nullptr ){
-        if( n == as(x) ){ break; }
-        n = n->next; } return n;
+        if ( n == x ) { break; } n  = n->next; } return n;
     }
 
     inline NODE* as( void* x ) const noexcept {

@@ -121,18 +121,6 @@ namespace nodepp { struct fetch_t {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace http {
-
-    regex_t reg0=regex_t( "^([^ ]+) ([^ ]+) ([^\r]+)" );
-    regex_t reg1=regex_t( "^\\d+"   );
-    regex_t reg2=regex_t( "^[^?#]+" );
-    regex_t reg3=regex_t( "?[^#]+"  );
-    regex_t reg4=regex_t( "#\\w+"   );
-
-}}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
 namespace nodepp { class http_t : public socket_t, public generator_t {
 protected:
 
@@ -168,6 +156,13 @@ public:
     /*─······································································─*/
 
     int read_header() noexcept {
+
+        static regex_t reg0=regex_t( "^([^ ]+) ([^ ]+) ([^\r]+)" );
+        static regex_t reg1=regex_t( "^\\d+"   );
+        static regex_t reg2=regex_t( "^[^?#]+" );
+        static regex_t reg3=regex_t( "?[^#]+"  );
+        static regex_t reg4=regex_t( "#\\w+"   );
+
     bool b=1; coBegin
     
         if( !is_available() ){ coEnd; } coWait( line( this )==1 ); 
@@ -179,16 +174,16 @@ public:
             headers[ x.slice( 0, y[0] ).to_capital_case() ] = x.slice( y[1], -2 );
         } while(0); } while(b); 
 
-        do{ http::reg0.search_all(raw); auto base=http::reg0.get_memory(); 
-            http::reg0.clear_memory( ); protocol = "HTTP";
+        do{ reg0.search_all(raw); auto base=reg0.get_memory(); 
+            reg0.clear_memory( ); protocol = "HTTP";
         if( base.size() != 3 ){ break; } /*-------------*/
 
-        if( !http::reg1.test( base[1] ) ){
+        if( !reg1.test( base[1] ) ){
             string_t host = headers.has("Host")? headers["Host"] : "localhost";
             url    = string::format("http://%s%s", host.get(), base[1].get() );
-            path   = http::reg2.match( base[1] );
-            search = http::reg3.match( base[1] );
-            hash   = http::reg4.match( base[1] );
+            path   = reg2.match( base[1] );
+            search = reg3.match( base[1] );
+            hash   = reg4.match( base[1] );
             query  = query::parse( search );
             version= base[2]; method=base[0]; 
 
@@ -256,7 +251,8 @@ namespace nodepp { namespace http {
     /*─······································································─*/
 
     promise_t<http_t,except_t> fetch ( const fetch_t& args, agent_t* opt=nullptr ) { 
-           auto agent = type::bind( opt ); auto fetch = type::bind( args ); 
+           auto agent = type::bind( opt  ); 
+           auto fetch = type::bind( args ); 
     return promise_t<http_t,except_t>([=]( res_t<http_t> res, rej_t<except_t> rej ){
 
         if( !url::is_valid( fetch->url ) ){ rej(except_t("invalid URL")); return; }
