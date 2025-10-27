@@ -6,7 +6,7 @@ using namespace nodepp;
 
 void onMain(){
 
-    promise_t<int,int>([=]( function_t<void,int> res, function_t<void,int> rej ){
+    promise_t<int,except_t>([=]( res_t<int> res, rej_t<except_t> rej ){
         timer::timeout([=](){ res(10); },1000);
     })
 
@@ -14,7 +14,7 @@ void onMain(){
         console::log("resolved:>",res);
     })
 
-    .fail([=]( int rej ){
+    .fail([=]( except_t rej ){
         console::log("rejected:>",rej);
     })
 

@@ -191,20 +191,21 @@ void onMain() {
 Check out some articles on [Medium](https://medium.com/@EDBCBlog)
 
 ## Official Libraries for Nodepp
-- 🔗: [ExpressPP](https://github.com/NodeppOfficial/nodepp-express) -> Express equivalent for Nodepp
-- 🔗: [ApifyPP](https://github.com/NodeppOfficial/nodepp-apify)     -> Socket.io equivalent for Nodepp
-- 🔗: [SerialPP](https://github.com/NodeppOfficial/nodepp-serial)   -> Serial Port for Nodepp
-- 🔗: [Argon2](https://github.com/NodeppOfficial/nodepp-argon2)     -> Argon2 for Nodepp
-- 🔗: [Torify](https://github.com/NodeppOfficial/nodepp-torify)     -> HTTP|Ws over Tor
-- 🔗: [NginxPP](https://github.com/NodeppOfficial/nodepp-nginx)     -> Reverse Proxy
-- 🔗: [InputPP](https://github.com/NodeppOfficial/nodepp-input)     -> Fake Inputs
-- 🔗: [XML](https://github.com/NodeppOfficial/nodepp-xml)           -> XML for Nodepp
-- 🔗: [JWT](https://github.com/NodeppOfficial/nodepp-jwt)           -> JSON Web Token
-- 🔗: [NmapPP](https://github.com/NodeppOfficial/nodepp-nmap)       -> Scan IPs and Ports
-- 🔗: [Redis](https://github.com/NodeppOfficial/nodepp-redis)       -> Redis Client for Nodepp
-- 🔗: [Sqlite](https://github.com/NodeppOfficial/nodepp-sqlite)     -> Sqlite Client for Nodepp
-- 🔗: [MariaDB](https://github.com/NodeppOfficial/nodepp-mariadb)   -> MariaDB Client for Nodepp
-- 🔗: [Postgres](https://github.com/NodeppOfficial/nodepp-postgres) -> Postgres Client for Nodepp
+- 🔗: [ExpressPP](https://github.com/NodeppOfficial/nodepp-express)   -> Express equivalent for Nodepp
+- 🔗: [ApifyPP](https://github.com/NodeppOfficial/nodepp-apify)       -> Socket.io equivalent for Nodepp
+- 🔗: [Bluetooth](https://github.com/NodeppOfficial/nodepp-bluetooth) -> Bluetooth Port for Nodepp
+- 🔗: [SerialPP](https://github.com/NodeppOfficial/nodepp-serial)     -> Serial Port for Nodepp
+- 🔗: [Argon2](https://github.com/NodeppOfficial/nodepp-argon2)       -> Argon2 for Nodepp
+- 🔗: [Torify](https://github.com/NodeppOfficial/nodepp-torify)       -> HTTP|Ws over Tor
+- 🔗: [NginxPP](https://github.com/NodeppOfficial/nodepp-nginx)       -> Reverse Proxy
+- 🔗: [InputPP](https://github.com/NodeppOfficial/nodepp-input)       -> Fake Inputs
+- 🔗: [XML](https://github.com/NodeppOfficial/nodepp-xml)             -> XML for Nodepp
+- 🔗: [JWT](https://github.com/NodeppOfficial/nodepp-jwt)             -> JSON Web Token
+- 🔗: [NmapPP](https://github.com/NodeppOfficial/nodepp-nmap)         -> Scan IPs and Ports
+- 🔗: [Redis](https://github.com/NodeppOfficial/nodepp-redis)         -> Redis Client for Nodepp
+- 🔗: [Sqlite](https://github.com/NodeppOfficial/nodepp-sqlite)       -> Sqlite Client for Nodepp
+- 🔗: [MariaDB](https://github.com/NodeppOfficial/nodepp-mariadb)     -> MariaDB Client for Nodepp
+- 🔗: [Postgres](https://github.com/NodeppOfficial/nodepp-postgres)   -> Postgres Client for Nodepp
 
 ## Contribution
 
