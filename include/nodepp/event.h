@@ -38,6 +38,7 @@ public:
     /*─······································································─*/
 
     void* once( function_t<void,A...> func ) const noexcept {
+        if( func.empty() ){ return nullptr; }
         ptr_t<bool> out = new bool(1); DONE ctx;
         ctx.out=&out; ctx.clb=([=]( A... args ){
             if(*out != 0   ){ func(args...); } /*------------------*/
@@ -46,6 +47,7 @@ public:
     }
 
     void* on( function_t<void,A...> func ) const noexcept {
+        if( func.empty() ){ return nullptr; }
         ptr_t<bool> out = new bool(1); DONE ctx;
         ctx.out=&out; ctx.clb=([=]( A... args ){
             if(*out != 0   ){ func(args...); } /*--------*/

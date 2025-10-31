@@ -238,7 +238,7 @@ public:
 
 namespace nodepp { namespace http {
 
-    template< class T > tcp_t server( T cb, agent_t* opt=nullptr ){
+    tcp_t server( function_t<void,http_t> cb, agent_t* opt=nullptr ){
         return tcp_t([=]( http_t cli ){
 
             int c=0; while((c=cli.read_header())==1)

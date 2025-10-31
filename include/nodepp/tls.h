@@ -62,7 +62,7 @@ public:
 
     /*─······································································─*/
 
-    void listen( const string_t& host, int port, NODE_CLB cb ) const noexcept {
+    void listen( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
         if( obj->state == 1 ){ return; } if( obj->ctx.create_server() == -1 )
           { onError.emit("Error Initializing SSL context"); return; }
         if( dns::lookup(host).empty() ){ onError.emit("dns couldn't get ip"); return; }
@@ -107,7 +107,7 @@ public:
 
     /*─······································································─*/
 
-    void connect( const string_t& host, int port, NODE_CLB cb ) const noexcept {
+    void connect( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
 
         if( obj->state == 1 ){ return; } if( obj->ctx.create_client() == -1 )
           { onError.emit("Error Initializing SSL context"); return; }
@@ -155,16 +155,6 @@ public:
 
     /*─······································································─*/
 
-    void connect( const string_t& host, int port ) const noexcept {
-         connect( host, port, []( ssocket_t ){} );
-    }
-
-    void listen( const string_t& host, int port ) const noexcept {
-         listen( host, port, []( ssocket_t ){} );
-    }
-
-    /*─······································································─*/
-
     void free() const noexcept {
         if( is_closed() ){ return; }close();
         onConnect.clear(); onSocket.clear();
@@ -178,11 +168,11 @@ public:
 namespace tls {
 
     tls_t server( ssl_t* ssl=nullptr, agent_t* opt=nullptr ){
-        auto skt = tls_t( [=]( ssocket_t ){}, ssl, opt ); return skt;
+        auto skt = tls_t( nullptr, ssl, opt ); return skt;
     }
 
     tls_t client( ssl_t* ssl=nullptr, agent_t* opt=nullptr ){
-        auto skt = tls_t( [=]( ssocket_t ){}, ssl, opt ); return skt;
+        auto skt = tls_t( nullptr, ssl, opt ); return skt;
     }
 
 }

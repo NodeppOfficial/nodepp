@@ -74,14 +74,14 @@ namespace nodepp { namespace wss {
     /*─······································································─*/
 
     tls_t server( ssl_t* ssl=nullptr, agent_t* opt=nullptr ){
-    auto skt = https::server( [=]( https_t ){}, ssl, opt );
+    auto skt = https::server( nullptr, ssl, opt );
                  wss::server( skt ); return skt;
     }
 
     /*─······································································─*/
 
     tls_t client( const string_t& uri, ssl_t* ssl=nullptr, agent_t* opt=nullptr ){
-    tls_t skt   ( [=]( ssocket_t ){}, ssl, opt );
+    tls_t skt   ( nullptr, ssl, opt );
     skt.onSocket.once([=]( ssocket_t cli ){
 
         auto hrv = type::cast<https_t>(cli);

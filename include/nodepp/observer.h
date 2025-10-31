@@ -63,12 +63,14 @@ public: observer_t() noexcept {}
     template< class F >
     void* once( string_t name, F func ) const noexcept {
         if( !list.has( name ) ){ return nullptr; }
+        if( func.empty() ){ return nullptr; }
         return event.once( name, func );
     }
 
     template< class F >
     void* on( string_t name, F func ) const noexcept {
         if( !list.has( name ) ){ return nullptr; }
+        if( func.empty() ){ return nullptr; }
         return event.on( name, func );
     }
     

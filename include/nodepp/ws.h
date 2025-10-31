@@ -74,14 +74,14 @@ namespace nodepp { namespace ws {
     /*─······································································─*/
 
     tcp_t server( agent_t* opt=nullptr ){
-    auto skt = http::server( [=]( http_t ){}, opt );
+    auto skt = http::server( nullptr, opt );
                  ws::server( skt ); return skt;
     }
 
     /*─······································································─*/
 
     tcp_t client( const string_t& uri, agent_t* opt=nullptr ){
-    tcp_t skt   ( [=]( socket_t ){}, opt );
+    tcp_t skt   ( nullptr, opt );
     skt.onSocket.once([=]( socket_t cli ){
 
         auto hrv = type::cast<http_t> (cli);

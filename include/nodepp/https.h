@@ -136,7 +136,7 @@ public:
 
 namespace nodepp { namespace https {
 
-    template< class T > tls_t server( T cb, ssl_t* ssl=nullptr, agent_t* opt=nullptr ){
+    tls_t server( function_t<void,https_t> cb, ssl_t* ssl=nullptr, agent_t* opt=nullptr ){
         return tls_t([=]( https_t cli ){
 
             int c=0; while((c=cli.read_header())==1);
