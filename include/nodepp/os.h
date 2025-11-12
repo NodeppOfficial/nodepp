@@ -15,9 +15,9 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
-    #include "windows/os.cpp"
+    #include "windows/os.h"
 #elif _KERNEL_ == NODEPP_KERNEL_POSIX
-    #include "posix/os.cpp"
+    #include "posix/os.h"
 #else
     #error "This OS Does not support os.h"
 #endif

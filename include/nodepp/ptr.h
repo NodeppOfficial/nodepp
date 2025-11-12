@@ -34,8 +34,8 @@ private:
         if( address == nullptr ){ return -1; }
         if( address->count ==0 ){ return -1; }
           --address->count;
-        
-        if( address->count == 0 )
+
+        if( address->count ==0 )
           { _free_(address); delete address; }
 
         address = nullptr;
@@ -206,16 +206,17 @@ public:
 
     ulong     size() const noexcept { return null() ? 0 /*-*/ : address->length; }
     ulong    count() const noexcept { return null() ? 0 /*-*/ : address->count;  }
+
     T*        data() const noexcept { return null() ? nullptr : address->value;  }
     T*         get() const noexcept { return null() ? nullptr : address->value;  }
-
+    
     T*         end() const noexcept { return null() ? nullptr : data() + size(); }
     T*       begin() const noexcept { return null() ? nullptr : data() ; }
     void      free() const noexcept { _free_( address ); }
 
-    bool     empty() const noexcept { return  null() ||  size()== 0; }
-    bool has_value() const noexcept { return !null() && count()!= 0; }
-    bool      null() const noexcept { return _null_(address); }
+    bool     empty() const noexcept { return  null() ||  size() == 0; }
+    bool has_value() const noexcept { return !null() && count() != 0; }
+    bool      null() const noexcept { return _null_( address ); }
 
     /*─······································································─*/
 

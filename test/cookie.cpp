@@ -59,5 +59,3 @@ namespace TEST { namespace COOKIE {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

@@ -22,9 +22,9 @@ void onMain() {
             cli.write( data );
         });
 
-        cli.onClose([](){ 
+        cli.onDrain([=](){ 
             console::log("closed"); 
-            process::exit(1);
+            cin.close();
         });
 
         stream::pipe( cin );

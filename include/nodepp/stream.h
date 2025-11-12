@@ -29,28 +29,28 @@ namespace nodepp { namespace stream {
     
     template< class... T >
     void duplex( const T&... inp ){ generator::stream::duplex arg;
-         process::add( arg, inp... );
+         process::foop( arg, inp... );
     }
     
     /*─······································································─*/
     
     template< class... T >
     void until( const T&... inp ){ generator::stream::until arg;
-         process::add( arg, inp... );
+         process::foop( arg, inp... );
     }
     
     /*─······································································─*/
     
     template< class... T >
     void pipe( const T&... inp ){ generator::stream::pipe arg;
-         process::add( arg, inp... );
+         process::foop( arg, inp... );
     }
     
     /*─······································································─*/
     
     template< class... T >
     void line( const T&... inp ){ generator::stream::line arg;
-         process::add( arg, inp... );
+         process::foop( arg, inp... );
     }
     
     /*─······································································─*/

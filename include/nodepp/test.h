@@ -46,13 +46,13 @@ namespace nodepp {
         virtual ~test_t() noexcept {
             if( obj.count()  > 1 ){ return; }
             if( obj->state == -1 ){ return; }
-   	        process::onSIGERR.off( obj->ev );
+   	        process::onSIGERROR.off( obj->ev );
             onClose.emit(); obj->state =-1;
         }
 
         test_t() noexcept : obj( new DONE() ) { 
             auto self = type::bind( this );
-            obj->ev = process::onSIGERR.once([=]( ... ){ 
+            obj->ev = process::onSIGERROR.once([=](int){ 
                 conio::error( "ERROR: " ); 
                 auto node = self->obj->queue.get(); 
                 conio::log( node->data.name );

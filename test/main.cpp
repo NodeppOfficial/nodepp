@@ -12,6 +12,7 @@ using namespace nodepp;
 #include "path.cpp"
 #include "loop.cpp"
 #include "wait.cpp"
+#include "file.cpp"
 #include "http.cpp"
 #include "tuple.cpp"
 #include "worker.cpp"
@@ -25,6 +26,7 @@ using namespace nodepp;
 #include "variant.cpp"
 #include "promise.cpp"
 #include "function.cpp"
+#include "observer.cpp"
 #include "optional.cpp"
 #include "expected.cpp"
 
@@ -38,6 +40,7 @@ void onMain(){
     TEST::PATH    ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::LOOP    ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::WAIT    ::TEST_RUNNER(); conio::log("\n---\n");
+    TEST::FILE    ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::HTTP    ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::TUPLE   ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::COOKIE  ::TEST_RUNNER(); conio::log("\n---\n");
@@ -52,6 +55,7 @@ void onMain(){
     TEST::VARIANT ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::PROMISE ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::FUNCTION::TEST_RUNNER(); conio::log("\n---\n");
+    TEST::OBSERVER::TEST_RUNNER(); conio::log("\n---\n");
     TEST::EXPECTED::TEST_RUNNER(); conio::log("\n---\n");
     TEST::OPTION  ::TEST_RUNNER(); conio::log("\n---\n");
 

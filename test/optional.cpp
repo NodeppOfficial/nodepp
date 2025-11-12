@@ -43,5 +43,3 @@ namespace TEST { namespace OPTION {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

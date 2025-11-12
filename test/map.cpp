@@ -89,5 +89,3 @@ namespace TEST { namespace MAP {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

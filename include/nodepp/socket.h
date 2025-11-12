@@ -18,12 +18,12 @@
     #include "os.h"
     #include "limit.h"
     #include "stream.h"
-    #include "windows/socket.cpp"
+    #include "windows/socket.h"
 #elif _KERNEL_ == NODEPP_KERNEL_POSIX
     #include "os.h"
     #include "limit.h"
     #include "stream.h"
-    #include "posix/socket.cpp"
+    #include "posix/socket.h"
 #else
     #error "This OS Does not support socket.h"
 #endif
