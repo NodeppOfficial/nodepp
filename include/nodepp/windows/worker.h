@@ -14,10 +14,6 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#include "mutex.h"
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
 namespace nodepp { class worker_t { 
 private:
 
@@ -35,9 +31,9 @@ protected:
 
     static DWORD WINAPI callback( LPVOID arg ){
         auto self = type::cast<worker_t>(arg);
-        self->obj->mtx.emit([=](){ self->obj->state=1; });
-        while( self->obj->cb.emit()>=0 ){ worker::yield(); } 
-        self->obj->mtx.emit([=](){ self->free(); });
+        self->obj->mtx.emit([=](){ self->obj->state=1; return -1; });
+        while( self->obj->cb.emit() >= 0 ){ worker::yield(); } 
+        self->obj->mtx.emit([=](){ self->free(); return -1; });
         /*-------*/ delete self; worker::exit(); 
     return 0; }
 

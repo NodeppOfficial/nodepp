@@ -34,7 +34,8 @@ namespace nodepp { class mutex_t {
 protected:
 
     struct NODE {
-        HANDLE fd; bool state=0;
+        bool /*-*/ alive=1;
+        HANDLE /*----*/ fd;
     };  ptr_t<NODE> obj;
 
 public:
@@ -43,26 +44,33 @@ public:
         obj->fd   = CreateMutex( NULL, 0, NULL );
         if( obj->fd == NULL )
           { throw except_t("Cant Start Mutex"); }
-            /*-----------------*/ obj->state=1; 
+            /*-----------------*/ obj->alive=1; 
     }
 
     virtual ~mutex_t() noexcept {
-        if( obj->state == 0 ){ return; }
+        if( obj->alive == 0 ){ return; }
         if( obj.count() > 1 ){ return; } 
     free(); }
     
     /*─······································································─*/
 
     void free() const noexcept {
-         if( obj->state == 0 ){ return; }
-             obj->state =  0; CloseHandle( obj->fd );
+         if( obj->alive == 0 ){ return; }
+             obj->alive =  0; CloseHandle( obj->fd );
     }
     
     /*─······································································─*/
 
     template< class T, class... V >
-    void emit( T callback, const V&... args ) const noexcept {
-         lock(); callback( args... ); unlock();
+    int operator() ( T callback, const V&... args ) const noexcept { 
+        return emit( callback, args... ); 
+    }
+
+    template< class T, class... V >
+    inline int emit( T callback, const V&... args ) const noexcept {
+        if( obj->alive == 0 ){ return -1; }
+        lock  (); int c=callback( args... ); 
+        unlock(); /*------------*/ return c;
     }
     
     /*─······································································─*/

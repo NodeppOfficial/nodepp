@@ -22,6 +22,7 @@ using namespace nodepp;
 #include "array.cpp"
 #include "queue.cpp"
 #include "regex.cpp"
+#include "atomic.cpp"
 #include "string.cpp"
 #include "variant.cpp"
 #include "promise.cpp"
@@ -52,6 +53,7 @@ void onMain(){
     TEST::QUEUE   ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::REGEX   ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::STRING  ::TEST_RUNNER(); conio::log("\n---\n");
+    TEST::ATOMIC  ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::VARIANT ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::PROMISE ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::FUNCTION::TEST_RUNNER(); conio::log("\n---\n");
