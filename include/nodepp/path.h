@@ -54,8 +54,8 @@ namespace nodepp { struct path_t {
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace _path_ { 
-inline map_t<string_t,string_t> mimetype() {
-static map_t<string_t,string_t> out ({
+inline map_t<string_t,string_t>& mimetype() {
+static map_t<string_t,string_t>  out ({
 
     { "txt",  "text/plain" },
     { "text", "text/plain" },

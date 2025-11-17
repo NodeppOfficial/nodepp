@@ -48,8 +48,8 @@ namespace url {
 
 /*────────────────────────────────────────────────────────────────────────────*/
     
-    inline map_t<string_t,uint> protocols() {
-    static map_t<string_t,uint> out ({
+    inline map_t<string_t,uint>& protocols() {
+    static map_t<string_t,uint>  out ({
          { "https", 443 }, { "wss" , 443 },
          { "tls"  , 443 }, { "dtls", 443 },
          { "http" ,  80 }, { "ws"  ,  80 },

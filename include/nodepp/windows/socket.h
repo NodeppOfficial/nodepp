@@ -24,8 +24,8 @@ namespace nodepp { namespace _socket_ {
 
     inline void start_device(){ static bool sockets=false;
         if( sockets == false ){ WSADATA wsaData;
-            process::onSIGEXIT([=](){ WSACleanup(); });
-            if( WSAStartup(MAKEWORD(2,2),&wsaData) != 0 )
+            process::onSIGEXIT.once([=](){ WSACleanup(); });
+            if( WSAStartup(MAKEWORD(2,2),&wsaData)!= 0 )
               { throw except_t("Failed to initialize Winsock"); }
         }   sockets = true;
     }

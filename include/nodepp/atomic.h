@@ -9,29 +9,18 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#ifndef NODEPP_MUTEX
-#define NODEPP_MUTEX
+#ifndef NODEPP_ATOMIC
+#define NODEPP_ATOMIC
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
-    #include "windows/mutex.h"
+    #include "windows/atomic.h"
 #elif _KERNEL_ == NODEPP_KERNEL_POSIX
-    #include "posix/mutex.h"
+    #include "posix/atomic.h"
 #else
-    #error "This OS Does not support mutex.h"
+    #error "This OS Does not support atomic.h"
 #endif
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-namespace nodepp { namespace mutex {
-
-    template< class T, class... V >
-    function_t<int,V...> add( mutex_t mut, T cb, const V&... args ){
-        return [=](){ return mut.emit( cb, args... ); };
-    }
-
-}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
