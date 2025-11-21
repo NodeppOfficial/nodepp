@@ -17,6 +17,7 @@
 namespace nodepp { class worker_t { 
 private:
 
+    mutex_t& mut(){ static mutex_t mut; return mut; }
     struct waiter { bool blk; bool out; }; 
 
 protected:
@@ -26,15 +27,13 @@ protected:
         HANDLE /**/ thread;
         bool *out, state=0;
         DWORD /*-----*/ id; 
-        mutex_t /*--*/ mtx;
     };  ptr_t<NODE> obj;
 
     static DWORD WINAPI callback( LPVOID arg ){
-        auto self = type::cast<worker_t>(arg);
-        self->obj->mtx.emit([=](){ self->obj->state=1; return -1; });
-        while( self->obj->cb.emit() >= 0 ){ worker::yield(); } 
-        self->obj->mtx.emit([=](){ self->free(); return -1; });
-        /*-------*/ delete self; worker::exit(); 
+        auto self = type::cast<worker_t>(arg); self->obj->state=1;
+        while( self->obj->cb.emit() >= 0 ){ worker::yield(); }
+        self->mut().emit([=](){ self->free(); return -1; });
+        /*----*/ delete self; worker::exit(); 
     return 0; }
 
 public:

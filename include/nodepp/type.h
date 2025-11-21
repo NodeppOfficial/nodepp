@@ -16,6 +16,15 @@
 
 namespace nodepp { namespace type {
 
+    template< class T, class V > T* cast( V* object ){ if( object==nullptr ){ return nullptr; } return static_cast<T*>(object); }
+    template< class T, class V > T  cast( V  object ){ return static_cast<T>( object ); }
+
+}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace type {
+
     struct false_type { static constexpr bool value = false; using type = false_type; };
     struct true_type  { static constexpr bool value = true;  using type = true_type;  };
     
@@ -404,24 +413,6 @@ namespace nodepp { namespace type {
           ++src_first;
         }
     }
-
-}}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-#include "ptr.h"
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-namespace nodepp { namespace type {
-
-    template< class T, class V > T* cast( ptr_t<V>& object ){ if( object==nullptr ){ return nullptr; } return static_cast<T*>(object.get()); }
-    template< class T, class V > T* cast(       V*  object ){ if( object==nullptr ){ return nullptr; } return static_cast<T*>(object); }
-    template< class T, class V > T  cast(       V   object ){ return static_cast<T>( object ); }
-
-    template<class T> ptr_t<T>      bind( ptr_t<T>& object ){ if( object==nullptr ){ return nullptr; } return    object.copy(); }
-    template<class T> ptr_t<T>      bind(       T*  object ){ if( object==nullptr ){ return nullptr; } return new T( *object ); }
-    template<class T> ptr_t<T>      bind(       T   object ){ return new T( object ); }
 
 }}
 

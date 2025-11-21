@@ -26,9 +26,9 @@ namespace nodepp { namespace process {
 
     /*─······································································─*/
 
-    inline ulong size(){ return _TASK_ + _loop_.size() + _poll_.size() + _foop_.size(); }
+    inline ulong size(){ return _TASK_.get() + _loop_.size() + _poll_.size() + _foop_.size(); }
 
-    inline void clear(){ _TASK_=0; _loop_.clear(); _poll_.clear(); _foop_.clear(); }
+    inline void clear(){ _TASK_.set(0); _loop_.clear(); _poll_.clear(); _foop_.clear(); }
 
     inline bool empty(){ return size() <= 0; }
 

@@ -17,7 +17,7 @@
 namespace nodepp { template< class T > class ptr_t {
 private:
 
-    struct NODE { ulong count, length; T* value; };
+    struct NODE { atomic_t<ulong> count, length; T* value; };
 
     inline int _free_( NODE* address ) const noexcept {
         if( address /*--*/ == nullptr ){ return -1; }
@@ -204,8 +204,8 @@ public:
 
     /*─······································································─*/
 
-    ulong     size() const noexcept { return null() ? 0 /*-*/ : address->length; }
-    ulong    count() const noexcept { return null() ? 0 /*-*/ : address->count;  }
+    ulong     size() const noexcept { return null() ? 0 /*-*/ : address->length.get(); }
+    ulong    count() const noexcept { return null() ? 0 /*-*/ : address->count .get(); }
 
     T*        data() const noexcept { return null() ? nullptr : address->value;  }
     T*         get() const noexcept { return null() ? nullptr : address->value;  }
@@ -230,6 +230,20 @@ public:
     /*─······································································─*/
 
 };}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace type {
+
+    template< class T, class V > T* cast( ptr_t<V>& object ){ if( object==nullptr ){ return nullptr; } return static_cast<T*>(object.get()); }
+    
+    /*─······································································─*/
+
+    template<class T> ptr_t<T> bind( ptr_t<T>& object ){ if( object==nullptr ){ return nullptr; } return    object.copy(); }
+    template<class T> ptr_t<T> bind(       T*  object ){ if( object==nullptr ){ return nullptr; } return new T( *object ); }
+    template<class T> ptr_t<T> bind(       T   object ){ return new T( object ); }
+
+}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

@@ -88,11 +88,6 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-bool    _EXIT_ = false;
-int     _TASK_ = 0;
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
 #define forEach( X, ITEM ) for( auto& X : ITEM )
 #define forEver() for (;;)
 #define elif else if
