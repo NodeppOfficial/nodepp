@@ -14,7 +14,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { class loop_t {
+namespace nodepp { class loop_t : public generator_t {
 private:
 
     using NODE_CLB = function_t<int>;
@@ -28,7 +28,7 @@ protected:
 
 public:
 
-    virtual ~loop_t() noexcept {}
+    virtual ~loop_t() noexcept { /*-----*/ }
 
     loop_t() noexcept : obj( new NODE() ) {}
 
@@ -42,24 +42,31 @@ public:
 
     /*─······································································─*/
 
-    inline int next() const noexcept { if( obj->queue.empty() ){ return -1; }
-    auto x = obj->queue.get();  if( x==nullptr ) /*--*/ { return -1; }
-    int  y = 0; bool z = x->next==nullptr;
+    inline int next() noexcept { 
+    coBegin
+        
+        if( obj->queue.empty() ) /*-*/ { coEnd; } do {
+        if( obj->queue.get()==nullptr ){ coEnd; }
 
-        switch( (y=x->data()) ){
+        auto x = obj->queue.get();
+        auto y = x->data();
+
+        switch( y ){
             case -1: obj->queue.erase(x); break;
             case  1: obj->queue.next();   break;
-            default: /*----------------*/ break;
+            default: /*--------------*/   break;
         } 
-        
-    return z ? -1 : y; }
+            
+        return y; } while(0);
+
+    coFinish }
 
     /*─······································································─*/
 
     template< class T, class... V >
     inline void* add( T cb, const V&... arg ) const noexcept {
 
-        ptr_t<waiter> tsk = new waiter();
+        ptr_t<waiter> tsk = new waiter(); /*----------*/
         auto clb=type::bind(cb); tsk->blk=0; tsk->out=1; 
 
         obj->queue.push([=](){

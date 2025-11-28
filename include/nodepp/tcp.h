@@ -31,7 +31,7 @@ private:
 protected:
 
     struct NODE {
-        int      state= 0;
+        char     state= 0;
         agent_t  agent;
         NODE_CLB func ;
     };  ptr_t<NODE> obj;
@@ -60,9 +60,9 @@ public:
 
     /*─······································································─*/
 
-    void listen( const string_t& host, int port, NODE_CLB cb ) const noexcept {
+    void listen( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
         if( obj->state == 1 ){ return; } if( dns::lookup(host).empty() )
-          { onError.emit("dns couldn't get ip"); close(); return; }
+          { onError.emit("dns couldn't get ip"); return; }
 
         auto self = type::bind( this ); auto clb = [=](){
 
@@ -72,17 +72,17 @@ public:
 
             if( sk.socket( dns::lookup(host), port )<0 ){
                 self->onError.emit("Error while creating TCP"); 
-                self->close(); sk.free(); return; 
+                self->close(); sk.free(); return -1; 
             }   sk.set_sockopt( self->obj->agent );
 
             if( sk.bind()<0 ){
                 self->onError.emit("Error while binding TCP"); 
-                self->close(); sk.free(); return; 
+                self->close(); sk.free(); return -1; 
             }
 
             if( sk.listen()<0 ){ 
                 self->onError.emit("Error while listening TCP"); 
-                self->close(); sk.free(); return; 
+                self->close(); sk.free(); return -1; 
             }   cb( sk ); self->onOpen.emit( sk ); 
             
         process::poll( sk, POLL_STATE::READ, coroutine::add( COROUTINE(){
@@ -98,15 +98,15 @@ public:
             self->onSocket.emit(cli); self->obj->func(cli);
             if( cli.is_available() ){ self->onConnect.emit(cli); }
 
-        coStay(0); coFinish })); }; clb();
+        coStay(0); coFinish })); return -1; }; process::foop( clb );
 
     }
 
     /*─······································································─*/
 
-    void connect( const string_t& host, int port, NODE_CLB cb ) const noexcept {
+    void connect( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
         if( obj->state == 1 ){ return; } if( dns::lookup(host).empty() )
-          { onError.emit("dns couldn't get ip"); close(); return; }
+          { onError.emit("dns couldn't get ip"); return; }
 
         auto self = type::bind(this); auto clb = [=](){
 
@@ -116,10 +116,10 @@ public:
 
             if( sk.socket( dns::lookup(host), port )<0 ){
                 self->onError.emit("Error while creating TCP"); 
-                self->close(); sk.free(); return; 
+                self->close(); sk.free(); return -1; 
             }   sk.set_sockopt( self->obj->agent );
 
-        process::poll( sk, POLL_STATE::WRITE, coroutine::add( COROUTINE(){
+        process::foop( coroutine::add( COROUTINE(){
         int c=0; coBegin
 
             coWait((c=sk._connect()) == -2 ); if( c<=0 ){
@@ -135,18 +135,8 @@ public:
                 self->onConnect.emit(sk); 
             }
 
-        coFinish })); }; clb();
+        coFinish })); return -1; }; process::foop( clb );
 
-    }
-
-    /*─······································································─*/
-
-    void connect( const string_t& host, int port ) const noexcept {
-         connect( host, port, []( socket_t ){} );
-    }
-
-    void listen( const string_t& host, int port ) const noexcept {
-         listen( host, port, []( socket_t ){} );
     }
 
     /*─······································································─*/
@@ -163,12 +153,12 @@ public:
 
 namespace tcp {
 
-    tcp_t server( agent_t* opt=nullptr ){
-        auto skt = tcp_t([=]( socket_t ){}, opt ); return skt;
+    inline tcp_t server( agent_t* opt=nullptr ){
+        auto skt = tcp_t( nullptr, opt ); return skt;
     }
 
-    tcp_t client( agent_t* opt=nullptr ){
-        auto skt = tcp_t([=]( socket_t ){}, opt ); return skt;
+    inline tcp_t client( agent_t* opt=nullptr ){
+        auto skt = tcp_t( nullptr, opt ); return skt;
     }
 
 }

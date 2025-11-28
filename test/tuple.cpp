@@ -36,5 +36,3 @@ namespace TEST { namespace TUPLE {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }
