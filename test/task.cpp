@@ -1,4 +1,5 @@
 #include <nodepp/nodepp.h>
+#include <nodepp/promise.h>
 #include <nodepp/test.h>
 
 using namespace nodepp;
@@ -48,6 +49,24 @@ namespace TEST { namespace TASK {
             } catch ( ... ) { TEST_FAIL(); }
         });
 
+        TEST_ADD( test, "TEST 3 | task resolver testing", [](){
+            try { ptr_t<int> x = new int(0); 
+                  ptr_t<int> y = new int(3);
+
+                promise::resolve( coroutine::add( COROUTINE(){
+                coBegin
+
+                    while( *y>0 ){ *x += 10; *y-=1; coNext; }
+                    
+                coFinish
+                })).emit();
+                
+             while( *y!=0 ){ process::next(); }
+                if( *x != 30 ){ TEST_FAIL(); }
+                              TEST_DONE();
+            } catch ( ... ) { TEST_FAIL(); }
+        });
+
         test.onClose.once([=](){
             console::log("\nRESULT | total:", *totl, "| passed:", *done, "| error:", *err, "| skipped:", *skp );
         });
@@ -61,5 +80,3 @@ namespace TEST { namespace TASK {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

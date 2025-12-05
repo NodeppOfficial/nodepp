@@ -28,7 +28,7 @@ void onMain(){
             console::log( data );
         });
 
-        cli.onClose([=](){
+        cli.onDrain([=](){
             console::log("closed");
         });
 

@@ -59,5 +59,3 @@ namespace TEST { namespace VARIANT {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

@@ -45,5 +45,3 @@ namespace TEST { namespace FUNCTION {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

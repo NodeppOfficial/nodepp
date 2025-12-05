@@ -17,7 +17,7 @@
 namespace nodepp { template< class T > class ptr_t {
 private:
 
-    struct NODE { ulong count, length; T* value; };
+    struct NODE { atomic_t<ulong> count, length; T* value; };
 
     inline int _free_( NODE* address ) const noexcept {
         if( address /*--*/ == nullptr ){ return -1; }
@@ -34,8 +34,8 @@ private:
         if( address == nullptr ){ return -1; }
         if( address->count ==0 ){ return -1; }
           --address->count;
-        
-        if( address->count == 0 )
+
+        if( address->count ==0 )
           { _free_(address); delete address; }
 
         address = nullptr;
@@ -204,18 +204,19 @@ public:
 
     /*─······································································─*/
 
-    ulong     size() const noexcept { return null() ? 0 /*-*/ : address->length; }
-    ulong    count() const noexcept { return null() ? 0 /*-*/ : address->count;  }
+    ulong     size() const noexcept { return null() ? 0 /*-*/ : address->length.get(); }
+    ulong    count() const noexcept { return null() ? 0 /*-*/ : address->count .get(); }
+
     T*        data() const noexcept { return null() ? nullptr : address->value;  }
     T*         get() const noexcept { return null() ? nullptr : address->value;  }
-
+    
     T*         end() const noexcept { return null() ? nullptr : data() + size(); }
     T*       begin() const noexcept { return null() ? nullptr : data() ; }
     void      free() const noexcept { _free_( address ); }
 
-    bool     empty() const noexcept { return  null() ||  size()== 0; }
-    bool has_value() const noexcept { return !null() && count()!= 0; }
-    bool      null() const noexcept { return _null_(address); }
+    bool     empty() const noexcept { return  null() ||  size() == 0; }
+    bool has_value() const noexcept { return !null() && count() != 0; }
+    bool      null() const noexcept { return _null_( address ); }
 
     /*─······································································─*/
 
@@ -229,6 +230,17 @@ public:
     /*─······································································─*/
 
 };}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace type {
+
+    template< class T, class V > T* cast( ptr_t<V>& object ){ if( object  .null() ){ return nullptr; } return static_cast<T*>(object.get()); }
+    template<class T> ptr_t<T>      bind( ptr_t<T>& object ){ if( object  .null() ){ return nullptr; } return object; }
+    template<class T> ptr_t<T>      bind(       T*  object ){ if( object==nullptr ){ return nullptr; } return new T( *object ); }
+    template<class T> ptr_t<T>      bind(       T   object ){ return new T( object ); }
+
+}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
