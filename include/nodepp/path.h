@@ -14,28 +14,48 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#if false // _KERNEL_ == NODEPP_KERNEL_WINDOWS
+
+#define PATH_SEP  "\\\\"
+#define PATH_ROOT "c:\\\\"
+#define PATH_ONE  "[^\\\\]+"
+#define PATH_SEL  "/+|\\\\+"
+#define PATH_BEG  "\\w:\\\\"
+#define PATH_PEG  "^\\w:\\\\"
+
+#else
+
+#define PATH_SEP  "/"
+#define PATH_ROOT "./"
+#define PATH_ONE  "[^/]+"
+#define PATH_BEG  "/"
+#define PATH_PEG  "^/"
+#define PATH_SEL  "/+|\\\\+"
+
+#endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #include "regex.h"
 #include "map.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp {
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-struct path_t {
+namespace nodepp { struct path_t {
     string_t type;
     string_t path;
-    string_t root; 
+    string_t root;
     string_t base;
     string_t name;
     string_t dir;
     string_t ext;
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace _path_ { map_t<string_t,string_t> mimetype ({
+namespace nodepp { namespace _path_ { 
+inline map_t<string_t,string_t>& mimetype() {
+static map_t<string_t,string_t>  out ({
 
     { "txt",  "text/plain" },
     { "text", "text/plain" },
@@ -104,98 +124,84 @@ namespace _path_ { map_t<string_t,string_t> mimetype ({
     { "docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
     { "pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation" }
 
-}); }
+}); return out; }}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace path { namespace {
-#if false // _KERNEL_ == NODEPP_KERNEL_WINDOWS
-    string_t sep  = "\\\\";
-    string_t root = "c:\\\\";
-    string_t  one = "[^\\\\]+";
-    string_t _beg = "\\w:\\\\";
-    string_t  beg = "^\\w:\\\\";
-#else
-    string_t  sep = "/";
-    string_t _beg = "/";
-    string_t root = "./";
-    string_t  beg = "^/";
-    string_t  one = "[^/]+";
-#endif
-} namespace {
-    regex_t reg0 = regex_t( "/+|\\\\+" );
-    regex_t reg1 = regex_t( one );
-    regex_t reg2 = regex_t( beg );
-    regex_t reg3 = regex_t("^"+beg); 
-}
-    
-    /*─······································································─*/
+namespace nodepp { namespace path {
 
-    string_t normalize( string_t path ){ 
+    inline string_t normalize( string_t path ){
+        static regex_t reg0 = regex_t( PATH_SEL );
         auto sec = reg0.split( path );
         queue_t<string_t> nsec; ulong y=0;
 
         for ( ulong x=0; x<sec.size(); ++x ){
-         if ( sec[x] == ".." ){ 
+         if ( sec[x] == ".." ){
               nsec.push( sec[x] );
-              ++y; continue; 
+              ++y; continue;
             } break;
         }
 
         for ( ulong x=y; x<sec.size(); ++x ){
          if ( sec[x] == ".." && !nsec.empty() ){
-              nsec.pop(); continue; 
+              nsec.pop(); continue;
             } nsec.push( sec[x] );
         }
 
-        return array_t<string_t>( nsec.data() ).join( sep );
+        return array_t<string_t>( nsec.data() ).join( PATH_SEP );
     }
-    
+
     /*─······································································─*/
 
-    bool is_absolute( const string_t& path ){ return reg3.test(path); }
-    
+    inline bool is_absolute( const string_t& path ){ 
+        static regex_t reg3 = regex_t( PATH_PEG );
+        return reg3.test(path); 
+    }
+
     /*─······································································─*/
 
-    string_t extname( const string_t& path ){ string_t m;
-        regex_t reg("\\.\\w+$"); if( !reg.test( path ) ) 
+    inline string_t extname( const string_t& path ){ string_t m;
+        regex_t reg("\\.\\w+$"); if( !reg.test( path ) )
           { return m; } return reg.match( path ).slice(1);
     }
-    
+
     /*─······································································─*/
 
-    string_t mimetype( const string_t& path ){
-        string_t ext = extname( path ); if( ext.empty() ) 
-        { return ext; } if( !_path_::mimetype.has( ext ) )
+    inline string_t mimetype( const string_t& path ){
+        string_t ext = extname( path ); if( ext.empty() )
+        { return ext; } if( !_path_::mimetype().has( ext ) )
         { return string::format("aplication/%s",ext.c_str()); }
-          return _path_::mimetype[ ext ];
+          return _path_::mimetype()[ ext ];
     }
 
-    string_t mimetype( const path_t& path ){
-        if( path.ext.empty() ) { return path.ext; } 
-        if( !_path_::mimetype.has( path.ext ) )
+    inline string_t mimetype( const path_t& path ){
+        if( path.ext.empty() ) { return path.ext; }
+        if( !_path_::mimetype().has( path.ext ) )
           { return string::format("aplication/%s",path.ext.c_str()); }
-            return _path_::mimetype[ path.ext ];
+            return _path_::mimetype()[ path.ext ];
     }
 
     /*─······································································─*/
 
-    string_t dirname( const string_t& path ){ 
+    inline string_t dirname( const string_t& path ){
+        static regex_t reg0 = regex_t( PATH_SEL );
         auto vec = reg0.split( path );
-        vec.pop(); return vec.join( sep );
+        vec.pop(); return vec.join( PATH_SEP );
     }
-    
+
     /*─······································································─*/
 
-    string_t basename( const string_t& path ){ 
+    inline string_t basename( const string_t& path ){
+        static regex_t reg1 = regex_t( PATH_ONE );
         auto vec = reg1.match_all( path );
         if ( vec.empty() ){ return nullptr; }
         return vec[ vec.last() ];
     }
-    
+
     /*─······································································─*/
 
-    string_t basename( const string_t& path, const string_t& del ){ 
+    inline string_t basename( const string_t& path, const string_t& del ){
+        static regex_t reg1 = regex_t( PATH_ONE );
         auto vec = reg1.match_all( path );
         if ( vec.empty() ){ return nullptr; }
         return regex::replace( vec[ vec.last() ], del, "" );
@@ -203,12 +209,12 @@ namespace path { namespace {
 
     /*─······································································─*/
 
-    string_t format( path_t& obj ) { string_t _path;
+    inline string_t format( path_t& obj ) { string_t _path;
 
         if( !obj.path.empty() ){ return obj.path;   }
-        
-        if( !obj.root.empty() ){ _path += obj.root; }
-        else                   { _path += root;     }
+
+        if( !obj.root.empty() ){ _path += obj.root ; }
+        else                   { _path += PATH_ROOT; }
 
         if( !obj.dir .empty() ){ _path += obj.dir;  }
         if( !obj.base.empty() ){ _path += obj.base; }
@@ -217,19 +223,20 @@ namespace path { namespace {
           if ( !obj.name.empty() ){ _path += obj.name + string::to_string("."); }
           if ( !obj.ext .empty() ){ _path += obj.ext; }
         }
-        
+
         return _path;
     }
-    
+
     /*─······································································─*/
 
-    path_t parse( const string_t& path ) { path_t out;
+    inline path_t parse( const string_t& path ) { path_t out;
+        static regex_t reg2 = regex_t( PATH_PEG );
 
-        if( reg2.test( path ) ) out.root = _beg;
-        else /*--------------*/ out.root = root;
+        if( reg2.test( path ) ) out.root = PATH_BEG ;
+        else /*--------------*/ out.root = PATH_ROOT;
 
         out.path = path;
-        out.ext  = extname ( path ); 
+        out.ext  = extname ( path );
         out.dir  = dirname ( path );
         out.base = basename( path );
         out.type = mimetype( path );
@@ -240,7 +247,8 @@ namespace path { namespace {
 
     /*─······································································─*/
 
-    string_t relative( const string_t& path_a, const string_t& path_b ){
+    inline string_t relative( const string_t& path_a, const string_t& path_b ){
+        static regex_t reg0 = regex_t( PATH_SEL );
 
         auto secA = reg0.split( path::normalize(path_a) );
         auto secB = reg0.split( path::normalize(path_b) );
@@ -253,48 +261,69 @@ namespace path { namespace {
         for ( ulong x=y; x<secA.size(); ++x ){ sec.push(    ".." ); }
         for ( ulong x=y; x<secB.size(); ++x ){ sec.push( secB[x] ); }
 
-        return array_t<string_t>( sec.data() ).join( sep );
+        return array_t<string_t>( sec.data() ).join( PATH_SEP );
     }
-    
+
     /*─······································································─*/
 
-    string_t push( const string_t& path, const string_t& dir ){
+    inline string_t push( const string_t& path, const string_t& dir ){
+        static regex_t reg0 = regex_t( PATH_SEL );
         auto sec = reg0.split( path::normalize(path) );
-             sec.push( dir ); return sec.join( sep );
+             sec.push( dir ); /*---------------------*/
+             return path::normalize( sec.join( PATH_SEP ) );
     }
 
-    string_t unshift( const string_t& path, const string_t& dir ){
+    inline string_t unshift( const string_t& path, const string_t& dir ){
+        static regex_t reg0 = regex_t( PATH_SEL );
         auto sec = reg0.split( path::normalize(path) );
-             sec.unshift( dir ); return sec.join( sep );
+             sec.unshift( dir ); /*------------------*/
+             return path::normalize( sec.join( PATH_SEP ) );
     }
-    
+
     /*─······································································─*/
 
-    string_t pop( const string_t& path ){
+    inline string_t pop( const string_t& path ){
+        static regex_t reg0 = regex_t( PATH_SEL );
         auto sec = reg0.split( path::normalize(path) );
-             sec.pop(); return sec.join( sep );
+             sec.pop(); return sec.join( PATH_SEP );
     }
 
-    string_t shift( const string_t& path ){
+    inline string_t shift( const string_t& path ){
+        static regex_t reg0 = regex_t( PATH_SEL );
         auto sec = reg0.split( path::normalize(path) );
-             sec.shift(); return sec.join( sep );
+             sec.shift(); return sec.join( PATH_SEP );
     }
-    
+
     /*─······································································─*/
 
-    array_t<string_t> split( const string_t& path ){ 
+    inline array_t<string_t> split( const string_t& path ){
+        static regex_t reg0 = regex_t( PATH_SEL );
         return reg0.split( path::normalize(path) );
     }
 
-    template< class T, class... V > 
-    string_t join( const T& argc, const V&... args ){ 
-      return normalize( string::join( sep, argc, args... ) ); 
+    template< class T, ulong N >
+    string_t join( string_t (& value)[N] ){
+      return array_t<string_t>( N, value ).join("/");
     }
-    
-}
+
+    template< class T, class... V >
+    string_t join( const T& argc, const V&... args ){
+      return normalize( string::join( PATH_SEP, argc, args... ) );
+    }
+
+}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-}
+#undef PATH_ROOT
+#undef PATH_SEP
+#undef PATH_ONE
+#undef PATH_BEG
+#undef PATH_PEG
+#undef PATH_SEL
+
+/*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

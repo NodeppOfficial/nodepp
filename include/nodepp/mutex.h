@@ -15,12 +15,23 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
-    #include "windows/mutex.cpp"
+    #include "windows/mutex.h"
 #elif _KERNEL_ == NODEPP_KERNEL_POSIX
-    #include "posix/mutex.cpp"
+    #include "posix/mutex.h"
 #else
     #error "This OS Does not support mutex.h"
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace mutex {
+
+    template< class T, class... V >
+    function_t<int,V...> add( mutex_t mut, T cb, const V&... args ){
+        return [=](){ return mut.emit( cb, args... ); };
+    }
+
+}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

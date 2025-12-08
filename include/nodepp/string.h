@@ -34,19 +34,19 @@ namespace string {
 
     /*─······································································─*/
 
-    ptr_t<char> buffer( ulong n ){
+    inline ptr_t<char> buffer( ulong n ){
         if ( n == 0 ){ return nullptr; }
         auto b = ptr_t<char>( n+1,'\0' ); return b;
     }
 
-    ptr_t<char> buffer( const char* c, ulong n ){
+    inline ptr_t<char> buffer( const char* c, ulong n ){
         if ( c == nullptr ){ return nullptr; }
         if ( n == 0 ){ return nullptr; }
         auto b = ptr_t<char>( n+1,'\0' );
         memcpy( &b, c, n ); return b;
     }
 
-    ptr_t<char> buffer( ulong n, const char& c ){
+    inline ptr_t<char> buffer( ulong n, const char& c ){
         if ( n == 0 ){ return nullptr; }
         auto b = ptr_t<char>( n+1,'\0' );
         memset( &b, c, n ); return b;
@@ -486,21 +486,21 @@ public:
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-string_t operator+( const string_t& A, const string_t& B ){
+inline string_t operator+( const string_t& A, const string_t& B ){
     if( A.empty() ){ return B; } if( B.empty() ){ return A; }
     string_t C = string::buffer( A.size() + B.size() );
     memcpy( C.get()+ A.size(), B.get(), B.size() );
     memcpy( C.get(), A.get() , A.size() ); return C;
 }
 
-string_t operator^( const string_t& A, const string_t& B ){
+inline string_t operator^( const string_t& A, const string_t& B ){
     string_t C = string::buffer( A.size() );
     char *a=A.begin(), *b=B.begin(), *c=C.begin();
     while( c != C.end() ){ *c = *a ^ *b;
     ++a; ++b; ++c; } return C;
 }
 
-void operator^=( string_t& A, const string_t& B ){
+inline void operator^=( string_t& A, const string_t& B ){
     char *a=A.begin(), *b=B.begin(); /*-----------*/
     while( a != A.end() ){ *a = *a ^ *b; ++a; ++b; }
 }
@@ -509,74 +509,74 @@ void operator^=( string_t& A, const string_t& B ){
 
 namespace string {
 
-    string_t null(){ return buffer( 1, '\0' ); }
+    inline string_t null(){ return buffer( 1, '\0' ); }
 
-    string_t space(){ return buffer( 1, ' ' ); }
+    inline string_t space(){ return buffer( 1, ' ' ); }
 
     /*─······································································─*/
 
-    int to_int( const string_t& buffer ){
+    inline int to_int( const string_t& buffer ){
         int out=0; if( buffer.empty() ){ return out; }
         sscanff( (char*) buffer, "%d", &out ); return out;
     }
 
-    bool to_bool( const string_t& buffer ){
+    inline bool to_bool( const string_t& buffer ){
         int out=0; if( buffer.empty() ){ return out; }
         sscanff( (char*) buffer, "%d", &out ); return out;
     }
 
-    ldouble to_ldouble( const string_t& buffer ){
+    inline ldouble to_ldouble( const string_t& buffer ){
         ldouble out=0.0f; if( buffer.empty() ){ return out; }
         sscanff( (char*) buffer, "%Lf", &out ); return out;
     }
 
-    double to_double( const string_t& buffer ){
+    inline double to_double( const string_t& buffer ){
         double out=0.0f; if( buffer.empty() ){ return out; }
         sscanff( (char*) buffer, "%lf", &out ); return out;
     }
 
-    float to_float( const string_t& buffer ){
+    inline float to_float( const string_t& buffer ){
         float out=0.0f; if( buffer.empty() ){ return out; }
         sscanff( (char*) buffer, "%f", &out ); return out;
     }
 
-    char to_char( const string_t& buffer ){
+    inline char to_char( const string_t& buffer ){
         char out=0; if( buffer.empty() ){ return out; }
         sscanff( (char*) buffer, "%c", &out ); return out;
     }
 
-    uint to_uint( const string_t& buffer ){
+    inline uint to_uint( const string_t& buffer ){
         uint out=0; if( buffer.empty() ){ return out; }
         sscanff( (char*) buffer, "%u", &out ); return out;
     }
 
-    void* to_addr( const string_t& buffer ){
+    inline void* to_addr( const string_t& buffer ){
         void* out=nullptr; if( buffer.empty() ){ return out; }
         sscanff( (char*) buffer, "%p", &out ); return out;
     }
 
-    wchar to_wchar( const string_t& buffer ){
+    inline wchar to_wchar( const string_t& buffer ){
         wchar out=0; if( buffer.empty() ){ return out; }
         sscanff( (char*) buffer, "%lc", &out ); return out;
     }
 
-    long to_long( const string_t& buffer ){
+    inline long to_long( const string_t& buffer ){
         long out=0; if( buffer.empty() ){ return out; }
         sscanff( (char*) buffer, "%ld", &out ); return out;
     }
 
-    llong to_llong( const string_t& buffer ){
+    inline llong to_llong( const string_t& buffer ){
         llong out=0; if( buffer.empty() ){ return out; }
         sscanff( (char*) buffer, "%lld", &out ); return out;
     }
 
 
-    ulong to_ulong( const string_t& buffer ){
+    inline ulong to_ulong( const string_t& buffer ){
         ulong out=0; if( buffer.empty() ){ return out; }
         sscanff( (char*) buffer, "%lu", &out ); return out;
     }
 
-    ullong to_ullong( const string_t& buffer ){
+    inline ullong to_ullong( const string_t& buffer ){
         ullong out=0; if( buffer.empty() ){ return out; }
         sscanff( (char*) buffer, "%llu", &out ); return out;
     }
@@ -603,52 +603,52 @@ namespace string {
 
     inline string_t to_string( const string_t& num ){ return num; }
 
-    string_t to_string( char num ){
+    inline string_t to_string( char num ){
         char buffer[32]; auto x = snprintf( buffer, 32, "%c", num );
         return { buffer, (ulong)x };
     }
 
-    string_t to_string( uint num ){
+    inline string_t to_string( uint num ){
         char buffer[32]; auto x = snprintf( buffer, 32, "%u", num );
         return { buffer, (ulong)x };
     }
 
-    string_t to_string( int num ){
+    inline string_t to_string( int num ){
         char buffer[32]; auto x = snprintf( buffer, 32, "%d", num );
         return { buffer, (ulong)x };
     }
 
-    string_t to_string( long num ){
+    inline string_t to_string( long num ){
         char buffer[32]; auto x = snprintf( buffer, 32, "%ld", num );
         return { buffer, (ulong)x };
     }
 
-    string_t to_string( wchar num ){
+    inline string_t to_string( wchar num ){
         char buffer[32]; auto x = snprintf( buffer, 32, "%lc", num );
         return { buffer, (ulong)x };
     }
 
-    string_t to_string( ulong num ){
+    inline string_t to_string( ulong num ){
         char buffer[32]; auto x = snprintf( buffer, 32, "%lu", num );
         return { buffer, (ulong)x };
     }
 
-    string_t to_string( llong num ){
+    inline string_t to_string( llong num ){
         char buffer[32]; auto x = snprintf( buffer, 32, "%lld", num );
         return { buffer, (ulong)x };
     }
 
-    string_t to_string( ullong num ){
+    inline string_t to_string( ullong num ){
         char buffer[32]; auto x = snprintf( buffer, 32, "%llu", num );
         return { buffer, (ulong)x };
     }
 
-    string_t to_string( double num ){
+    inline string_t to_string( double num ){
         char buffer[32]; auto x = snprintf( buffer, 32, "%lf", num );
         return { buffer, (ulong)x };
     }
 
-    string_t to_string( ldouble num ){
+    inline string_t to_string( ldouble num ){
         char buffer[32]; auto x = snprintf( buffer, 32, "%Lf", num );
         return { buffer, (ulong)x };
     }
@@ -663,7 +663,7 @@ namespace string {
         return { buffer, (ulong)x };
     }
 
-    string_t to_string( float num ){
+    inline string_t to_string( float num ){
         char buffer[32]; auto x = snprintf( buffer, 32, "%lf", (double)num );
         return { buffer, (ulong)x };
     }

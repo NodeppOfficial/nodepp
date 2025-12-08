@@ -88,7 +88,7 @@ namespace nodepp { namespace generator { namespace file {
         if( state<=0 ){ coEnd; }
         if( state >0 ){ data=string_t(str->get_buffer_data(),(ulong)state); }}
 
-        state = min( data.size(), size );
+        state = min( data.size(), size ); /*---------------*/
         str->set_borrow( data.splice( state, data.size() ) );
 
     coFinish
@@ -141,7 +141,7 @@ namespace nodepp { namespace generator { namespace file {
     }
 
     template< class T > coEmit( T* str, char ch ){
-    coBegin; data.clear(); state=0;
+    coBegin; data.clear(); coYield(1); state=0;
 
         coWait( _read(str) ==1 );
             if( _read.state<=0 ){ coEnd; }
@@ -151,9 +151,12 @@ namespace nodepp { namespace generator { namespace file {
              if( ch ==x ){ break; } continue; }
         } while(0);
 
-        data = str->get_borrow().splice( 0, state );
+        data +=str->get_borrow().splice( 0, state );
+        state =data.size();
 
-    coFinish
+        if( data[ data.size()-1 ] == ch ){ coEnd; }
+
+    coGoto(1) ; coFinish
     }};
 
     /*─······································································─*/
@@ -163,7 +166,7 @@ namespace nodepp { namespace generator { namespace file {
     public: string_t data; int state;
 
     template< class T > coEmit( T* str ){
-    coBegin data.clear(); state=0;
+    coBegin data.clear(); coYield(1); state=0;
 
         coWait( _read(str) ==1 );
             if( _read.state<=0 ){ coEnd; }
@@ -173,9 +176,12 @@ namespace nodepp { namespace generator { namespace file {
              if('\n'==x ){ break; } continue; }
         } while(0);
 
-        data = str->get_borrow().splice( 0, state );
+        data +=str->get_borrow().splice( 0, state );
+        state =data.size();
+        
+        if( data[data.size()-1] == '\n' ){ coEnd; }
 
-    coFinish
+    coGoto(1) ; coFinish
     }};
 
 }}}
@@ -432,7 +438,8 @@ namespace nodepp { namespace generator { namespace ws {
     template< class T > bool server( T& cli ) { do {
         auto data = cli.read(); cli.set_borrow( data );
 
-        int c=0; while( (c=cli.read_header())==1 ){}
+        int c=0; while( (c=cli.read_header())==1 )
+        /*---------*/ { process::next(); }
         if( c != 0 ){ break; }
 
         if( cli.headers.has("Sec-Websocket-Key") ){
@@ -466,7 +473,8 @@ namespace nodepp { namespace generator { namespace ws {
         });
 
         cli.write_header( "GET", url::path(url), "HTTP/1.1", header );
-        int c=0; while( (c=cli.read_header())==1 ){}
+        int c=0; while( (c=cli.read_header())==1 )
+        /*---------*/ { process::next(); }
 
         if( c != 0 ){
             cli.onError.emit("Could not connect to server");
@@ -543,7 +551,7 @@ namespace nodepp { namespace generator { namespace ws {
 
     public:
 
-    template<class T> coEmit( T* str, char* bf, const ulong& sx ) { int c=0;
+    template<class T> coEmit( T* str, char* bf, const ulong& sx ) {
     coBegin ; memset( bf, 0, sx ); size=0; data=0; len=0; key=0;
               memset( &frame, 0, sizeof(ws_frame_t) );
 
@@ -583,7 +591,7 @@ namespace nodepp { namespace generator { namespace ws {
 
             auto x=sx; bool b=0; while( x-->0 ){
                 if( !string::is_print(bf[x]) ){ b=1; break; }
-            }   bfx[idx] = b ? (char) 0b10000010 : (char) 0b10000001;
+            }   bfx[idx] = !b ? (char) 0b10000010 : (char) 0b10000001;
 
             ++idx; if ( sx < 126 ){
                 bfx[idx] = (uchar)(byt[byt.size()-1]); ++idx;

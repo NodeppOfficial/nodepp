@@ -19,7 +19,7 @@
     #include "fs.h"
     #include "worker.h"
     #include "initializer.h"
-    #include "windows/cluster.cpp"
+    #include "windows/cluster.h"
 
     namespace nodepp { namespace cluster {
 
@@ -35,12 +35,12 @@
         template< class... T > int await( const T&... args ){
         auto pid = type::bind( cluster_t(args...) );
         if( process::is_parent() ) { 
-          return process::await([=](){ return pid->next(); }); 
+          return worker::await([=](){ return pid->next(); }); 
         } return -1; }
 
-        bool  is_child(){ return !process::env::get("CHILD").empty(); }
+        inline bool  is_child(){ return !process::env::get("CHILD").empty(); }
 
-        bool is_parent(){ return  process::env::get("CHILD").empty(); }
+        inline bool is_parent(){ return  process::env::get("CHILD").empty(); }
 
     }}
 
@@ -49,14 +49,14 @@
 
     #include "fs.h"
     #include "initializer.h"
-    #include "posix/cluster.cpp"
+    #include "posix/cluster.h"
 
     namespace nodepp { namespace cluster {
 
         template< class... T > cluster_t async( const T&... args ){
         auto pid = type::bind( cluster_t(args...) ); 
         if( process::is_parent() ) { 
-            process::add([=](){ return pid->next(); }); 
+            process::foop([=](){ return pid->next(); }); 
         } return *pid; }
 
         template< class... T > cluster_t add( const T&... args ){
@@ -68,9 +68,9 @@
           return process::await([=](){ return pid->next(); }); 
         } return -1; }
 
-        bool  is_child(){ return !process::env::get("CHILD").empty(); }
+        inline bool  is_child(){ return !process::env::get("CHILD").empty(); }
 
-        bool is_parent(){ return  process::env::get("CHILD").empty(); }
+        inline bool is_parent(){ return  process::env::get("CHILD").empty(); }
 
     }}
 

@@ -20,9 +20,11 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { using cookie_t = map_t< string_t, string_t >;
-namespace cookie { regex_t reg    = regex_t( "([^= ;]+)=([^;]+)" );
+namespace cookie {
 
-    query_t parse( string_t data ){
+    inline query_t parse( string_t data ){
+        static regex_t reg( "([^= ;]+)=([^;]+)" );
+
         if( data.empty() ){ return query_t(); } query_t out;
 
         reg.search_all( data ); auto mem = reg.get_memory();
@@ -36,7 +38,7 @@ namespace cookie { regex_t reg    = regex_t( "([^= ;]+)=([^;]+)" );
     
     /*─······································································─*/
     
-    string_t format( const cookie_t& data ){
+    inline string_t format( const cookie_t& data ){
         if( data.empty() ){ return nullptr; } /*------*/
         array_t<string_t> out; for( auto x:data.data() ) 
              { out.push( x.first + "=" + x.second ); }

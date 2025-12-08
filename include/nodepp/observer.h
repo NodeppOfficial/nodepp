@@ -14,8 +14,9 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#include "event.h" 
+#include "wait.h" 
 #include "type.h"
+#include "map.h"
 #include "any.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -23,125 +24,68 @@
 namespace nodepp { class observer_t {
 private:
 
-    template< class A, class B, class C >
-    struct NODE_ { A first; B second; C third; };
+    map_t <string_t,any_t> /*-*/ list ;
+    wait_t<string_t,any_t,any_t> event;
+    
+    using P=type::pair<string_t,any_t>;
+    using F=function_t<void,any_t,any_t>;
 
-    using V = any_t;
-    using U = string_t; 
-    using E = event_t<V,V>;
-    using T = NODE_<U,V,E>;
-    using P = type::pair<U,V>;
-
-public: observer_t() noexcept {} queue_t<T> node;
+public: observer_t() noexcept {}
     
     /*─······································································─*/
 
     template< ulong N >
-    observer_t ( const P (&args) [N] ) noexcept {
-        node.clear(); ulong x=N; while( x-->0 ){
-            T item; // memset( &item, 0, sizeof(T) );
-            item.second = args[x].second;
-            item.first  = args[x].first;
-            node.push(item);
-        }
-    }
+    observer_t( const P (&args) [N] ) noexcept { ulong x=N; while( x-->0 ){
+        list[args[x].first] = args[x].second;
+    }}
 
     virtual ~observer_t() noexcept {}
     
     /*─······································································─*/
 
-    void off( void* address ) const noexcept { 
-        if( !address ){ return; } *((int*)address) = -1; 
-    }
-
     template< class F >
-    void* once( const U& name, F func ) const noexcept {
-        auto n = node.first(); while( n!=nullptr ){
-             console::log( n->data.first, name );
-        if ( n->data.first == name ){
-             return n->data.third.once( func );
-        }    n = n->next; } return nullptr;
+    void set( string_t name, const F& value ) const {
+        if( !list.has( name ) ){ throw except_t("field not found:",name); }
+        auto n = list[ name ]; event.emit( name, n, value );
+        /*----*/ list[ name ]= value;        
     }
 
-    template< class F >
-    void* on( const U& name, F func ) const noexcept {
-        auto n = node.first(); while( n!=nullptr ){
-        if ( n->data.first == name ){
-             return n->data.third.on( func );
-        }    n = n->next; } return nullptr;
-    }
-    
-    /*─······································································─*/
-    
-    void set( function_t<observer_t,observer_t> func ) const {
-        observer_t obj = func( *this ); 
-        auto   n = obj.node.first();
-        while( n!=nullptr ){ 
-            this->set( n->data.first, n->data.second );
-            n = n->next;
-        }
-    }
+    const any_t get( string_t name ) const { if( !list.has( name ) ){
+        throw except_t( "field not found:", name ); 
+    }   return list[ name ]; }
     
     /*─······································································─*/
 
-    template< class F >
-    void set( const U& name, const F& value ) const {
-        auto n = node.first(); while( n!=nullptr ){
-        if ( n->data.first == name ){
-             n->data.third.emit( n->data.second, value );
-             n->data.second = value; return;
-        }    n = n->next; }   
-             throw except_t("field not found:",name);
+    const any_t operator[]( string_t name ) const { return get( name ); }
+    
+    /*─······································································─*/
+
+    void off( void* addr ) const noexcept { event.off(addr); }
+
+    void* once( string_t name, F func ) const noexcept {
+        if( !list.has( name ) ){ return nullptr; }
+        if( func.empty() ){ return nullptr; }
+        return event.once( name, func );
     }
-    
-    /*─······································································─*/
-    
-    template< class V, ulong N >
-    void set( const V (&args) [N] ) const { for( ulong x=0; x<N; ++x ){
-        this->set( args[x].first, args[x].second );
-    }}
 
-    /*─······································································─*/
-
-    const V get( const U& name ) const {
-        auto n = node.first(); while( n!=nullptr ){
-        if ( n->data.first == name ){
-             return n->data.second;
-        }    n = n->next; }   
-             throw except_t( "field not found:", name ); 
-             return (const V)(0);
+    void* on( string_t name, F func ) const noexcept {
+        if( !list.has( name ) ){ return nullptr; }
+        if( func.empty() ){ return nullptr; }
+        return event.on( name, func );
     }
     
     /*─······································································─*/
 
-    bool empty() const noexcept { return node.empty(); }
+    void clear() const noexcept { list.clear(); event.clear(); }
 
-    ulong size() const noexcept { return node.size(); }
+    bool empty() const noexcept { return list.empty(); }
 
-    /*─······································································─*/
-
-    void clear( string_t name ) const noexcept { 
-        auto n = node.first(); while( n!=nullptr ){
-        if ( n->data.first == name ){
-             n->data.third.clear();
-        }    n = n->next; }
-    }
-
-    void clear() const noexcept { 
-        auto n = node.first(); while( n!=nullptr ){
-             n->data.third.clear();
-             n = n->next;
-        }
-    }
-    
-    /*─······································································─*/
-
-    const V operator[]( const U& name ) const {
-        return get( name );
-    }
+    ulong size() const noexcept { return list.size(); }
     
 };}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
