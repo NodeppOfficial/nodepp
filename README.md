@@ -4,15 +4,33 @@ Nodepp is a groundbreaking open-source project that simplifies C++ application d
 
 One of the standout features of Nodepp is its 100% asynchronous architecture, powered by an internal Event Loop. This design efficiently manages Nodepp’s tasks, enabling you to develop scalable and concurrent applications with minimal code. Experience the power and flexibility of Nodepp as you streamline your development process and create robust applications effortlessly!
 
-## Dependencies
+🔗: [Nodepp The MOST Powerful Framework for Asynchronous Programming in C++](https://medium.com/p/c01b84eee67a)
+
+## Dependencies & Cmake Integration
 ```bash
 # Openssl
     🪟: pacman -S mingw-w64-ucrt-x86_64-openssl
     🐧: sudo apt install libssl-dev
-
 # Zlib
     🪟: pacman -S mingw-w64-ucrt-x86_64-zlib
     🐧: sudo apt install zlib1g-dev
+```
+```bash
+include(FetchContent)
+
+FetchContent_Declare(
+	nodepp
+	GIT_REPOSITORY   https://github.com/NodeppOfficial/nodepp
+	GIT_TAG          origin/main
+	GIT_PROGRESS     ON
+)
+FetchContent_MakeAvailable(nodepp)
+
+#[...]
+
+target_link_libraries( #[...]
+	PUBLIC nodepp #[...]
+)
 ```
 
 ## Features
@@ -223,5 +241,4 @@ If you want to contribute to **Nodepp**, you are welcome to do so! You can contr
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/edbc_repo)
 
 ## License
-
 **Nodepp** is distributed under the MIT License. See the LICENSE file for more details.
