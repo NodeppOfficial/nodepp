@@ -14,15 +14,15 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define coDelay(VALUE)  do { _time_=process::millis()+VALUE; coWait( process::millis()<_time_ ); } while(0)
-#define coUDelay(VALUE) do { _time_=process::micros()+VALUE; coWait( process::micros()<_time_ ); } while(0)
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
 #define rand_range( A, B ) clamp( rand()%B, A, B )
 template< class T > T   min( const T& min, const T& max ){ return min < max ? min : max; }
 template< class T > T   max( const T& min, const T& max ){ return max > min ? max : min; }
 template< class T > T clamp( const T& val, const T& _min, const T& _max ){ return max( _min, min( _max, val ) ); }
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+#define coDelay(VALUE)  do { _time_=process::millis()+VALUE; coWait( process::millis()<_time_ ); } while(0)
+#define coUDelay(VALUE) do { _time_=process::micros()+VALUE; coWait( process::micros()<_time_ ); } while(0)
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -85,11 +85,6 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 #define _FILE_  __FILE__
 #define _LINE_  __LINE__
 #define _TIME_  __TIME__
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-bool    _EXIT_ = false;
-int     _TASK_ = 0;
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -245,16 +240,16 @@ int     _TASK_ = 0;
 #define uint16  unsigned int
 #define uint32  unsigned long int
 
-#define llong            long long int
-#define ldouble          long double
-#define wchar            wchar_t
+#define llong   /*----*/ long long int
+#define ldouble /*----*/ long double
+#define wchar   /*----*/ wchar_t
 
-#define int8             char
-#define int16            int
-#define int32            long int
+#define int8    /*----*/ char
+#define int16   /*----*/ int
+#define int32   /*----*/ long int
 
-#define char16           int
-#define char32           long int
+#define char16  /*----*/ int
+#define char32  /*----*/ long int
 
 #define uchar   unsigned char
 #define uchar16 unsigned int
@@ -267,6 +262,10 @@ int     _TASK_ = 0;
 #define uint   unsigned int
 
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+using null_t = decltype( nullptr );
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

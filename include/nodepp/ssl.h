@@ -146,17 +146,20 @@ public:
 
     /*─······································································─*/
 
-    ssl_t() : obj( new NODE() ) {  
-        obj->cert = new X509_t(); obj->cert->generate( "Node", "Node", "Node" );
-    }
-
-    /*─······································································─*/
-
     ssl_t( ssl_t xtc, int df ) : obj( new NODE() ) { 
        if( xtc.get_ctx() == nullptr ){ throw except_t("ctx has no context"); }
            obj->ctx = xtc.get_ctx(); obj->ssl = SSL_new(obj->ctx); 
            obj->srv = xtc.is_server(); set_nonbloking_mode(); 
            set_fd( df );
+    }
+
+    /*─······································································─*/
+
+    ssl_t() : obj( new NODE() ) {  
+        static ptr_t<X509_t> cert; if( cert.null() ){
+            cert = type::bind /*-*/ ( new X509_t() ); 
+            cert->generate( "Node", "Node", "Node" );
+        }   /*-------------------*/ obj->cert = cert;
     }
     
     /*─······································································─*/
@@ -257,7 +260,7 @@ public:
     
     /*─······································································─*/
 
-    virtual int _read( char* bf, ulong sx )  const noexcept { return __read( bf, sx ); }
+    virtual int _read ( char* bf, ulong sx ) const noexcept { return __read ( bf, sx ); }
     
     virtual int _write( char* bf, ulong sx ) const noexcept { return __write( bf, sx ); }
     
@@ -265,13 +268,13 @@ public:
 
     virtual int __read( char* bf, ulong sx ) const noexcept { 
         if( !obj->stt || obj->ssl == nullptr ){ return -1; } int c = 0;
-        if( obj->cnn == 0 ){while( _accept()==-2 ){ return -2; }}
+        if( obj->cnn == 0 ){ while( _accept()==-2 ){ return -2; } }
         return is_blocked( c=SSL_read( obj->ssl, bf, sx ) ) ? -2 : c;
     }
     
     virtual int __write( char* bf, ulong sx ) const noexcept {
         if( !obj->stt || obj->ssl == nullptr ){ return -1; } int c = 0;
-        if( obj->cnn == 0 ){while( _accept()==-2 ){ return -2; }}
+        if( obj->cnn == 0 ){ while( _accept()==-2 ){ return -2; } }
         return is_blocked( c=SSL_write( obj->ssl, bf, sx ) ) ? -2 : c;
     }
 
@@ -280,7 +283,7 @@ public:
     bool _write_( char* bf, const ulong& sx, ulong& sy ) const noexcept {
         if( !obj->stt || obj->ssl == nullptr ){ return -1; } while( sy < sx ) {
             int c = __write( bf+sy, sx-sy );
-            if( c <= 0 && c != -2 )          { return 0; }
+            if( c <= 0 && c != -2 ) /*----*/ { return 0; }
             if( c >  0 ){ sy += c; continue; } return 1;
         }   return 0;
     }
@@ -288,7 +291,7 @@ public:
     bool _read_( char* bf, const ulong& sx, ulong& sy ) const noexcept {
         if( !obj->stt || obj->ssl == nullptr ){ return -1; } while( sy < sx ) {
             int c = __read( bf+sy, sx-sy );
-            if( c <= 0 && c != -2 )          { return 0; }
+            if( c <= 0 && c != -2 ) /*----*/ { return 0; }
             if( c >  0 ){ sy += c; continue; } return 1;
         }   return 0;
     }
@@ -306,7 +309,7 @@ public:
         }   CLSE:; obj->stt = false;
     }
     
-};}
+} SSL_DEFAULT_CERT; }
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

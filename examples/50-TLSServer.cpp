@@ -1,18 +1,18 @@
 #include <nodepp/nodepp.h>
 #include <nodepp/tls.h>
+#include <nodepp/fs.h>
 
 using namespace nodepp;
 
-ssl_t ssl; // ( "./ssl/cert.key", "./ssl/cert.crt" );
-
 void onMain(){
 
-    auto server = tls::server( ssl );
-    auto cin    = fs::std_input();
+    auto ssl    = ssl_t();
+    auto server = tls::server( &ssl );
 
     server.onConnect([=]( ssocket_t cli ){
 
-        console::log("connected", cli.get_peername() );
+        console::log("connected" );
+        auto cin = fs::std_input();
 
         cli.onData([=]( string_t data ){
             console::log( data );
@@ -22,8 +22,9 @@ void onMain(){
             cli.write( data );
         });
 
-        cli.onClose.once([=](){
+        cli.onDrain.once([=](){
             console::log("closed");
+            cin.close();
         });
 
         stream::pipe( cli );

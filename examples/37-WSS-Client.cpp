@@ -9,7 +9,7 @@ void onMain() {
 
     ssl_t ssl; //ssl_t ssl( "./ssl/cert.key", "./ssl/cert.crt" );
 
-    auto client = wss::client( "wss://localhost:8000/", ssl );
+    auto client = wss::client( "wss://localhost:8000/", &ssl );
     auto cin    = fs::std_input();
     
     client.onConnect([=]( wss_t cli ){ 
@@ -24,9 +24,9 @@ void onMain() {
             cli.write( data );
         });
 
-        cli.onClose([](){ 
+        cli.onDrain([=](){ 
             console::log("closed"); 
-            process::exit(1);
+            cin.close();
         });
 
         stream::pipe( cin );

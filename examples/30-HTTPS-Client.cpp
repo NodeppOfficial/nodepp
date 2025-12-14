@@ -17,7 +17,7 @@ void onMain(){
         //  args.file = file_t("PATH","r");
         //  args.body = "MYBODY";
 
-    https::fetch( args, ssl )
+    https::fetch( args, &ssl )
 
     .then([]( https_t cli ){
         cli.onData([]( string_t chunk ){

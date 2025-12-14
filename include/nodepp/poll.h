@@ -16,15 +16,15 @@
 #include "wait.h"
 
 #if   _POLL_ == NODEPP_POLL_WPOLL
-    #include "posix/npoll.cpp"
+    #include "posix/npoll.h"
 #elif _POLL_ == NODEPP_POLL_EPOLL
-    #include "posix/epoll.cpp"
+    #include "posix/epoll.h"
 #elif _POLL_ == NODEPP_POLL_KPOLL
-    #include "posix/kpoll.cpp"
+    #include "posix/kpoll.h"
 #elif _POLL_ == NODEPP_POLL_POLL
-    #include "posix/npoll.cpp"
+    #include "posix/npoll.h"
 #else
-    #include "posix/npoll.cpp"
+    #include "posix/npoll.h"
 #endif
 
 #endif

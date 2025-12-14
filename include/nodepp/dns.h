@@ -17,11 +17,11 @@
 #if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
     #include "url.h"
     #include "socket.h"
-    #include "windows/dns.cpp"
+    #include "windows/dns.h"
 #elif _KERNEL_ == NODEPP_KERNEL_POSIX
     #include "url.h"
     #include "socket.h"
-    #include "posix/dns.cpp"
+    #include "posix/dns.h"
 #else
     #error "This OS Does not support dns.h"
 #endif

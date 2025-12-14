@@ -61,5 +61,3 @@ namespace TEST { namespace REGEX {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

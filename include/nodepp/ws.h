@@ -54,7 +54,7 @@ public:
 
 namespace nodepp { namespace ws {
 
-    tcp_t server( const tcp_t& skt ){ skt.onSocket([=]( socket_t cli ){
+    inline tcp_t server( const tcp_t& skt ){ skt.onSocket([=]( socket_t cli ){
 
         auto hrv = type::cast<http_t>(cli);
         if( !generator::ws::server( hrv ) )
@@ -73,15 +73,15 @@ namespace nodepp { namespace ws {
 
     /*─······································································─*/
 
-    tcp_t server( agent_t* opt=nullptr ){
-    auto skt = http::server( [=]( http_t ){}, opt );
+    inline tcp_t server( agent_t* opt=nullptr ){
+    auto skt = http::server( nullptr, opt );
                  ws::server( skt ); return skt;
     }
 
     /*─······································································─*/
 
-    tcp_t client( const string_t& uri, agent_t* opt=nullptr ){
-    tcp_t skt   ( [=]( socket_t ){}, opt );
+    inline tcp_t client( const string_t& uri, agent_t* opt=nullptr ){
+    tcp_t skt   ( nullptr, opt );
     skt.onSocket.once([=]( socket_t cli ){
 
         auto hrv = type::cast<http_t> (cli);

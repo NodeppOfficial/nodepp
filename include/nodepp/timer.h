@@ -58,14 +58,14 @@ namespace nodepp { namespace timer {
     
     /*─······································································─*/
     
-    void await( ulong* time ){ process::await( coroutine::add( COROUTINE(){
+    inline void await( ulong* time ){ process::await( coroutine::add( COROUTINE(){
     coBegin ; coDelay( *time ) ; coFinish }) ); }
 
-    void await( ulong time ){ await( type::cast<ulong>( &time ) ); }
+    inline void await( ulong time ){ await( type::cast<ulong>( &time ) ); }
     
     /*─······································································─*/
 
-    void clear( void* address ){ process::clear( address ); }
+    inline void clear( void* address ){ process::clear( address ); }
 
 }}
 
@@ -111,14 +111,14 @@ namespace nodepp { namespace utimer {
     
     /*─······································································─*/
     
-    void await( ulong* time ){ process::await( coroutine::add( COROUTINE(){
+    inline void await( ulong* time ){ process::await( coroutine::add( COROUTINE(){
     coBegin ; coUDelay( *time ) ; coFinish }) ); }
 
-    void await( ulong time ){ await( type::cast<ulong>( &time ) ); }
+    inline void await( ulong time ){ await( type::cast<ulong>( &time ) ); }
     
     /*─······································································─*/
 
-    void clear( void* address ){ process::clear( address ); }
+    inline void clear( void* address ){ process::clear( address ); }
 
 }}
 

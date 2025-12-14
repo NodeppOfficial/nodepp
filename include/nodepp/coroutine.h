@@ -60,10 +60,10 @@ public:
     
     /*─······································································─*/
 
-    coEmit() const noexcept { return next(); }
+    coEmit() const { return next(); }
 
-    int next() const noexcept {
-        if( !obj->alive ){ return -1; }
+    int next() const {
+        if ( !obj->alive ){ return -1; }
         return obj->callback( obj->state, obj->time );
     }
 
@@ -72,7 +72,7 @@ public:
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace coroutine {
-    coroutine_t add( function_t<int,int&,ulong&> callback ) {
+    inline coroutine_t add( function_t<int,int&,ulong&> callback ) {
         return coroutine_t( callback );
     }
 }}

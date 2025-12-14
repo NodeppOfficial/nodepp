@@ -16,7 +16,7 @@ namespace nodepp { namespace utf {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-ptr_t<uint32> utf8_to_utf32( const ptr_t<uint8>& utf8 ) {
+inline ptr_t<uint32> utf8_to_utf32( const ptr_t<uint8>& utf8 ) {
     queue_t<uint32> utf32; ulong i=0; while ( i<utf8.size() ) {
         uint32 codepoint = 0; uint8 byte = utf8[i];
 
@@ -42,7 +42,7 @@ ptr_t<uint32> utf8_to_utf32( const ptr_t<uint8>& utf8 ) {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-ptr_t<uint8> utf32_to_utf8( const ptr_t<uint32>& utf32 ) {
+inline ptr_t<uint8> utf32_to_utf8( const ptr_t<uint32>& utf32 ) {
     queue_t<uint8> utf8; for ( uint32 codepoint : utf32 ) {
         if (codepoint <= 0x7F) {
             utf8.push( type::cast<uint8>(codepoint) );
@@ -66,7 +66,7 @@ ptr_t<uint8> utf32_to_utf8( const ptr_t<uint32>& utf32 ) {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-ptr_t<uint16> utf8_to_utf16( const ptr_t<uint8>& utf8 ) {
+inline ptr_t<uint16> utf8_to_utf16( const ptr_t<uint8>& utf8 ) {
     queue_t<uint16> utf16; ulong i = 0; while ( i<utf8.size() ) {
         uint32 codepoint = 0; uint8 byte = utf8[i];
 
@@ -99,7 +99,7 @@ ptr_t<uint16> utf8_to_utf16( const ptr_t<uint8>& utf8 ) {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-ptr_t<uint8> utf16_to_utf8(const ptr_t<uint16>& utf16) {
+inline ptr_t<uint8> utf16_to_utf8(const ptr_t<uint16>& utf16) {
     queue_t<uint8> utf8; ulong i = 0; while ( i<utf16.size() ) {
         uint32 codepoint = 0; uint16 unit = utf16[i];
 
@@ -134,7 +134,7 @@ ptr_t<uint8> utf16_to_utf8(const ptr_t<uint16>& utf16) {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-ptr_t<uint32> utf16_to_utf32( const ptr_t<uint16>& utf16 ) {
+inline ptr_t<uint32> utf16_to_utf32( const ptr_t<uint16>& utf16 ) {
     queue_t<uint32> utf32; ulong i = 0; while ( i<utf16.size() ) {
         uint16 unit = utf16[i];
 
@@ -153,7 +153,7 @@ ptr_t<uint32> utf16_to_utf32( const ptr_t<uint16>& utf16 ) {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-ptr_t<uint16> utf32_to_utf16( const ptr_t<uint32>& utf32 ) {
+inline ptr_t<uint16> utf32_to_utf16( const ptr_t<uint32>& utf32 ) {
     queue_t<uint16> utf16; for( uint32 codepoint : utf32 ) {
 
         if (codepoint <= 0xFFFF) {

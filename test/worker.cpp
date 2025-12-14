@@ -62,5 +62,3 @@ namespace TEST { namespace WORKER {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

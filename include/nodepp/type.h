@@ -16,6 +16,15 @@
 
 namespace nodepp { namespace type {
 
+    template< class T, class V > T* cast( V* object ){ if( object==nullptr ){ return nullptr; } return static_cast<T*>(object); }
+    template< class T, class V > T  cast( V  object ){ return static_cast<T>( object ); }
+
+}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace type {
+
     struct false_type { static constexpr bool value = false; using type = false_type; };
     struct true_type  { static constexpr bool value = true;  using type = true_type;  };
     
@@ -58,6 +67,11 @@ namespace nodepp { namespace type {
     template <> struct is_void<volatile void> : true_type {};
     template <> struct is_void<const void> : true_type {};
     template <> struct is_void<void> : true_type {};
+    
+    /*─······································································─*/
+
+    template <typename T> struct is_null : false_type {};
+    template <> struct is_null<null_t> : true_type {};
     
     /*─······································································─*/
 
@@ -106,9 +120,9 @@ namespace nodepp { namespace type {
     
     /*─······································································─*/
 
-    template <typename T> struct is_cr : false_type {};
-    template <typename T> struct is_cr<const T&> : true_type {};
-    template <typename T> struct is_cr<const T&&> : true_type {};
+    template <typename T> struct is_const_reference : false_type {};
+    template <typename T> struct is_const_reference<const T&> : true_type {};
+    template <typename T> struct is_const_reference<const T&&> : true_type {};
     
     /*─······································································─*/
 
@@ -330,8 +344,7 @@ namespace nodepp { namespace type {
 
     /*─······································································─*/
 
-    template< typename T > 
-    class optional { 
+    template< typename T > class optional { 
     protected: 
 
         bool has; T value; 
@@ -368,7 +381,7 @@ namespace nodepp { namespace type {
     }
 
     template < class A >
-    inline int compare( A src_first, A src_last, A dst_first ) {
+    int compare( A src_first, A src_last, A dst_first ) {
         while ( src_first != src_last ){
            if (*src_first <*dst_first ){ return -1; }
            if (*src_first >*dst_first ){ return  1; }
@@ -377,7 +390,7 @@ namespace nodepp { namespace type {
     }
 
     template < class A, class B >
-    inline void reverse( A src_first, A src_last, B dst_first ) {
+    void reverse( A src_first, A src_last, B dst_first ) {
         while ( src_first != src_last ) {
           --src_last;
            *dst_first=*src_last;
@@ -386,7 +399,7 @@ namespace nodepp { namespace type {
     }
 
     template < class A, class B >
-    inline void copy( A src_first, A src_last, B dst_first ) {
+    void copy( A src_first, A src_last, B dst_first ) {
         while ( src_first != src_last ) {
            *dst_first =*src_first;
           ++src_first;++dst_first;
@@ -394,30 +407,12 @@ namespace nodepp { namespace type {
     }
 
     template < class A, class B >
-    inline void fill( A src_first, A src_last, B value ) {
+    void fill( A src_first, A src_last, B value ) {
         while ( src_first != src_last ) {
            *src_first = value;
           ++src_first;
         }
     }
-
-}}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-#include "ptr.h"
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-namespace nodepp { namespace type {
-
-    template< class T, class V > T* cast( ptr_t<V>& object ){ if( object==nullptr ){ return nullptr; } return static_cast<T*>(object.get()); }
-    template< class T, class V > T* cast(       V*  object ){ if( object==nullptr ){ return nullptr; } return static_cast<T*>(object); }
-    template< class T, class V > T  cast(       V   object ){ return static_cast<T>( object ); }
-
-    template<class T> ptr_t<T>      bind( ptr_t<T>& object ){ if( object==nullptr ){ return nullptr; } return    object.copy(); }
-    template<class T> ptr_t<T>      bind(       T*  object ){ if( object==nullptr ){ return nullptr; } return new T( *object ); }
-    template<class T> ptr_t<T>      bind(       T   object ){ return new T( object ); }
 
 }}
 

@@ -1,0 +1,40 @@
+name: Nodepp C++ Cross-Platform CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build_and_test:
+    # 1. Define the runners for the matrix strategy
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    # 2. Use the matrix variable to set the runner OS
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      # --- 🧪 Unit Test Compilation and Run ---
+      
+      - name: 🧪 Unit Test (Linux/macOS)
+        # Uses -lssl -lcrypto -lpthread flags
+        if: runner.os != 'Windows'
+        run: |
+          echo "Running Unix-like Unit Test build..." ; cd ./test
+          g++ -o main main.cpp -I../include -lpthread ; ./main
+          
+      - name: 🧪 Unit Test (Windows)
+        # Uses -lssl -lcrypto -lws2_32 flags
+        if: runner.os == 'Windows'
+        run: |
+          echo "Running Windows Unit Test build..." ; cd ./test
+          g++ -o main main.cpp -I../include -lws2_32; ./main.exe
+
+      # --- End of the workflow ---

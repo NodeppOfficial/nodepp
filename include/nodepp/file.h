@@ -19,13 +19,13 @@
     #include "limit.h"
     #include "event.h"
     #include "generator.h"
-    #include "windows/file.cpp"
+    #include "windows/file.h"
 #elif _KERNEL_ == NODEPP_KERNEL_POSIX
     #include "os.h"
     #include "limit.h"
     #include "event.h"
     #include "generator.h"
-    #include "posix/file.cpp"
+    #include "posix/file.h"
 #else
     #error "This OS Does not support file.h"
 #endif

@@ -187,22 +187,22 @@ public:
 
 namespace nodepp {
 
-    date_t operator+( const date_t& A, const date_t& B ){
+    inline date_t operator+( const date_t& A, const date_t& B ){
         date_t C; C.set_stamp( A.get_stamp() + B.get_stamp(), false );
         return C;
     }
 
-    date_t operator-( const date_t& A, const date_t& B ){
+    inline date_t operator-( const date_t& A, const date_t& B ){
         date_t C; C.set_stamp( A.get_stamp() - B.get_stamp(), false );
         return C;
     }
 
-    date_t operator*( const date_t& A, const date_t& B ){
+    inline date_t operator*( const date_t& A, const date_t& B ){
         date_t C; C.set_stamp( A.get_stamp() * B.get_stamp(), false );
         return C;
     }
 
-    date_t operator/( const date_t& A, const date_t& B ){
+    inline date_t operator/( const date_t& A, const date_t& B ){
         date_t C; C.set_stamp( A.get_stamp() / B.get_stamp(), false );
         return C;
     }
@@ -213,21 +213,21 @@ namespace nodepp {
 
 namespace nodepp { namespace date {
 
-    uint now(){ return date_t().get_stamp(); }
+    inline uint now(){ return date_t().get_stamp(); }
 
-    string_t fulltime(){ return date_t().get_fulltime(); }
+    inline string_t fulltime(){ return date_t().get_fulltime(); }
 
-    uint day( const bool& utc ){ return date_t(utc).get_day(); }
+    inline uint day( const bool& utc ){ return date_t(utc).get_day(); }
 
-    uint year( const bool& utc ){ return date_t(utc).get_year(); }
+    inline uint year( const bool& utc ){ return date_t(utc).get_year(); }
 
-    uint hour( const bool& utc ){ return date_t(utc).get_hour(); }
+    inline uint hour( const bool& utc ){ return date_t(utc).get_hour(); }
 
-    uint month( const bool& utc ){ return date_t(utc).get_month(); }
+    inline uint month( const bool& utc ){ return date_t(utc).get_month(); }
 
-    uint minute( const bool& utc ){ return date_t(utc).get_minute(); }
+    inline uint minute( const bool& utc ){ return date_t(utc).get_minute(); }
 
-    uint second( const bool& utc ){ return date_t(utc).get_second(); }
+    inline uint second( const bool& utc ){ return date_t(utc).get_second(); }
 
 }}
 

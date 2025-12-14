@@ -29,42 +29,44 @@ namespace nodepp { namespace stream {
     
     template< class... T >
     void duplex( const T&... inp ){ generator::stream::duplex arg;
-         process::add( arg, inp... );
+         process::foop( arg, inp... );
     }
     
     /*─······································································─*/
     
     template< class... T >
     void until( const T&... inp ){ generator::stream::until arg;
-         process::add( arg, inp... );
+         process::foop( arg, inp... );
     }
     
     /*─······································································─*/
     
     template< class... T >
     void pipe( const T&... inp ){ generator::stream::pipe arg;
-         process::add( arg, inp... );
+         process::foop( arg, inp... );
     }
     
     /*─······································································─*/
     
     template< class... T >
     void line( const T&... inp ){ generator::stream::line arg;
-         process::add( arg, inp... );
+         process::foop( arg, inp... );
     }
     
     /*─······································································─*/
     
     template< class T, class V >
     ulong await( const T& fa, const V& fb ){ 
-        ulong out; /*-----------*/ generator::stream::pipe _read;
-        while( fa.is_available() ){ out += fb.write( fa.read() ); } 
+        ulong out; /*-----------*/ generator::stream::pipe arg;
+        fa.onData([&]( string_t data ){ out += data.size(); });
+        process::await( arg, fa, fb );
     return out; }
     
     template< class T >
     string_t await( const T& fp ){ 
-        queue_t<string_t> out; generator::stream::pipe _read;
-        while( fp.is_available() ){ out.push( fp.read() ); } 
+        queue_t<string_t> out; generator::stream::pipe arg;
+        fp.onData([&]( string_t data ){ out.push(data); });
+        process::await( arg, fp );
     return array_t<string_t>( out.data() ).join(""); }
 
 }}

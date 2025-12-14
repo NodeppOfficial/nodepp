@@ -20,7 +20,7 @@ void onMain(){
 
         cli.write("Hello World!");
 
-    }, ssl ); wss::server( server );
+    }, &ssl ); wss::server( server );
 
     server.onConnect([=]( wss_t cli ){
 
@@ -30,7 +30,7 @@ void onMain(){
             console::log( data );
         });
 
-        cli.onClose([=](){
+        cli.onDrain([=](){
             console::log("closed");
         });
 

@@ -31,7 +31,7 @@ private:
 protected:
 
     struct NODE {
-        int      state = 0;
+        char     state = 0;
         agent_t  agent ;
         NODE_CLB func  ;
     };  ptr_t<NODE> obj;
@@ -58,7 +58,7 @@ public: udp_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    void listen( const string_t& host, int port, NODE_CLB cb ) const noexcept {
+    void listen( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
         if( obj->state == 1 ) { return; } if( dns::lookup(host).empty() )
           { onError.emit("dns couldn't get ip"); close(); return; }
 
@@ -73,7 +73,7 @@ public: udp_t() noexcept : obj( new NODE() ) {}
                 self->close(); sk.free(); return; 
             }   sk.set_sockopt( self->obj->agent );
 
-        process::add( coroutine::add( COROUTINE(){
+        process::foop( coroutine::add( COROUTINE(){
         int c=0; coBegin
 
             coWait( (c=sk._bind())==-2 ); if( c<0 ){ 
@@ -96,7 +96,7 @@ public: udp_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    void connect( const string_t& host, int port, NODE_CLB cb ) const noexcept {
+    void connect( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
         if( obj->state == 1 ){ return; } if( dns::lookup(host).empty() )
           { onError.emit("dns couldn't get ip"); close(); return; }
 
@@ -111,7 +111,7 @@ public: udp_t() noexcept : obj( new NODE() ) {}
                 self->close(); sk.free(); return; 
             }   sk.set_sockopt( self->obj->agent );
 
-        process::add( coroutine::add( COROUTINE(){
+        process::foop( coroutine::add( COROUTINE(){
         coBegin
 
             sk.onDrain.once([=](){ self->close(); }); cb(sk);
@@ -129,16 +129,6 @@ public: udp_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    void connect( const string_t& host, int port ) const noexcept {
-         connect( host, port, []( socket_t ){} );
-    }
-
-    void listen( const string_t& host, int port ) const noexcept {
-         listen( host, port, []( socket_t ){} );
-    }
-
-    /*─······································································─*/
-
     void free() const noexcept {
         if( is_closed() ){ return; }close();
         onConnect.clear(); onSocket.clear();
@@ -151,12 +141,12 @@ public: udp_t() noexcept : obj( new NODE() ) {}
 
 namespace udp {
 
-    udp_t server( agent_t* opt=nullptr ){
-        auto skt = udp_t( [=]( socket_t ){}, opt ); return skt;
+    inline udp_t server( agent_t* opt=nullptr ){
+        auto skt = udp_t( nullptr, opt ); return skt;
     }
 
-    udp_t client( agent_t* opt=nullptr ){
-        auto skt = udp_t( [=]( socket_t ){}, opt ); return skt;
+    inline udp_t client( agent_t* opt=nullptr ){
+        auto skt = udp_t( nullptr, opt ); return skt;
     }
 
 }

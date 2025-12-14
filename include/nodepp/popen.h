@@ -19,7 +19,7 @@
     #include "fs.h"
     #include "worker.h"
     #include "initializer.h"
-    #include "windows/popen.cpp"
+    #include "windows/popen.h"
 
     namespace nodepp { namespace popen {
 
@@ -40,7 +40,7 @@
 
     #include "fs.h"
     #include "initializer.h"
-    #include "posix/popen.cpp"
+    #include "posix/popen.h"
     
     namespace nodepp { namespace popen {
 
@@ -52,7 +52,7 @@
 
         template< class... T > popen_t async( const T&... args ){
             auto pid = type::bind( popen_t( args... ) );
-            process::add([=](){ return pid->next(); } ); 
+            process::foop([=](){ return pid->next(); }); 
         return *pid; }
 
     }}

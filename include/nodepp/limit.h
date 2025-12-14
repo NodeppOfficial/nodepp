@@ -15,9 +15,9 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
-    #include "windows/limit.cpp"
+    #include "windows/limit.h"
 #elif _KERNEL_ == NODEPP_KERNEL_POSIX
-    #include "posix/limit.cpp"
+    #include "posix/limit.h"
 #else
     #error "This OS Does not support limit.h"
 #endif

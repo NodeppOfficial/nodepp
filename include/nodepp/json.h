@@ -20,15 +20,6 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace json { 
-    regex_t reg0 = regex_t( "\"[^\"]+\"" );
-    regex_t reg1 = regex_t( "[a-z]"   );
-    regex_t reg2 = regex_t( "[.]\\d+" );
-    regex_t reg3 = regex_t( "\\d+"    );
-}}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
 namespace nodepp { class json_t {
 private:
     
@@ -38,7 +29,7 @@ private:
 
 protected:
 
-    long get_next_sec( ulong _pos, const string_t& str ) const {
+    long get_next_sec( ulong _pos, const string_t& str ) const noexcept {
         uchar k=0; while( _pos < str.size() ){
             switch( str[_pos] ){
                 case ':': k += 6; break; case ',': k -= 6; break;
@@ -46,12 +37,12 @@ protected:
                 case '[': _pos =get_next_key( _pos, str ); break;
                 case '"': _pos =get_next_key( _pos, str ); break;
                 case '\\':_pos =get_next_key( _pos, str ); break;
-            }
-            if( k == 0 ){ break; } ++_pos;
+                case '}':    k =0; break;  case ']': k =0; break;
+            }   if( k == 0 ){ break; } ++_pos;
         }   return _pos >= str.size() ? -1 : _pos;
     }
 
-    long get_next_key( ulong _pos, const string_t& str ) const {
+    long get_next_key( ulong _pos, const string_t& str ) const noexcept {
         bool x=1; uchar k=0; while( _pos < str.size() ){
             switch( str[_pos] ){
                 case '[': k += 1; break; case ']': k -= 1; break;
@@ -60,26 +51,33 @@ protected:
                     if( x ){ k+=5; x=!x; }
                     else   { k-=5; x=!x; }
                 break;
-            }
-            if( k == 0 ){ break; } ++_pos;
+            } if( k == 0 ){ break; } ++_pos;
         }   return _pos >= str.size() ? -1 : _pos;
     }
 
-    object_t get_data( const string_t& data ) const {
+    object_t get_data( const string_t& data ) const noexcept {
+
+        static regex_t reg1 = regex_t( "[a-z]"   );
+        static regex_t reg2 = regex_t( "[.]\\d+" );
+        static regex_t reg3 = regex_t( "\\d+"    );
+
         ulong x=0; while( x < data.size() && data[x]==' ' ){ ++x; }
-          if( data.empty() || data[x] == ',' ) /*---*/ { return nullptr; }
-        elif( data[x] == '"'     ) /*---------------*/ { return json::reg0.match(data).slice(1,-1); }
+
+        if  ( data.empty() || data[x] == ',' ) /*---*/ { return nullptr; }
+        elif( data[x] == '"'     ) /*---------------*/ { 
+              return data.slice( x+1, get_next_sec( x, data ) ); }
         elif( data[x] == '{'     ) /*---------------*/ { return parse( data ); }
         elif( data[x] == '['     ) /*---------------*/ { return parse( data ); }
         elif( data.find("false") ) /*---------------*/ { return (bool) 0; }
         elif( data.find("true")  ) /*---------------*/ { return (bool) 1; }
         elif( data.find("null")  ) /*---------------*/ { return nullptr ; }
-        elif( json::reg1.test(data) ) /*------------*/ { return (string_t) data; }
+        elif( reg1.test(data) ) /*------------------*/ { return (string_t) data; }
         elif( data.find('.')     ) /*---------------*/ {
-            if  ( json::reg2.match(data).size()>5 )    { return string::to_double(data); }
+            if  ( reg2.match(data).size()>5 ) /*----*/ { return string::to_double(data); }
             else /*---------------------------------*/ { return string::to_float(data);  }
-        }   elif( json::reg3.match(data).size()>9 )    { return string::to_long(data);   }
+        }   elif( reg3.match(data).size()>9 ) /*----*/ { return string::to_long(data);   }
             else /*---------------------------------*/ { return string::to_int(data);    }
+
     }
 
     object_t get_object( ulong x, ulong y, const string_t& str ) const {
@@ -91,7 +89,7 @@ protected:
             while( str[x]!=':' && x<y ){ ++x; }
                auto w = get_next_sec( x, str );
                     w = w<0 ? str.size()-1 : w;
-               data.second = str.slice( x+1, w ); x=w;
+               data.second = str.slice( x+1, w); x=w;
                out[data.first] = get_data( data.second );
             }
         } while( x++<y ); return out.keys().empty() ? nullptr : out;
@@ -158,7 +156,7 @@ public:
             for( auto &item: obj.as<QUEUE>().data() ){
                  out += string::format("\"%s\":",item.first.get());
                  out += format( item.second ); out.push(',');
-            }    out.pop();
+            }if( out[ out.size()-1 ] == ',' ){ out.pop(); }
 
             out.push('}'); goto END;
         } elif( obj.get_type_id() == 21 ){
@@ -237,8 +235,8 @@ public:
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace json {
-    object_t  parse( const string_t& str ){ json_t json; return json.parse( str );  }
-    string_t format( const object_t& obj ){ json_t json; return json.format( obj ); }
+    inline object_t  parse( const string_t& str ){ json_t json; return json.parse ( str ); }
+    inline string_t format( const object_t& obj ){ json_t json; return json.format( obj ); }
 }}
 
 /*────────────────────────────────────────────────────────────────────────────*/

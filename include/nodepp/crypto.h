@@ -17,6 +17,7 @@
 
 #define CRYPTO_BASE64 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 #include "encoder.h"
+#include "fs.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -739,10 +740,10 @@ protected:
 
 public:
 
-    X509_t( uint rsa_size=2048 ) : obj( new NODE() ) { 
-
-        obj->ctx = X509_new(); obj->name = X509_NAME_new();  
-        obj->rsa = RSA_new(); obj->num = BN_new();
+    X509_t( uint rsa_size=2048 ) : obj( new NODE() ) {
+        
+        obj->ctx = X509_new(); obj->name= X509_NAME_new();  
+        obj->rsa = RSA_new();  obj->num = BN_new();
         obj->pkey= EVP_PKEY_new();
         
         BN_set_word( obj->num, RSA_F4 );
@@ -798,15 +799,11 @@ public:
     }
 
     void write_private_key( const string_t& path, const char* pass=NULL ) const {
-        auto fp = fopen( path.get(), "w"); PEM_write_RSAPrivateKey( 
-             fp, obj->rsa, NULL, NULL, 0, &PASS_CLB, (void*)pass 
-        ); fclose( fp );
+        file_t fp( path, "w" ); fp.write( write_private_key_to_memory( pass ) );
     }
 
     void write_certificate( const string_t& path ) const {
-        auto fp = fopen( path.get(), "w");
-        PEM_write_X509( fp, obj->ctx );
-        fclose( fp );
+        file_t fp( path, "w" ); fp.write( write_certificate_to_memory() );
     }
 
     void free() const noexcept { 
@@ -889,34 +886,20 @@ public:
         BIO_free(bo); return res;
     }
 
-    int write_private_key( const string_t& path, const char* pass=NULL ) const {
-        FILE* fp = fopen( path.data() , "w"); int res = 0;
-        if ( fp == nullptr ){ throw except_t("while writing private key"); }
-        res = PEM_write_RSAPrivateKey( fp, obj->rsa, NULL, NULL, 0, &PASS_CLB, (void*)pass );
-        fclose( fp ); return res;
+    void read_private_key( const string_t& path, const char* pass=NULL ) const {
+        file_t fp( path, "r" ); read_private_key_from_memory( stream::await(fp), pass );
     }
 
-    int write_public_key( const string_t& path ) const {
-        FILE* fp = fopen( path.data() , "w"); int res = 0;
-        if ( fp == nullptr ){ throw except_t("while writing public key"); }
-        res = PEM_write_RSAPublicKey( fp, obj->rsa );
-        fclose( fp ); return res;
+    int write_private_key( const string_t& path, const char* pass=NULL ) const {
+        file_t fp( path, "w" ); return fp.write( write_private_key_to_memory( pass ) );
     }
 
     void read_public_key( const string_t& path, const char* pass=NULL ) const {
-        FILE* fp = fopen( path.data(), "r" );
-        if( fp == nullptr ){ throw except_t("while reading public key"); }
-        if( !PEM_read_RSAPublicKey( fp, &obj->rsa, &PASS_CLB, (void*)pass ) ){
-            fclose( fp ); throw except_t( "Invalid RSA Key" );
-        }   fclose( fp ); obj->bff.resize(RSA_size(obj->rsa));
+        file_t fp( path, "r" ); read_public_key_from_memory( stream::await(fp), pass );
     }
 
-    void read_private_key( const string_t& path, const char* pass=NULL ) const {
-        FILE* fp = fopen( path.data(), "r" );
-        if( fp == nullptr ){ throw except_t("while reading private key"); }
-        if( !PEM_read_RSAPrivateKey( fp, &obj->rsa, &PASS_CLB, (void*)pass ) ){
-            fclose( fp ); throw except_t( "Invalid RSA Key" );
-        }   fclose( fp ); obj->bff.resize(RSA_size(obj->rsa));
+    int write_public_key( const string_t& path ) const {
+        file_t fp( path, "w" ); return fp.write( write_public_key_to_memory() );
     }
 
     string_t public_encrypt( string_t msg, int padding=RSA_PKCS1_PADDING ) const {
@@ -1186,33 +1169,19 @@ public:
     }
 
     void read_private_key( const string_t& path, const char* pass=NULL ) const {
-        FILE* fp = fopen(path.data(),"r");
-        if ( fp == nullptr ){ throw except_t(" while reading private key"); }
-        obj->dsa = PEM_read_DSAPrivateKey( fp, &obj->dsa, &PASS_CLB, (void*)pass );
-        if ( obj->dsa == nullptr )
-           { fclose(fp); throw except_t( "Invalid DSA Key" ); } fclose(fp); 
+        file_t fp( path, "r" ); read_private_key_from_memory( stream::await(fp), pass );
+    }
+
+    void write_private_key( const string_t& path, const char* pass=NULL ) const {
+        file_t fp( path, "w" ); fp.write( write_private_key_to_memory( pass ) );
     }
 
     void read_public_key( const string_t& path, const char* pass=NULL ) const {
-        FILE* fp = fopen(path.data(),"r");
-        if ( fp == nullptr ){ throw except_t(" while reading public key"); }
-        obj->dsa = PEM_read_DSA_PUBKEY( fp, &obj->dsa, &PASS_CLB, (void*)pass );
-        if ( obj->dsa == nullptr )
-           { fclose(fp); throw except_t( "Invalid DSA Key" ); } fclose(fp);  
+        file_t fp( path, "r" ); read_public_key_from_memory( stream::await(fp), pass );
     }
 
-    void write_private_key( const string_t& path ) const {
-        if( obj->state != 1 ){ return; } FILE* fp = fopen( path.data(), "w" );
-        if ( fp == nullptr ) { throw except_t("while creating file"); }
-        if (!PEM_write_DSA_PUBKEY( fp, obj->dsa ) ) 
-           { fclose( fp ); throw except_t("while writting the private key"); } fclose( fp );
-    }
-
-    void write_public_key( const string_t& path, const char* pass=NULL ) const {
-        if( obj->state != 1 ){ return; } FILE* fp = fopen( path.data(), "w" );
-        if ( fp == nullptr ) { throw except_t("while creating file"); }
-        if (!PEM_write_DSAPrivateKey( fp, obj->dsa, nullptr, nullptr, 0, &PASS_CLB, (void*)pass ) )
-           { fclose( fp ); throw except_t("while writting the public key"); } fclose( fp );
+    void write_public_key( const string_t& path ) const {
+        file_t fp( path, "w" ); fp.write( write_public_key_to_memory() );
     }
 
     void free() const noexcept { 
