@@ -9,12 +9,18 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#ifndef NODEPP_LOOP
-#define NODEPP_LOOP
+#ifndef NODEPP_WORKER_POOL
+#define NODEPP_WORKER_POOL
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { class loop_t : public generator_t {
+#include "mutex.h"
+#include "worker.h"
+#include "atomic.h"
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { class wpool_t : public generator_t {
 private:
 
     using NODE_CLB = function_t<int>;
@@ -24,7 +30,8 @@ private:
 protected:
 
     struct NODE {
-        ulong min_stamp=0, dif=0;
+        atomic_t<ulong> pool=0; mutex_t mut;
+        ulong min_stamp=0, pool_size=0 , dif=0; 
         queue_t<NODE_PAIR> /*---------*/ queue;
         queue_t<void*> /*-------------*/ normal;
         queue_t<type::pair<ulong,void*>> blocked;
@@ -57,66 +64,73 @@ protected:
 
     inline int normal_queue_next() const noexcept {
     
-        if( obj->normal.empty() ) /*-*/ { return -1; } do {
-        if( obj->normal.get()==nullptr ){ return -1; }
+        if( obj->normal.empty() ) /*-------*/ { return -1; } do {
+        if( obj->normal.get()==nullptr ) /**/ { return -1; }
+        if( obj->pool  .get()>obj->pool_size ){ return -1; }
 
         auto x = obj->normal.get(); auto y = obj->queue.as(x->data);
         auto o = obj->normal.get() == obj->normal.last();
-        
-        if( y->data.second->blk==1 ){ 
-            obj->normal.next(); 
-        return o; }
-        
+        auto self = type::bind(this); obj->normal.next();
+
+        if( y->data.second->blk==1 ){ return o; }
         if( y->data.second->out==0 ){ 
             obj->queue .erase(y); 
             obj->normal.erase(x);
         return o; } 
-
+        
         y->data.second->blk =1;
 
-        int c=0, _state_=0; ulong d=0, _time_=0; while( ([&](){
-            
+        worker::add( [=](){
+            thread_local static int   c=0;
+            thread_local static ulong d=0;
+        coStart; ++self->obj->pool; coYield(1);
+
+            coWait((c=self->obj->mut.emit([=](){
+                if( y->data.second->out== 0 ){ return -1; }
+            return 1; }))==-2 ); if ( c==-1 ){ coStay(6); }
+
             do{ c=y->data.first(); auto z=coroutine::getno();
             if( c==1 && z.flag&coroutine::STATE::CO_STATE_DELAY )
-              { d=z.delay; goto GOT3; } switch(c) {
-                case  1 :  goto GOT1;   break;
-                case -1 :  goto GOT2;   break;
-                case  0 :  goto GOT4;   break;
+              { d=z.delay; coStay(4); } switch(c) {
+                case  1 :  coStay(5);   break;
+                case  0 :  coStay(1);   break;
+                case -1 :  coStay(3);   break;
             } } while(0);
 
-            GOT1:;
+            coYield(5);
 
-                obj->normal.next(); 
-                obj->dif            = 0;
-                y->data.second->blk = 0; return -1;
-
-            GOT2:;
-
-                y->data.second->out = 0;
-                y->data.second->blk = 0; return -1;
-
-            GOT3:;
-
-            do {
-
-                ulong wake_time = d + process::now();
+            coWait((c=self->obj->mut.emit([=](){
                 y->data.second->blk = 0;
-                
-                obj->blocked.push({ wake_time, y });
-                obj->normal .erase(x); 
+                self->obj->dif      = 0;
+            return -1; }))==-2 ); coStay(6);
 
-                if( obj->min_stamp>wake_time||  
-                    obj->blocked.empty()
+            coYield(3);
+
+            coWait((c=self->obj->mut.emit([=](){
+                y->data.second->out = 0;
+                y->data.second->blk = 0;
+            return -1; }))==-2 ); if( c==-1 ){ coStay(6); } 
+
+            coYield(4);
+
+            coWait((c=self->obj->mut.emit([=](){
+
+                ulong wake_time=d+process::now ();
+                y->data.second->blk=0; 
+
+                self->obj->blocked.push ({ wake_time, y });
+                self->obj->normal .erase(x); 
+
+                if( self->obj->min_stamp > wake_time ||  
+                    self->obj->blocked.size()==1
                 ) { 
-                    obj->min_stamp=wake_time; 
-                    obj->dif      =d;
+                    self->obj->min_stamp=wake_time;
+                    self->obj->dif      =d;
                 }
 
-            } while(0);
-
-            GOT4:;
-
-        return -1; })() >= 0 ){ /* unused */ }
+            return -1; }))==-2 ); if( c==-1 ){ coStay(6); }
+            
+        coYield(6); --self->obj->pool; coStop });
 
         return o ? -1 : 1; } while(0); return -1;
 
@@ -124,32 +138,35 @@ protected:
 
 public:
 
-    virtual ~loop_t() noexcept { /*-----*/ }
+    wpool_t( ulong pool_size= MAX_POOL_SIZE ) noexcept : obj( new NODE() ) 
+           { obj->pool_size = pool_size; }
 
-    loop_t() noexcept : obj( new NODE() ) {}
-
-    /*─······································································─*/
-
-    void     clear() const noexcept { /*--*/ obj->queue.clear(); obj->normal.clear(); obj->blocked.clear(); }
-
-    int  get_delay() const noexcept { return empty()?-1:type::cast<int>(obj->dif); }
-
-    bool     empty() const noexcept { return obj->queue.empty(); }
+    virtual ~wpool_t() noexcept { /*--*/ }
 
     /*─······································································─*/
 
-    ulong blocked_size() const noexcept { return obj->blocked.size(); }
+    void clear() const noexcept { /*--*/ obj->queue.clear(); obj->normal.clear(); obj->blocked.clear(); }
 
-    ulong running_size() const noexcept { return obj->normal.size(); }
+    ulong size() const noexcept { return obj->queue.size (); }
 
-    ulong         size() const noexcept { return obj->queue.size (); }
+    bool empty() const noexcept { return obj->queue.empty(); }
 
     /*─······································································─*/
 
-    inline int next() const noexcept { 
+    int       get_delay() const noexcept { return empty()?-1:type::cast<int>(obj->dif); }
+
+    void  set_pool_size( ulong pool_size ) const noexcept { obj->pool_size=pool_size; }
+
+    ulong count_workers() const noexcept { return obj->pool.get(); }
+
+    ulong get_pool_size() const noexcept { return obj->pool_size; }
+
+    /*─······································································─*/
+
+    inline int next() const noexcept { auto c = obj->mut.emit([&](){
         /*--*/ blocked_queue_next();
         return normal_queue_next ();
-    }
+    }); return c<0 ? -1 : c; }
 
     /*─······································································─*/
 

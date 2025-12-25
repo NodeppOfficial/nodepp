@@ -18,37 +18,8 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace atomic { 
-
-    template< class T > struct is_atomic           : type::false_type{};
-
-    template<>          struct is_atomic<int>      : type::true_type {};
-    template<>          struct is_atomic<uint>     : type::true_type {};
-    template<>          struct is_atomic<bool>     : type::true_type {};
-    template<>          struct is_atomic<char>     : type::true_type {};
-    template<>          struct is_atomic<long>     : type::true_type {};
-    template<>          struct is_atomic<short>    : type::true_type {};
-    template<>          struct is_atomic<uchar>    : type::true_type {};
-    template<>          struct is_atomic<llong>    : type::true_type {};
-    template<>          struct is_atomic<ulong>    : type::true_type {};
-    template<>          struct is_atomic<ushort>   : type::true_type {};
-    template<>          struct is_atomic<ullong>   : type::true_type {};
-
-//  template<>          struct is_atomic<float>    : type::true_type {};
-//  template<>          struct is_atomic<double>   : type::true_type {};
-
-    template<>          struct is_atomic<wchar_t>  : type::true_type {};
-    template<>          struct is_atomic<char16_t> : type::true_type {};
-    template<>          struct is_atomic<char32_t> : type::true_type {};
-
-    template< class T > struct is_atomic<T*>       : type::true_type{};
-
-}}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
 namespace nodepp { 
-template< class T, class = typename type::enable_if<atomic::is_atomic<T>::value,T>::type >
+template< class T, class = typename type::enable_if<type::is_trivially_copyable<T>::value,T>::type >
 class atomic_t   { private: T value; protected: 
 
     void cpy( const atomic_t& other ) noexcept { 

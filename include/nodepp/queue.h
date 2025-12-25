@@ -31,7 +31,7 @@ protected:
            ulong length = 0;
     };     ptr_t<DONE> obj;
 
-    type::optional<ulong[3]> get_slice_range( long x, long y ) const noexcept {
+    ptr_t<ulong> get_slice_range( long x, long y ) const noexcept {
 
         if( empty() || x == y ){ return nullptr; } if( y>0 ){ --y; }
 
@@ -43,13 +43,11 @@ protected:
         ulong b = clamp( (ulong)x, 0UL, a        );
         ulong c = a - b + 1;
 
-        ulong arr[3]; /*-----------------------*/
-              arr[0] = b; arr[1] = a; arr[2] = c;
-
-        return arr;
+        ptr_t<ulong> arr ( 3UL, 0UL );
+        arr[0] = b; arr[1] = a; arr[2] = c; return arr;
     }
 
-    type::optional<ulong[3]> get_splice_range( long x, ulong y ) const noexcept {
+    ptr_t<ulong> get_splice_range( long x, ulong y ) const noexcept {
 
         if( empty() || y == 0 ){ return nullptr; }
 
@@ -61,10 +59,8 @@ protected:
         ulong b = clamp( (ulong)x, 0UL, a        );
         ulong c = a - b + 1;
 
-        ulong arr[3]; /*-----------------------*/
-              arr[0] = b; arr[1] = a; arr[2] = c;
-
-        return arr;
+        ptr_t<ulong> arr ( 3UL, 0UL ); 
+        arr[0] = b; arr[1] = a; arr[2] = c; return arr;
     }
 
 public:
@@ -73,26 +69,26 @@ public:
 
     /*─······································································─*/
 
-    queue_t( const V* value, const ulong& n=0 ) noexcept : obj( new DONE ) {
+    queue_t( const V* value, const ulong& n=0 ) noexcept : obj( new DONE() ) {
         if ( value == nullptr || n == 0 ){ return; } auto i=n;
       while( i-->0 ){ unshift(value[i]); }
     }
 
-    queue_t( const ulong& n, const V& c ) noexcept: obj( new DONE )  {
+    queue_t( const ulong& n, const V& c ) noexcept: obj( new DONE() )  {
         if ( n == 0 ){ return; }
         auto i=n; while( i-->0 ){ unshift(c); }
     }
 
     template < class T, ulong N >
-    queue_t( const T (&value)[N] ) noexcept : obj( new DONE ) {
+    queue_t( const T (&value)[N] ) noexcept : obj( new DONE() ) {
         auto i=N; while( i-->0 ){ unshift(value[i]); }
     }
 
-    queue_t( const ptr_t<V>& args ) noexcept: obj( new DONE ) {
+    queue_t( const ptr_t<V>& args ) noexcept: obj( new DONE() ) {
         for( auto &x: args ){ push( x ); }
     }
 
-    queue_t() noexcept : obj( new DONE ) {}
+    queue_t() noexcept : obj( new DONE() ) {}
 
     /*─······································································─*/
 
@@ -208,11 +204,11 @@ public:
 
         auto n_buffer = queue_t<V>(); uint idx=0;
 	    auto r = get_slice_range( start,size() );
-        if( !r.has_value() ){ return nullptr; }
+        if ( r.null() ){ return nullptr; }
 
-        auto z = *r.get(); auto n = get( z[0] ); 
+        auto n = get( r[0] ); 
         
-        while( n!=nullptr && idx<z[2] )
+        while( n!=nullptr && idx<r[2] )
              { n_buffer.push( n->data ); n=n->next; ++idx; }
         return n_buffer;
 
@@ -222,11 +218,11 @@ public:
 
         auto n_buffer = queue_t<V>(); uint idx=0;
 	    auto r = get_slice_range( start, end );
-        if( !r.has_value() ){ return nullptr; }
+        if ( r.null() ){ return nullptr; }
 
-        auto z = *r.get(); auto n = get( z[0] ); 
+        auto n = get( r[0] ); 
         
-        while( n!=nullptr && idx<z[2] )
+        while( n!=nullptr && idx<r[2] )
              { n_buffer.push( n->data ); n=n->next; ++idx; }
         return n_buffer;
 
@@ -238,14 +234,14 @@ public:
 
         auto n_buffer = queue_t<V>(); uint idx=1;
 	    auto r = get_splice_range( start, end );
-        if( !r.has_value() ){ return nullptr; }
+        if ( r.null() ){ return nullptr; }
 
-        auto z = *r.get(); auto n = get( z[0] ); 
+        auto n = get( r[0] ); 
         
-        while( n!=nullptr && idx<=z[2] )
+        while( n!=nullptr && idx<=r[2] )
              { n_buffer.push( n->data ); n=n->next; ++idx; }
 
-        erase( z[0], z[0]+end ); return n_buffer;
+        erase( r[0], r[0]+end ); return n_buffer;
 
     }
 
@@ -254,14 +250,14 @@ public:
 
         auto n_buffer = queue_t<V>(); uint idx=1;
 	    auto r = get_splice_range( start, end );
-        if( !r.has_value() ){ return nullptr; }
+        if ( r.null() ){ return nullptr; }
 
-        auto z = *r.get(); auto n = get( z[0] ); 
+        auto n = get( r[0] ); 
         
-        while( n!=nullptr && idx<=z[2] )
+        while( n!=nullptr && idx<=r[2] )
              { n_buffer.push( n->data ); n=n->next; ++idx; }
 
-        erase( z[0], z[0]+end ); insert( z[0], value ); return n_buffer;
+        erase( r[0], r[0]+end ); insert( r[0], value ); return n_buffer;
 
     }
 
@@ -332,15 +328,14 @@ public:
 
     inline void erase( ulong begin, ulong end ) const noexcept {
         auto r = get_slice_range( begin, end ); /*---------*/
-           if( !r.has_value() ){ return; } auto z = *r.get();
-        /*------------------------------*/ auto x = z[2];
-        while( x-->0 ) { erase( z[0] ); }
+           if ( r.null() ){ return; } auto x = r[2];
+        while( x-->0 ){ erase(r[0]);}
     }
 
     inline void erase( ulong begin ) const noexcept {
-        auto r = get_slice_range( begin, size() ); /*------*/
-           if( !r.has_value() ){ return; } auto z = *r.get();
-        erase( get( z[0] ) );
+        auto r = get_slice_range( begin, size() );
+           if( !r.has_value() ){ return; }
+        erase( get( r[0] ) );
     }
 
     inline void erase( NODE* n ) const noexcept {

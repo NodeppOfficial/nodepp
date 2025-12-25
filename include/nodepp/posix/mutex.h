@@ -21,8 +21,11 @@
 namespace nodepp { namespace worker {
 
     inline void    delay( ulong time ){ process::delay(time); }
+
     inline void    yield(){ delay(TIMEOUT); sched_yield(); }
+    
     inline pthread_t pid(){ return pthread_self(); }
+    
     inline void     exit(){ pthread_exit(NULL); }
 
 }}
@@ -33,8 +36,8 @@ namespace nodepp { class mutex_t {
 protected:
 
     struct NODE {
-        bool /*-*/ alive=1;
         pthread_mutex_t fd;
+        bool alive  = true;
     };  ptr_t<NODE> obj;
 
 public:
@@ -54,7 +57,7 @@ public:
 
     void free() const noexcept {
         if( obj->alive == 0 ){ return; }
-        /*----------*/ obj->alive = 0;
+        /*--------------*/ obj->alive=0;
         pthread_mutex_destroy(&obj->fd);
     }
     
@@ -78,14 +81,14 @@ public:
     inline int _emit( T callback, const V&... args ) const noexcept {
         if( obj->alive == 0 ){ return -1; }
         if( !_lock() ) /*-*/ { return -2; }
-        int c=callback( args... ); unlock(); return 1;
+        int c=callback( args... ); unlock(); return c;
     } 
     
     /*─······································································─*/
 
     template< class T, class... V >
     inline void lock( T callback, const V&... args ) const noexcept {
-        if( obj->alive == 0 ){ return; }
+        if( obj->alive == 0 ) /**/ { return; }
         lock(); callback( args... ); unlock(); 
     }
 
@@ -95,16 +98,23 @@ public:
         if( !_lock() ) /*-*/ { return -2; }
         callback( args... ); unlock(); return 1;
     } 
+
+    /*─······································································─*/
+
+    int _unlock() const noexcept {
+        return ( pthread_mutex_unlock( &obj->fd ) == 0 ) ? 1 : -1;
+    }
+
+    int _lock() const noexcept { 
+        int res = pthread_mutex_trylock( &obj->fd );
+        if( res == 0 )    { return  1; }
+        if( res == EBUSY ){ return -2; } return -1;
+    }
     
     /*─······································································─*/
 
-    void unlock() const noexcept { while( !_unlock() ){ worker::yield(); } }
-    void lock()   const noexcept { while( !_lock  () ){ worker::yield(); } }
-    
-    /*─······································································─*/
-
-    inline bool _unlock() const noexcept { return pthread_mutex_unlock(&obj->fd)==0; }
-    inline bool _lock()   const noexcept { return pthread_mutex_lock  (&obj->fd)==0; }
+    void lock  () const noexcept { pthread_mutex_lock( &obj->fd ); }
+    void unlock() const noexcept { pthread_mutex_unlock( &obj->fd ); }
 
 };}
 

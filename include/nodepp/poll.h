@@ -20,7 +20,7 @@
 #elif _POLL_ == NODEPP_POLL_EPOLL
     #include "posix/epoll.h"
 #elif _POLL_ == NODEPP_POLL_KPOLL
-    #include "posix/kpoll.h"
+    #include "posix/npoll.h"
 #elif _POLL_ == NODEPP_POLL_POLL
     #include "posix/npoll.h"
 #else

@@ -15,8 +15,8 @@ void client( int x ) {
     client.onConnect([=]( ws_t cli ){ for( auto y=100; y-->0; ){ 
         
         auto raw = type::bind( cli );
-        auto stt = type::bind( new int(0) );
-        auto idx = type::bind( new int(10) );
+        auto stt = type::bind( int(0) );
+        auto idx = type::bind( int(10) );
         auto wrt = type::bind( _file_::write() );
 
         process::add([=](){ auto _state_ = *stt;

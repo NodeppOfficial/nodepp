@@ -22,8 +22,9 @@
 namespace nodepp { namespace process { using NODE_INTERVAL = struct timeval; } }
 namespace nodepp { namespace process { 
 
-    inline NODE_INTERVAL get_new_interval(){ NODE_INTERVAL interval;
-        gettimeofday( &interval, NULL );
+    inline NODE_INTERVAL& get_new_interval(){ 
+        thread_local static NODE_INTERVAL interval;
+        gettimeofday( &interval,NULL );
         return interval;
     }
     
@@ -45,9 +46,21 @@ namespace nodepp { namespace process {
 
 namespace nodepp { namespace process {
 
-    inline void delay( ulong time ){ ::usleep( time * 1000 ); }
+    inline ulong set_timeout( int time=0 ) { 
+        if( time == -1 ) /*------------*/ { return 0; }
+    thread_local static ulong stamp; ulong out=stamp;
+        if( stamp > time || stamp == 0 ){ stamp=time; }
+    return out==0 ? 1 : out; }
 
-    inline void yield(){ delay( TIMEOUT ); }
+}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace process {
+
+    inline void delay( ulong time ){ ::usleep(time*1000); }
+
+    inline void yield(){ delay(TIMEOUT); }
 
     inline ulong now(){ return millis(); }
 

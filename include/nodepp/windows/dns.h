@@ -21,13 +21,13 @@
 namespace nodepp { namespace dns { 
     
     inline bool is_ipv4( const string_t& URL ){ 
-        static regex_t reg ( "([0-9]+\\.)+[0-9]+" );
-        return reg.test( URL ) ? 1 : 0; 
+        thread_local static regex_t reg ( "([0-9]+\\.)+[0-9]+" );
+        reg.clear_memory(); return reg.test( URL ) ? 1 : 0; 
     }
 
     inline bool is_ipv6( const string_t& URL ){ 
-        static regex_t reg ( "([0-9a-fA-F]+\\:)+[0-9a-fA-F]+" );
-        return reg.test( URL ) ? 1 : 0; 
+        thread_local static regex_t reg ( "([0-9a-fA-F]+\\:)+[0-9a-fA-F]+" );
+        reg.clear_memory(); return reg.test( URL ) ? 1 : 0; 
     }
     
     /*─······································································─*/
@@ -113,7 +113,7 @@ namespace nodepp { namespace dns {
     
     /*─······································································─*/
 
-    inline bool is_ip( string_t URL ){ 
+    inline bool is_ip( const string_t& URL ){ 
         if( URL.empty() )     { return 0; }
         if( is_ipv4(URL) > 0 ){ return 1; }
         if( is_ipv6(URL) > 0 ){ return 1; } return 0;

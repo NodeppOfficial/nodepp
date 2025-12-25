@@ -22,7 +22,8 @@
 
 namespace nodepp { namespace _socket_ {
 
-    inline void start_device(){ static bool sockets=false;
+    inline void start_device(){ 
+    thread_local static bool sockets=false;
         if( sockets == false ){ WSADATA wsaData;
             process::onSIGEXIT.once([=](){ WSACleanup(); });
             if( WSAStartup(MAKEWORD(2,2),&wsaData)!= 0 )
@@ -398,7 +399,7 @@ public:
         obj->fd = fd; set_nonbloking_mode(); set_buffer_size(_size);
     }
 
-    socket_t() noexcept : obj( new NODE() ) {}
+    socket_t() noexcept : obj( new NODE() ) { _socket_::start_device(); }
 
     virtual ~socket_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
@@ -420,7 +421,7 @@ public:
 
     virtual int socket( const string_t& host, int port ) const noexcept {
         if( host.empty() ){ onError.emit("dns coudn't found ip"); return -1; }
-            obj->addrlen = sizeof( obj->server_addr ); _socket_::start_device();
+            obj->addrlen = sizeof( obj->server_addr );
 
         if((obj->fd=::socket( AF, SOCK, IPPROTO )) == INVALID_SOCKET )
           { onError.emit("can't initializate socket fd"); return -1; }

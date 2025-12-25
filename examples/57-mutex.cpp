@@ -45,6 +45,7 @@ void onMain(){
 
         while( true ){
             // executed in critical section method D
+            // the whole coroutine is executed in critical section
         coNext; }
 
     coFinish

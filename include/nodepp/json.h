@@ -57,9 +57,11 @@ protected:
 
     object_t get_data( const string_t& data ) const noexcept {
 
-        static regex_t reg1 = regex_t( "[a-z]"   );
-        static regex_t reg2 = regex_t( "[.]\\d+" );
-        static regex_t reg3 = regex_t( "\\d+"    );
+        static ptr_t<regex_t> reg ({
+            regex_t( "[a-z]"   ),
+            regex_t( "[.]\\d+" ),
+            regex_t( "\\d+"    )
+        });
 
         ulong x=0; while( x < data.size() && data[x]==' ' ){ ++x; }
 
@@ -71,11 +73,11 @@ protected:
         elif( data.find("false") ) /*---------------*/ { return (bool) 0; }
         elif( data.find("true")  ) /*---------------*/ { return (bool) 1; }
         elif( data.find("null")  ) /*---------------*/ { return nullptr ; }
-        elif( reg1.test(data) ) /*------------------*/ { return (string_t) data; }
+        elif( reg[0].test(data)  ) /*---------------*/ { return (string_t) data; }
         elif( data.find('.')     ) /*---------------*/ {
-            if  ( reg2.match(data).size()>5 ) /*----*/ { return string::to_double(data); }
+            if  ( reg[1].match(data).size()>5 ) /*--*/ { return string::to_double(data); }
             else /*---------------------------------*/ { return string::to_float(data);  }
-        }   elif( reg3.match(data).size()>9 ) /*----*/ { return string::to_long(data);   }
+        }   elif( reg[2].match(data).size()>9 ) /*--*/ { return string::to_long(data);   }
             else /*---------------------------------*/ { return string::to_int(data);    }
 
     }

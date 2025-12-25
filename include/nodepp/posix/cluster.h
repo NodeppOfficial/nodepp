@@ -68,9 +68,11 @@ protected:
             obj->output= fs::std_input (); set_state( FILE_STATE::OPEN ); 
         return; }
 
-        int fda[2]; ::pipe( fda );
-        int fdb[2]; ::pipe( fdb );
-        int fdc[2]; ::pipe( fdc ); obj->fd = ::fork();
+        int fda[2]; if( ::pipe( fda )==-1 ){ throw except_t( "while piping stdin"  ); }
+        int fdb[2]; if( ::pipe( fdb )==-1 ){ throw except_t( "while piping stdout" ); }
+        int fdc[2]; if( ::pipe( fdc )==-1 ){ throw except_t( "while piping stderr" ); } 
+        
+        obj->fd = ::fork();
 
         if( obj->fd == 0 ){
             auto chl = string::format( "CHILD=TRUE", fda[0], fdb[1] ); 
@@ -79,7 +81,7 @@ protected:
             ::dup2( fdb[1], STDOUT_FILENO ); ::close( fdb[0] ); env.push( nullptr );
             ::dup2( fdc[1], STDERR_FILENO ); ::close( fdc[0] ); /*----------------*/
             ::execvpe( arg[0], (char**) arg.data(), (char**) env.data() );
-            throw except_t("while spawning new cluster"); process::exit(1);
+            throw except_t("while spawning new cluster");
         } elif ( obj->fd > 0 ) {
             obj->input  = file_t(fda[1]); ::close( fda[0] );
             obj->output = file_t(fdb[0]); ::close( fdb[1] );
@@ -189,8 +191,8 @@ public:
     /*─······································································─*/
 
     void close() const noexcept {
-        if( is_state (FILE_STATE::DISABLE) ){ return; }
-            set_state( FILE_STATE::CLOSE ); DONE:;
+        if( is_state ( FILE_STATE::DISABLE) ){ return; }
+            set_state( FILE_STATE::CLOSE  ) ; DONE:;
     onDrain.emit(); free(); }
 
     /*─······································································─*/

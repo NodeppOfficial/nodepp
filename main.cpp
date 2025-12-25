@@ -1,20 +1,34 @@
 #include <nodepp/nodepp.h>
-#include <nodepp/crypto.h>
+#include <nodepp/worker.h>
+#include <nodepp/http.h>
 
 using namespace nodepp;
 
-void onMain(){
+void local_main(){
 
-    auto ppt = crypto::encrypt::AES_192_CBC( "key1234567890" );
-         ppt.update("Hello World!");
-    auto p = ppt.get();
+    limit::set_process_priority( limit::PRIORITY::HIGHEST_PRIORITY );
 
-    console::log( ":>", p.size(), p );
+    auto server = http::server([=]( http_t cli ){ 
 
-    auto ttp = crypto::decrypt::AES_192_CBC( "key1234567890" );
-         ttp.update( p );
-    auto q = ttp.get();
+    //  console::log( cli.path, cli.get_fd() );
+        
+        cli.write_header( 200, header_t({
+            { "content-type", "text/html" }
+        }));
+        
+        cli.write( "AAA" );
 
-    console::log( ":>", q.size(), q );
+    });
+
+    server.listen( "localhost", 8000, [=]( socket_t server ){
+        console::log("server started at http://localhost:8000");
+    });
+
+}
+
+void onMain() {
+
+    local_main();
+    console::log( sizeof( ptr_t<ulong> ) );
 
 }

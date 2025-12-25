@@ -11,23 +11,17 @@ void server(){
     server.onConnect([=]( socket_t cli ){
 
         console::log("connected" );
-        auto cin = fs::std_input();
 
         cli.onData([=]( string_t data ){
+            cli.write( "<: received" );
             console::log( data );
-        });
-
-        cin.onData([=]( string_t data ){
-            cli.write( data );
         });
 
         cli.onDrain.once([=](){
             console::log("closed");
-            cin.close();
         });
 
         stream::pipe( cli );
-        stream::pipe( cin );
 
     });
 

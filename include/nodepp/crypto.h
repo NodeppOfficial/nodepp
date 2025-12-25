@@ -60,7 +60,7 @@ protected:
         ptr_t<uchar> bff;
         uint length= 0;
         bool state = 0;
-    };  ptr_t<NODE> obj = new NODE();
+    };  ptr_t<NODE> obj;
 
     string_t hex() const noexcept { 
         free(); return { (char*) &obj->bff, obj->length }; 
@@ -740,7 +740,7 @@ protected:
 
 public:
 
-    X509_t( uint rsa_size=2048 ) : obj( new NODE() ) {
+    X509_t( uint rsa_size=2048 ) : obj( 0x00, NODE() ) {
         
         obj->ctx = X509_new(); obj->name= X509_NAME_new();  
         obj->rsa = RSA_new();  obj->num = BN_new();
@@ -964,8 +964,9 @@ protected:
 public:
 
     template< class T >
-    ec_t( const string_t& key, const T& type ) noexcept
-    :obj( new NODE() ) { if( key.empty() ){ return; }
+    ec_t( const string_t& key, const T& type ) noexcept :obj( 0x00, NODE() ) {
+        
+        if( key.empty() ){ return; }
         obj->state = 1;
 
         obj->key_pair  = EC_KEY_new_by_curve_name(type);
@@ -981,8 +982,7 @@ public:
     }
 
     template< class T >
-    ec_t( const T& type ) noexcept 
-    :   obj( new NODE() ) { 
+    ec_t( const T& type ) noexcept : obj( 0x00, NODE() ) { 
         obj->state = 1;
 
         obj->key_pair  = EC_KEY_new();
@@ -1037,7 +1037,7 @@ protected:
 
 public:
 
-    dh_t() : obj( new NODE() ) {
+    dh_t() : obj( 0x00, NODE() ) {
         
         obj->dh    = DH_new(); 
         obj->k     = BN_new();
@@ -1116,7 +1116,7 @@ protected:
     
 public:
 
-    dsa_t(): obj( new NODE() ) { 
+    dsa_t(): obj( 0x00, NODE() ) { 
         obj->state = 1; obj->dsa = DSA_new(); 
     }
 

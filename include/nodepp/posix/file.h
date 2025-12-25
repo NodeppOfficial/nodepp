@@ -23,8 +23,8 @@
 namespace nodepp { class file_t {
 protected:
 
-    virtual void kill() const noexcept {
-    if( !is_std() ){ ::close(obj->fd); } 
+    void kill() const noexcept {
+    if( !is_std() ){ ::close(obj->fd); }
         obj->state |= FILE_STATE::KILL;
     }
 
@@ -72,14 +72,14 @@ protected:
     /*─······································································─*/
 
     virtual int set_nonbloking_mode() const noexcept {
-            int flags = fcntl( obj->fd, F_GETFL, 0 );
+        int flags = fcntl( obj->fd, F_GETFL, 0 );
         return fcntl( obj->fd, F_SETFL, flags | O_NONBLOCK );
     }
 
     /*─······································································─*/
 
     uint get_fd_flag( const string_t& flag ){ uint _flag = O_NONBLOCK;
-          if( flag == "r"  ){ _flag |= O_RDONLY ;                     }
+        if  ( flag == "r"  ){ _flag |= O_RDONLY ;                     }
         elif( flag == "w"  ){ _flag |= O_WRONLY | O_CREAT  | O_TRUNC; }
         elif( flag == "a"  ){ _flag |= O_WRONLY | O_APPEND | O_CREAT; }
         elif( flag == "r+" ){ _flag |= O_RDWR   | O_APPEND ;          }
@@ -141,7 +141,7 @@ public:
 
     /*─······································································─*/
 
-    void set_range( ulong x, ulong y ) const noexcept { obj->range[0] = x; obj->range[1] = y; }
+    void   set_range( ulong x, ulong y ) const noexcept { obj->range[0] = x; obj->range[1] = y; }
     ulong* get_range() const noexcept { return obj == nullptr ? nullptr : obj->range; }
     int       get_fd() const noexcept { return obj == nullptr ?      -1 : obj->fd; }
 
@@ -161,10 +161,20 @@ public:
 
     /*─······································································─*/
 
+    ulong pos( ulong _pos ) const noexcept {
+        auto   _npos = lseek( obj->fd, _pos, SEEK_SET );
+        return _npos < 0 ? 0 : _npos;
+    }
+
     ulong size() const noexcept { auto curr = pos();
         if( lseek( obj->fd, 0 , SEEK_END )<0 ){ return 0; }
         ulong size = lseek( obj->fd, 0, SEEK_END );
         pos( curr ); return size;
+    }
+
+    ulong pos() const noexcept {
+        auto   _npos = lseek( obj->fd, 0, SEEK_CUR );
+        return _npos < 0 ? 0 : _npos;
     }
 
     /*─······································································─*/
@@ -185,18 +195,6 @@ public:
         onError .clear(); onData  .clear(); 
         onOpen  .clear(); onPipe  .clear(); onClose.emit();
 
-    }
-
-    /*─······································································─*/
-
-    ulong pos( ulong _pos ) const noexcept {
-        auto   _npos = lseek( obj->fd, _pos, SEEK_SET );
-        return _npos < 0 ? 0 : _npos;
-    }
-
-    ulong pos() const noexcept {
-        auto   _npos = lseek( obj->fd, 0, SEEK_CUR );
-        return _npos < 0 ? 0 : _npos;
     }
 
     /*─······································································─*/

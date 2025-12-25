@@ -1,4 +1,9 @@
 # Nodepp
+> **The DOOM of Async Frameworks: Write Once, Build Everywhere, Process Everything.**
+
+[![Build Status](https://github.com/NodeppOfficial/nodepp/actions/workflows/main.yml/badge.svg)](https://github.com/NodeppOfficial/nodepp/actions)
+[![Platform](https://img.shields.io/badge/platform-%20Linux%20|%20Windows%20|%20Mac%20|%20Android%20|%20IOS%20-blue)](https://github.com/NodeppOfficial/nodepp)
+[![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Nodepp is a groundbreaking open-source project that simplifies C++ application development by bridging the gap between the language's raw power and the developer-friendly abstractions of Node.js. By providing a high-level API, Nodepp empowers developers to write C++ code in a familiar, Node.js-inspired style.
 
@@ -40,17 +45,31 @@ target_link_libraries( #[...]
 - 📌: **Scalability:** Build applications that can handle large workloads and grow with your needs.
 - 📌: **Open-source:** Contribute to the project's development and customize it to your specific requirements.
 
-## Bateries Included
+## Projects made with NodePP
+
+- 🔗: [Computer Vision VR Controllers for phones Demo](https://github.com/PocketVR/Barely_VR_AR_Controller_Test)
+- 🔗: [Draw on your PC using your smartphone](https://github.com/ScreenDraw/PCDraw)
+- 🔗: [Simple multiplayer Game With Raylib](https://medium.com/@EDBCBlog/create-your-own-online-multiplayer-small-fast-and-fun-with-raylib-nodepp-and-websockets-190f5c174094)
+- 🔗: [Cursed Luna - A simple Raylib Game](https://github.com/EDBCREPO/Space-Shocker)
+- 🔗: [Smart Card Reader(Nodepp-Arduino)](https://github.com/EDBCREPO/emv-reader)
+- 🔗: [Serial Port arduino using Nodepp](https://github.com/EDBCREPO/Arduino_PC)
+- 🔗: [Simple Raylib Real-Time Chat](https://github.com/EDBCREPO/simple-raylib-websocket-chat)
+- 🔗: [Simple Bitget Trading Bot](https://github.com/EDBCREPO/simple-binance-bot-nodepp)
+
+Check out some articles on [Medium](https://medium.com/@EDBCBlog)
+
+## Batteries Included
 
 - 📌: Include a **build-in JSON** parser / stringify system.
 - 📌: Include a **build-in RegExp** engine for processing text strings.
-- 📌: Include Support for **UTF** manipulation | **UTF8 - UTF16 - UTF32**
+- 📌: Include support for **UTF** manipulation | **UTF8 - UTF16 - UTF32**
 - 📌: Include a **build-in System** that make every object **Async Task** safety.
 - 📌: Include a **Smart Pointer** base **Garbage Collector** to avoid **Memory Leaks**.
 - 📌: Include support for **Reactive Programming** based on **Events** and **Observers**.
 - 📌: Include an **Event Loop** that can handle multiple events and tasks on a single thread.
 - 📌: Include support for **TCP | TLS | UDP | HTTP | WS** making it easy to create networked applications.
-- 📌: Include Support for **Poll | Epoll | Kqueue | WSAPoll** making it easy to handle multiple file descriptors.
+- 📌: Include support for **Poll | Epoll | Kqueue | WSAPoll** making it easy to handle multiple file descriptors.
+- 📌: Include support for **Worker isolated event-loop** making it easy to create distributed self-contained event-loops.
 
 ## Build & Run
 ```bash
@@ -160,6 +179,47 @@ void onMain(){
 }
 ```
 
+### Worker Isolated Event-Loop
+```cpp
+#include <nodepp/nodepp.h>
+#include <nodepp/worker.h>
+#include <nodepp/os.h>
+
+using namespace nodepp;
+
+atomic_t<int> shared_variable = 100;
+
+void worker_main( int cpu_id ){
+
+    // this event-loop runs in it's own isolated worker-thread
+    
+    process::add( coroutine::add( COROUTINE(){
+        thread_local static int variable;
+    //  this will create a static variable per thread
+        static atomic_t<int> shared_variable;
+    //  this will create a shared global variable
+        int local_variable;
+    //  this is a normal variable only exists here
+    coBegin
+
+        while( shared_variable-->0 ){
+            console::log( cpu_id, "->", shared_variable.get() );
+        coDelay(1000); }
+
+    coFinish
+    }));
+
+}
+
+void onMain(){
+
+    for( auto x=os::cpus(); x-->0; ){ worker::add([=](){
+         worker_main( x ); process::wait();
+    return -1; }); }
+
+}
+```
+
 ### More Examples [here](https://nodeppofficial.github.io/nodepp-doc/guide.html)
 
 ## Installing Nodepp
@@ -196,18 +256,6 @@ void onMain() {
 - 🔗: [NodePP for Window | Linux | Mac | Bsd ](https://github.com/NodeppOfficial/nodepp)
 - 🔗: [NodePP for Arduino](https://github.com/NodeppOfficial/nodepp-arduino)
 - 🔗: [Nodepp for WASM](https://github.com/NodeppOfficial/nodepp-wasm)
-
-## Projects made with NodePP
-- 🔗: [Computer Vision VR Controllers for phones Demo](https://github.com/PocketVR/Barely_VR_AR_Controller_Test)
-- 🔗: [Draw on your PC using your smartphone](https://github.com/ScreenDraw/PCDraw)
-- 🔗: [Simple multiplayer Game With Raylib](https://medium.com/@EDBCBlog/create-your-own-online-multiplayer-small-fast-and-fun-with-raylib-nodepp-and-websockets-190f5c174094)
-- 🔗: [Cursed Luna - A simple Raylib Game](https://github.com/EDBCREPO/Space-Shocker)
-- 🔗: [Smart Card Reader(Nodepp-Arduino)](https://github.com/EDBCREPO/emv-reader)
-- 🔗: [Serial Port arduino using Nodepp](https://github.com/EDBCREPO/Arduino_PC)
-- 🔗: [Simple Raylib Real-Time Chat](https://github.com/EDBCREPO/simple-raylib-websocket-chat)
-- 🔗: [Simple Bitget Trading Bot](https://github.com/EDBCREPO/simple-binance-bot-nodepp)
-
-Check out some articles on [Medium](https://medium.com/@EDBCBlog)
 
 ## Official Libraries for Nodepp
 - 🔗: [ExpressPP](https://github.com/NodeppOfficial/nodepp-express)   -> Express equivalent for Nodepp

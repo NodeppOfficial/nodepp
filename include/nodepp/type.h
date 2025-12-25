@@ -16,15 +16,6 @@
 
 namespace nodepp { namespace type {
 
-    template< class T, class V > T* cast( V* object ){ if( object==nullptr ){ return nullptr; } return static_cast<T*>(object); }
-    template< class T, class V > T  cast( V  object ){ return static_cast<T>( object ); }
-
-}}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-namespace nodepp { namespace type {
-
     struct false_type { static constexpr bool value = false; using type = false_type; };
     struct true_type  { static constexpr bool value = true;  using type = true_type;  };
     
@@ -200,10 +191,10 @@ namespace nodepp { namespace type {
     
     /*─······································································─*/
 
-    template<typename T> struct add_lvalue_reference { using type = T&; };
-    template<typename T> struct add_rvalue_reference { using type = T&&; };
+    template<typename T> struct   add_lvalue_reference { using type = T&; };
+    template<typename T> struct   add_rvalue_reference { using type = T&&; };
     template<typename T> typename add_rvalue_reference<T>::type add_rvalue_reference_fn(T&& t) { return static_cast<typename add_rvalue_reference<T>::type>(t); }
-    template<typename T> struct add_reference : public conditional<is_lvalue_reference<T>::value, add_lvalue_reference<typename remove_reference<T>::type>, add_rvalue_reference<typename remove_reference<T>::type>>::type {};
+    template<typename T> struct   add_reference : public conditional<is_lvalue_reference<T>::value, add_lvalue_reference<typename remove_reference<T>::type>, add_rvalue_reference<typename remove_reference<T>::type>>::type {};
     
     /*─······································································─*/
 
@@ -286,7 +277,6 @@ namespace nodepp { namespace type {
 
     /*─······································································─*/
 
-    /*
     template<typename T, typename V> struct is_trivially_assignable {
         static constexpr bool value = __is_trivially_assignable(T,V);
     };
@@ -295,18 +285,23 @@ namespace nodepp { namespace type {
         static constexpr bool value = __is_trivially_constructible(T);
     };
 
+/*
     template<typename T> struct is_trivially_destructible {
+    #if _OS_==NODEPP_OS_MAC || _OS_==NODEPP_OS_IOS || _OS_==NODEPP_OS_EMSCRIPTEN
         static constexpr bool value = __is_trivially_destructible(T);
+    #else
+        static constexpr bool value = __has_trivial_destructor(T);
+    #endif
     };
+*/
 
     template<typename T> struct is_virtually_destructible {
         static constexpr bool value = __has_virtual_destructor(T);
     };
 
-    template<typename T> struct is_trivially_copiable {
+    template<typename T> struct is_trivially_copyable {
         static constexpr bool value = __is_trivially_copyable(T);
     };
-    */
 
     /*─······································································─*/
 

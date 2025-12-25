@@ -9,18 +9,26 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#ifndef NODEPP_ATOMIC
-#define NODEPP_ATOMIC
+#ifndef NODEPP_PROBE
+#define NODEPP_PROBE
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
-    #include "windows/atomic.h"
-#elif _KERNEL_ == NODEPP_KERNEL_POSIX
-    #include "posix/atomic.h"
-#else
-    #error "This OS Does not support atomic.h"
-#endif
+namespace nodepp { class probe_t {
+private:
+
+    ptr_t<uchar> counter;
+
+public:
+
+    /*----*/ probe_t():counter( new uchar() ){}
+    virtual ~probe_t() noexcept /*--------*/ {}
+
+    void clear() /*-*/ noexcept { counter= new uchar(); }
+
+    ulong  get() const noexcept { return counter.count()-1; }
+
+}; }
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

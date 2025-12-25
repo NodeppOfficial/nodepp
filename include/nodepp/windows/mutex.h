@@ -22,8 +22,11 @@
 namespace nodepp { namespace worker {
 
     inline void delay( ulong time ){ process::delay(time); }
+    
     inline void yield(){ delay(TIMEOUT); SwitchToThread(); }
+
     inline DWORD  pid(){ return GetCurrentThreadId(); }
+
     inline void  exit(){ ExitThread(0); }
 
 }}
@@ -34,8 +37,8 @@ namespace nodepp { class mutex_t {
 protected:
 
     struct NODE {
-        bool /*-*/ alive=1;
-        HANDLE /*----*/ fd;
+        HANDLE /*---*/ fd;
+        bool alive = true;
     };  ptr_t<NODE> obj;
 
 public:
@@ -79,14 +82,14 @@ public:
     inline int _emit( T callback, const V&... args ) const noexcept {
         if( obj->alive == 0 ){ return -1; }
         if( !_lock() ) /*-*/ { return -2; }
-        int c=callback( args... ); unlock(); return 1;
+        int c=callback( args... ); unlock(); return c;
     } 
     
     /*─······································································─*/
 
     template< class T, class... V >
     inline void lock( T callback, const V&... args ) const noexcept {
-        if( obj->alive == 0 ){ return; }
+        if( obj->alive == 0 )/*-*/{ return; }
         lock(); callback( args... ); unlock(); 
     }
 
@@ -99,13 +102,13 @@ public:
     
     /*─······································································─*/
 
-    void unlock() const noexcept { while( !_unlock() ){ worker::yield(); } }
-    void lock()   const noexcept { while( !_lock  () ){ worker::yield(); } }
+    inline bool _unlock() const noexcept { return ReleaseMutex( obj->fd )!=0; }
+    inline bool _lock()   const noexcept { return WaitForSingleObject( obj->fd,0 )==0; }
     
     /*─······································································─*/
 
-    inline bool _unlock() const noexcept { return ReleaseMutex( obj->fd )!=0; }
-    inline bool _lock()   const noexcept { return WaitForSingleObject( obj->fd,0 )==0; }
+    inline bool unlock() const noexcept { return ReleaseMutex( obj->fd )!=0; }
+    inline bool lock()   const noexcept { return WaitForSingleObject( obj->fd,INFINITE )==0; }
 
 };}
 

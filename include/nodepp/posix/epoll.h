@@ -37,15 +37,15 @@ protected:
 
     struct NODE {
         queue_t<DATA>  queue;
-        int      y,len,pd;
+        int  dif,y,len,pd;
         ptr_t<EPOLLFD> ev;
     };  ptr_t<NODE>   obj;
 
     /*─······································································─*/
     
     bool listen( const int fd, const int flags, void* ptr ) noexcept { bool x=1, y=1;
-        if  ( flags & POLL_STATE::READ  ){ x = append( fd, EPOLLIN , ptr )!=-1; }
-        elif( flags & POLL_STATE::WRITE ){ y = append( fd, EPOLLOUT, ptr )!=-1; }
+        if( flags & POLL_STATE::READ  ){ x = append( fd, EPOLLIN , ptr )!=-1; }
+        if( flags & POLL_STATE::WRITE ){ y = append( fd, EPOLLOUT, ptr )!=-1; }
         return ( x && y );
     }
 
@@ -111,17 +111,21 @@ public:
 
     template< class T, class U, class... W >
     void* add( T& inp, uchar imode, U cb, const W&... args ) noexcept {
-    auto addr = push( inp.get_fd(), cb, args... ); /*----------*/
+    auto addr = push  ( inp.get_fd(), cb, args... ); /*--------*/
     bool    x = listen( inp.get_fd(), imode, obj->queue.last() );
     if( !x ){ obj->queue.pop(); } return addr; }
 
     /*─······································································─*/
 
-    inline int next() noexcept {
+    inline int next( ulong _WORK_=0 ) noexcept {
     coBegin
 
-        if((obj->len=epoll_wait( obj->pd, &obj->ev, obj->ev.size(), 0 ))<=0 )
-          { coEnd; } obj->y=0; coNext;
+        do{if( _WORK_==0&&!empty() ){ obj->dif=  -1; } 
+        elif ( _WORK_==0&& empty() ){ obj->dif=1000; }
+        else { obj->dif=TIMEOUT; } } while(0);
+
+        if((obj->len=epoll_wait( obj->pd, &obj->ev, obj->ev.size(), obj->dif ))<=0 )
+          { coEnd; } obj->y=0;
 
         while( obj->y < obj->len ){ do {
             
@@ -134,8 +138,8 @@ public:
 
             switch( type::cast<NODE_CLB>( y->data.second ).emit() ){
                 case -1: remove( y ); ++obj->y; break;
-                case  1: /*--------*/ ++obj->y; break;
-                default: /*------------------*/ break;
+                case  0: /*------------------*/ break;
+                default: /*--------*/ ++obj->y; break;
             }
         
         } while(0); coNext; }

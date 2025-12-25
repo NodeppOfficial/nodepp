@@ -481,13 +481,14 @@ namespace nodepp { namespace regex {
     string_t format( const string_t& val, const T&... args ){
         auto count = string::count( []( string_t ){ return true; }, args... );
 
-        static regex_t reg0( "\\$\\{\\d+\\}" );
-        static regex_t reg1( "\\d+" );
-        
         queue_t<string_t> out; ulong idx=0;
+        static ptr_t<regex_t> reg ({
+            regex_t( "\\$\\{\\d+\\}" ),
+            regex_t( "\\d+" )
+        });
 
-        for( auto &x: reg0.search_all( val ) ){
-        auto y = string::to_uint( reg1.match( val.slice( x[0], x[1] ) ) );
+        for( auto &x: reg[0].search_all( val ) ){
+        auto y = string::to_uint( reg[1].match( val.slice( x[0], x[1] ) ) );
         if ( y >= count ){ break; }
              out.push( val.slice( idx, x[0]    ) );
              out.push( string::get( y, args... ) ); idx = x[1];

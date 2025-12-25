@@ -101,7 +101,7 @@ public:
             self->onSocket.emit(cli); self->obj->func(cli);
             if( cli.is_available() ){ self->onConnect.emit(cli); }
 
-        coStay(0); coFinish })); return -1; }; process::foop( clb );
+        coGoto(0); coFinish })); return -1; }; process::foop( clb );
 
     }
 

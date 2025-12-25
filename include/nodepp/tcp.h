@@ -46,10 +46,10 @@ public:
 
     /*─······································································─*/
 
-    virtual ~tcp_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
-
     tcp_t( NODE_CLB _func, agent_t* opt=nullptr ) noexcept : obj( new NODE() )
          { obj->func=_func; obj->agent=opt==nullptr ? agent_t() : *opt; }
+
+    virtual ~tcp_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
     tcp_t() noexcept : obj( new NODE() ) {}
 
@@ -98,7 +98,7 @@ public:
             self->onSocket.emit(cli); self->obj->func(cli);
             if( cli.is_available() ){ self->onConnect.emit(cli); }
 
-        coStay(0); coFinish })); return -1; }; process::foop( clb );
+        coGoto(0); coFinish })); return -1; }; process::foop( clb );
 
     }
 

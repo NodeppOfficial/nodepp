@@ -47,8 +47,8 @@ public:
 
     /*─······································································─*/
 
-    inline int next() noexcept { 
-    coBegin
+    inline int next( ulong /*unused*/ ) noexcept { 
+    coBegin ; process::delay( TIMEOUT );
         
         if( obj->queue.empty() ) /*-*/ { coEnd; } do {
         if( obj->queue.get()==nullptr ){ coEnd; }
@@ -58,8 +58,8 @@ public:
 
         switch( y ){
             case -1: obj->queue.erase(x); break;
-            case  1: obj->queue.next();   break;
-            default: /*--------------*/   break;
+            default: obj->queue.next();   break;
+            case  0: /*--------------*/   break;
         } 
             
         return y; } while(0);

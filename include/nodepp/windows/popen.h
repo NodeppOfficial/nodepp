@@ -65,9 +65,9 @@ protected:
         /*---------------*/ sa.lpSecurityDescriptor = NULL; 
         /*---------------*/ sa.bInheritHandle /*-*/ = TRUE;
 
-        HANDLE fda[2]; CreatePipe( &fda[0], &fda[1], &sa, CHUNK_SIZE );
-        HANDLE fdb[2]; CreatePipe( &fdb[0], &fdb[1], &sa, CHUNK_SIZE );
-        HANDLE fdc[2]; CreatePipe( &fdc[0], &fdc[1], &sa, CHUNK_SIZE );
+        HANDLE fda[2]; if(!CreatePipe(&fda[0],&fda[1],&sa,CHUNK_SIZE)){ throw except_t( "while piping stdin"  ); }
+        HANDLE fdb[2]; if(!CreatePipe(&fdb[0],&fdb[1],&sa,CHUNK_SIZE)){ throw except_t( "while piping stdout" ); }
+        HANDLE fdc[2]; if(!CreatePipe(&fdc[0],&fdc[1],&sa,CHUNK_SIZE)){ throw except_t( "while piping stderr" ); }
 
         ZeroMemory(&obj->si, sizeof(STARTUPINFO));
         ZeroMemory(&obj->pi, sizeof(PROCESS_INFORMATION));

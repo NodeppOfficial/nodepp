@@ -21,18 +21,18 @@
 namespace nodepp { namespace dns {
     
     inline bool is_ipv4( const string_t& URL ){ 
-        static regex_t reg ( "([0-9]+\\.)+[0-9]+" );
-        return reg.test( URL ) ? 1 : 0; 
+        thread_local static regex_t reg ( "([0-9]+\\.)+[0-9]+" );
+        reg.clear_memory(); return reg.test( URL ) ? 1 : 0; 
     }
 
     inline bool is_ipv6( const string_t& URL ){ 
-        static regex_t reg ( "([0-9a-fA-F]+\\:)+[0-9a-fA-F]+" );
-        return reg.test( URL ) ? 1 : 0; 
+        thread_local static regex_t reg ( "([0-9a-fA-F]+\\:)+[0-9a-fA-F]+" );
+        reg.clear_memory(); return reg.test( URL ) ? 1 : 0; 
     }
     
     /*─······································································─*/
 
-    inline string_t lookup_ipv6( string_t host ) {
+    inline string_t lookup_ipv6( string_t host ) { _socket_::start_device();
 
           if( host == "broadcast" || host == "::2" ){ return "::2"; } 
         elif( host == "localhost" || host == "::1" ){ return "::1"; } 
@@ -64,7 +64,7 @@ namespace nodepp { namespace dns {
     
     /*─······································································─*/
 
-    inline string_t lookup_ipv4( string_t host ) {
+    inline string_t lookup_ipv4( string_t host ) { _socket_::start_device();
 
           if( host == "255.255.255.255" || host == "broadcast" ){ return "255.255.255.255"; } 
         elif( host == "127.0.0.1"       || host == "localhost" ){ return "127.0.0.1"; } 

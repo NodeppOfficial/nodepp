@@ -40,11 +40,16 @@ protected:
     
     /*─······································································─*/
 
+    void set_ctx_options( SSL_CTX* ctx ) const noexcept {
+         SSL_CTX_set_options( ctx, SSL_OP_ALL | SSL_OP_NO_RENEGOTIATION | SSL_OP_IGNORE_UNEXPECTED_EOF );
+    }
+
     SSL_CTX* create_server_context() const noexcept {
         const SSL_METHOD *method; method = TLS_server_method();
         SSL_CTX* ctx = SSL_CTX_new( method );
         SSL_CTX_set_read_ahead( ctx, 1 );
         SSL_CTX_set_timeout( ctx, 0 );
+        set_ctx_options( ctx );
         return ctx;
     }
     
@@ -53,9 +58,16 @@ protected:
         SSL_CTX* ctx = SSL_CTX_new( method ); 
         SSL_CTX_set_read_ahead( ctx, 1 );
         SSL_CTX_set_timeout( ctx, 0 );
+        set_ctx_options( ctx );
         return ctx;
     }
 
+    void clear_ssl_error( int error ) const noexcept {
+    /*  if( error == SSL_ERROR_SSL ){ char buf[UNBUF_SIZE];
+            ERR_error_string_n( ERR_get_error(), buf, UNBUF_SIZE );
+            console::error("OpenSSL Fatal Error:", buf);
+        } */ERR_clear_error();
+    }
 
     static int SNI_CLB ( char *buf, int size, int rwflag, void *args ) {
         if( args == nullptr || rwflag != 1 ){ return -1; }
@@ -97,7 +109,7 @@ protected:
     /*─······································································─*/
 
     bool is_blocked( const int& c ) const noexcept { if( c<=0 ){
-    int error =  SSL_get_error( obj->ssl, c ); ERR_clear_error(); return ( 
+    int error =  SSL_get_error( obj->ssl, c ); clear_ssl_error( error ); return ( 
         error == SSL_ERROR_WANT_CLIENT_HELLO_CB ||
         error == SSL_ERROR_WANT_X509_LOOKUP     ||
         error == SSL_ERROR_WANT_ASYNC_JOB       ||
@@ -117,12 +129,14 @@ protected:
     
     /*─······································································─*/
 
-    void set_nonbloking_mode() const noexcept { SSL_set_mode( obj->ssl, 
-         SSL_MODE_ASYNC | SSL_MODE_AUTO_RETRY |
-         SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER  |
-         SSL_MODE_ENABLE_PARTIAL_WRITE        |
-         SSL_MODE_RELEASE_BUFFERS
-    );}
+    void set_nonbloking_mode() const noexcept { 
+         SSL_set_quiet_shutdown( obj->ssl, 1 ); SSL_set_mode( obj->ssl, 
+            SSL_MODE_ASYNC | SSL_MODE_AUTO_RETRY |
+            SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER  |
+            SSL_MODE_ENABLE_PARTIAL_WRITE        |
+            SSL_MODE_RELEASE_BUFFERS
+        );
+    }
 
 public:
     
@@ -141,25 +155,25 @@ public:
     ssl_t( const string_t& _key, const string_t& _cert ) : obj( new NODE() ) { 
         if(!fs::exists_file(_key) || !fs::exists_file(_cert) )
           { throw except_t("such key or cert does not exist"); }
-            obj->key = _key;  obj->crt = _cert; 
+            obj->key = _key; obj->crt = _cert; 
     }
 
     /*─······································································─*/
 
     ssl_t( ssl_t xtc, int df ) : obj( new NODE() ) { 
        if( xtc.get_ctx() == nullptr ){ throw except_t("ctx has no context"); }
-           obj->ctx = xtc.get_ctx(); obj->ssl = SSL_new(obj->ctx); 
+           obj->ctx = xtc.get_ctx  (); obj->ssl = SSL_new(obj->ctx); 
            obj->srv = xtc.is_server(); set_nonbloking_mode(); 
-           set_fd( df );
+           set_fd( df ); SSL_CTX_up_ref( obj->ctx );
     }
 
     /*─······································································─*/
 
     ssl_t() : obj( new NODE() ) {  
-        static ptr_t<X509_t> cert; if( cert.null() ){
-            cert = type::bind /*-*/ ( new X509_t() ); 
-            cert->generate( "Node", "Node", "Node" );
-        }   /*-------------------*/ obj->cert = cert;
+        thread_local static ptr_t< X509_t > cert; if( cert.null() ){
+            cert= type::bind/*-*/( X509_t() ); 
+            cert->generate("Node","Node","Node");
+        }   /*---------------*/ obj->cert = cert;
     }
     
     /*─······································································─*/
@@ -196,8 +210,8 @@ public:
     int create_server() const noexcept { if( !obj->stt ){ return -1; }
         obj->ctx = create_server_context(); obj->srv = 1;
         int  res = configure_context( obj->ctx, obj->key, obj->crt, obj->cha ); 
-        if( obj->fnc != nullptr ){ set_ctx_sni( obj->ctx, &obj->fnc ); } return res;
-    }
+        if( obj->fnc != nullptr ){ set_ctx_sni( obj->ctx, &obj->fnc ); } 
+    return res; }
     
     /*─······································································─*/
 
@@ -299,17 +313,22 @@ public:
     /*─······································································─*/
 
     virtual void free() const noexcept {
+
         if( obj->ssl != nullptr && obj->stt ){
-        if( obj->cnn == 1 )
-          { SSL_shutdown( obj->ssl ); }   
-            SSL_clear( obj->ssl ); SSL_free( obj->ssl ); 
-        goto CLSE;
-        } if ( obj->ctx != nullptr && obj->stt ){
+        if( obj->cnn == 1 ){ SSL_shutdown( obj->ssl ); }   
+            /*------------*/ SSL_clear( obj->ssl ); 
+            /*------------*/ SSL_free ( obj->ssl ); 
+        } 
+
+        if( obj->ctx != nullptr && obj->stt ){
             SSL_CTX_free( obj->ctx );
-        }   CLSE:; obj->stt = false;
+        }
+
+        obj->stt = false;
+
     }
     
-} SSL_DEFAULT_CERT; }
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

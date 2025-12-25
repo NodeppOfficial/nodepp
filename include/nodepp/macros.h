@@ -11,6 +11,7 @@
 
 #ifndef NODEPP_MACROS
 #define NODEPP_MACROS
+#define thread_safe   thread_local static
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -21,32 +22,29 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define coDelay(VALUE)  do { _time_=process::millis()+VALUE; coWait( process::millis()<_time_ ); } while(0)
-#define coUDelay(VALUE) do { _time_=process::micros()+VALUE; coWait( process::micros()<_time_ ); } while(0)
+#define coDelay(VALUE)           do { _time_=process::millis()+VALUE; while( process::millis()<_time_ ){ coErrno(VALUE,_LINE_,1); }} while(0);
+#define coUDelay(VALUE)          do { _time_=process::micros()+VALUE; while( process::micros()<_time_ ){ coNext; }} while(0);
+#define coErrno(DELAY,STATE,OUT) do { coSet(STATE); coroutine::getno( OUT,coGet,DELAY ); return OUT; case STATE:; } while(0);
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define coNext         do { coSet( _LINE_); return 1; case _LINE_:; } while(0);
-#define coYield(VALUE) do { coSet( VALUE ); return 1; case VALUE :; } while(0);
-#define coWait(VALUE)  do { while( VALUE ){ /*----------*/ coNext; }} while(0);
-#define coGoto(VALUE)  do { coSet( VALUE ); /*-------*/ return  1;  } while(0);
-#define coStay(VALUE)  do { coSet( VALUE ); /*-------*/ return  0;  } while(0);
-#define coEnd          do { _time_ = 0; _state_=_time_; return -1;  } while(0);
-#define coStop            } _time_ = 0; _state_=_time_; return -1;  } while(0);
+#define coGoto(VALUE)  do { coSet( VALUE ); coroutine::getno(1,coGet); return 1; } while(0);
+#define coStay(VALUE)  do { coSet( VALUE ); coroutine::getno(0,coGet); return 0; } while(0);
+#define coNext         do { coErrno(0UL,_LINE_,1); /*-------------------------*/ } while(0);
+#define coYield(VALUE) do { coErrno(0UL, VALUE,1); /*-------------------------*/ } while(0);
+#define coWait(VALUE)  do { while( VALUE ){ /*------------------------*/ coNext;}} while(0);
+#define coEnd          do { _time_=0; _state_=_time_; /**/ coroutine::getno(-1); } while(0); return -1;
+#define coStop            } _time_=0; _state_=_time_; /**/ coroutine::getno(-1); } while(0); return -1;
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define coStart  static int _state_=0; static ulong _time_=0; coBegin
-#define coBegin  do { switch(_state_) { case 0:;
+#define coStart  thread_safe int _state_=0; thread_safe ulong _time_=0; coBegin
+#define coBegin  do { switch(_state_) { case 0:; coroutine::getno(-2);
 #define coEmit   int operator()
 
 #define coSet(VALUE) _state_ = VALUE
 #define coGet        _state_
-
 #define coFinish     coStop
-#define gnStart      coBegin
-#define gnStop       coStop
-#define gnEmit       coEmit
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -94,17 +92,14 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#define TIMEOUT         process::set_timeout()
+
 #define HASH_TABLE_SIZE 16
+#define MAX_SSO         64
+#define MAX_POOL_SIZE   1024
 #define UNBFF_SIZE      4096
+#define MAX_PATH        1024
 #define CHUNK_SIZE      65536
-
-#ifndef MAX_PATH
-#define MAX_PATH 1024
-#endif
-
-#ifndef TIMEOUT
-#define TIMEOUT 1
-#endif
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -114,20 +109,16 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 #define NODEPP_KERNEL_WASM    1
 #define NODEPP_KERNEL_UNKNOWN 0
 
-#ifndef    _KERNEL_
-#if defined(WINDOWS) || defined(_WIN32) || defined(_WIN64)
+#ifndef _KERNEL_
+#if defined(_WIN32) || defined(_WIN64)
    #define _KERNEL_ NODEPP_KERNEL_WINDOWS
 #elif defined(ARDUINO)
    #define _KERNEL_ NODEPP_KERNEL_ARDUINO
 #elif defined(__EMSCRIPTEN__)
-   #define _KERNEL_  NODEPP_KERNEL_WASM
-#elif defined(__FreeBSD__)
-   #define _KERNEL_ NODEPP_KERNEL_POSIX
-#elif defined(__APPLE__)
-   #define _KERNEL_ NODEPP_KERNEL_POSIX
-#elif defined(__linux__)
-   #define _KERNEL_ NODEPP_KERNEL_POSIX
-#elif defined(__unix__)
+   #define _KERNEL_ NODEPP_KERNEL_WASM
+#elif defined(__linux__)   || defined(__APPLE__)   || defined(__FreeBSD__)   || \
+      defined(__NetBSD__)  || defined(__OpenBSD__) || defined(__DragonFly__) || \
+      defined(__ANDROID__) || defined(__TIZEN__)   || defined(__unix__)
    #define _KERNEL_ NODEPP_KERNEL_POSIX
 #else
    #define _KERNEL_ NODEPP_KERNEL_UNKNOWN
@@ -136,36 +127,51 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define NODEPP_OS_WINDOWS 9
-#define NODEPP_OS_ANDROID 8
-#define NODEPP_OS_TIZEN   7
-#define NODEPP_OS_APPLE   6
-#define NODEPP_OS_FRBSD   5
-#define NODEPP_OS_LINUX   4
-#define NODEPP_OS_UNIX    3
+#define NODEPP_OS_WINDOWS 8
+#define NODEPP_OS_ANDROID 7
+#define NODEPP_OS_TIZEN   6
+#define NODEPP_OS_APPLE   5
+#define NODEPP_OS_FRBSD   4
+#define NODEPP_OS_LINUX   3
 #define NODEPP_OS_IOS     2
 #define NODEPP_OS_ARDUINO 1
 #define NODEPP_OS_UNKNOWN 0
 
-#ifndef    _OS_
-#if defined(WINDOWS) || defined(_WIN32) || defined(_WIN64)
+#ifndef _OS_
+#if defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
    #define _OS_ NODEPP_OS_WINDOWS
-#elif defined(__APPLE__) && defined(__MACH__)
-   #define _OS_ NODEPP_OS_IOS
-#elif defined(__TIZEN__)
-   #define _OS_ NODEPP_OS_TIZEN
+
 #elif defined(__ANDROID__)
    #define _OS_ NODEPP_OS_ANDROID
-#elif defined(__FreeBSD__)
-   #define _OS_ NODEPP_OS_FRBSD
+
+#elif defined(__TIZEN__)
+   #define _OS_ NODEPP_OS_TIZEN
+
 #elif defined(__APPLE__)
-   #define _OS_ NODEPP_OS_APPLE
+   #include <TargetConditionals.h>
+   #if TARGET_OS_IPHONE
+      #define _OS_ NODEPP_OS_IOS
+   #else
+      #define _OS_ NODEPP_OS_APPLE
+   #endif
+
+#elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
+   #define _OS_ NODEPP_OS_FRBSD
+
 #elif defined(__linux__)
    #define _OS_ NODEPP_OS_LINUX
-#elif defined(__unix__)
-   #define _OS_ NODEPP_OS_UNIX
+
 #elif defined(ARDUINO)
    #define _OS_ NODEPP_OS_ARDUINO
+
+#elif defined(__unix__)
+   #include <sys/param.h>
+   #if defined(BSD)
+      #define _OS_ NODEPP_OS_FRBSD
+   #else
+      #define _OS_ NODEPP_OS_UNKNOWN
+   #endif
+
 #else
    #define _OS_ NODEPP_OS_UNKNOWN
 #endif
@@ -173,37 +179,50 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define NODEPP_ARCH_CPU_64  4
-#define NODEPP_ARCH_CPU_32  3
-#define NODEPP_ARCH_ARM_64  2
-#define NODEPP_ARCH_ARM_32  1
-#define NODEPP_ARCH_UNKNOWN 0
+#define NODEPP_ARCH_XTENSA   7
+#define NODEPP_ARCH_RISCV_64 6
+#define NODEPP_ARCH_RISCV_32 5
+#define NODEPP_ARCH_CPU_64   4
+#define NODEPP_ARCH_CPU_32   3
+#define NODEPP_ARCH_ARM_64   2
+#define NODEPP_ARCH_ARM_32   1
+#define NODEPP_ARCH_UNKNOWN  0
 
-#ifndef       _ARCH_
-#if defined(__GNUC__)
-   #if defined(__x86_64__)
+#ifndef _ARCH_
+#if defined(__GNUC__) || defined(__clang__)
+   #if defined(__x86_64__) || defined(__ppc64__)
       #define _ARCH_ NODEPP_ARCH_CPU_64
    #elif defined(__aarch64__)
       #define _ARCH_ NODEPP_ARCH_ARM_64
    #elif defined(__i386__)
       #define _ARCH_ NODEPP_ARCH_CPU_32
    #elif defined(__arm__)
-      #define _ARCH_ NODEPP_ARCH_ARM_64
+      #define _ARCH_ NODEPP_ARCH_ARM_32
    #else
       #define _ARCH_ NODEPP_ARCH_UNKNOWN
    #endif
-#else
-   #if defined(_M_IX86)
+#elif defined(_MSC_VER)
+   #if defined(_M_X64) || defined(_M_AMD64)
+      #define _ARCH_ NODEPP_ARCH_CPU_64
+   #elif defined(_M_IX86)
       #define _ARCH_ NODEPP_ARCH_CPU_32
    #elif defined(_M_ARM64)
       #define _ARCH_ NODEPP_ARCH_ARM_64
-   #elif defined(_M_X64)
-      #define _ARCH_ NODEPP_ARCH_CPU_64
    #elif defined(_M_ARM)
       #define _ARCH_ NODEPP_ARCH_ARM_32
    #else
       #define _ARCH_ NODEPP_ARCH_UNKNOWN
    #endif
+#elif defined(__xtensa__)
+   #define _ARCH_ NODEPP_ARCH_XTENSA
+#elif defined(__riscv)
+   #if __riscv_xlen == 64
+      #define _ARCH_ NODEPP_ARCH_RISCV_64
+   #else
+      #define _ARCH_ NODEPP_ARCH_RISCV_32
+   #endif
+#else
+   #define _ARCH_ NODEPP_ARCH_UNKNOWN
 #endif
 #endif
 

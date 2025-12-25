@@ -145,7 +145,7 @@ public:
     
     /*─······································································─*/
 
-    void set_range( ulong x, ulong y ) const noexcept { obj->range[0] = x; obj->range[1] = y; }
+    void   set_range( ulong x, ulong y ) const noexcept { obj->range[0] = x; obj->range[1] = y; }
     ulong* get_range() const noexcept { return obj == nullptr ? nullptr : obj->range; }
     HANDLE    get_fd() const noexcept { return obj == nullptr ? nullptr : obj->fd; }
     

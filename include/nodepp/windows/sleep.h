@@ -21,8 +21,8 @@
 namespace nodepp { namespace process { struct NODE_INTERVAL { FILETIME ft; ULARGE_INTEGER time; }; } }
 namespace nodepp { namespace process {
 
-    inline NODE_INTERVAL get_new_interval(){ 
-        NODE_INTERVAL interval; GetSystemTimeAsFileTime( &interval.ft );
+    inline NODE_INTERVAL& get_new_interval(){ 
+        thread_local static NODE_INTERVAL interval; GetSystemTimeAsFileTime( &interval.ft );
         interval.time.HighPart = interval.ft.dwHighDateTime;
         interval.time.LowPart  = interval.ft.dwLowDateTime;
         return interval;
@@ -49,9 +49,21 @@ namespace nodepp { namespace process {
 
 namespace nodepp { namespace process {
 
-    inline void delay( ulong time ){ ::Sleep( time ); }
+    inline ulong set_timeout( ulong time=0 ) {
+        if( time == -1 ) /*------------*/ { return 0; }
+    thread_local static ulong stamp; ulong out=stamp;
+        if( stamp > time || stamp == 0 ){ stamp=time; }
+    return out==0 ? 1 : out; }
+    
+}}
 
-    inline void yield(){ delay( TIMEOUT ); }
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace process {
+
+    inline void delay( ulong time ){ ::Sleep(time); }
+
+    inline void yield(){ delay(TIMEOUT); }
 
     inline ulong now(){ return millis(); }
 
