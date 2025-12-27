@@ -7,7 +7,7 @@ void onMain() {
 
     auto time1 = date_t( 2025, 7,  9, false );
     auto time2 = date_t( 2025, 7, 19, false );
-    auto time3 = date2 - date1;
+    auto time3 = time2 - time1;
 
     console::log( "days left:", time3.get_day() );
 
