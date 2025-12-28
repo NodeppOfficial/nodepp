@@ -127,8 +127,9 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define NODEPP_OS_WINDOWS 8
-#define NODEPP_OS_ANDROID 7
+#define NODEPP_OS_WINDOWS 9
+#define NODEPP_OS_ANDROID 8
+#define NODEPP_OS_BROWSER 7
 #define NODEPP_OS_TIZEN   6
 #define NODEPP_OS_APPLE   5
 #define NODEPP_OS_FRBSD   4
@@ -140,6 +141,9 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 #ifndef _OS_
 #if defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
    #define _OS_ NODEPP_OS_WINDOWS
+
+#elif defined(__EMSCRIPTEN__)
+   #define _OS_ NODEPP_OS_BROWSER
 
 #elif defined(__ANDROID__)
    #define _OS_ NODEPP_OS_ANDROID
@@ -190,18 +194,29 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 #ifndef _ARCH_
 #if defined(__GNUC__) || defined(__clang__)
-   #if defined(__x86_64__) || defined(__ppc64__)
+
+   #if defined(__x86_64__) || defined(__ppc64__) || defined(__amd64__) || defined(__LP64__)
       #define _ARCH_ NODEPP_ARCH_CPU_64
    #elif defined(__aarch64__)
       #define _ARCH_ NODEPP_ARCH_ARM_64
-   #elif defined(__i386__)
+   #elif defined(__i386__) || defined(__i486__) || defined(__i586__) || defined(__i686__)
       #define _ARCH_ NODEPP_ARCH_CPU_32
    #elif defined(__arm__)
       #define _ARCH_ NODEPP_ARCH_ARM_32
+   #elif defined(__riscv)
+      #if __riscv_xlen == 64
+         #define _ARCH_ NODEPP_ARCH_RISCV_64
+      #else
+         #define _ARCH_ NODEPP_ARCH_RISCV_32
+      #endif
+   #elif defined(__xtensa__)
+      #define _ARCH_ NODEPP_ARCH_XTENSA
    #else
       #define _ARCH_ NODEPP_ARCH_UNKNOWN
    #endif
+
 #elif defined(_MSC_VER)
+
    #if defined(_M_X64) || defined(_M_AMD64)
       #define _ARCH_ NODEPP_ARCH_CPU_64
    #elif defined(_M_IX86)
@@ -213,14 +228,7 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
    #else
       #define _ARCH_ NODEPP_ARCH_UNKNOWN
    #endif
-#elif defined(__xtensa__)
-   #define _ARCH_ NODEPP_ARCH_XTENSA
-#elif defined(__riscv)
-   #if __riscv_xlen == 64
-      #define _ARCH_ NODEPP_ARCH_RISCV_64
-   #else
-      #define _ARCH_ NODEPP_ARCH_RISCV_32
-   #endif
+
 #else
    #define _ARCH_ NODEPP_ARCH_UNKNOWN
 #endif

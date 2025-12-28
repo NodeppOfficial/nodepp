@@ -14,11 +14,14 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+nodepp::atomic_t<bool> _EXIT_ = false;
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 namespace nodepp { namespace /*anonimous*/ { class event_loop_t : public generator_t {
 private:
 
-    loop_t _loop_,_foop_; poll_t _poll_;
-    bool _EXIT_= false; probe_t _probe_;
+    loop_t _loop_,_foop_; poll_t _poll_; probe_t _probe_;
 
 public:
 
@@ -30,7 +33,7 @@ public:
 
     /*─······································································─*/
 
-    bool should_close(){ return _EXIT_ || empty(); }
+    bool should_close(){ return _EXIT_.get() || empty(); }
 
     /*─······································································─*/
 
@@ -60,7 +63,7 @@ public:
     template< class T, class... V > int await( T cb, const V&... args ){ 
         int c=0;
 
-        if ( !_EXIT_ && (c=cb(args...))>=0 ){
+        if ( !_EXIT_.get() && (c=cb(args...))>=0 ){
         if ( c==1 ){ auto t = coroutine::getno().delay;
         if ( t >0 ){ process::set_timeout( t ); }
         else /*-*/ { process::set_timeout(0UL); }} next(); return 1; } 
@@ -76,13 +79,6 @@ public:
         while( _poll_.next(task)>=0 ){ coNext; } coYield(1); }
     
     coFinish }
-
-    /*─······································································─*/
-
-    void exit( int err=0 ){ 
-        if( should_close() ){ goto DONE; }
-        _EXIT_=true; clear(); DONE:; ::exit(err); 
-    }
 
 };}}
 
@@ -122,11 +118,15 @@ namespace nodepp { namespace process {
 
     inline void clear( void* address ){ NODEPP_EV_LOOP().off( address ); }
     inline void   off( void* address ){ NODEPP_EV_LOOP().off( address ); }
-    inline void  exit( int err=0 )    { NODEPP_EV_LOOP().exit(err); }
 
     /*─······································································─*/
 
     inline int next(){ return NODEPP_EV_LOOP().next(); }
+
+    inline void exit( int err=0 ){ 
+        if( should_close() ){ goto DONE; }
+        _EXIT_.set(true); clear(); DONE:; ::exit(err); 
+    }
 
 }}
 

@@ -9,80 +9,220 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#ifndef NODEPP_POSIX_IOCP
-#define NODEPP_POSIX_IOCP
-
-#if _KERNEL_ == NODEPP_KERNEL_WINDOWS
-
-#elif _KERNEL_ == NODEPP_KERNEL_POSIX
-    #if   ( _OS_ == NODEPP_OS_FRBSD ) || ( _OS_ == NODEPP_OS_APPLE )
-    #elif ( _OS_ == NODEPP_OS_LINUX )
-    #else
-    #endif
+#ifndef NODEPP_KERNEL
+#define NODEPP_KERNEL
+#if  ( _OS_ == NODEPP_OS_FRBSD ) || ( _OS_ == NODEPP_OS_APPLE )
+    #define NODEPP_POLL_KQUEUE
+#elif( _OS_ == NODEPP_OS_LINUX )
+    #define NODEPP_POLL_EPOLL
+#elif( _OS_ == NODEPP_OS_WINDOWS )
+    #define NODEPP_POLL_IOCP
+#else
+    #define NODEPP_POLL_POLL
 #endif
-
 #endif
 
 /*────────────────────────────────────────────────────────────────────────────*/
+
+#if define( NODEPP_POLL_EPOLL )
 
 #include <sys/timerfd.h>
 #include <sys/eventfd.h>
 #include <sys/epoll.h>
+#include "../loop.h"
 
-/*────────────────────────────────────────────────────────────────────────────*/
-
-namespace nodepp { class kernel_t {
+namespace nodepp { class kernel_t: public generator_t {
 private:
 
-    class fd_t { public:
+    enum STATE{ 
+         WRITE  = EPOLLOUT /*------*/ | EPOLLET,
+         READ   = EPOLLIN  /*------*/ | EPOLLET,
+         DUPLEX = EPOLLIN  | EPOLLOUT | EPOLLET
+    };
 
-        struct NODE {
-            any_t user_data; int fd; function_t<void> cb;
-        };  ptr_t<NODE> obj;
+    enum FLAG {
+         FD_FLAG_UNKNOWN = 0x00000000,
+         FD_FLAG_STREAM  = 0x00000001,
+         FD_FLAG_EVENT   = 0x00000010,
+         FD_FLAG_TIMER   = 0x00000100,
+         FD_FLAG_RAW     = 0x00001000,
+    };
 
-        fd_t( int fd, function_t<void,fd_t*> cb, any_t ud ) : obj ( new NODE() )
-            { user_data = ud; obj->cb = cb; }
+    using EPOLLFD = struct epoll_event;
+    using EPOLLCB = function_t<int>;
 
-        virtual ~fd_t(  ) noexcept { if( obj.count()>1 ){ return } obj->cb(this); }
+    /*─······································································─*/
+
+    class kevent_t { public:
+
+        struct NODE { any_t user_data; int fd, flag; }; ptr_t<NODE> obj;
+
+        any_t get() const noexcept { return obj->user_data; }
+
+        kevent_t( int fd, int flag, any_t ud ) : obj ( new NODE() )
+                { user_data = ud; obj->flag = flag; }
 
     };
 
-    class evfd_t: public fd_t { public:
+    /*─······································································─*/
+
+    void* append_timer_interval( any_t user_data, ulong time_ms ) const noexcept {
+        int tfd = timerfd_create( CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK );
+        if( tfd == -1 ){ return nullptr; }
+
+        struct itimerspec ts;
+        ts.it_interval.tv_sec  = time_ms / 1000 ; 
+        ts.it_value   .tv_sec  = ts.it_interval.tv_sec ;
+        ts.it_interval.tv_nsec = (time_ms % 1000) * 1e6;
+        ts.it_value   .tv_nsec = ts.it_interval.tv_nsec;
+
+        if( timerfd_settime( tfd, 0, &ts, NULL )==-1 ) 
+          { ::close( tfd ); return nullptr; }
+
+        kevent_t kv( tfd, FLAG::FD_FLAG_TIMER, user_data );
+        /*-----*/ obj->kv_queue.push( kv );
+        auto id = obj->kv_queue.last();
         
-        evfd_t( int fd, function_t<void,fd_t*> cb, any_t ud ) : fd_t( fd, cb, ud ) {}
+        append( fd.obj->fd, STATE::READ, &id );
+    return id; }
 
-        void emit() const noexcept {  }
+    void* append_timer_timeout( any_t user_data, ulong time_ms ) const noexcept {
+        int tfd = timerfd_create( CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK );
+        if( tfd == -1 ){ return nullptr; }
 
-    };
+        struct itimerspec ts;
+        ts.it_interval.tv_sec  = 0;
+        ts.it_interval.tv_nsec = 0; 
+        ts.it_value.tv_sec     = time_ms / 1000;
+        ts.it_value.tv_nsec    =(time_ms % 1000) * 1e6;
 
-protected:
+        if( timerfd_settime( tfd, 0, &ts, NULL )==-1 ) 
+          { ::close( tfd ); return nullptr; }
 
-    struct NODE { queue_t<fd_t> queue; }; ptr_t<NODE> obj;
+        kevent_t kv( tfd, FLAG::FD_FLAG_TIMER, user_data );
+        /*-----*/ obj->kv_queue.push( kv );
+        auto id = obj->kv_queue.last();
 
-public:
+        append( fd.obj->fd, STATE::READ, &id );
+    return id; }
+
+    void* append_writter( any_t user_data, int sfd ) const noexcept {
+        if( sfd==-1 ){ return nullptr; }
+
+        kevent_t kv( sfd, FLAG::FD_FLAG_STREAM, user_data );
+        /*-----*/ obj->kv_queue.push( kv );
+        auto id = obj->kv_queue.last();
+
+        append( fd.obj->fd, STATE::WRITE, &id );
+    return id; }
+
+    void* append_reader( any_t user_data, int sfd ) const noexcept {
+        if( sfd==-1 ){ return nullptr; }
+
+        kevent_t kv( sfd, FLAG::FD_FLAG_STREAM, user_data );
+        /*-----*/ obj->kv_queue.push( kv );
+        auto id = obj->kv_queue.last();
+        
+        append( fd.obj->fd, STATE::READ, &id );
+    return id; }
+
+    void* append_event( any_t user_data ) const noexcept {
+        int efd = eventfd( 0, EFD_CLOEXEC | EFD_NONBLOCK );
+        if( efd == -1 ){ return nullptr; }
+
+        kevent_t kv( tfd, FLAG::FD_FLAG_EVENT, user_data );
+        /*-----*/ obj->kv_queue.push( kv );
+        auto id = obj->kv_queue.last();
+
+        append( fd.obj->fd, STATE::READ, &id );
+    return id; }
+
+    /*─······································································─*/
 
     int append( const int fd, const int flags, void* ptr ) const noexcept {
-        EPOLLFD event; /*--------------------------------------*/
+        EPOLLFD event;
         event.data.fd=fd; event.data.ptr=ptr; event.events=flags;
         return epoll_ctl( obj->pd, EPOLL_CTL_ADD, fd, &event );
     }
 
-    fd_t set_event() const noexcept {
-
-        auto self = type::bind( this ); auto fd_t fd(
-            eventfd( 0, EFD_CLOEXEC | EFD_NONBLOCK ),
-            [=]( fd_t* fd ){ 
-                self->remove(  );
-                ::close( fd->obj->fd ); 
-            }, nullptr
-        );
-
-        int efd = ;
-
-        ev.events = EPOLLIN; // Default Level-Triggered
-        ev.data.fd = fd;
-        epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &ev);
+    int remove( void* ptr ) const noexcept {
+        auto pt = obj->fd_queue.as( ptr );
+        auto fd = pt->data.first; obj->queue.erase(pt);
+        EPOLLFD event; event.data.fd=fd; event.events=0;
+        return  epoll_ctl( obj->pd, EPOLL_CTL_DEL, fd, &event );
     }
 
+protected:
+
+    struct NODE { 
+        queue_t<kevent_t> kv_queue;
+        queue_t<EPOLLFD>  fd_queue;
+        loop_t ev_queue,  fs_queue;
+    };  ptr_t<NODE> obj;
+
+public:
+
+    /*─······································································─*/
+
+    /*─······································································─*/
+
+    /*─······································································─*/
+
+    inline int next() noexcept {
+    coBegin
+
+        coWait( obj->ev_queue.next()>=0 ){ coNext; } process::set_timeout( obj->ev_queue.get_delay() );
+        coWait( obj->fs_queue.next()>=0 ){ coNext; } process::set_timeout( obj->fs_queue.get_delay() );
+
+        if((obj->len=epoll_wait( obj->pd, &obj->ev, obj->ev.size(), TIMEOUT ))<=0 )
+          { coEnd; } obj->y=0;
+
+        while( obj->y < obj->len ){ do {
+            
+            auto x = obj->ev[ obj->y ];
+            auto y = obj->queue.as( x.data.ptr );
+
+            if( x.events & ( EPOLLERR | EPOLLHUP ) &&
+              ( x.events & ( EPOLLIN  | EPOLLOUT ))==0
+            ) { remove( y ); ++obj->y; break; }
+
+            switch( type::cast<NODE_CLB>( y->data.second ).emit() ){
+                case -1: remove( y ); ++obj->y; break;
+                case  0: /*------------------*/ break;
+                default: /*--------*/ ++obj->y; break;
+            }
+        
+        } while(0); coNext; }
+
+    coFinish }
 
 };}
+
+#endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+#if define( NODEPP_POLL_KQUEUE )
+
+#include <sys/types.h>
+#include <sys/event.h>
+#include <sys/time.h>
+
+#endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+#if define( NODEPP_POLL_IOCP )
+#endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+#if define( NODEPP_POLL_POLL )
+
+#include <sys/timerfd.h>
+#include <sys/eventfd.h>
+#include <sys/poll.h>
+
+#endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

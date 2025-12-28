@@ -5,7 +5,7 @@ using namespace nodepp;
 
 void onMain(){
 
-    crypto::encrypt::RSA ppt;
+    crypto::encrypt::RSA ppt; ppt.generate_keys();
     string_t msg = "Hello World!";
 
     auto data = ppt.private_encrypt( msg );

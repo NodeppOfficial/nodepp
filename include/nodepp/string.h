@@ -384,6 +384,34 @@ public:
 
     /*─······································································─*/
 
+    bool starts_with( string_t pattern ) const noexcept {
+    auto data = slice_view( 0, pattern.size()-1 );
+         if( data.size() != pattern.size() ){ return false; }
+         return memcmp( pattern.get(), data.get(), pattern.size() )==0;
+    }
+
+    bool ends_with( string_t pattern ) const noexcept {
+    auto data = slice_view( size()-pattern.size() );
+         if( data.size() != pattern.size() ){ return false; }
+         return memcmp( pattern.get(), data.get(), pattern.size() )==0;
+    }
+
+    /*─······································································─*/
+
+    string_t slice_view( long start, long stop ) const noexcept {
+	    auto r = get_slice_range( start, stop );
+        if ( r.null() ){ return nullptr; } 
+        return ptr_t<char>( buffer, r[0], r[0]+r[2] );
+    }
+
+    string_t slice_view( long start ) const noexcept {
+	    auto r = get_slice_range( start, size() );
+        if ( r.null() ){ return nullptr; } 
+        return ptr_t<char>( buffer, r[0], r[0]+r[2] );
+    }
+
+    /*─······································································─*/
+
     string_t slice( long start ) const noexcept {
 
         auto r = get_slice_range( start, size() );
@@ -393,8 +421,6 @@ public:
         return n_buffer;
 
     }
-
-    /*─······································································─*/
 
     string_t slice( long start, long stop ) const noexcept {
 
@@ -468,7 +494,7 @@ public:
           char*   get() const noexcept { return empty() ? nullptr : &buffer; }
     const char* c_str() const noexcept { return empty() ? nullptr : &buffer; }
 
-    ptr_t<char>&  ptr() noexcept { return buffer; }
+    ptr_t<char>&  ptr()       noexcept { return buffer; }
 
 };
 
@@ -497,9 +523,11 @@ inline void operator^=( string_t& A, const string_t& B ){
 
 namespace string {
 
-    inline string_t null(){ return buffer( 1, '\0' ); }
+    inline string_t null (){ return buffer( 1, '\0' ); }
 
     inline string_t space(){ return buffer( 1, ' ' ); }
+
+    inline string_t empty(){ return nullptr; }
 
     /*─······································································─*/
 

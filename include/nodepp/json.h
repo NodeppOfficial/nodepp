@@ -103,14 +103,14 @@ protected:
            if( str[x] == '{' || str[x] == '[' ){
                auto z = get_next_key( x, str );
            if( z < 0 ){ throw except_t("Invalid JSON Format"); }
-               data.push( parse(str.slice( x,z+1 )) ); x=z+1;
+               data.push( parse(str.slice_view( x,z+1 )) ); x=z+1;
            } elif( str[x] == '"' ) {
                auto z = get_next_sec( x, str );
            if( z < 0 ){ throw except_t("Invalid JSON Format"); }
-               data.push( get_data(str.slice( x,z+1 )) ); x=z+1;
+               data.push( get_data(str.slice_view( x,z+1 )) ); x=z+1;
            } elif( x != y ) {
                ulong z=x; while( str[z]!=',' && z<y ) { ++z; }
-               data.push( get_data(str.slice( x, z )) ); x=z;
+               data.push( get_data(str.slice_view( x, z )) ); x=z;
            }
         } while( x++<y ); return data.data();
     }
@@ -134,7 +134,7 @@ public:
                 } elif( str[x] == '{' ) {
                     return get_object( x+1,pos, str );
                 } else {
-                    data = str.slice( x+1, pos-1 ); break;
+                    data = str.slice_view( x+1, pos-1 ); break;
                 }   x = pos + 1;
 
             } elif( str[x] == ']' || str[x] == '}' || str[x] == ')' ){

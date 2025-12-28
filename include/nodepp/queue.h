@@ -69,26 +69,26 @@ public:
 
     /*─······································································─*/
 
-    queue_t( const V* value, const ulong& n=0 ) noexcept : obj( new DONE() ) {
+    queue_t( const V* value, const ulong& n=0 ) noexcept : obj( 0UL, DONE() ) {
         if ( value == nullptr || n == 0 ){ return; } auto i=n;
       while( i-->0 ){ unshift(value[i]); }
     }
 
-    queue_t( const ulong& n, const V& c ) noexcept: obj( new DONE() )  {
+    queue_t( const ulong& n, const V& c ) noexcept: obj( 0UL, DONE() )  {
         if ( n == 0 ){ return; }
         auto i=n; while( i-->0 ){ unshift(c); }
     }
 
     template < class T, ulong N >
-    queue_t( const T (&value)[N] ) noexcept : obj( new DONE() ) {
+    queue_t( const T (&value)[N] ) noexcept : obj( 0UL, DONE() ) {
         auto i=N; while( i-->0 ){ unshift(value[i]); }
     }
 
-    queue_t( const ptr_t<V>& args ) noexcept: obj( new DONE() ) {
+    queue_t( const ptr_t<V>& args ) noexcept: obj( 0UL, DONE() ) {
         for( auto &x: args ){ push( x ); }
     }
 
-    queue_t() noexcept : obj( new DONE() ) {}
+    queue_t() noexcept : obj( 0UL, DONE() ) {}
 
     /*─······································································─*/
 
@@ -359,7 +359,7 @@ public:
     }
 
     inline NODE* get( ulong x ) const noexcept {
-        if( empty() ){ return nullptr; } 
+        if( empty() ){ return nullptr; }
         auto y=x%size(); auto n=first();
         while( n != nullptr && y-->0 ){ n=n->next; } return n;
     }

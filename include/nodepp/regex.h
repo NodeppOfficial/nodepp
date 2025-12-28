@@ -46,7 +46,7 @@ protected:
     ptr_t<int> get_rep( const string_t& pattern, int start, int end ) const noexcept {
     ptr_t<int>     rep({ 0, 0 }); bool b=0; string_t num[2];
 
-        pattern.slice( start+1, end ).map([&]( char& data ){
+        pattern.slice_view( start+1, end ).map([&]( char& data ){
             if  (!string::is_digit(data) ){ b =! b; }
             elif( string::is_digit(data) ){ num[b].push(data); }
         });
@@ -327,6 +327,14 @@ public:
 
     /*─······································································─*/
 
+    array_t<string_t> split_view( const string_t& _str ){ ulong n = 0;
+        auto idx = search_all( _str ); queue_t<string_t> out;
+        if ( idx.empty()  ){ out.push(_str); return out.data(); }
+        for( auto x : idx ){
+             out.push( _str.slice_view( n, x[0] ) ); n = x[1];
+        }    out.push( _str.slice_view( n ) ); return out.data();
+    }
+
     array_t<string_t> split( const string_t& _str ){ ulong n = 0;
         auto idx = search_all( _str ); queue_t<string_t> out;
         if ( idx.empty()  ){ out.push(_str); return out.data(); }
@@ -458,9 +466,25 @@ namespace nodepp { namespace regex {
 
     /*─······································································─*/
 
-    inline array_t<string_t> split( const string_t& _str, char ch ){ return string::split( _str, ch ); }
+    inline array_t<string_t> split_view( const string_t& _str, char ch ){ 
+        return string::split_view( _str, ch ); }
 
-    inline array_t<string_t> split( const string_t& _str, int ch ){ return string::split( _str, ch ); }
+    inline array_t<string_t> split_view( const string_t& _str, int  ch ){ 
+        return string::split_view( _str, ch ); }
+
+    inline array_t<string_t> split_view( const string_t& _str, const string_t& _reg, bool _flg=false ){
+          if ( _reg.size ()== 1 ){ return string::split_view( _str, _reg[0] ); }
+        elif ( _reg.empty() )    { return string::split_view( _str, 1 ); }
+        regex_t reg( _reg, _flg ); return reg.split_view( _str );
+    }
+
+    /*─······································································─*/
+
+    inline array_t<string_t> split( const string_t& _str, char ch ){ 
+        return string::split( _str, ch ); }
+
+    inline array_t<string_t> split( const string_t& _str, int  ch ){ 
+        return string::split( _str, ch ); }
 
     inline array_t<string_t> split( const string_t& _str, const string_t& _reg, bool _flg=false ){
           if ( _reg.size ()== 1 ){ return string::split( _str, _reg[0] ); }

@@ -43,9 +43,7 @@ protected:
         if( x->data.first < process::now() ){
             obj->normal .push ( x->data.second ); 
             obj->blocked.erase( x );
-        if(!obj->blocked.empty()) {
-            obj->min_stamp = obj->blocked.first()->data.first;
-        }} else {
+        } else {
             obj->blocked.next();
         }
 

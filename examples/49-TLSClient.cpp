@@ -7,7 +7,7 @@ using namespace nodepp;
 void onMain(){
 
     auto ssl    = ssl_t();
-    auto server = tls::client( &ssl );
+    auto client = tls::client( &ssl );
 
     client.onConnect([=]( ssocket_t cli ){
 

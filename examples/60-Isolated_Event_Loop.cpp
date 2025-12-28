@@ -12,7 +12,7 @@ void onMain(){
 
         while( true ){
             console::log( "-> task 1" );
-        coDelay(100); }
+        coDelay(10); }
 
     coFinish
     }));

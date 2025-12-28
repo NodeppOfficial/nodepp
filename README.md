@@ -5,11 +5,27 @@
 [![Platform](https://img.shields.io/badge/platform-%20Linux%20|%20Windows%20|%20Mac%20|%20Android%20|%20IOS%20-blue)](https://github.com/NodeppOfficial/nodepp)
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Nodepp is a groundbreaking open-source project that simplifies C++ application development by bridging the gap between the language's raw power and the developer-friendly abstractions of Node.js. By providing a high-level API, Nodepp empowers developers to write C++ code in a familiar, Node.js-inspired style.
+Nodepp is a groundbreaking C++ framework that bridges the gap between the language's raw performance and the developer-friendly abstractions of Node.js. By providing a high-level, asynchronous API, Nodepp empowers you to write C++ with a familiar syntax—enabling seamless development across cloud servers, desktop apps, and microcontrollers.
 
-One of the standout features of Nodepp is its 100% asynchronous architecture, powered by an internal Event Loop. This design efficiently manages Nodepp’s tasks, enabling you to develop scalable and concurrent applications with minimal code. Experience the power and flexibility of Nodepp as you streamline your development process and create robust applications effortlessly!
+At its core, Nodepp features a 100% asynchronous architecture powered by an internal Event Loop. This allows for massive concurrency and scalable task management with minimal code complexity, effectively bringing the "Write Once, Run Everywhere" philosophy to the world of high-performance C++.
 
 🔗: [Nodepp The MOST Powerful Framework for Asynchronous Programming in C++](https://medium.com/p/c01b84eee67a)
+
+## 💡 Featured Project: Asynchronous Enigma Machine
+
+To showcase [Nodepp for Arduino](https://github.com/NodeppOfficial/nodepp-arduino) efficiency on "bare metal" hardware, we implemented a fully functional Enigma Machine on an Arduino Nano.
+
+https://github.com/user-attachments/assets/9b870671-3854-444f-893d-40fdce31a629
+
+Try it now: [Enigma Machine Simulation](https://wokwi.com/projects/449104127751150593)
+
+## 💡 Featured Project: Duck Hunt VR (WASM Edition)
+
+To showcase [Nodepp for Web](https://github.com/NodeppOfficial/nodepp-wasm), we ported the classic Duck Hunt to Virtual Reality, running natively in the browser via WebAssembly. This project pushes the limits of web-based VR by combining low-level C++ performance with modern Web APIs.
+
+https://github.com/user-attachments/assets/ab26287e-bd73-4ee8-941b-d97382e203c9
+
+Play it now: [Duck Hunt VR on Itch.io](https://edbcrepo.itch.io/duck-hunt-vr)
 
 ## Dependencies & Cmake Integration
 ```bash
@@ -40,8 +56,9 @@ target_link_libraries( #[...]
 
 ## Features
 
-- 📌: **Node.js-like API:** Write C++ code in a syntax and structure similar to Node.js, making it easier to learn and use.
-- 📌: **High-performance:** Leverage the speed and efficiency of C++ for demanding applications.
+- 📌: **Lightweight:** Minimal dependencies, making it ideal for IoT and embedded systems.
+- 📌: **Cross-Platform:** Write once, run on Linux, Windows, Mac, Android, WASM and Arduino/ESP32.
+- 📌: **Memory Efficient:** Custom `ptr_t`, `queue_t`, `array_t` and `string_t` primitives provide SSO (Small Stack Optimization) and zero-copy slicing.
 - 📌: **Scalability:** Build applications that can handle large workloads and grow with your needs.
 - 📌: **Open-source:** Contribute to the project's development and customize it to your specific requirements.
 
@@ -60,169 +77,13 @@ Check out some articles on [Medium](https://medium.com/@EDBCBlog)
 
 ## Batteries Included
 
-- 📌: Include a **build-in JSON** parser / stringify system.
-- 📌: Include a **build-in RegExp** engine for processing text strings.
-- 📌: Include support for **UTF** manipulation | **UTF8 - UTF16 - UTF32**
-- 📌: Include a **build-in System** that make every object **Async Task** safety.
-- 📌: Include a **Smart Pointer** base **Garbage Collector** to avoid **Memory Leaks**.
-- 📌: Include support for **Reactive Programming** based on **Events** and **Observers**.
-- 📌: Include an **Event Loop** that can handle multiple events and tasks on a single thread.
-- 📌: Include support for **TCP | TLS | UDP | HTTP | WS** making it easy to create networked applications.
-- 📌: Include support for **Poll | Epoll | Kqueue | WSAPoll** making it easy to handle multiple file descriptors.
-- 📌: Include support for **Worker isolated event-loop** making it easy to create distributed self-contained event-loops.
+- 📌: UTF Support: Comprehensive manipulation for UTF8, UTF16, and UTF32.
+- 📌: Networking: Native support for TCP, TLS, UDP, HTTP, and WebSockets.
+- 📌: Built-in JSON & RegExp: Full parsing and text processing engines.
+- 📌: I/O Multiplexing: Support for Poll, Epoll, Kqueue, and WSAPoll.
+- 📌: Reactive Programming: Built-in Events and Observers system.
 
-## Build & Run
-```bash
-🐧: g++ -o main main.cpp -O3 -I ./include ; ./main
-🪟: g++ -o main main.cpp -O3 -I ./include -lws2_32 ; ./main
-```
-
-## Test Unit
-```bash
-🐧: ( cd ./test; g++ -o main main.cpp -I../include -lssl -lcrypto -lpthread ; ./main )
-🪟: ( cd ./test; g++ -o main main.cpp -I../include -lssl -lcrypto -lws2_32  ; ./main )
-```
-
-## Examples
-
-### Reading JSON
-```cpp
-#include <nodepp/nodepp.h>
-#include <nodepp/json.h>
-
-using namespace nodepp;
-
-void onMain() {
-
-    auto data = json::parse( R"({
-        "var1": 10,
-        "var2": false,
-        "var3": "hello world",
-        "var4": { "var5": "nested object" },
-        "var5": [ 10, 20, 30, 40, 50, 60, 70 ]
-    })" );
-
-    console::log( "var1:", data["var1"].as<uint>() );
-    console::log( "var2:", data["var2"].as<bool>() );
-    console::log( "var3:", data["var3"].as<string_t>() );
-    console::log( "var4:", data["var4"]["var5"].as<string_t>() );
-
-    console::log( "\n --- \n" );
-
-    for( auto x: data["var5"].as<array_t<object_t>>() ){
-         console::log( "var5", x.as<uint>() );
-    }
-
-}
-```
-
-### HTTP Client
-```cpp
-//#pragma comment(lib, "Ws2_32.lib") msvc compiler
-
-#include <nodepp/nodepp.h>
-#include <nodepp/http.h>
-
-using namespace nodepp;
-
-void onMain(){
-
-    fetch_t args;
-            args.method = "GET";
-            args.url = "http://www.google.com/";
-            args.headers = header_t({
-                { "Host", url::host(args.url) }
-            });
-
-    http::fetch( args )
-
-    .then([]( http_t cli ){
-        console::log( stream::await( cli ) );
-    })
-
-    .fail([]( except_t err ){
-        console::error( err );
-    });
-
-}
-```
-
-### HTTP Server
-```cpp
-//#pragma comment(lib, "Ws2_32.lib") msvc compiler
-
-#include <nodepp/nodepp.h>
-#include <nodepp/http.h>
-#include <nodepp/date.h>
-
-using namespace nodepp;
-
-void onMain(){
-
-    auto server = http::server([=]( http_t cli ){
-
-        console::log( cli.path, cli.get_fd() );
-
-        cli.write_header( 200, header_t({
-            { "content-type", "text/html" }
-        }));
-
-        cli.write( date::fulltime() );
-        cli.close(); // optional
-
-    });
-
-    server.listen( "localhost", 8000, [=]( socket_t server ){
-        console::log("server started at http://localhost:8000");
-    });
-
-}
-```
-
-### Worker Isolated Event-Loop
-```cpp
-#include <nodepp/nodepp.h>
-#include <nodepp/worker.h>
-#include <nodepp/os.h>
-
-using namespace nodepp;
-
-atomic_t<int> shared_variable = 100;
-
-void worker_main( int cpu_id ){
-
-    // this event-loop runs in it's own isolated worker-thread
-    
-    process::add( coroutine::add( COROUTINE(){
-        thread_local static int variable;
-    //  this will create a static variable per thread
-        static atomic_t<int> shared_variable;
-    //  this will create a shared global variable
-        int local_variable;
-    //  this is a normal variable only exists here
-    coBegin
-
-        while( shared_variable-->0 ){
-            console::log( cpu_id, "->", shared_variable.get() );
-        coDelay(1000); }
-
-    coFinish
-    }));
-
-}
-
-void onMain(){
-
-    for( auto x=os::cpus(); x-->0; ){ worker::add([=](){
-         worker_main( x ); process::wait();
-    return -1; }); }
-
-}
-```
-
-### More Examples [here](https://nodeppofficial.github.io/nodepp-doc/guide.html)
-
-## Installing Nodepp
+## Quick Start
 
 ### Clone The Repository
 ```bash
@@ -237,11 +98,31 @@ touch main.cpp
 ```
 ```cpp
 #include <nodepp/nodepp.h>
+#include <nodepp/regex.h>
+#include <nodepp/http.h>
+#include <nodepp/date.h>
 
 using namespace nodepp;
 
-void onMain() {
-    console::log("Hello World!");
+void onMain(){
+
+    auto server = http::server([=]( http_t cli ){
+
+        cli.write_header( 200, header_t({
+            { "content-type", "text/html" }
+        }));
+
+        cli.write( regex::format( R"(
+            <h1> Hello World </h1>
+            <h2> ${0} </h2>
+        )", date::fulltime() ));
+
+    });
+
+    server.listen( "localhost", 8000, [=]( socket_t server ){
+        console::log("server started at http://localhost:8000");
+    });
+
 }
 ```
 
@@ -257,7 +138,7 @@ void onMain() {
 - 🔗: [NodePP for Arduino](https://github.com/NodeppOfficial/nodepp-arduino)
 - 🔗: [Nodepp for WASM](https://github.com/NodeppOfficial/nodepp-wasm)
 
-## Official Libraries for Nodepp
+## Ecosystem
 - 🔗: [ExpressPP](https://github.com/NodeppOfficial/nodepp-express)   -> Express equivalent for Nodepp
 - 🔗: [ApifyPP](https://github.com/NodeppOfficial/nodepp-apify)       -> Socket.io equivalent for Nodepp
 - 🔗: [Bluetooth](https://github.com/NodeppOfficial/nodepp-bluetooth) -> Bluetooth Port for Nodepp

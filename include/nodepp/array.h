@@ -325,8 +325,7 @@ public:
         auto addr = begin(); while( addr != end() ){
              borrow.push( string::to_string( *addr ) );
              size += borrow.last()->data.size();
-        if( addr+1 != end() ){ size += c.size(); }
-        ++addr; } 
+        if( addr+1 != end() ){ size += c.size(); } ++addr; } 
         
         string_t out( size, 0x00 ); auto n=borrow.first(); 
         
@@ -341,6 +340,20 @@ public:
 
     /*─······································································─*/
 
+    array_t slice_view( long start, long stop ) const noexcept {
+	    auto r = get_slice_range( start, stop );
+        if ( r.null() ){ return nullptr; } 
+        return ptr_t<T>( buffer, r[0], r[0]+r[2] );
+    }
+
+    array_t slice_view( long start ) const noexcept {
+	    auto r = get_slice_range( start, size() );
+        if ( r.null() ){ return nullptr; } 
+        return ptr_t<T>( buffer, r[0], r[0]+r[2] );
+    }
+
+    /*─······································································─*/
+
     array_t slice( long start ) const noexcept {
 
 	    auto r = get_slice_range( start, size() );
@@ -351,8 +364,6 @@ public:
         
         return n_buffer;
     }
-
-    /*─······································································─*/
 
     array_t slice( long start, long stop ) const noexcept {
 
@@ -400,7 +411,7 @@ public:
           T*  data() const noexcept { return &buffer; }
           T*   get() const noexcept { return &buffer; }
 
-    ptr_t<T>&  ptr() noexcept { return  buffer; }
+    ptr_t<T>&  ptr()       noexcept { return  buffer; }
 
 };}
 
@@ -417,6 +428,17 @@ namespace nodepp { namespace string {
     }
 
     /*─······································································─*/
+
+    template< class T >
+    array_t<string_t> split_view( string_t _str, const T& pattern ){
+        queue_t<string_t> out; ulong offset=0; ptr_t<int> idx;
+        
+        while( (idx=_str.find( pattern, offset )) != nullptr ){
+            out.push( _str.slice_view( offset, idx[0] ) ); offset=idx[1];
+        }   out.push( _str.slice_view( offset ) );
+
+        return out.data();
+    }
 
     template< class T >
     array_t<string_t> split( string_t _str, const T& pattern ){

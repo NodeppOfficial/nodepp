@@ -50,9 +50,7 @@ protected:
         if( x->data.first < process::now() ){
             obj->normal .push ( x->data.second ); 
             obj->blocked.erase( x );
-        if(!obj->blocked.empty()) {
-            obj->min_stamp = obj->blocked.first()->data.first;
-        }} else {
+        } else {
             obj->blocked.next();
         }
 
@@ -85,9 +83,9 @@ protected:
             thread_local static ulong d=0;
         coStart; ++self->obj->pool; coYield(1);
 
-            coWait((c=self->obj->mut.emit([=](){
-                if( y->data.second->out== 0 ){ return -1; }
-            return 1; }))==-2 ); if ( c==-1 ){ coStay(6); }
+            if( self->obj->mut.emit([=](){
+            if( y->data.second->out==0 ){ return -1; }
+            return 1; })==-1 ) /*----*/ { coStay(6); }
 
             do{ c=y->data.first(); auto z=coroutine::getno();
             if( c==1 && z.flag&coroutine::STATE::CO_STATE_DELAY )
@@ -99,21 +97,21 @@ protected:
 
             coYield(5);
 
-            coWait((c=self->obj->mut.emit([=](){
+            self->obj->mut.lock([=](){
                 y->data.second->blk = 0;
                 self->obj->dif      = 0;
-            return -1; }))==-2 ); coStay(6);
+            }); coStay(6);
 
             coYield(3);
 
-            coWait((c=self->obj->mut.emit([=](){
+            self->obj->mut.lock([=](){
                 y->data.second->out = 0;
                 y->data.second->blk = 0;
-            return -1; }))==-2 ); if( c==-1 ){ coStay(6); } 
+            }); coStay(6); 
 
             coYield(4);
 
-            coWait((c=self->obj->mut.emit([=](){
+            self->obj->mut.lock([=](){
 
                 ulong wake_time=d+process::now ();
                 y->data.second->blk=0; 
@@ -128,7 +126,7 @@ protected:
                     self->obj->dif      =d;
                 }
 
-            return -1; }))==-2 ); if( c==-1 ){ coStay(6); }
+            return -1; }); coStay(6);
             
         coYield(6); --self->obj->pool; coStop });
 

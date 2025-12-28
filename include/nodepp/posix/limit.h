@@ -61,6 +61,8 @@ namespace nodepp { namespace limit {
 
 }}
 
+/*────────────────────────────────────────────────────────────────────────────*/
+
 namespace nodepp { namespace limit {
 
     inline uint get_hard_thread_pool() { struct rlimit limit;
