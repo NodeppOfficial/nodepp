@@ -23,7 +23,7 @@ namespace nodepp { using cookie_t = map_t< string_t, string_t >;
 namespace cookie {
 
     inline query_t parse( string_t data ){
-        static regex_t reg( "([^= ;]+)=([^;]+)" );
+    thread_local static regex_t reg( "([^= ;]+)=([^;]+)" );
 
         if( data.empty() ){ return query_t(); } query_t out;
 
@@ -39,10 +39,9 @@ namespace cookie {
     /*─······································································─*/
     
     inline string_t format( const cookie_t& data ){
-        if( data.empty() ){ return nullptr; } /*------*/
-        array_t<string_t> out; for( auto x:data.data() ) 
-             { out.push( x.first + "=" + x.second ); }
-        return string::format("%s",out.join("; ").c_str());
+        if ( data.empty() ){ return nullptr; } queue_t<string_t> out; 
+        for( auto x:data.data() ){ out.push( x.first + "=" + x.second ); }   
+        return string::format("%s",array_t<string_t>(out.data()).join("; ").c_str());
     }
 
 }}

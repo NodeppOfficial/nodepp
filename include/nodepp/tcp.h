@@ -46,10 +46,10 @@ public:
 
     /*─······································································─*/
 
-    virtual ~tcp_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
-
     tcp_t( NODE_CLB _func, agent_t* opt=nullptr ) noexcept : obj( new NODE() )
          { obj->func=_func; obj->agent=opt==nullptr ? agent_t() : *opt; }
+
+   ~tcp_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
     tcp_t() noexcept : obj( new NODE() ) {}
 
@@ -65,6 +65,7 @@ public:
           { onError.emit("dns couldn't get ip"); return; }
 
         auto self = type::bind( this ); auto clb = [=](){
+        auto btch = type::bind<int>( MAX_BATCH );
 
             socket_t sk; self->obj->state = 1;
                      sk.SOCK    = SOCK_STREAM;
@@ -85,10 +86,12 @@ public:
                 self->close(); sk.free(); return -1; 
             }   cb( sk ); self->onOpen.emit( sk ); 
             
-        process::poll( sk, POLL_STATE::READ, coroutine::add( COROUTINE(){
-        int c=-1; coBegin
+        process::poll( sk, POLL_STATE::READ | POLL_STATE::EDGE, coroutine::add( COROUTINE(){
+        int c=-1; coBegin ; while( (*btch) --> 0 ){
 
-            coWait((c=sk._accept()) == -2 ); if( c<0 ){ 
+            while((c=sk._accept()) == -2 ){ coSet(0); return 0; }
+            
+            if( c<0 ){ 
                 self->onError.emit("Error while accepting TCP"); 
             coEnd; }
             
@@ -97,8 +100,8 @@ public:
             cli.set_sockopt( self->obj->agent );
             self->onSocket.emit(cli); self->obj->func(cli);
             if( cli.is_available() ){ self->onConnect.emit(cli); }
-
-        coStay(0); coFinish })); return -1; }; process::foop( clb );
+            
+        } *btch = MAX_BATCH; coGoto(0); coFinish })); return -1; }; process::add( clb );
 
     }
 
@@ -108,7 +111,7 @@ public:
         if( obj->state == 1 ){ return; } if( dns::lookup(host).empty() )
           { onError.emit("dns couldn't get ip"); return; }
 
-        auto self = type::bind(this); auto clb = [=](){
+        auto self = type::bind( this ); auto clb = [=](){
 
             socket_t sk; self->obj->state = 1;
                      sk.SOCK    = SOCK_STREAM;
@@ -119,7 +122,7 @@ public:
                 self->close(); sk.free(); return -1; 
             }   sk.set_sockopt( self->obj->agent );
 
-        process::foop( coroutine::add( COROUTINE(){
+        process::add( coroutine::add( COROUTINE(){
         int c=0; coBegin
 
             coWait((c=sk._connect()) == -2 ); if( c<=0 ){
@@ -135,7 +138,7 @@ public:
                 self->onConnect.emit(sk); 
             }
 
-        coFinish })); return -1; }; process::foop( clb );
+        coFinish })); return -1; }; process::add( clb );
 
     }
 

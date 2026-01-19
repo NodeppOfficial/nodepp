@@ -14,105 +14,225 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#ifndef NODEPP_POLL_NPOLL
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 namespace nodepp { class worker_t { 
 private:
 
-    mutex_t& mut(){ static mutex_t mut; return mut; }
-    struct waiter { bool blk; bool out; };
+    enum STATE {
+         WK_STATE_UNKNOWN = 0b00000000,
+         WK_STATE_OPEN    = 0b00000001,
+         WK_STATE_CLOSE   = 0b00000010,
+         WK_STATE_AWAIT   = 0b00000111,
+    };
 
 protected:
 
     struct NODE {
-        function_t<int> cb;
-        bool* out, state=0;
-        pthread_t /*-*/ id;
+        ptr_t<kernel_t>  krn;
+        atomic_t<char> state;
+        function_t<int>   cb;
+        pthread_t         id;
     };  ptr_t<NODE> obj;
 
     static void* callback( void* arg ){
-        auto self = type::cast<worker_t>(arg); self->obj->state=1;
-        while( self->obj->cb.emit() >= 0 ){ worker::yield(); } 
-        self->mut().emit([=](){ self->free(); return -1; });
-        /*----*/ delete self; worker::exit(); 
-    return nullptr; }
+        auto self = type::cast<worker_t>(arg); 
+        self->obj->state.set( STATE::WK_STATE_OPEN );
+
+        while( !self->is_closed() && self->obj->cb()>=0 ){
+        auto info = coroutine::getno();
+        
+        if( info.delay>0 ){ 
+            worker::delay( info.delay ); 
+        } else { 
+            worker::yield();
+        }}
+
+        self->obj->state.set( STATE::WK_STATE_CLOSE ); 
+        self->obj->krn->emit(); 
+        self->obj->krn.reset();
+
+    delete self; worker::exit(); return nullptr; }
 
 public:
 
     template< class T, class... V >
     worker_t( T cb, const V&... arg ) noexcept : obj( new NODE() ){
-
-        ptr_t<waiter> wrk = new waiter();
         auto clb = type::bind(cb);
-        wrk->blk = 0; wrk->out =1;
-        obj->out = &wrk->out;
-
-        obj->cb = function_t<int>([=](){ 
-            if( wrk->out==0 ){ return -1; }
-            if( wrk->blk==1 ){ return  1; } 
-                wrk->blk =1; int rs=(*clb)( arg... );
-            if( clb.null()  ){ return -1; }  
-                wrk->blk =0;   return !wrk->out?-1:rs;
-        }); 
-
+        obj->cb  = function_t<int>([=](){ return (*clb)(arg...); });
     }
     
     /*─······································································─*/
 
     worker_t() noexcept : obj( new NODE ) {}
 
-    virtual ~worker_t() noexcept { if( obj.count()>1 ){ return; } free(); }
-    
-    /*─······································································─*/
-
-    void free() const noexcept {
-        if( obj->state == 0 ){ return; } 
-            obj->state=0; --_TASK_; 
-    }
+   ~worker_t() noexcept { if( obj.count()>1 ){ return; } free(); }
     
     /*─······································································─*/
 
     pthread_t pid() const noexcept { return obj->id; }
-
-    /*─······································································─*/
-    
-    void      off() const noexcept { process::clear( obj->out ); }
-    void    close() const noexcept { process::clear( obj->out ); }
+    void     free() const noexcept { obj->state.set(STATE::WK_STATE_AWAIT); }
+    void      off() const noexcept { obj->state.set(STATE::WK_STATE_AWAIT); }
+    void    close() const noexcept { obj->state.set(STATE::WK_STATE_AWAIT); }
     
     /*─······································································─*/
 
-    int add() const noexcept {
-        if( obj->state == 1 ){ return 0; } auto self = new worker_t( *this );
-
-        auto pth = pthread_create( &obj->id, NULL, &callback, (void*)self );
-        if( pth!= 0 ){ delete self; return -1; }
-        
-        pthread_detach( obj->id ); ++_TASK_;
-
-        while( obj->state==0 ){ /*------------*/ } 
-    //  while( obj->state==1 ){ process::next(); } 
-
-        return 1;
+    bool is_closed() const noexcept { 
+        char   x = obj->state.get();
+        return x ==0x00 || ( x & STATE::WK_STATE_CLOSE );
     }
+    
+    /*─······································································─*/
+
+    int emit() const noexcept {
+        if( obj->state.get() != 0x00 ){ return 0; }
+        
+        obj->krn = type::bind( process::NODEPP_EV_LOOP() );
+
+        auto pth = pthread_create( &obj->id, NULL, &callback, (void*) new worker_t(*this) );
+        if ( pth!= 0 ){ return -1; } pthread_detach( obj->id ); 
+
+        while( obj->state.get()==0x00 ) { /*unused*/ }
+        
+    return 1; }
+
+    /*─······································································─*/
+
+    int add() const noexcept { return emit(); }
 
     /*─······································································─*/
 
     int await() const noexcept {
-        if( obj->state == 1 ){ return 0; } auto self = new worker_t( *this );
+        if( obj->state.get() != 0x00 ){ return 0; } 
+        
+        obj->krn = type::bind( process::NODEPP_EV_LOOP() );
 
-        auto pth = pthread_create( &obj->id, NULL, &callback, (void*)self );
-        if( pth!= 0 ){ delete self; return -1; }
+        auto pth = pthread_create( &obj->id, NULL, &callback, (void*) new worker_t(*this) );
+        if ( pth!= 0 ){ return -1; } pthread_detach( obj->id ); 
 
-        pthread_detach( obj->id ); ++_TASK_;
-
-        while( obj->state==0 ){ /*------------*/ } 
-        while( obj->state==1 ){ process::next(); } 
-
-        return 1;
-    }
+        while( obj->state.get()==0x00 ) { /*unused*/ }
+        while( obj->state.get()&STATE::WK_STATE_OPEN )
+             { process::next(); }
+        
+    return 1; }
 
 };}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#else
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { class worker_t { 
+private:
+
+    enum STATE {
+         WK_STATE_UNKNOWN = 0b00000000,
+         WK_STATE_OPEN    = 0b00000001,
+         WK_STATE_CLOSE   = 0b00000010,
+         WK_STATE_AWAIT   = 0b00000111,
+    };
+
+protected:
+
+    struct NODE {
+        atomic_t<char> state;
+        function_t<int>   cb;
+        pthread_t         id;
+    };  ptr_t<NODE> obj;
+
+    static void* callback( void* arg ){
+        auto self = type::cast<worker_t>(arg); 
+        self->obj->state.set( STATE::WK_STATE_OPEN );
+
+        while( !self->is_closed() && self->obj->cb()>=0 ){
+        auto info = coroutine::getno();
+        
+        if( info.delay>0 ){ 
+            worker::delay( info.delay ); 
+        } else { 
+            worker::yield();
+        }}
+
+    self->obj->state.set( STATE::WK_STATE_CLOSE );
+    worker::exit(); return nullptr; }
+
+public:
+
+    template< class T, class... V >
+    worker_t( T cb, const V&... arg ) noexcept : obj( new NODE() ){
+        auto clb = type::bind(cb);
+        obj->cb  = function_t<int>([=](){ return (*clb)(arg...); });
+    }
+    
+    /*─······································································─*/
+
+    worker_t() noexcept : obj( new NODE ) {}
+
+   ~worker_t() noexcept { if( obj.count()>1 ){ return; } free(); }
+    
+    /*─······································································─*/
+
+    pthread_t pid() const noexcept { return obj->id; }
+    void     free() const noexcept { obj->state.set(STATE::WK_STATE_AWAIT); }
+    void      off() const noexcept { obj->state.set(STATE::WK_STATE_AWAIT); }
+    void    close() const noexcept { obj->state.set(STATE::WK_STATE_AWAIT); }
+    
+    /*─······································································─*/
+
+    bool is_closed() const noexcept { 
+        char   x = obj->state.get();
+        return x ==0x00 || ( x & STATE::WK_STATE_CLOSE );
+    }
+    
+    /*─······································································─*/
+
+    int emit() const noexcept {
+        if( obj->state.get() != 0x00 ){ return 0; } auto self = type::bind( this );
+        
+        auto pth = pthread_create( &obj->id, NULL, &callback, (void*) &self );
+        if ( pth!= 0 ){ return -1; } pthread_detach( obj->id ); 
+        
+        process::add( coroutine::add( COROUTINE(){
+        coBegin
+            while( self->obj->state.get()==0x00 )/**/{ coNext; }
+            while( self->obj->state.get()&STATE::WK_STATE_OPEN )
+                 { coDelay( 1000 ); }
+        coFinish
+        })); 
+        
+    return 1; }
+
+    /*─······································································─*/
+
+    int add() const noexcept { return emit(); }
+
+    /*─······································································─*/
+
+    int await() const noexcept {
+        if( obj->state.get() != 0x00 ){ return 0; } auto self = type::bind( this );
+        
+        auto pth = pthread_create( &obj->id, NULL, &callback, (void*) &self );
+        if ( pth!= 0 ){ return -1; } pthread_detach( obj->id ); 
+        
+        process::await( coroutine::add( COROUTINE(){
+        coBegin
+            while( self->obj->state.get()==0x00 )/**/{ coNext; }
+            while( self->obj->state.get()&STATE::WK_STATE_OPEN )
+                 { coDelay( 1000 ); }
+        coFinish
+        }));
+        
+    return 1; }
+
+};}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+#endif
 #endif
 
 /*────────────────────────────────────────────────────────────────────────────*/

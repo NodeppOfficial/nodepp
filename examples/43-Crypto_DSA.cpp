@@ -6,7 +6,8 @@ using namespace nodepp;
 
 void onMain(){
 
-    crypto::sign::DSA ppt;
+    crypto::sign::DSA ppt; ppt.generate_keys();
+
     string_t msg = "Hello World!";
     auto    sign = ppt.sign( msg );
     ptr_t<uchar> data ( sign.size() );

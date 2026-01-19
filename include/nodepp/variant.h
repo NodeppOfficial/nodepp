@@ -28,8 +28,6 @@ public:
     idx( new int( is_valid( string::to_string(V) ) ) ) {}
 
     variant_t() : any_t(), idx( new int(-1) ) {}
-
-    virtual ~variant_t() noexcept {} 
     
     /*─······································································─*/
 

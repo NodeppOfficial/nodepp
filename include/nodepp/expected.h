@@ -26,8 +26,6 @@ public:
 
     expected_t( const E& err ) { has = false;data = err; }
 
-    virtual ~expected_t() noexcept {}
-
     /*─······································································─*/
 
     bool has_value() const noexcept { return has; }

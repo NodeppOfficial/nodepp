@@ -64,11 +64,9 @@ protected:
 public:
 
     template< class... V >
-    date_t( const V&... args ) noexcept : obj( new NODE() ) { set_date( args... ); }
+    date_t( const V&... args ) noexcept : obj( 0UL, NODE() ) { set_date( args... ); }
     
-    date_t() noexcept : obj( new NODE() ) { set_date( false ); }
-
-    virtual ~date_t() noexcept {}
+    date_t() noexcept : obj( 0UL, NODE() ) { set_date( false ); }
 
     /*─······································································─*/
 

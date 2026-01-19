@@ -20,7 +20,7 @@ protected:
     void kill() const noexcept { 
         ::CloseHandle( obj->pi.hProcess ); 
         ::CloseHandle( obj->pi.hThread ); 
-        obj->state |= FILE_STATE::KILL;
+        obj->state |= STATE::FS_STATE_KILL;
     }
 
     using _read_ = generator::file::read;
@@ -30,17 +30,17 @@ protected:
     return false; }
 
     void set_state( uchar value ) const noexcept {
-    if( obj->state & KILL ){ return; }
+    if( obj->state & STATE::FS_STATE_KILL ){ return; }
         obj->state = value;
     }
 
-    enum FILE_STATE {
-        UNKNOWN = 0b00000000,
-        OPEN    = 0b00000001,
-        CLOSE   = 0b00000010,
-        KILL    = 0b00000100,
-        REUSE   = 0b00001000,
-        DISABLE = 0b00001110
+    enum STATE {
+         FS_STATE_UNKNOWN = 0b00000000,
+         FS_STATE_OPEN    = 0b00000001,
+         FS_STATE_CLOSE   = 0b00000010,
+         FS_STATE_KILL    = 0b00000100,
+         FS_STATE_REUSE   = 0b00001000,
+         FS_STATE_DISABLE = 0b00001110
     };
 
 protected:
@@ -49,7 +49,7 @@ protected:
     ptr_t<_read_> _read2 = new _read_();
 
     struct NODE {
-        uchar /*------*/ state=FILE_STATE::CLOSE;
+        uchar /*------*/ state=STATE::FS_STATE_CLOSE;
         PROCESS_INFORMATION pi;
         file_t std_output;
         file_t std_input;
@@ -65,9 +65,9 @@ protected:
         /*---------------*/ sa.lpSecurityDescriptor = NULL; 
         /*---------------*/ sa.bInheritHandle /*-*/ = TRUE;
 
-        HANDLE fda[2]; CreatePipe( &fda[0], &fda[1], &sa, CHUNK_SIZE );
-        HANDLE fdb[2]; CreatePipe( &fdb[0], &fdb[1], &sa, CHUNK_SIZE );
-        HANDLE fdc[2]; CreatePipe( &fdc[0], &fdc[1], &sa, CHUNK_SIZE );
+        HANDLE fda[2]; if(!CreatePipe(&fda[0],&fda[1],&sa,CHUNK_SIZE)){ throw except_t( "while piping stdin"  ); }
+        HANDLE fdb[2]; if(!CreatePipe(&fdb[0],&fdb[1],&sa,CHUNK_SIZE)){ throw except_t( "while piping stdout" ); }
+        HANDLE fdc[2]; if(!CreatePipe(&fdc[0],&fdc[1],&sa,CHUNK_SIZE)){ throw except_t( "while piping stderr" ); }
 
         ZeroMemory(&obj->si, sizeof(STARTUPINFO));
         ZeroMemory(&obj->pi, sizeof(PROCESS_INFORMATION));
@@ -89,12 +89,12 @@ protected:
             obj->std_input  = file_t( fda[1] ); ::CloseHandle( fda[0] );
             obj->std_output = file_t( fdb[0] ); ::CloseHandle( fdb[1] );
             obj->std_error  = file_t( fdc[0] ); ::CloseHandle( fdc[1] );
-            set_state( FILE_STATE::OPEN );
+            set_state( STATE::FS_STATE_OPEN );
         } else {
             ::CloseHandle ( fda[0] ); ::CloseHandle ( fda[1] );
             ::CloseHandle ( fdb[0] ); ::CloseHandle ( fdb[1] );
             ::CloseHandle ( fdc[0] ); ::CloseHandle ( fdc[1] );
-            set_state( FILE_STATE::CLOSE );
+            set_state( STATE::FS_STATE_CLOSE );
         }
 
     }
@@ -125,15 +125,16 @@ public:
 
     popen_t() noexcept : obj( new NODE() ) {}
 
-    virtual ~popen_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
+   ~popen_t() noexcept { if( obj.count()>1 && !is_closed() ){ return; } free(); }
 
     /*─······································································─*/
 
     void free() const noexcept {
         
-        if( is_state( FILE_STATE::REUSE ) && obj.count()>1 ){ resume(); return; }
-        if( is_state( FILE_STATE::KILL  ) ){ return; }
-        if(!is_state( FILE_STATE::CLOSE ) ){ kill(); onDrain.emit(); } else { kill(); }
+        if( is_state( STATE::FS_STATE_REUSE ) && obj.count()>1 ){ return; }
+        if( is_state( STATE::FS_STATE_KILL  ) ) /*-----------*/ { return; }
+        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) )
+          { kill(); onDrain.emit(); } else { kill(); }
         
     /*
         obj->std_error.close(); obj->std_output.close();
@@ -149,19 +150,20 @@ public:
     /*─······································································─*/
 
     inline int next() noexcept {
-    coBegin ; onOpen.emit(); coYield(1);
-        
-        if( is_closed() )              { free(); coEnd; }
-
-        if((*_read1)(&std_output())==1){ coGoto(2); }
-        if(  _read1->state <= 0 )      { coGoto(2); }
+        if( is_closed() ){ free(); return -1; }
+    coBegin ; onOpen.emit(); 
+    
+        coYield(1); coDelay( 100 );  do {
+        if((*_read1)(&std_output())==1) { coGoto(2); }
+        if(  _read1->state <= 0 )       { coGoto(2); }
         onData.emit(_read1->data);
-        onDout.emit(_read1->data);       coYield(2);
-
-        if((*_read2)(&std_error())==1 ){ coGoto(1); }
-        if(  _read2->state <= 0 )      { coGoto(1); }
+        onDout.emit(_read1->data); coNext; } while(1);   
+        
+        coYield(2); coDelay( 100 );  do {
+        if((*_read2)(&std_error())==1 ) { coGoto(1); }
+        if(  _read2->state <= 0 )       { coGoto(1); }
         onData.emit(_read2->data);
-        onDerr.emit(_read2->data);
+        onDerr.emit(_read2->data); coNext; } while(1);
         
     coGoto(1); coFinish
     }
@@ -173,21 +175,21 @@ public:
         if( exitCode == STILL_ACTIVE ) { return true; }} return false;
     }
 
-    bool is_closed()    const noexcept { return is_state( FILE_STATE::DISABLE ) || !is_alive(); }
+    bool is_closed()    const noexcept { return is_state( STATE::FS_STATE_DISABLE ) || !is_alive() || std_output().is_closed(); }
     bool is_available() const noexcept { return is_closed()== false; }
     int  get_fd()       const noexcept { return obj->fd; }
 
     /*─······································································─*/
 
-    void resume() const noexcept { if(is_state(FILE_STATE::OPEN) ){ return; } set_state(FILE_STATE::OPEN ); onResume.emit(); }
-    void   stop() const noexcept { if(is_state(FILE_STATE::REUSE)){ return; } set_state(FILE_STATE::REUSE); onDrain .emit(); }
+    void resume() const noexcept { if(is_state(STATE::FS_STATE_OPEN) ){ return; } set_state(STATE::FS_STATE_OPEN ); onResume.emit(); }
+    void   stop() const noexcept { if(is_state(STATE::FS_STATE_REUSE)){ return; } set_state(STATE::FS_STATE_REUSE); onDrain .emit(); }
     void  flush() const noexcept { std_input().flush(); std_output().flush(); std_error().flush(); }
 
     /*─······································································─*/
 
     void close() const noexcept {
-        if( is_state (FILE_STATE::DISABLE) ){ return; }
-            set_state( FILE_STATE::CLOSE ); DONE:;
+        if( is_state (STATE::FS_STATE_DISABLE) ){ return; }
+            set_state( STATE::FS_STATE_CLOSE ); DONE:;
     onDrain.emit(); free(); }
 
     /*─······································································─*/

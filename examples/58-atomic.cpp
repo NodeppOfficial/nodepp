@@ -11,10 +11,9 @@ GENERATOR( my_coroutine ){
 
     coEmit(){
     coBegin
-        while( shared_variable > 0 ){
+        while( shared_variable-->0 ){
             console::log( "task>> Hello World", shared_variable.get() );
-            --shared_variable; coDelay(100);
-        }
+        coDelay(100); }
     coFinish
     }
 

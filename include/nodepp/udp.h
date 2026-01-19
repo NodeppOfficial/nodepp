@@ -47,9 +47,9 @@ public: udp_t() noexcept : obj( new NODE() ) {}
     /*─······································································─*/
 
     udp_t( NODE_CLB _func, agent_t* opt=nullptr ) noexcept : obj( new NODE() )
-         { obj->func=_func; obj->agent=opt==nullptr?agent_t():*opt;  }
+         { obj->func=_func; obj->agent=opt==nullptr ? agent_t() : *opt; }
 
-    virtual ~udp_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
+   ~udp_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
     /*─······································································─*/
 
@@ -69,17 +69,17 @@ public: udp_t() noexcept : obj( new NODE() ) {}
                      sk.IPPROTO = IPPROTO_UDP;
 
             if( sk.socket( dns::lookup(host), port )<0 ){
-                self->onError.emit("Error while creating TLS"); 
+                self->onError.emit("Error while creating UDP"); 
                 self->close(); sk.free(); return; 
             }   sk.set_sockopt( self->obj->agent );
 
-        process::foop( coroutine::add( COROUTINE(){
+        process::add( coroutine::add( COROUTINE(){
         int c=0; coBegin
 
             coWait( (c=sk._bind())==-2 ); if( c<0 ){ 
-                self->onError.emit("Error while binding TLS"); 
-                self->close(); sk.free(); coEnd; 
-            }
+                self->onError.emit("Error while binding UDP"); 
+                self->close(); sk.free(); 
+            coEnd; }
 
             sk.onDrain.once([=](){ self->close(); }); cb(sk);
             self->onSocket.emit(sk); self->obj->func(sk);
@@ -107,11 +107,11 @@ public: udp_t() noexcept : obj( new NODE() ) {}
                      sk.IPPROTO = IPPROTO_UDP;
 
             if( sk.socket( dns::lookup(host), port )<0 ){
-                self->onError.emit("Error while creating TLS"); 
+                self->onError.emit("Error while creating UDP"); 
                 self->close(); sk.free(); return; 
             }   sk.set_sockopt( self->obj->agent );
 
-        process::foop( coroutine::add( COROUTINE(){
+        process::add( coroutine::add( COROUTINE(){
         coBegin
 
             sk.onDrain.once([=](){ self->close(); }); cb(sk);

@@ -18,15 +18,15 @@ namespace nodepp { class debug_t {
 protected: 
 
     struct NODE { 
-        string_t msg;
-        void* ev = nullptr;
-    };  ptr_t<NODE> obj;
+        string_t     msg;
+        ptr_t<task_t> ev;
+    };  ptr_t<NODE>  obj;
 
 public: debug_t() noexcept : obj(new NODE()) { }
     
     /*─······································································─*/
 
-    virtual ~debug_t() noexcept { 
+   ~debug_t() noexcept { 
         if ( obj.count() == 2 ){ 
 	         console::log( obj->msg, "closed" );  
         }    process::onSIGERR.off( obj->ev );

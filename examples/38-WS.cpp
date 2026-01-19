@@ -21,23 +21,16 @@ void server(){
 
     server.onConnect([=]( ws_t cli ){
 
-        auto cin = fs::std_input();
         console::log("connected");
         
-        cin.onData([=]( string_t data ){
-            cli.write( data );
-        });
-
         cli.onData([=]( string_t data ){
-            console::log( "serv:", data );
+            cli.write( "<: received" );
+            console::log( data );
         });
 
-        cli.onDrain([=](){ 
+        cli.onClose([=](){ 
             console::log("closed"); 
-            cin.close();
         });
-
-        stream::pipe( cin );
 
     });
 
@@ -56,15 +49,15 @@ void client() {
         auto cin = fs::std_input();
         console::log("connected");
 
-        cli.onData([]( string_t chunk ){ 
-            console::log("cli:", chunk); 
+        cli.onData([]( string_t data ){ 
+            console::log( data ); 
         });
         
         cin.onData([=]( string_t data ){
             cli.write( data );
         });
 
-        cli.onDrain([=](){ 
+        cli.onClose([=](){ 
             console::log("closed"); 
             cin.close();
         });

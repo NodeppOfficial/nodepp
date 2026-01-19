@@ -26,8 +26,6 @@ public:
 
     optional_t() noexcept { has = false; }
 
-    virtual ~optional_t() noexcept {}
-
     /*─······································································─*/
 
     bool has_value() const noexcept { return has; }

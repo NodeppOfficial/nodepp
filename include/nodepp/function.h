@@ -24,8 +24,6 @@ public:
    
     function_t() noexcept : func_ptr(nullptr) {}
     
-    virtual ~function_t() noexcept {}
-    
     /*─······································································─*/
 
     bool has_value() const noexcept { return func_ptr.has_value(); }

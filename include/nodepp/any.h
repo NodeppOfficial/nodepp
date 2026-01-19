@@ -24,9 +24,7 @@ public:
     template< class T >
     any_t( const T& f ) noexcept { set( f ); }
 
-    virtual ~any_t() noexcept {}
-
-    /*----*/ any_t() noexcept {}
+    any_t() noexcept {}
 
     /*─······································································─*/
 
@@ -50,9 +48,8 @@ public:
         if( !has_value() ) /*----*/ { throw except_t("any_t is null"); } /*---------*/
         if( type_size()!=sizeof(T) ){ throw except_t("any_t incompatible sizetype"); }
 
-        const ulong size = sizeof(T) / sizeof(char);
-        char any[ size ]; any_ptr->get((void*)&any);
-        return *(T*)(any); /*---------------------*/
+        alignas(T) char any [ sizeof(T) / sizeof(char) ]; 
+        any_ptr->get((void*)&any); return *(T*)(any);
 
     }
 

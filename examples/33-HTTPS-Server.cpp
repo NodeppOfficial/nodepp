@@ -17,6 +17,7 @@ void onMain(){
         }));
         
         cli.write( date::fulltime() );
+        cli.close();
 
     }, &ssl );
 

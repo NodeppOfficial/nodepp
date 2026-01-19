@@ -39,8 +39,6 @@ public: observer_t() noexcept {}
         list[args[x].first] = args[x].second;
     }}
 
-    virtual ~observer_t() noexcept {}
-    
     /*─······································································─*/
 
     template< class F >
@@ -60,17 +58,17 @@ public: observer_t() noexcept {}
     
     /*─······································································─*/
 
-    void off( void* addr ) const noexcept { event.off(addr); }
+    void off( ptr_t<task_t> addr ) const noexcept { event.off(addr); }
 
-    void* once( string_t name, F func ) const noexcept {
+    ptr_t<task_t> once( string_t name, F func ) const noexcept {
         if( !list.has( name ) ){ return nullptr; }
-        if( func.empty() ){ return nullptr; }
+        if( func.empty() )/*-*/{ return nullptr; }
         return event.once( name, func );
     }
 
-    void* on( string_t name, F func ) const noexcept {
+    ptr_t<task_t> on( string_t name, F func ) const noexcept {
         if( !list.has( name ) ){ return nullptr; }
-        if( func.empty() ){ return nullptr; }
+        if( func.empty() )/*-*/{ return nullptr; }
         return event.on( name, func );
     }
     

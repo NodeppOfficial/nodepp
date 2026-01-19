@@ -46,7 +46,7 @@ protected:
     ptr_t<int> get_rep( const string_t& pattern, int start, int end ) const noexcept {
     ptr_t<int>     rep({ 0, 0 }); bool b=0; string_t num[2];
 
-        pattern.slice( start+1, end ).map([&]( char& data ){
+        pattern.slice_view( start+1, end ).map([&]( char& data ){
             if  (!string::is_digit(data) ){ b =! b; }
             elif( string::is_digit(data) ){ num[b].push(data); }
         });
@@ -72,7 +72,7 @@ protected:
     out.push( pattern.size() ); return out.data(); }
 
     inline int get_next_key( const string_t& pattern, ulong off ) const noexcept {
-        uchar k=0; while( off < pattern.size() ){
+        uchar k=0; while( off < pattern.size() && k < 128 ){
 
             switch( pattern[off] ){ /**/ case '\\': ++off ; break;
                 case '[': k += 1; break; case ']' : k -= 1; break;
@@ -292,9 +292,9 @@ protected:
 
 public:
 
-    virtual ~regex_t() noexcept { clear_memory(); }
-
     regex_t (): obj( new NODE() ){}
+
+   ~regex_t () noexcept { clear_memory(); }
 
     regex_t ( const string_t& reg, bool icase=false ): obj( new NODE() )
     /*---*/ { obj->icase=icase; obj->queue=compile(reg); }
@@ -326,6 +326,14 @@ public:
     }
 
     /*─······································································─*/
+
+    array_t<string_t> split_view( const string_t& _str ){ ulong n = 0;
+        auto idx = search_all( _str ); queue_t<string_t> out;
+        if ( idx.empty()  ){ out.push(_str); return out.data(); }
+        for( auto x : idx ){
+             out.push( _str.slice_view( n, x[0] ) ); n = x[1];
+        }    out.push( _str.slice_view( n ) ); return out.data();
+    }
 
     array_t<string_t> split( const string_t& _str ){ ulong n = 0;
         auto idx = search_all( _str ); queue_t<string_t> out;
@@ -458,9 +466,25 @@ namespace nodepp { namespace regex {
 
     /*─······································································─*/
 
-    inline array_t<string_t> split( const string_t& _str, char ch ){ return string::split( _str, ch ); }
+    inline array_t<string_t> split_view( const string_t& _str, char ch ){ 
+        return string::split_view( _str, ch ); }
 
-    inline array_t<string_t> split( const string_t& _str, int ch ){ return string::split( _str, ch ); }
+    inline array_t<string_t> split_view( const string_t& _str, int  ch ){ 
+        return string::split_view( _str, ch ); }
+
+    inline array_t<string_t> split_view( const string_t& _str, const string_t& _reg, bool _flg=false ){
+          if ( _reg.size ()== 1 ){ return string::split_view( _str, _reg[0] ); }
+        elif ( _reg.empty() )    { return string::split_view( _str, 1 ); }
+        regex_t reg( _reg, _flg ); return reg.split_view( _str );
+    }
+
+    /*─······································································─*/
+
+    inline array_t<string_t> split( const string_t& _str, char ch ){ 
+        return string::split( _str, ch ); }
+
+    inline array_t<string_t> split( const string_t& _str, int  ch ){ 
+        return string::split( _str, ch ); }
 
     inline array_t<string_t> split( const string_t& _str, const string_t& _reg, bool _flg=false ){
           if ( _reg.size ()== 1 ){ return string::split( _str, _reg[0] ); }
@@ -481,13 +505,14 @@ namespace nodepp { namespace regex {
     string_t format( const string_t& val, const T&... args ){
         auto count = string::count( []( string_t ){ return true; }, args... );
 
-        static regex_t reg0( "\\$\\{\\d+\\}" );
-        static regex_t reg1( "\\d+" );
-        
         queue_t<string_t> out; ulong idx=0;
+        static ptr_t<regex_t> reg ({
+               regex_t( "\\$\\{\\d+\\}" ),
+               regex_t( "\\d+" )
+        });
 
-        for( auto &x: reg0.search_all( val ) ){
-        auto y = string::to_uint( reg1.match( val.slice( x[0], x[1] ) ) );
+        for( auto &x: reg[0].search_all( val ) ){
+        auto y = string::to_uint( reg[1].match( val.slice( x[0], x[1] ) ) );
         if ( y >= count ){ break; }
              out.push( val.slice( idx, x[0]    ) );
              out.push( string::get( y, args... ) ); idx = x[1];

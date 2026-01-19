@@ -30,7 +30,7 @@ void onMain(){
             console::log( data );
         });
 
-        cli.onDrain([=](){
+        cli.onClose([=](){
             console::log("closed");
         });
 

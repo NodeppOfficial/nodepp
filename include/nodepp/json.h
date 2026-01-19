@@ -30,7 +30,7 @@ private:
 protected:
 
     long get_next_sec( ulong _pos, const string_t& str ) const noexcept {
-        uchar k=0; while( _pos < str.size() ){
+        uchar k=0; while( _pos < str.size() && k < 128 ){
             switch( str[_pos] ){
                 case ':': k += 6; break; case ',': k -= 6; break;
                 case '{': _pos =get_next_key( _pos, str ); break;
@@ -43,7 +43,7 @@ protected:
     }
 
     long get_next_key( ulong _pos, const string_t& str ) const noexcept {
-        bool x=1; uchar k=0; while( _pos < str.size() ){
+        bool x=1; uchar k=0; while( _pos < str.size() && k < 128 ){
             switch( str[_pos] ){
                 case '[': k += 1; break; case ']': k -= 1; break;
                 case '{': k += 3; break; case '}': k -= 3; break;
@@ -57,9 +57,11 @@ protected:
 
     object_t get_data( const string_t& data ) const noexcept {
 
-        static regex_t reg1 = regex_t( "[a-z]"   );
-        static regex_t reg2 = regex_t( "[.]\\d+" );
-        static regex_t reg3 = regex_t( "\\d+"    );
+        static ptr_t<regex_t> reg ({
+               regex_t( "[a-z]"   ),
+               regex_t( "[.]\\d+" ),
+               regex_t( "\\d+"    )
+        });
 
         ulong x=0; while( x < data.size() && data[x]==' ' ){ ++x; }
 
@@ -71,11 +73,11 @@ protected:
         elif( data.find("false") ) /*---------------*/ { return (bool) 0; }
         elif( data.find("true")  ) /*---------------*/ { return (bool) 1; }
         elif( data.find("null")  ) /*---------------*/ { return nullptr ; }
-        elif( reg1.test(data) ) /*------------------*/ { return (string_t) data; }
+        elif( reg[0].test(data)  ) /*---------------*/ { return (string_t) data; }
         elif( data.find('.')     ) /*---------------*/ {
-            if  ( reg2.match(data).size()>5 ) /*----*/ { return string::to_double(data); }
+            if  ( reg[1].match(data).size()>5 ) /*--*/ { return string::to_double(data); }
             else /*---------------------------------*/ { return string::to_float(data);  }
-        }   elif( reg3.match(data).size()>9 ) /*----*/ { return string::to_long(data);   }
+        }   elif( reg[2].match(data).size()>9 ) /*--*/ { return string::to_long(data);   }
             else /*---------------------------------*/ { return string::to_int(data);    }
 
     }
@@ -101,23 +103,19 @@ protected:
            if( str[x] == '{' || str[x] == '[' ){
                auto z = get_next_key( x, str );
            if( z < 0 ){ throw except_t("Invalid JSON Format"); }
-               data.push( parse(str.slice( x,z+1 )) ); x=z+1;
+               data.push( parse(str.slice_view( x,z+1 )) ); x=z+1;
            } elif( str[x] == '"' ) {
                auto z = get_next_sec( x, str );
            if( z < 0 ){ throw except_t("Invalid JSON Format"); }
-               data.push( get_data(str.slice( x,z+1 )) ); x=z+1;
+               data.push( get_data(str.slice_view( x,z+1 )) ); x=z+1;
            } elif( x != y ) {
                ulong z=x; while( str[z]!=',' && z<y ) { ++z; }
-               data.push( get_data(str.slice( x, z )) ); x=z;
+               data.push( get_data(str.slice_view( x, z )) ); x=z;
            }
         } while( x++<y ); return data.data();
     }
 
-public:
-
-    json_t() noexcept {}
-    
-    virtual ~json_t() noexcept {}
+public: json_t() noexcept {}
 
     object_t parse( const string_t& str ) const {
         if( str.empty() ){ return nullptr; }
@@ -132,7 +130,7 @@ public:
                 } elif( str[x] == '{' ) {
                     return get_object( x+1,pos, str );
                 } else {
-                    data = str.slice( x+1, pos-1 ); break;
+                    data = str.slice_view( x+1, pos-1 ); break;
                 }   x = pos + 1;
 
             } elif( str[x] == ']' || str[x] == '}' || str[x] == ')' ){

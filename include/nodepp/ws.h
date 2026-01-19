@@ -31,8 +31,6 @@ protected:
 
 public:
 
-    virtual ~ws_t() noexcept {}
-
     template< class... T >
     ws_t( const T&... args ) noexcept : socket_t( args... ), ws( new NODE() ){}
 
@@ -54,21 +52,21 @@ public:
 
 namespace nodepp { namespace ws {
 
-    inline tcp_t server( const tcp_t& skt ){ skt.onSocket([=]( socket_t cli ){
+    inline tcp_t server( const tcp_t& skt ){ skt.onSocket([=]( socket_t raw ){
 
-        auto hrv = type::cast<http_t>(cli);
+        auto hrv = type::cast<http_t>(raw);
         if( !generator::ws::server( hrv ) )
-          { skt.onConnect.skip(); return; }   
+          { skt.onConnect.skip(); return; }  
+
+        ws_t cli = type::cast<ws_t>(raw);
 
         process::add([=](){ 
+            cli.set_timeout(0); cli.resume();
             skt.onConnect.resume( );
-            skt.onConnect.emit(cli); 
-            return -1;
-        });
+            skt.onConnect.emit(cli);
+            stream::pipe      (cli);
+        return -1; });
 
-    }); skt.onConnect([=]( ws_t cli ){
-        cli.onDrain.once([=](){ cli.free(); });
-        cli.set_timeout(0); cli.resume(); stream::pipe(cli); 
     }); return skt; }
 
     /*─······································································─*/
@@ -81,22 +79,21 @@ namespace nodepp { namespace ws {
     /*─······································································─*/
 
     inline tcp_t client( const string_t& uri, agent_t* opt=nullptr ){
-    tcp_t skt   ( nullptr, opt );
-    skt.onSocket.once([=]( socket_t cli ){
+    tcp_t skt( nullptr, opt ); skt.onSocket.once([=]( socket_t raw ){
 
-        auto hrv = type::cast<http_t> (cli);
+        auto hrv = type::cast<http_t> (raw);
         if( !generator::ws::client( hrv, uri ) )
-          { skt.onConnect.skip(); return; }   
+          { skt.onConnect.skip(); return; }
+
+        ws_t cli = type::cast<ws_t>(raw);
 
         process::add([=](){ 
+            cli.set_timeout(0); cli.resume();
             skt.onConnect.resume( );
-            skt.onConnect.emit(cli); 
-            return -1;
-        });
+            skt.onConnect.emit(cli);  
+            stream::pipe      (cli);
+        return -1; });
 
-    }); skt.onConnect.once([=]( ws_t cli ){
-        cli.onDrain.once([=](){ cli.free(); });
-        cli.set_timeout(0); cli.resume(); stream::pipe(cli); 
     }); skt.connect( url::hostname(uri), url::port(uri) ); return skt; }
 
 }}

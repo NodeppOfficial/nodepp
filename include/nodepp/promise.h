@@ -23,7 +23,7 @@ namespace nodepp { template< class T > using rej_t = function_t<void,T>; }
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { enum PROMISE_STATE {
+namespace nodepp { struct PROMISE_STATE { enum TYPE {
     UNDEFINED= 0b00000000,
     OPEN     = 0b00000001,
     PENDING  = 0b00000010,
@@ -33,7 +33,7 @@ namespace nodepp { enum PROMISE_STATE {
     REJECTED = 0b00100000,
     REJECTING= 0b01000000,
     RESOLVING= 0b10000000
-}; }
+};}; }
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -48,6 +48,7 @@ private:
 protected:
 
     struct NODE {
+        ptr_t<task_t> tsk;
         any_t /*-*/ value;
         NODE_CLB node_clb;
         REJECT    rej_clb;
@@ -88,7 +89,7 @@ protected:
 
 public:
 
-    virtual ~promise_t() noexcept { if( obj.count()>1 ){ return; } emit(); }
+   ~promise_t() noexcept { if( obj.count()>1 ){ return; } emit(); }
 
     promise_t( const NODE_CLB& cb ) noexcept : obj( new NODE() ) {
         obj->node_clb=cb; obj->state=PROMISE_STATE::OPEN;
@@ -117,9 +118,9 @@ public:
     expected_t<T,V> get_value() const {
 
         if( obj->state & PROMISE_STATE::RESOLVED )
-          { return obj->value.template as<T>(); }
+          { return obj->value.template as<T>();  }
         if( obj->state & PROMISE_STATE::REJECTED )
-          { return obj->value.template as<V>(); }
+          { return obj->value.template as<V>();  }
         
         if( obj->state & PROMISE_STATE::FINISHED )
           { throw except_t( "invalid value" ); }
@@ -127,7 +128,7 @@ public:
           { throw except_t( "promise is closed" ); }
       elif( obj->state & PROMISE_STATE::PENDING )
           { throw except_t( "promise still pending" ); } 
-      else{ throw except_t( "something went wrong" ); }
+      else{ throw except_t( "something went wrong"  ); }
 
     }
 
@@ -135,7 +136,8 @@ public:
 
     void off() const noexcept {
         obj->state = PROMISE_STATE::CLOSED;
-        obj->node_clb.free(); /*---------*/
+        process::clear( obj->tsk );
+        obj->node_clb.free();
     }
 
     /*─······································································─*/
@@ -149,9 +151,7 @@ public:
             
     invoke(); } while(0); 
 
-        auto self = type::bind(this);
-        
-        process::await([=](){
+        auto self = type::bind(this); process::await([=](){
             while( self->is_pending() ){ return  1; } 
             /*------------------------*/ return -1;
         }); return get_value(); 
@@ -168,8 +168,9 @@ public:
             /*--------*/ PROMISE_STATE::PENDING  )){ return; }
 
         auto self = type::bind( this );
-
-        process::add([=](){ self->invoke(); return -1; });
+        obj->tsk  = process::add([=](){ 
+             self->invoke(); return -1; 
+        });
 
     }
 
@@ -238,21 +239,17 @@ namespace nodepp { namespace promise {
     return promise_t<V,except_t>([=]( res_t<V> res, rej_t<except_t>rej ){
 
         if( prom.empty() ){ rej( "iterator is empty" ); return; }
+        ptr_t<ulong> idx ( 0UL, prom.size()-1 );
 
         process::add( coroutine::add( COROUTINE(){
         coBegin
 
-            do{ for( auto &x: prom ){
-            if( x.get_state() & PROMISE_STATE::PENDING ){ coGoto(0); }
-            } } while(0);
-
-            coNext;
-
-            do{ for( auto &x: prom ){
-            if( x.get_state() & PROMISE_STATE::REJECTED )
+            while( *idx != 0 ){ auto x = prom[ *idx ].get_state();
+            if( x & PROMISE_STATE::RESOLVED ){ *idx-=1;continue; }
+            if( x & PROMISE_STATE::REJECTED )
               { rej( except_t( "there are rejected promises" ) ); coEnd; }
-            } } while(0);
-
+            *idx = *idx==1 ? prom.size()-1 : *idx-1 ; } 
+            
             res( prom );
 
         coFinish
@@ -267,21 +264,16 @@ namespace nodepp { namespace promise {
     return promise_t<V,except_t>([=]( res_t<V> res, rej_t<except_t>rej ){
 
         if( prom.empty() ){ rej( "iterator is empty" ); return; }
+        ptr_t<ulong> idx ( 0UL, prom.size()-1 );
 
         process::add( coroutine::add( COROUTINE(){
         coBegin
 
-            do{ for( auto &x: prom ){
-            if( x.get_state() & PROMISE_STATE::PENDING ){ coGoto(0); }
-            } } while(0);
-
-            coNext;
-
-            do{ for( auto &x: prom ){
-            if( x.get_state() & PROMISE_STATE::RESOLVED )
-              { res( x ); coEnd; }
-            } } while(0);
-
+            while( *idx != 0 ){ auto x = prom[ *idx ].get_state();
+            if( x & PROMISE_STATE::RESOLVED ){ res(prom); coEnd; }
+            if( x & PROMISE_STATE::REJECTED ){ break; }
+            *idx = *idx==1 ? prom.size()-1 : *idx-1 ; } 
+            
             rej( except_t( "no fullfiled promises" ) );
 
         coFinish
