@@ -56,7 +56,7 @@
         template< class... T > cluster_t async( const T&... args ){
         auto pid = type::bind( cluster_t(args...) ); 
         if( process::is_parent() ) { 
-            process::foop([=](){ return pid->next(); }); 
+            process::add([=](){ return pid->next(); }); 
         } return *pid; }
 
         template< class... T > cluster_t add( const T&... args ){

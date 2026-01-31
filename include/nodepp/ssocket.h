@@ -14,9 +14,9 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#include "socket.h"
-#include "ssl.h"
 #include "fs.h"
+#include "ssl.h"
+#include "socket.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -32,22 +32,20 @@ public: ptr_t<ssl_t> ssl;
 
     ssocket_t() noexcept : socket_t(), ssl( new ssl_t() ) {}
 
-    virtual ~ssocket_t() noexcept {}
-    
     /*─······································································─*/
 
     virtual int __read( char* bf, const ulong& sx ) const noexcept override {
         if ( process::millis() > get_recv_timeout() || is_closed() )
            { return -1; } if ( sx==0 ) { return  0; }
         if ( ssl.null() ) /*--------*/ { return -1; }
-        obj->feof = ssl->_read( bf, sx ); return obj->feof;
+        obj->feof = ssl->_read( this, bf, sx ); return obj->feof;
     }
 
     virtual int __write( char* bf, const ulong& sx ) const noexcept override {
         if ( process::millis() > get_send_timeout() || is_closed() )
            { return -1; } if ( sx==0 ) { return  0; } 
         if ( ssl.null() ) /*--------*/ { return -1; }
-        obj->feof = ssl->_write( bf,sx ); return obj->feof;
+        obj->feof =ssl->_write( this, bf, sx ); return obj->feof;
     }
     
 };}

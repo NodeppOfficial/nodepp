@@ -24,9 +24,7 @@ public:
     template< class T >
     any_t( const T& f ) noexcept { set( f ); }
 
-    virtual ~any_t() noexcept {}
-
-    /*----*/ any_t() noexcept {}
+    any_t() noexcept {}
 
     /*─······································································─*/
 
@@ -37,6 +35,8 @@ public:
     void       free() const noexcept { /*--*/  any_ptr.free (); } /*--------*/
 
     /*─······································································─*/
+
+    template< class T > explicit operator T(void) const noexcept { return get<T>(); }
 
     template< class T >
     void set( const T& f ) noexcept { any_ptr = new any_impl<T>(f); }
@@ -50,16 +50,12 @@ public:
         if( !has_value() ) /*----*/ { throw except_t("any_t is null"); } /*---------*/
         if( type_size()!=sizeof(T) ){ throw except_t("any_t incompatible sizetype"); }
 
-        const ulong size = sizeof(T) / sizeof(char);
-        char any[ size ]; any_ptr->get((void*)&any);
-        return *(T*)(any); /*---------------------*/
+        alignas(T) char any [ sizeof(T) / sizeof(char) ]; 
+        any_ptr->get((void*)&any); return *(T*)(any);
 
     }
 
     /*─······································································─*/
-
-    template< class T >
-    explicit operator T(void) const noexcept { return get<T>(); }
 
 private:
 

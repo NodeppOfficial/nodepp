@@ -12,23 +12,16 @@ void onMain(){
     server.onConnect([=]( ssocket_t cli ){
 
         console::log("connected" );
-        auto cin = fs::std_input();
 
         cli.onData([=]( string_t data ){
             console::log( data );
         });
 
-        cin.onData([=]( string_t data ){
-            cli.write( data );
-        });
-
-        cli.onDrain.once([=](){
+        cli.onClose([=](){
             console::log("closed");
-            cin.close();
         });
 
         stream::pipe( cli );
-        stream::pipe( cin );
 
     });
 

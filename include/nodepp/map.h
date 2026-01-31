@@ -51,16 +51,14 @@ protected:
 public:
 
     template< ulong N >
-    map_t( const T (&args) [N] ) noexcept : obj(new NODE()) {
+    map_t( const T (&args) [N] ) noexcept : obj( new NODE() ) {
         obj->table = ptr_t<LIST>( HASH_TABLE_SIZE );
         for( auto &x: args ) { append(x); }
     }
 
-    map_t() noexcept : obj(new NODE()) {
+    map_t() noexcept : obj( new NODE() ) {
         obj->table = ptr_t<LIST>( HASH_TABLE_SIZE );
     }
-
-    virtual ~map_t() noexcept {}
 
     /*─······································································─*/
 

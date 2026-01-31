@@ -1,20 +1,23 @@
 #include <nodepp/nodepp.h>
-#include <nodepp/crypto.h>
+#include <nodepp/wait.h>
 
 using namespace nodepp;
 
 void onMain(){
 
-    auto ppt = crypto::encrypt::AES_192_CBC( "key1234567890" );
-         ppt.update("Hello World!");
-    auto p = ppt.get();
+    wait_t<string_t> event;
+    ptr_t<int> x ( 0UL, 10 );
 
-    console::log( ":>", p.size(), p );
+    event.add( "event", coroutine::add( COROUTINE(){
+    coBegin
 
-    auto ttp = crypto::decrypt::AES_192_CBC( "key1234567890" );
-         ttp.update( p );
-    auto q = ttp.get();
+        while( *x >= 0 ){
+            console::log( "hello world", *x );
+        coDelay( 1000 ); *x -= 1; }
 
-    console::log( ":>", q.size(), q );
+    coFinish
+    }));
+
+    while( !event.empty() ){ event.emit( "event" ); }
 
 }

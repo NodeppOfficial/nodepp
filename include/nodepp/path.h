@@ -161,8 +161,8 @@ namespace nodepp { namespace path {
     /*─······································································─*/
 
     inline string_t extname( const string_t& path ){ string_t m;
-        regex_t reg("\\.\\w+$"); if( !reg.test( path ) )
-          { return m; } return reg.match( path ).slice(1);
+        static regex_t reg("\\.\\w+$"); if( !reg.test( path ) )
+        { return m; } return reg.match( path ).slice(1);
     }
 
     /*─······································································─*/

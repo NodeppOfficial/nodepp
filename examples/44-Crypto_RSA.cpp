@@ -5,13 +5,13 @@ using namespace nodepp;
 
 void onMain(){
 
-    crypto::encrypt::RSA ppt;
+    crypto::encrypt::RSA ppt; ppt.generate_keys();
     string_t msg = "Hello World!";
 
-    auto data = ppt.private_encrypt( msg );
+    auto data = ppt.public_encrypt( msg );
     console::log( data.size(), data );
 
-    auto decp = ppt.public_decrypt( data );
+    auto decp = ppt.private_decrypt( data );
     console::log( decp.size(), decp );
 
 }

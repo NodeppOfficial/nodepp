@@ -18,25 +18,23 @@ namespace nodepp {
 template< class T > class optional_t {
 protected:
 
-    bool has; any_t data;
+    struct NODE { bool has; any_t data; }; ptr_t<NODE> obj;
 
 public:
 
-    optional_t( const T& val ) noexcept { has = true; data = val; }
+    optional_t( const T& val ) noexcept : obj( new NODE() ) { obj->has = true ; obj->data = val; }
 
-    optional_t() noexcept { has = false; }
-
-    virtual ~optional_t() noexcept {}
+    optional_t( /*--------*/ ) noexcept : obj( new NODE() ) { obj->has = false; }
 
     /*─······································································─*/
 
-    bool has_value() const noexcept { return has; }
+    bool has_value() const noexcept { return obj->has; }
 
     /*─······································································─*/
 
-    T value() const { if ( !has_value() || !data.has_value() ) {
+    T value() const { if ( !has_value() || !obj->data.has_value() ) {
         throw  except_t("Optional does not have a value");
-    }   return data.as<T>(); }
+    }   return obj->data.template as<T>(); }
     
 };}
 

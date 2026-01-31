@@ -11,28 +11,22 @@ void server(){
     server.onConnect([=]( socket_t cli ){
 
         console::log("connected" );
-        auto cin = fs::std_input();
 
         cli.onData([=]( string_t data ){
+            cli.write( "<: received" );
             console::log( data );
         });
 
-        cin.onData([=]( string_t data ){
-            cli.write( data );
-        });
-
-        cli.onDrain.once([=](){
+        cli.onClose([=](){
             console::log("closed");
-            cin.close();
         });
 
         stream::pipe( cli );
-        stream::pipe( cin );
 
     });
 
     server.listen( "localhost", 8000, []( socket_t srv ){
-        console::log("-> tcp://localhost:8000");
+        console::log("-> udb://localhost:8000");
     });
 
 }
@@ -54,7 +48,7 @@ void client(){
             cli.write( data );
         });
 
-        cli.onDrain.once([=](){
+        cli.onClose([=](){
             console::log("closed");
             cin.close();
         });

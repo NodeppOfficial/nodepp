@@ -15,73 +15,7 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #include "import.h"
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-namespace nodepp { namespace process { 
-
-    /*─······································································─*/
-    
-    loop_t _loop_; poll_t _poll_; loop_t _foop_;
-
-    /*─······································································─*/
-
-    inline ulong size(){ return _TASK_.get() + _loop_.size() + _poll_.size() + _foop_.size(); }
-
-    inline void clear(){ _TASK_.set(0); _loop_.clear(); _poll_.clear(); _foop_.clear(); }
-
-    inline bool empty(){ return size() <= 0; }
-
-    /*─······································································─*/
-
-    inline bool should_close(){ return _EXIT_ || empty(); }
-
-    inline void clear( void* address ){
-         if( address == nullptr ){ return; }
-         memset( address, 0, sizeof(bool) );
-    }
-
-    inline void exit( int err=0 ){ 
-        if( should_close() ){ goto DONE; }
-        _EXIT_=true; /**/ clear(); 
-        DONE:; /*--*/ ::exit(err); 
-    }
-
-    /*─······································································─*/
-
-    inline int next(){ static uchar count=0; if( count%64==0 ){ yield(); }
-    count++ ; coStart
-        if( !_poll_.empty() ) { _poll_.next(); coNext; }
-        if( !_loop_.empty() ) { _loop_.next(); coNext; }
-        if( !_foop_.empty() ) { _foop_.next(); coNext; }
-    coStop }
-
-    /*─······································································─*/
-
-    template< class... T >
-    void* foop( const T&... args ){ return _foop_.add( args... ); }
-
-    template< class... T >
-    void* loop( const T&... args ){ return _loop_.add( args... ); }
-
-    template< class... T >
-    void* poll( const T&... args ){ return _poll_.add( args... ); }
-
-    template< class... T >
-    void* add ( const T&... args ){ return _loop_.add( args... ); }
-
-    /*─······································································─*/
-
-    template< class T, class... V >
-    void await( T cb, const V&... args ){ ++_TASK_;
-         while( cb( args... )>=0 && !should_close() )
-              { process::next(); } 
-    --_TASK_; }
-
-}}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
+#include "evloop.h"
 #include "env.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -94,24 +28,24 @@ namespace nodepp { namespace process { array_t<string_t> args;
     /*─······································································─*/
 
     inline void start( int argc, char** args ){
-        int i=0; onSIGEXIT.once([=](){ process::exit(0); }); do {
-        if(!regex::test(args[i],"^\\?") ) {
-            process::args.push(args[i]);
+        onSIGEXIT.once([=](){ process::exit(0); }); int i=0;
+        do{ if(!regex::test(args[i],"^\\?") ) {
+                process::args.push(args[i]);
         } else {
             for( auto &x: query::parse( args[i] ).data() )
                { env::set( x.first, x.second ); }
-        }
-    } while( i ++< argc - 1 ); signal::start(); }
+        }} while( i ++< argc - 1 ); signal::start(); 
+    }
 
     /*─······································································─*/
 
     inline void stop(){ 
-        while(!process::should_close() )
-             { process::next(); }
-        process::exit(0);
+        while( !process::should_close() ){
+            process::next( );
+        }   process::exit(0);
     }
 
-    /*─······································································─*/
+    inline void wait(){ process::stop(); }
 
 }}
 

@@ -79,7 +79,7 @@ protected:
 public:
 
     template< ulong N >
-    object_t( const T (&arr) [N] ) : obj(new NODE()) {
+    object_t( const T (&arr) [N] ) : obj( new NODE() ) {
         QUEUE mem; for( ulong x=0; x<N; ++x )
             { mem[arr[x].first]= arr[x].second; }
         obj->mem = mem; obj->type = 20;
@@ -88,7 +88,7 @@ public:
     object_t( null_t ) : obj( new NODE() ) { /*---*/ }
 
     template< class U >
-    object_t( const U& any ) : obj(new NODE()) {
+    object_t( const U& any ) : obj( new NODE() ) {
         if( type::is_same<U,ARRAY>::value )
           { obj->type = 21; goto BACK; }
       elif( type::is_same<U,QUEUE>::value )
@@ -97,17 +97,15 @@ public:
         BACK:; obj->mem = any;
     }
 
-    object_t() : obj( new NODE() ) {}
-
-    virtual ~object_t() noexcept {}
+    object_t() : obj( new NODE() ){}
 
     /*─······································································─*/
 
     template< class U > bool is() const {
-        if( get_type_id()==21 && type::is_same<U,ARRAY>::value ){ return true; }
-      elif( get_type_id()==20 && type::is_same<U,QUEUE>::value ){ return true; }
-      elif( get_type_id()     == type::obj_type_id<U>::value   ){ return true; } return false;
-    }
+        if  ( get_type_id()==21 && type::is_same<U,ARRAY>::value ){ return true; }
+        elif( get_type_id()==20 && type::is_same<U,QUEUE>::value ){ return true; }
+        elif( get_type_id()     == type::obj_type_id<U>  ::value ){ return true; } 
+    return false; }
 
     template< class U >
     explicit operator U() const { return /*-------------*/ obj->mem.as<U>    (); }

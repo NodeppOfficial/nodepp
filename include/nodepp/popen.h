@@ -52,7 +52,7 @@
 
         template< class... T > popen_t async( const T&... args ){
             auto pid = type::bind( popen_t( args... ) );
-            process::foop([=](){ return pid->next(); }); 
+            process::add([=](){ return pid->next(); }); 
         return *pid; }
 
     }}

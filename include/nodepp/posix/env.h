@@ -28,7 +28,7 @@ namespace nodepp { namespace process { namespace env {
 
     inline int init( const string_t& path ){ try {
 
-        static regex_t reg( "^([^ =]+)[= \"]+([^\n#\"]+)" );
+        thread_local static regex_t reg( "^([^ =]+)[= \"]+([^\n#\"]+)" );
         auto file = file_t( path, "r" );
 
         while( !file.is_closed() ){

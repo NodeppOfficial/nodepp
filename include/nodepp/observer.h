@@ -28,6 +28,7 @@ private:
     wait_t<string_t,any_t,any_t> event;
     
     using P=type::pair<string_t,any_t>;
+    using G=function_t<int,any_t,any_t>;
     using F=function_t<void,any_t,any_t>;
 
 public: observer_t() noexcept {}
@@ -39,8 +40,6 @@ public: observer_t() noexcept {}
         list[args[x].first] = args[x].second;
     }}
 
-    virtual ~observer_t() noexcept {}
-    
     /*─······································································─*/
 
     template< class F >
@@ -60,17 +59,23 @@ public: observer_t() noexcept {}
     
     /*─······································································─*/
 
-    void off( void* addr ) const noexcept { event.off(addr); }
+    void off( ptr_t<task_t> addr ) const noexcept { event.off(addr); }
 
-    void* once( string_t name, F func ) const noexcept {
+    ptr_t<task_t> once( string_t name, F func ) const noexcept {
         if( !list.has( name ) ){ return nullptr; }
-        if( func.empty() ){ return nullptr; }
+        if( func.empty() )/*-*/{ return nullptr; }
         return event.once( name, func );
     }
 
-    void* on( string_t name, F func ) const noexcept {
+    ptr_t<task_t> add( string_t name, G func ) const noexcept {
         if( !list.has( name ) ){ return nullptr; }
-        if( func.empty() ){ return nullptr; }
+        if( func.empty() )/*-*/{ return nullptr; }
+        return event.add( name, func );
+    }
+
+    ptr_t<task_t> on( string_t name, F func ) const noexcept {
+        if( !list.has( name ) ){ return nullptr; }
+        if( func.empty() )/*-*/{ return nullptr; }
         return event.on( name, func );
     }
     

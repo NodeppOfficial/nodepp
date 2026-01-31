@@ -25,7 +25,6 @@ using namespace nodepp;
 #include "regex.cpp"
 #include "atomic.cpp"
 #include "string.cpp"
-#include "variant.cpp"
 #include "promise.cpp"
 #include "function.cpp"
 #include "observer.cpp"
@@ -56,7 +55,6 @@ void onMain(){
     TEST::REGEX   ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::STRING  ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::ATOMIC  ::TEST_RUNNER(); conio::log("\n---\n");
-    TEST::VARIANT ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::PROMISE ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::FUNCTION::TEST_RUNNER(); conio::log("\n---\n");
     TEST::OBSERVER::TEST_RUNNER(); conio::log("\n---\n");

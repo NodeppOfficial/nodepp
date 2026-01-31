@@ -18,13 +18,12 @@ namespace nodepp { class except_t {
 protected:
 
     struct NODE {
-        void *ev = nullptr;
-        string_t msg;
+        ptr_t<task_t> ev; string_t msg;
     };  ptr_t<NODE> obj;
 
 public:
 
-    virtual ~except_t() noexcept {
+   ~except_t() noexcept {
         if( obj->ev == nullptr ){ return; }
    	    process::onSIGERROR.off( obj->ev );
     }
@@ -34,7 +33,7 @@ public:
     /*─······································································─*/
 
     template< class T, class = typename type::enable_if<type::is_class<T>::value,T>::type >
-    except_t( const T& except_type ) noexcept : obj(new NODE()) {
+    except_t( const T& except_type ) noexcept : obj( new NODE() ) {
         obj->msg = except_type.what(); auto inp = type::bind( this );
         obj->ev  = process::onSIGERROR.once([=](int){ inp->print(); });
     }
@@ -42,14 +41,14 @@ public:
     /*─······································································─*/
 
     template< class... T >
-    except_t( const T&... msg ) noexcept : obj(new NODE()) {
+    except_t( const T&... msg ) noexcept : obj( new NODE() ) {
         obj->msg = string::join( " ", msg... ); auto inp = type::bind( this );
         obj->ev  = process::onSIGERROR.once([=](int){ inp->print(); });
     }
 
     /*─······································································─*/
 
-    except_t( const string_t& msg ) noexcept : obj(new NODE()) {
+    except_t( const string_t& msg ) noexcept : obj( new NODE() ) {
         obj->msg = msg; auto inp = type::bind( this );
         obj->ev  = process::onSIGERROR.once([=](int){ inp->print(); });
     }
