@@ -45,8 +45,6 @@ namespace nodepp { template< class T > class initializer_t : public ptr_t<T> {
         type::copy( arr, arr+N, this->begin() );
     }
 
-    virtual ~initializer_t() noexcept {}
-
     /*─······································································─*/
 
     int index_of( function_t<bool,T> func ) const noexcept {

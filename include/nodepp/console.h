@@ -32,9 +32,9 @@ namespace nodepp { namespace console {
     template< class... T >
     int pout( const T&... args ){ return conio::log( args... ); }
 
-    void wait(){ char x; conio::scan("%c",&x); }
+    inline void wait(){ char x; conio::scan("%c",&x); }
 
-    void clear(){ conio::clear(); }
+    inline void clear(){ conio::clear(); }
     
     /*─······································································─*/
 

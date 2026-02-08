@@ -54,5 +54,3 @@ namespace TEST { namespace LOOP {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

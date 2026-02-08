@@ -60,5 +60,3 @@ namespace TEST { namespace QUERY {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

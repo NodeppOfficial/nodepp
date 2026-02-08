@@ -113,5 +113,3 @@ namespace TEST { namespace JSON {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

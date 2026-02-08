@@ -31,9 +31,8 @@ private:
 protected:
 
     struct NODE {
-        int      state = 0;
+        char     state = 0;
         agent_t  agent ;
-        NODE_CLB func  ;
     };  ptr_t<NODE> obj;
 
 public: udp_t() noexcept : obj( new NODE() ) {}
@@ -46,10 +45,10 @@ public: udp_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    udp_t( NODE_CLB _func, agent_t* opt=nullptr ) noexcept : obj( new NODE() )
-         { obj->func=_func; obj->agent=opt==nullptr?agent_t():*opt;  }
+    udp_t( agent_t* opt=nullptr ) noexcept : obj( new NODE() )
+         { obj->agent=opt==nullptr ? agent_t() : *opt; }
 
-    virtual ~udp_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
+   ~udp_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
     /*─······································································─*/
 
@@ -58,31 +57,31 @@ public: udp_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    void listen( const string_t& host, int port, NODE_CLB cb ) const noexcept {
+    void listen( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
         if( obj->state == 1 ) { return; } if( dns::lookup(host).empty() )
           { onError.emit("dns couldn't get ip"); close(); return; }
 
-        auto self = type::bind( this ); auto clb = [=](){
+        socket_t sk; obj->state=1;
+        sk.SOCK    = SOCK_DGRAM  ;
+        sk.IPPROTO = IPPROTO_UDP ;
 
-            socket_t sk; self->obj->state =1;
-                     sk.SOCK    = SOCK_DGRAM;
-                     sk.IPPROTO = IPPROTO_UDP;
+        if( sk.socket( dns::lookup(host), port )<0 ){
+            onError.emit("Error while creating UDP"); 
+            close(); sk.free(); return; 
+        }   sk.set_sockopt(obj->agent);
 
-            if( sk.socket( dns::lookup(host), port )<0 ){
-                self->onError.emit("Error while creating TLS"); 
-                self->close(); sk.free(); return; 
-            }   sk.set_sockopt( self->obj->agent );
+        if( sk.bind()<0 ){
+            onError.emit("Error while binding UDP"); 
+            close(); sk.free(); return; 
+        }
+
+        auto self = type::bind( this );
+        sk.onDrain.once([=](){ self->close(); });
 
         process::add( coroutine::add( COROUTINE(){
         int c=0; coBegin
 
-            coWait( (c=sk._bind())==-2 ); if( c<0 ){ 
-                self->onError.emit("Error while binding TLS"); 
-                self->close(); sk.free(); coEnd; 
-            }
-
-            sk.onDrain.once([=](){ self->close(); }); cb(sk);
-            self->onSocket.emit(sk); self->obj->func(sk);
+            cb(sk); self->onSocket.emit(sk);
                 
             if( sk.is_available() ){ 
                 sk.onOpen      .emit(  );
@@ -90,32 +89,32 @@ public: udp_t() noexcept : obj( new NODE() ) {}
                 self->onConnect.emit(sk); 
             }
 
-        coFinish })); }; clb();
+        coFinish }));
 
     }
 
     /*─······································································─*/
 
-    void connect( const string_t& host, int port, NODE_CLB cb ) const noexcept {
+    void connect( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
         if( obj->state == 1 ){ return; } if( dns::lookup(host).empty() )
           { onError.emit("dns couldn't get ip"); close(); return; }
 
-        auto self = type::bind(this); auto clb = [=](){
+        socket_t sk; obj->state=1;
+        sk.SOCK    = SOCK_DGRAM  ;
+        sk.IPPROTO = IPPROTO_UDP ;
 
-            socket_t sk; self->obj->state =1;
-                     sk.SOCK    = SOCK_DGRAM;
-                     sk.IPPROTO = IPPROTO_UDP;
+        if( sk.socket( dns::lookup(host), port )<0 ){
+            onError.emit("Error while creating UDP"); 
+            close(); sk.free(); return; 
+        }   sk.set_sockopt(obj->agent);
 
-            if( sk.socket( dns::lookup(host), port )<0 ){
-                self->onError.emit("Error while creating TLS"); 
-                self->close(); sk.free(); return; 
-            }   sk.set_sockopt( self->obj->agent );
+        auto self = type::bind(this);
+        sk.onDrain.once([=](){ self->close(); });
 
         process::add( coroutine::add( COROUTINE(){
         coBegin
-
-            sk.onDrain.once([=](){ self->close(); }); cb(sk);
-            self->onSocket.emit(sk); self->obj->func(sk);
+        
+            cb(sk); self->onSocket.emit(sk);
 
             if( sk.is_available() ){ 
                 sk.onOpen      .emit(  );
@@ -123,18 +122,8 @@ public: udp_t() noexcept : obj( new NODE() ) {}
                 self->onConnect.emit(sk); 
             }
 
-        coFinish })); }; clb();
+        coFinish }));
 
-    }
-
-    /*─······································································─*/
-
-    void connect( const string_t& host, int port ) const noexcept {
-         connect( host, port, []( socket_t ){} );
-    }
-
-    void listen( const string_t& host, int port ) const noexcept {
-         listen( host, port, []( socket_t ){} );
     }
 
     /*─······································································─*/
@@ -151,12 +140,12 @@ public: udp_t() noexcept : obj( new NODE() ) {}
 
 namespace udp {
 
-    udp_t server( agent_t* opt=nullptr ){
-        auto skt = udp_t( [=]( socket_t ){}, opt ); return skt;
+    inline udp_t server( agent_t* opt=nullptr ){
+        auto skt = udp_t( nullptr, opt ); return skt;
     }
 
-    udp_t client( agent_t* opt=nullptr ){
-        auto skt = udp_t( [=]( socket_t ){}, opt ); return skt;
+    inline udp_t client( agent_t* opt=nullptr ){
+        auto skt = udp_t( nullptr, opt ); return skt;
     }
 
 }

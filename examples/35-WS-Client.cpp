@@ -8,26 +8,18 @@ using namespace nodepp;
 void onMain() {
 
     auto client = ws::client( "ws://localhost:8000/" );
-    auto cin    = fs::std_input();
     
     client.onConnect([=]( ws_t cli ){ 
 
         console::log("connected", cli.get_peername() );
 
-        cli.onData([]( string_t chunk ){ 
-            console::log("client:>",chunk); 
+        cli.onData([]( string_t data ){ 
+            console::log( data ); 
         });
         
-        cin.onData([=]( string_t data ){
-            cli.write( data );
-        });
-
-        cli.onClose([](){ 
+        cli.onClose([=](){ 
             console::log("closed"); 
-            process::exit(1);
         });
-
-        stream::pipe( cin );
 
     });
 

@@ -17,85 +17,137 @@
 namespace nodepp { template< class... A > class event_t {
 protected:
 
-    struct DONE {  bool      *out;
-        function_t<bool,A...> clb;
-    };
-
+    using  DONE = function_t<bool,A...>;
     struct NODE {
-        char skip     = 1;
-        queue_t<DONE> que;
-    };  ptr_t<NODE>   obj;
+        queue_t<DONE> que; void *addr =nullptr;
+        /*--------------*/ int   state=0x00; 
+    };  ptr_t  <NODE> obj;
+
+    enum STATE {
+         EV_STATE_UNKNOWN = 0b00000000,
+         EV_STATE_SKIP    = 0b00000001,
+         EV_STATE_STOP    = 0b00000010,
+         EV_STATE_USED    = 0b00000100,
+         EV_STATE_CLOSED  = 0b00001000
+    };
 
 public:
 
     event_t() noexcept : obj( new NODE() ) {}
 
-    virtual ~event_t() noexcept { free(); }
+    /*─······································································─*/
+
+    ptr_t<task_t> operator()( function_t<void,A...> cb ) const noexcept { return on(cb); }
 
     /*─······································································─*/
 
-    void* operator()( function_t<void,A...> func ) const noexcept { return on(func); }
+    ptr_t<task_t> once( function_t<void,A...> cb ) const noexcept {
+    ptr_t<task_t> task( 0UL, task_t() ); auto clb= type::bind( cb );
+
+        obj->que.push([=]( A... args ){
+            if( task.null() || clb.null() ) /**/ { return false; }
+            if( task->flag & TASK_STATE::CLOSED ){ return false; }
+                task->flag = TASK_STATE::CLOSED; (*clb)(args...); 
+        return false; });
+
+        task->flag = TASK_STATE::OPEN;
+        task->addr = obj->que.last();
+        task->sign = &obj;
+
+    return task; }
+
+    ptr_t<task_t> add( function_t<int,A...> cb ) const noexcept {
+    ptr_t<task_t> task( 0UL, task_t() ); auto clb= type::bind( cb );
+
+        obj->que.push([=]( A... args ){
+            if( task.null() || clb.null() ) /**/ { return false; }
+            if( task->flag & TASK_STATE::CLOSED ){ return false; }
+            if( task->flag & TASK_STATE::USED   ){ return true ; }
+                task->flag|= TASK_STATE::USED;   
+            int c=(*clb)(args...); if(clb.null()){ return false; }
+                task->flag&=~TASK_STATE::USED;
+        return c==-1 ? false : true; });
+
+        task->flag = TASK_STATE::OPEN;
+        task->addr = obj->que.last();
+        task->sign = &obj;
+
+    return task; }
+
+    ptr_t<task_t> on( function_t<void,A...> cb ) const noexcept {
+    ptr_t<task_t> task( 0UL, task_t() ); auto clb= type::bind( cb );
+
+        obj->que.push([=]( A... args ){
+            if( task.null() || clb.null() ) /**/ { return false; }
+            if( task->flag & TASK_STATE::CLOSED ){ return false; }
+            if( task->flag & TASK_STATE::USED   ){ return true ; }
+                task->flag|= TASK_STATE::USED;
+            (*clb)(args...); if(clb.null()) /**/ { return false; }
+                task->flag&=~TASK_STATE::USED;
+        return true; });
+
+        task->flag = TASK_STATE::OPEN;
+        task->addr = obj->que.last();
+        task->sign = &obj;
+
+    return task; }
 
     /*─······································································─*/
 
-    void* once( function_t<void,A...> func ) const noexcept {
-        ptr_t<bool> out = new bool(1); DONE ctx;
-        ctx.out=&out; ctx.clb=([=]( A... args ){
-            if(*out != 0   ){ func(args...); }
-            if( out.null() ){ return false;  } *out = 0; return *out;
-        }); obj->que.push(ctx); return &out;
-    }
-
-    void* on( function_t<void,A...> func ) const noexcept {
-        ptr_t<bool> out = new bool(1); DONE ctx;
-        ctx.out=&out; ctx.clb=([=]( A... args ){
-            if(*out != 0   ){ func(args...); }
-            if( out.null() ){ return false;  } return *out;
-        }); obj->que.push(ctx); return &out;
-    }
-
-    void off( void* address ) const noexcept {
-        if( address == nullptr ){ return; }
-        memset( address, 0, sizeof(bool) );
+    void off( ptr_t<task_t> address ) const noexcept {
+        if( address.null() ) /*--------------*/ { return; }
+        if( address->flag & TASK_STATE::CLOSED ){ return; }
+        if( address->sign != &obj ) /*-------*/ { return; }
+            address->flag = TASK_STATE::CLOSED;
+        auto node = obj->que.as( address->addr ); 
+        if( obj->addr == address->addr ){ obj->addr = node->next; }
+        if( node != nullptr ) /*-----*/ { obj->que.erase( node ); }
     }
 
     /*─······································································─*/
 
     bool  empty() const noexcept { return obj->que.empty(); }
     ulong  size() const noexcept { return obj->que.size (); }
-
-    /*─······································································─*/
-
-    void free() const noexcept {
-        if( obj->skip == -1 ){ resume(); }
-        auto x=obj->que.first(); while( x!=nullptr && !obj->que.empty() ){
-        auto y=x->next; if( *x->data.out==0 ){ obj->que.erase(x); } x=y; }
-    }
-
-    void clear() const noexcept {
-        auto x=obj->que.first(); while( x!=nullptr && !obj->que.empty() ){
-        auto y=x->next; *x->data.out=0; x=y;
-    }}
+    void  clear() const noexcept { /*--*/ obj->que.clear(); }
 
     /*─······································································─*/
 
     void emit( const A&... args ) const noexcept {
-        if( obj.null() || is_paused() ){ return; } auto x=obj->que.first( );
-        while( x!=nullptr && !obj->que.empty() ) { auto y=x->next; bool z=0;
-         if  ( *x->data.out == 0 ) /*-------------*/ { z=1; }
-         elif( !x->data.clb(args...) ) /*---------*/ { z=1; }
-         if  ( !x->data.clb.null() && z ) { *x->data.out=0; }
-    x=y; }}
+        if( obj.null() || is_paused() || is_used() ){ return; }
+
+        obj->state |= STATE::EV_STATE_USED;
+        auto x=obj->que.first();
+
+        while( x!=nullptr && obj->que.is_valid(x) ){ obj->addr=x->next;
+        if   ( !x->data.emit(args...) ) /*------*/ { obj->que.erase(x); }
+        x = obj->que.as( obj->addr ); }
+
+        obj->state &=~ STATE::EV_STATE_USED;
+    }
 
     /*─······································································─*/
 
-    bool is_paused() const noexcept { return obj->skip<=0; }
+    bool is_paused() const noexcept { 
+        return obj->state & ( STATE::EV_STATE_SKIP |
+        /*-----------------*/ STATE::EV_STATE_STOP );
+    }
 
-    void    resume() const noexcept { obj->skip = 1; }
+    bool is_used() const noexcept {
+        return obj->state & STATE::EV_STATE_USED ;
+    }
 
-    void      stop() const noexcept { obj->skip = 0; }
+    void resume() const noexcept { 
+        obj->state &=~ ( STATE::EV_STATE_STOP | 
+        /*------------*/ STATE::EV_STATE_SKIP );
+    }
 
-    void      skip() const noexcept { obj->skip =-1; }
+    void stop() const noexcept { 
+        obj->state |= STATE::EV_STATE_STOP;
+    }
+
+    void skip() const noexcept {
+        obj->state |= STATE::EV_STATE_SKIP;
+    }
 
 };}
 

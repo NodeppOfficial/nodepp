@@ -83,5 +83,3 @@ namespace TEST { namespace URL {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }
