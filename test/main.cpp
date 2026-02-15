@@ -3,6 +3,7 @@
 
 using namespace nodepp;
 
+#include "dns.cpp"
 #include "url.cpp"
 #include "any.cpp"
 #include "ptr.cpp"
@@ -12,6 +13,7 @@ using namespace nodepp;
 #include "path.cpp"
 #include "loop.cpp"
 #include "wait.cpp"
+#include "file.cpp"
 #include "http.cpp"
 #include "tuple.cpp"
 #include "worker.cpp"
@@ -21,15 +23,17 @@ using namespace nodepp;
 #include "array.cpp"
 #include "queue.cpp"
 #include "regex.cpp"
+#include "atomic.cpp"
 #include "string.cpp"
-#include "variant.cpp"
 #include "promise.cpp"
 #include "function.cpp"
+#include "observer.cpp"
 #include "optional.cpp"
 #include "expected.cpp"
 
 void onMain(){ 
     
+    TEST::DNS     ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::URL     ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::ANY     ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::PTR     ::TEST_RUNNER(); conio::log("\n---\n");
@@ -38,6 +42,7 @@ void onMain(){
     TEST::PATH    ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::LOOP    ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::WAIT    ::TEST_RUNNER(); conio::log("\n---\n");
+    TEST::FILE    ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::HTTP    ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::TUPLE   ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::COOKIE  ::TEST_RUNNER(); conio::log("\n---\n");
@@ -49,9 +54,10 @@ void onMain(){
     TEST::QUEUE   ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::REGEX   ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::STRING  ::TEST_RUNNER(); conio::log("\n---\n");
-    TEST::VARIANT ::TEST_RUNNER(); conio::log("\n---\n");
+    TEST::ATOMIC  ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::PROMISE ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::FUNCTION::TEST_RUNNER(); conio::log("\n---\n");
+    TEST::OBSERVER::TEST_RUNNER(); conio::log("\n---\n");
     TEST::EXPECTED::TEST_RUNNER(); conio::log("\n---\n");
     TEST::OPTION  ::TEST_RUNNER(); conio::log("\n---\n");
 

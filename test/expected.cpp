@@ -43,5 +43,3 @@ namespace TEST { namespace EXPECTED {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

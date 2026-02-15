@@ -50,7 +50,7 @@ public:
     
     /*─······································································─*/
     
-    virtual ~zlib_t() noexcept { if( obj.count()>1 || obj->state==0 ){ return; } free(); }
+   ~zlib_t() noexcept { if( obj.count()>1 || obj->state==0 ){ return; } free(); }
 
     zlib_t( int type=0, ulong size=CHUNK_SIZE ) noexcept : obj( new NODE ) { 
         obj->bff  = ptr_t<char>( size ); 
@@ -138,21 +138,26 @@ public:
 
 namespace nodepp { namespace zlib { namespace inflate {
 
-    string_t get( const string_t& data ){ return zlib_t(-15).update_inflate(data,Z_FINISH); }
+    inline string_t get( const string_t& data ){ return zlib_t(15).update_inflate(data,Z_FINISH); }
 
-    template< class... T >
-    void pipe( const T&... file ){ 
-         generator::zlib::pipe_inflate task; auto zlib = zlib_t(-15);
-         process::add( task, zlib, file... );
-    }
+    template< class T, class V >
+    ptr_t<task_t> pipe( const T& fa, const V& fb ){ 
+           generator::zlib::pipe_inflate task; auto zlib = zlib_t(15);
+    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa, fb ); }
 
-    template< class... T >
-    void await( const T&... file ){ 
-         generator::zlib::pipe_inflate task; auto zlib = zlib_t(-15);
-         process::await( task, zlib, file... );
-    }
+    template< class T >
+    ptr_t<task_t> pipe( const T& fa ){ 
+           generator::zlib::pipe_inflate task; auto zlib = zlib_t(15);
+    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
+
+    template< class V, class... T >
+    string_t await( const V& file, const T&... args ){ string_t out;
+        generator::zlib::pipe_inflate task; auto zlib =zlib_t(15);
+        file.onData([&]( string_t data ){ out += data; });
+        process::await( task, zlib, file, args... );
+    return out; }
     
-    zlib_t get(){ return zlib_t(-15); }
+    inline zlib_t get(){ return zlib_t(15); }
 
 }}}
 
@@ -160,21 +165,80 @@ namespace nodepp { namespace zlib { namespace inflate {
 
 namespace nodepp { namespace zlib { namespace deflate {
 
-    string_t get( const string_t& data ){ return zlib_t(-15).update_deflate(data,Z_FINISH); }
+    inline string_t get( const string_t& data ){ return zlib_t(15).update_deflate(data,Z_FINISH); }
 
-    template< class... T >
-    void pipe( const T&... file ){
-         generator::zlib::pipe_deflate task; auto zlib = zlib_t(-15);
-         process::add( task, zlib, file... );
-    }
+    template< class T, class V >
+    ptr_t<task_t> pipe( const T& fa, const V& fb ){ 
+           generator::zlib::pipe_deflate task; auto zlib = zlib_t(15);
+    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa, fb ); }
 
-    template< class... T >
-    void await( const T&... file ){
-         generator::zlib::pipe_deflate task; auto zlib = zlib_t(-15);
-         process::await( task, zlib, file... );
-    }
+    template< class T >
+    ptr_t<task_t> pipe( const T& fa ){ 
+           generator::zlib::pipe_deflate task; auto zlib = zlib_t(15);
+    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
+
+    template< class V, class... T >
+    string_t await( const V& file, const T&... args ){ string_t out;
+        generator::zlib::pipe_deflate task; auto zlib =zlib_t(15);
+        file.onData([&]( string_t data ){ out += data; });
+        process::await( task, zlib, file, args... );
+    return out; }
     
-    zlib_t get(){ return zlib_t(-15); }
+    inline zlib_t get(){ return zlib_t(15); }
+
+}}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace zlib { namespace raw_inflate {
+
+    inline string_t get( const string_t& data ){ return zlib_t(-15).update_inflate(data,Z_FINISH); }
+
+    template< class T, class V >
+    ptr_t<task_t> pipe( const T& fa, const V& fb ){ 
+           generator::zlib::pipe_inflate task; auto zlib = zlib_t(-15);
+    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa, fb ); }
+
+    template< class T >
+    ptr_t<task_t> pipe( const T& fa ){ 
+           generator::zlib::pipe_inflate task; auto zlib = zlib_t(-15);
+    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
+
+    template< class V, class... T >
+    string_t await( const V& file, const T&... args ){ string_t out;
+        generator::zlib::pipe_inflate task; auto zlib =zlib_t(-15);
+        file.onData([&]( string_t data ){ out += data; });
+        process::await( task, zlib, file, args... );
+    return out; }
+    
+    inline zlib_t get(){ return zlib_t(-15); }
+
+}}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace zlib { namespace raw_deflate {
+
+    inline string_t get( const string_t& data ){ return zlib_t(-15).update_deflate(data,Z_FINISH); }
+
+    template< class T, class V >
+    ptr_t<task_t> pipe( const T& fa, const V& fb ){ 
+           generator::zlib::pipe_deflate task; auto zlib = zlib_t(-15);
+    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa, fb ); }
+
+    template< class T >
+    ptr_t<task_t> pipe( const T& fa ){ 
+           generator::zlib::pipe_deflate task; auto zlib = zlib_t(-15);
+    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
+
+    template< class V, class... T >
+    string_t await( const V& file, const T&... args ){ string_t out;
+        generator::zlib::pipe_deflate task; auto zlib =zlib_t(-15);
+        file.onData([&]( string_t data ){ out += data; });
+        process::await( task, zlib, file, args... );
+    return out; }
+    
+    inline zlib_t get(){ return zlib_t(-15); }
 
 }}}
 
@@ -182,21 +246,26 @@ namespace nodepp { namespace zlib { namespace deflate {
 
 namespace nodepp { namespace zlib { namespace gunzip {
 
-    string_t get( const string_t& data ){ return zlib_t(15|32).update_inflate(data,Z_FINISH); }
+    inline string_t get( const string_t& data ){ return zlib_t(15|32).update_inflate(data,Z_FINISH); }
 
-    template< class... T >
-    void pipe( const T&... file ){
-         generator::zlib::pipe_inflate arg; auto zlib = zlib_t(15|32);
-         process::add( arg, zlib, file... );
-    }
+    template< class T, class V >
+    ptr_t<task_t> pipe( const T& fa, const V& fb ){ 
+           generator::zlib::pipe_inflate task; auto zlib = zlib_t(15|32);
+    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa, fb ); }
 
-    template< class... T >
-    void await( const T&... file ){
-         generator::zlib::pipe_inflate arg; auto zlib = zlib_t(15|32);
-         process::await( arg, zlib, file... );
-    }
+    template< class T >
+    ptr_t<task_t> pipe( const T& fa ){ 
+           generator::zlib::pipe_inflate task; auto zlib = zlib_t(15|32);
+    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
+
+    template< class V, class... T >
+    string_t await( const V& file, const T&... args ){ string_t out;
+        generator::zlib::pipe_inflate task;auto zlib=zlib_t(15|32);
+        file.onData([&]( string_t data ){ out += data; });
+        process::await( task, zlib, file, args... );
+    return out; }
     
-    zlib_t get(){ return zlib_t(15|32); }
+    inline zlib_t get(){ return zlib_t(15|32); }
     
 }}}
 
@@ -204,21 +273,26 @@ namespace nodepp { namespace zlib { namespace gunzip {
 
 namespace nodepp { namespace zlib { namespace gzip {
 
-    string_t get( const string_t& data ){ return zlib_t(15|16).update_deflate(data,Z_FINISH); }
+    inline string_t get( const string_t& data ){ return zlib_t(15|16).update_deflate(data,Z_FINISH); }
 
-    template< class... T >
-    void pipe( const T&... file ){
-         generator::zlib::pipe_deflate task; auto zlib = zlib_t(15|16);
-         process::add( task, zlib, file... );
-    }
+    template< class T, class V >
+    ptr_t<task_t> pipe( const T& fa, const V& fb ){ 
+           generator::zlib::pipe_deflate task; auto zlib = zlib_t(15|16);
+    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa, fb ); }
 
-    template< class... T >
-    void await( const T&... file ){
-         generator::zlib::pipe_deflate task; auto zlib = zlib_t(15|16);
-         process::await( task, zlib, file... );
-    }
+    template< class T >
+    ptr_t<task_t> pipe( const T& fa ){ 
+           generator::zlib::pipe_deflate task; auto zlib = zlib_t(15|16);
+    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
+
+    template< class V, class... T >
+    string_t await( const V& file, const T&... args ){ string_t out;
+        generator::zlib::pipe_deflate task;auto zlib=zlib_t(15|16);
+        file.onData([&]( string_t data ){ out += data; });
+        process::await( task, zlib, file, args... );
+    return out; }
     
-    zlib_t get(){ return zlib_t(15|16); }
+    inline zlib_t get(){ return zlib_t(15|16); }
 
 }}}
 

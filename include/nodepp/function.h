@@ -19,10 +19,10 @@ public:
     
     template< class F >
     function_t( F f ) : func_ptr( new func_impl<F>(f) ) {}
+
+    function_t( null_t ) noexcept : func_ptr(nullptr) {}
    
     function_t() noexcept : func_ptr(nullptr) {}
-    
-    virtual ~function_t() noexcept {}
     
     /*─······································································─*/
 

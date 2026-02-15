@@ -31,20 +31,18 @@ protected:
 
 public:
 
-    virtual ~ws_t() noexcept {}
-
     template< class... T >
     ws_t( const T&... args ) noexcept : socket_t( args... ), ws( new NODE() ){}
 
     virtual int _write( char* bf, const ulong& sx ) const noexcept override {
-        if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
-        while( ws->write( this, bf, sx )==1 ){ return -2; }
+        if( is_closed() ){ return -1; } if( sx==0 ){ return  0; }
+        while( ws->write( this, bf, sx )==1 )/*--*/{ return -2; }
         return ws->write.data==0 ? -1 : ws->write.data;
     }
 
     virtual int _read ( char* bf, const ulong& sx ) const noexcept override {
-        if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
-        while( ws->read( this, bf, sx )==1 ){ return -2; }
+        if( is_closed() ){ return -1; } if( sx==0 ){ return  0; }
+        while( ws->read( this, bf, sx )==1 )/*---*/{ return -2; }
         return ws->read.data==0 ? -1 : ws->read.data;
     }
 
@@ -54,49 +52,50 @@ public:
 
 namespace nodepp { namespace ws {
 
-    tcp_t server( const tcp_t& skt ){ skt.onSocket([=]( socket_t cli ){
+    inline tcp_t server( const tcp_t& skt ){ skt.onSocket([=]( socket_t raw ){
 
-        auto hrv = type::cast<http_t>(cli);
+        http_t hrv = raw;
+
         if( !generator::ws::server( hrv ) )
-          { skt.onConnect.skip(); return; }   
+          { skt.onConnect.skip(); return; }  
+
+        ws_t cli   = raw;
 
         process::add([=](){ 
+            cli.set_timeout(0); cli.resume();
             skt.onConnect.resume( );
-            skt.onConnect.emit(cli); 
-            return -1;
-        });
+            skt.onConnect.emit(cli);
+            stream::pipe      (cli);
+        return -1; });
 
-    }); skt.onConnect([=]( ws_t cli ){
-        cli.onDrain.once([=](){ cli.free(); });
-        cli.set_timeout(0); cli.resume(); stream::pipe(cli); 
     }); return skt; }
 
     /*─······································································─*/
 
-    tcp_t server( agent_t* opt=nullptr ){
-    auto skt = http::server( [=]( http_t ){}, opt );
+    inline tcp_t server( agent_t* opt=nullptr ){
+    auto skt = http::server( nullptr, opt );
                  ws::server( skt ); return skt;
     }
 
     /*─······································································─*/
 
-    tcp_t client( const string_t& uri, agent_t* opt=nullptr ){
-    tcp_t skt   ( [=]( socket_t ){}, opt );
-    skt.onSocket.once([=]( socket_t cli ){
+    inline tcp_t client( const string_t& uri, agent_t* opt=nullptr ){
+    auto   skt = tcp::client( opt ); skt.onSocket.once([=]( socket_t raw ){
 
-        auto hrv = type::cast<http_t> (cli);
+        http_t hrv = raw;
+
         if( !generator::ws::client( hrv, uri ) )
-          { skt.onConnect.skip(); return; }   
+          { skt.onConnect.skip(); return; }
+
+        ws_t cli   = raw;
 
         process::add([=](){ 
+            cli.set_timeout(0); cli.resume();
             skt.onConnect.resume( );
-            skt.onConnect.emit(cli); 
-            return -1;
-        });
+            skt.onConnect.emit(cli);  
+            stream::pipe      (cli);
+        return -1; });
 
-    }); skt.onConnect.once([=]( ws_t cli ){
-        cli.onDrain.once([=](){ cli.free(); });
-        cli.set_timeout(0); cli.resume(); stream::pipe(cli); 
     }); skt.connect( url::hostname(uri), url::port(uri) ); return skt; }
 
 }}

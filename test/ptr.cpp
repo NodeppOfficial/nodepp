@@ -56,5 +56,3 @@ namespace TEST { namespace PTR {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

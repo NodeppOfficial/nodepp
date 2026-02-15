@@ -15,10 +15,9 @@ namespace TEST { namespace QUERY {
         auto test = TEST_CREATE();
 
         TEST_ADD( test, "TEST 1 | query initialization", [](){
-            try {
-                query_t query = nodepp::query::parse( "?var1=10&var2=20&var3=30" );
-             if ( query.size() != 3 )/**/{ throw 0; }
-             if ( query["var1"] != "10" ){ throw 0; }
+            try { query_t query = nodepp::query::parse( "?var1=10&var2=20&var3=30" );
+            if  ( query.size() != 3 )   { throw 0; }
+            if  ( query["var1"]!= "10" ){ throw 0; }
                               TEST_DONE();
             } catch ( ... ) { TEST_FAIL(); }
         });
@@ -60,5 +59,3 @@ namespace TEST { namespace QUERY {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

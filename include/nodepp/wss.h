@@ -31,20 +31,18 @@ protected:
 
 public:
 
-    virtual ~wss_t() noexcept {}
-
     template< class... T >
     wss_t( const T&... args ) noexcept : ssocket_t( args... ), ws( new NODE() ){}
 
     virtual int _write( char* bf, const ulong& sx ) const noexcept override {
-        if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
-        while( ws->write( this, bf, sx )==1 ){ return -2; }
+        if( is_closed() ){ return -1; } if( sx==0 ){ return  0; }
+        while( ws->write( this, bf, sx )==1 )/*--*/{ return -2; }
         return ws->write.data==0 ? -1 : ws->write.data;
     }
 
     virtual int _read ( char* bf, const ulong& sx ) const noexcept override {
-        if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
-        while( ws->read( this, bf, sx )==1 ){ return -2; }
+        if( is_closed() ){ return -1; } if( sx==0 ){ return  0; }
+        while( ws->read( this, bf, sx )==1 )/*---*/{ return -2; }
         return ws->read.data==0 ? -1 : ws->read.data;
     }
 
@@ -54,49 +52,50 @@ public:
 
 namespace nodepp { namespace wss {
 
-    tls_t server( const tls_t& skt ){ skt.onSocket([=]( ssocket_t cli ){
+    inline tls_t server( const tls_t& skt ){ skt.onSocket([=]( ssocket_t raw ){
 
-        auto hrv = type::cast<https_t>(cli);
+        https_t hrv = raw;
+
         if( !generator::ws::server( hrv ) )
-          { skt.onConnect.skip(); return; }   
+          { skt.onConnect.skip(); return; }
+
+        wss_t cli   = raw;
 
         process::add([=](){ 
+            cli.set_timeout(0); cli.resume();
             skt.onConnect.resume( );
-            skt.onConnect.emit(cli); 
-            return -1;
-        });
+            skt.onConnect.emit(cli);
+            stream::pipe      (cli);
+        return -1; });
 
-    }); skt.onConnect([=]( wss_t cli ){
-        cli.onDrain.once([=](){ cli.free(); });
-        cli.set_timeout(0); cli.resume(); stream::pipe(cli); 
     }); return skt; }
 
     /*─······································································─*/
 
-    tls_t server( const ssl_t& ssl, agent_t* opt=nullptr ){
-    auto skt = https::server( [=]( https_t ){}, ssl, opt );
+    inline tls_t server( ssl_t* ssl=nullptr, agent_t* opt=nullptr ){
+    auto skt = https::server( nullptr, ssl, opt );
                  wss::server( skt ); return skt;
     }
 
     /*─······································································─*/
 
-    tls_t client( const string_t& uri, const ssl_t& ssl, agent_t* opt=nullptr ){
-    tls_t skt   ( [=]( ssocket_t ){}, ssl, opt );
-    skt.onSocket.once([=]( ssocket_t cli ){
+    inline tls_t client( const string_t& uri, ssl_t* ssl=nullptr, agent_t* opt=nullptr ){
+    auto   skt = tls::client( ssl, opt ); skt.onSocket.once([=]( ssocket_t raw ){
 
-        auto hrv = type::cast<https_t>(cli);
+        https_t hrv = raw;
+
         if( !generator::ws::client( hrv, uri ) )
-          { skt.onConnect.skip(); return; }   
+          { skt.onConnect.skip(); return; }  
+
+        wss_t cli   = raw;
 
         process::add([=](){ 
+            cli.set_timeout(0); cli.resume();
             skt.onConnect.resume( );
-            skt.onConnect.emit(cli); 
-            return -1;
-        });
+            skt.onConnect.emit(cli);
+            stream::pipe      (cli);
+        return -1; });
 
-    }); skt.onConnect.once([=]( wss_t cli ){
-        cli.onDrain.once([=](){ cli.free(); });
-        cli.set_timeout(0); cli.resume(); stream::pipe(cli); 
     }); skt.connect( url::hostname(uri), url::port(uri) ); return skt; }
 
 }}

@@ -29,35 +29,37 @@ public:
     uint      status=200;
     string_t  version;
     header_t  headers;
-    query_t   query;
 
-    string_t  protocol;
     string_t  search;
     string_t  method;
     string_t  path;
-    string_t  hash;
-    string_t  url;
     
     /*─······································································─*/
 
     template< class... T > 
     https_t( const T&... args ) noexcept : ssocket_t( args... ) {}
 
-    virtual ~https_t() noexcept { /*--------------------------*/ }
-
     /*─······································································─*/
 
     void     set_version( const string_t& msg ) noexcept { version = msg; }
-
     string_t get_version() const noexcept { return version; }
 
     /*─······································································─*/
 
-    int read_header() noexcept { 
+    int read_header() noexcept {  
+
+        if( process::millis() > get_conn_timeout() ){ return -1; }
+        thread_local static ptr_t<regex_t> reg({
+            regex_t( "[^ \r]+" ),
+            regex_t( "^[^?#]+" ),
+            regex_t( "?[^#]+"  )
+        });
+        
     bool b=1; coBegin
     
-        if( !is_available() ){ coEnd; } coWait( line( this )==1 ); 
-        if( line.state <= 0 ){ coEnd; } raw = line.data;
+        if( !is_available() ) /*--*/ { coEnd; } coWait( line( this )==1 ); 
+        if( line.state <= 0 ) /*--*/ { coEnd; } raw = line.data;
+        if( raw.find("HTTP").null() ){ coEnd; }
 
         do{ coWait( line( this )==1 ); if( line.state<=0 ){ coEnd; } do {
             auto x = line.data; auto y = x.find( ": " ); 
@@ -65,23 +67,16 @@ public:
             headers[ x.slice( 0, y[0] ).to_capital_case() ] = x.slice( y[1], -2 );
         } while(0); } while(b); 
 
-        do{ http::reg0.search_all(raw); auto base=http::reg0.get_memory(); 
-            http::reg0.clear_memory( ); protocol = "HTTP";
-        if( base.size() != 3 ){ break; } /*-------------*/
+        do{ auto base=reg[0].match_all(raw);
+        if( base.size() < 3 ){ return -1; }
+        if( !string::is_digit(base[1][0]) ){
 
-        if( !http::reg1.test( base[1] ) ){
-            string_t host = headers.has("Host")? headers["Host"] : "localhost";
-            url    = string::format("http://%s%s", host.get(), base[1].get() );
-            path   = http::reg2.match( base[1] );
-            search = http::reg3.match( base[1] );
-            hash   = http::reg4.match( base[1] );
-            query  = query::parse( search );
-            version= base[2]; method=base[0]; 
+            version= base[2]; method =base[0]; 
+            search = reg [2].match( base[1] );
+            path   = reg [1].match( base[1] );
 
         } else { version = base[0]; status = string::to_uint( base[1] ); }
-        } while(0);
-        
-        coStay(0);
+        } while(0); coStay(0);
 
     coFinish }
     
@@ -129,20 +124,20 @@ public:
 
 namespace nodepp { namespace https {
 
-    template< class T > tls_t server( T cb, const ssl_t& ctx, agent_t* opt=nullptr ){
+    inline tls_t server( function_t<void,https_t> cb, ssl_t* ssl=nullptr, agent_t* opt=nullptr ){
         return tls_t([=]( https_t cli ){
 
-            int c=0; while((c=cli.read_header())==1)
-            /*------*/{ process::next(); }
+            int c=0; while((c=cli.read_header())==1){ /*unused*/ }
             if( c==0 ){ cb(cli); return; }
         
-        cli.close(); }, ctx, opt ); 
+        cli.close(); }, ssl, opt );
     }
     
     /*─······································································─*/
     
-    promise_t<https_t,except_t> fetch ( const fetch_t& args, const ssl_t& ssl, agent_t* opt=nullptr ) {
-           auto agent = type::bind( opt ); auto fetch = type::bind( args ); 
+    inline promise_t<https_t,except_t> fetch ( const fetch_t& args, ssl_t* ssl=nullptr, agent_t* opt=nullptr ) {
+           auto agent = type::bind( opt  ); auto cert = type::bind( ssl );
+           auto fetch = type::bind( args ); /*--------------------------*/ 
     return promise_t<https_t,except_t>([=]( res_t<https_t> res, rej_t<except_t> rej ){
 
         if( !url::is_valid( fetch->url ) ){ rej(except_t("invalid URL")); return; }
@@ -156,12 +151,12 @@ namespace nodepp { namespace https {
         auto skt = tls_t([=]( https_t cli ){
 
             cli.set_timeout( fetch->timeout ); cli.write_header( fetch, dir );
-            int c=0; while((c=cli.read_header())==1){ process::next(); }
+            int c=0; while((c=cli.read_header())==1){ /*unused*/ }
 
-            if( c==0 ){ res( cli ); return; }cli.close();
+            if( c==0 ){ res(cli); return; } cli.close();
             rej(except_t("Could not connect to server"));
             
-        }, ssl, &agent );
+        }, &cert, &agent );
 
         skt.onError([=]( except_t error ){ rej(error); });
         skt.connect( dip, uri.port );
@@ -173,3 +168,5 @@ namespace nodepp { namespace https {
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

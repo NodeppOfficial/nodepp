@@ -59,5 +59,3 @@ namespace TEST { namespace ANY {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

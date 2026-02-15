@@ -16,14 +16,18 @@ void onMain(){
 
     // Emit Events
     ev.emit(); 
+    console::log( "->", ev.size() );
     
-    // Clear Even Queue
+    // Clear Event Queue
     ev.clear();
 
-    // turn of an specific event
-    auto item = ev.on([](){  /* logic goes here */ });
+    // turn off an specific event
+    auto item = ev.on([](){  
+         console::log("hello world!");    
+    });
+    console::log( "->", ev.size() );
 
-    ev.off( item );
-
+    ev.off( item ); ev.emit(); 
+    console::log( "->", ev.size() );
 
 }

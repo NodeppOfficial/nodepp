@@ -145,5 +145,3 @@ namespace TEST { namespace ARRAY {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

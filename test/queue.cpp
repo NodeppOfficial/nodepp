@@ -145,5 +145,3 @@ namespace TEST { namespace QUEUE {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

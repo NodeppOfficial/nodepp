@@ -14,59 +14,38 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#include "generator.h"
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
 namespace nodepp { namespace timer {
     
     template< class V, class... T >
-    void* add ( V func, ulong* time, const T&... args ){
-        auto prs = generator::timer::timer();
-        return process::add( prs, func, time, args... ); 
-    }
+    ptr_t<task_t> add ( const V& cb, ulong time, const T&... args ){
+        return process::add( coroutine::add( COROUTINE(){
+        coBegin coDelay( time ); 
+            
+            if( cb(args...)<0 ){ coEnd; } 
+
+        coGoto(0); coFinish
+    })); }
     
     template< class V, class... T >
-    void* add ( V func, ulong time, const T&... args ){
-        auto prs = generator::timer::timer();
-        return process::add( prs, func, time, args... ); 
-    }
+    ptr_t<task_t> timeout ( const V& cb, ulong time, const T&... args ){
+        auto clb = type::bind( cb );
+        return process::add( coroutine::add( COROUTINE(){
+        coBegin coDelay( time ); cb(args...);
+        coFinish
+    })); }
+    
+    template< class V, class... T >
+    ptr_t<task_t> interval ( const V& cb, ulong time, const T&... args ){
+        auto clb = type::bind( cb );
+        return process::add( coroutine::add( COROUTINE(){
+        coBegin coDelay( time ); cb(args...);
+        coGoto(0); coFinish
+    })); }
     
     /*─······································································─*/
 
-    template< class V, class... T >
-    void* timeout ( V func, ulong* time, const T&... args ){
-        return timer::add([=]( T... args ){ func(args...); return -1; }, time, args... );
-    }
-
-    template< class V, class... T >
-    void* timeout ( V func, ulong time, const T&... args ){
-        return timer::add([=]( T... args ){ func(args...); return -1; }, time, args... );
-    }
+    inline void clear( ptr_t<task_t> address ){ process::clear( address ); }
     
-    /*─······································································─*/
-
-    template< class V, class... T >
-    void* interval ( V func, ulong* time, const T&... args ){
-        return timer::add([=]( T... args ){ func(args...); return 1; }, time, args... );
-    }
-
-    template< class V, class... T >
-    void* interval( V func, ulong time, const T&... args ){
-        return timer::add([=]( T... args ){ func(args...); return 1; }, time, args... );
-    }
-    
-    /*─······································································─*/
-    
-    void await( ulong* time ){ process::await( coroutine::add( COROUTINE(){
-    coBegin ; coDelay( *time ) ; coFinish }) ); }
-
-    void await( ulong time ){ await( type::cast<ulong>( &time ) ); }
-    
-    /*─······································································─*/
-
-    void clear( void* address ){ process::clear( address ); }
-
 }}
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -74,52 +53,36 @@ namespace nodepp { namespace timer {
 namespace nodepp { namespace utimer {
     
     template< class V, class... T >
-    void* add ( V func, ulong* time, const T&... args ){
-        auto prs = generator::timer::utimer();
-        return process::add( prs, func, time, args... ); 
-    }
+    ptr_t<task_t> add ( const V& cb, ulong time, const T&... args ){
+        auto clb = type::bind( cb );
+        return process::add( coroutine::add( COROUTINE(){
+        coBegin coUDelay( time ); 
+            
+            if( cb(args...)<0 ){ coEnd; } 
+
+        coGoto(0); coFinish
+    })); }
     
     template< class V, class... T >
-    void* add ( V func, ulong time, const T&... args ){
-        auto prs = generator::timer::utimer();
-        return process::add( prs, func, time, args... ); 
-    }
+    ptr_t<task_t> timeout ( const V& cb, ulong time, const T&... args ){
+        auto clb = type::bind( cb );
+        return process::add( coroutine::add( COROUTINE(){
+        coBegin coUDelay( time ); cb(args...);
+        coFinish
+    })); }
+    
+    template< class V, class... T >
+    ptr_t<task_t> interval ( const V& cb, ulong time, const T&... args ){
+        auto clb = type::bind( cb );
+        return process::add( coroutine::add( COROUTINE(){
+        coBegin coUDelay( time ); cb(args...);
+        coGoto(0); coFinish
+    })); }
     
     /*─······································································─*/
 
-    template< class V, class... T >
-    void* timeout ( V func, ulong* time, const T&... args ){
-        return utimer::add([=]( T... args ){ func(args...); return -1; }, time, args... );
-    }
-
-    template< class V, class... T >
-    void* timeout ( V func, ulong time, const T&... args ){
-        return utimer::add([=]( T... args ){ func(args...); return -1; }, time, args... );
-    }
+    inline void clear( ptr_t<task_t> address ){ process::clear( address ); }
     
-    /*─······································································─*/
-
-    template< class V, class... T >
-    void* interval ( V func, ulong* time, const T&... args ){
-        return utimer::add([=]( T... args ){ func(args...); return 1; }, time, args... );
-    }
-
-    template< class V, class... T >
-    void* interval( V func, ulong time, const T&... args ){
-        return utimer::add([=]( T... args ){ func(args...); return 1; }, time, args... );
-    }
-    
-    /*─······································································─*/
-    
-    void await( ulong* time ){ process::await( coroutine::add( COROUTINE(){
-    coBegin ; coUDelay( *time ) ; coFinish }) ); }
-
-    void await( ulong time ){ await( type::cast<ulong>( &time ) ); }
-    
-    /*─······································································─*/
-
-    void clear( void* address ){ process::clear( address ); }
-
 }}
 
 /*────────────────────────────────────────────────────────────────────────────*/

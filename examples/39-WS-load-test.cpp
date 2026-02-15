@@ -12,17 +12,20 @@ void client( int x ) {
 
     auto client = ws::client( "ws://localhost:8000/" );
 
-    client.onConnect([=]( ws_t cli ){ for( auto y=100; y-->0; ){ 
+    client.onConnect([=]( ws_t cli ){ for( auto y=100; y-->0; ){
         
         auto raw = type::bind( cli );
-        auto stt = type::bind( new int(0) );
-        auto idx = type::bind( new int(10) );
-        auto wrt = type::bind( _file_::write() );
+        auto idx = type::bind( int(1000) );
+        auto wrt = type::bind( generator::file::write() );
 
-        process::add([=](){ auto _state_ = *stt;
-        gnStart while( (*idx)-->0 ){
-            coWait( (*wrt)(&raw,regex::format( "Hello World ${0} ${1} ${2}", x, y, *idx ))==1 );
-        } gnStop }); 
+        process::add( coroutine::add( COROUTINE(){
+        coBegin
+        
+            while( (*idx)-->0 ){
+                coWait( (*wrt)(&raw,regex::format( "Hello World ${0} ${1} ${2}", x, y, *idx ))==1 );
+            }
+
+        coFinish })); 
     
     }});
 
@@ -53,4 +56,10 @@ void server(){
 
 }
 
-void onMain() { server(); for( auto x=10; x-->0; ){ client(x); } }
+void onMain() { 
+    if( process::env::get( "mode" )!="client" ){ 
+        server(); 
+    } else {
+        for( auto x=10; x-->0; ){ client(x); } 
+    }
+}
