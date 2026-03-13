@@ -18,31 +18,30 @@ namespace nodepp {
 template <typename T, typename E> struct expected_t { 
 protected:
 
-    bool has; any_t data;
+    struct NODE { any_t data; bool has; }; ptr_t<NODE> obj;
 
 public:
 
-    expected_t( const T& val ) { has = true; data = val; }
+    expected_t( const T& val ) noexcept : obj( new NODE() ) { obj->has = true ; obj->data = val; }
 
-    expected_t( const E& err ) { has = false;data = err; }
-
-    virtual ~expected_t() noexcept {}
+    expected_t( const E& err ) noexcept : obj( new NODE() ) { obj->has = false; obj->data = err; }
 
     /*─······································································─*/
 
-    bool has_value() const noexcept { return has; }
+    explicit operator bool(void) const noexcept { return has_value(); }
+    bool has_value() /*-------*/ const noexcept { return obj->has; }
 
     /*─······································································─*/
 
-    T value() const { if ( !has_value() || !data.has_value() ) {
+    T value() const { if( !has_value() || !obj->data.has_value() ) {
         throw  except_t("expected does not have a value");
-    }   return data.as<T>(); }
+    }   return obj->data.template as<T>(); }
 
     /*─······································································─*/
 
-    E error() const { if ( has_value() || !data.has_value() ) {
+    E error() const { if( has_value() || !obj->data.has_value() ) {
         throw  except_t("expected does not have a value");
-    }   return data.as<E>(); }
+    }   return obj->data.template as<E>(); }
 
 };}
 

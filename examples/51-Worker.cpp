@@ -6,37 +6,36 @@ using namespace nodepp;
 
 void onMain(){
 
-    ptr_t<int> x = new int(100);
-    mutex_t mut;
+    ptr_t<int> x = new int(100); mutex_t mut;
 
-    worker::add( coroutine::add( COROUTINE(){
+    worker::add( mutex::add( mut, coroutine::add( COROUTINE(){
     coBegin
 
-        while( *x > 0 ){ mut.emit([&](){
+        while( *x > 0 ){
             console::log( "wrk2>> Hello World", *x );
-        *x-=1; }); coDelay(100); }
+        *x-=1; coDelay(100); }
 
     coFinish
-    }));
+    }) ));
 
-    worker::add( coroutine::add( COROUTINE(){
+    worker::add( mutex::add( mut, coroutine::add( COROUTINE(){
     coBegin
 
-        while( *x > 0 ){ mut.emit([&](){
+        while( *x > 0 ){
             console::log( "wrk1>> Hello World", *x );
-        *x-=1; }); coDelay(100); }
+        *x-=1; coDelay(100); }
 
     coFinish
-    }));
+    }) ));
 
-    process::add( coroutine::add( COROUTINE(){
+    worker::add( mutex::add( mut, coroutine::add( COROUTINE(){
     coBegin
 
-        while( *x > 0 ){ mut.emit([&](){
-            console::log( "task>> Hello World", *x );
-        *x-=1; }); coDelay(100); }
+        while( *x > 0 ){
+            console::log( "wrk0>> Hello World", *x );
+        *x-=1; coDelay(100); }
 
     coFinish
-    }));
+    }) ));
 
 }

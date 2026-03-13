@@ -17,11 +17,13 @@
 #if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
     #include "path.h"
     #include "stream.h"
-    #include "windows/fs.cpp"
+    #include "expected.h"
+    #include "windows/fs.h"
 #elif _KERNEL_ == NODEPP_KERNEL_POSIX
     #include "path.h"
     #include "stream.h"
-    #include "posix/fs.cpp"
+    #include "expected.h"
+    #include "posix/fs.h"
 #else
     #error "This OS Does not support fs.h"
 #endif

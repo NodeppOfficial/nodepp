@@ -4,26 +4,26 @@ using namespace nodepp;
 
 void onMain(){
 
-    conio::foreground( C_GREEN | C_BOLD );
+    conio::foreground( conio::color::green | conio::color::bold );
     conio::log(" Hello World! \n");
 
-    conio::foreground( C_RED | C_BOLD );
+    conio::foreground( conio::color::red | conio::color::bold );
     conio::log(" Hello World! \n");
 
-    conio::foreground( C_YELLOW | C_BOLD );
+    conio::foreground( conio::color::yellow | conio::color::bold );
     conio::log(" Hello World! \n");
 
-    conio::foreground( C_CYAN | C_BOLD );
+    conio::foreground( conio::color::cyan | conio::color::bold );
     conio::log(" Hello World! \n");
 
-    conio::foreground( C_MAGENTA | C_BOLD );
+    conio::foreground( conio::color::magenta | conio::color::bold );
     conio::log(" Hello World! \n");
 
-    conio::foreground( C_WHITE | C_BOLD );
+    conio::foreground( conio::color::white | conio::color::bold );
     conio::log(" Hello World! \n");
 
-    conio::foreground( C_BLACK | C_BOLD );
-    conio::background( C_WHITE );
+    conio::foreground( conio::color::black | conio::color::bold );
+    conio::background( conio::color::white );
     conio::log(" Hello World! \n");
 
     conio::log(" Hello World! \n");

@@ -25,8 +25,9 @@ void onMain(){
     console::log( "auth:",     ppt.auth );
     console::log( "href:",     ppt.href );
 
-    for( auto x : ppt.query.data() )
+    for( auto x : query::parse( ppt.search ).data() ){
          console::log( x.first, ":>", x.second );
+    }
 
 }
 

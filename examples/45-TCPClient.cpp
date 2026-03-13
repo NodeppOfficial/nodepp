@@ -1,12 +1,12 @@
 #include <nodepp/nodepp.h>
 #include <nodepp/tcp.h>
+#include <nodepp/fs.h>
 
 using namespace nodepp;
 
 void onMain(){
 
     auto client = tcp::client();
-    auto cin    = fs::std_input();
 
     client.onOpen([=]( socket_t cli ){
 
@@ -16,16 +16,11 @@ void onMain(){
             console::log( data );
         });
 
-        cin.onData([=]( string_t data ){
-            cli.write( data );
-        });
-
         cli.onClose.once([=](){
             console::log("closed");
         });
 
         stream::pipe( cli );
-        stream::pipe( cin );
 
     });
 

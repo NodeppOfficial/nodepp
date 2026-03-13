@@ -105,5 +105,3 @@ namespace TEST { namespace STRING {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

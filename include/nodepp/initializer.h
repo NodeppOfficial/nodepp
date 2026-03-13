@@ -23,9 +23,9 @@ namespace nodepp { template< class T > class initializer_t : public ptr_t<T> {
 
     template< class... V >
     initializer_t( const T& head, const V&... tail ) noexcept {
-        if( this->empty() ) this->resize( sizeof...(V) + 1 );
+        if( this->empty() ){ this->resize( sizeof...(V) + 1 ); }
         ulong index = 0; iterator::map([&]( const T& item ){
-           this->value_[index] = (T)item; ++index;
+           this->begin()[index] = (T)item; ++index;
         }, head, tail... );
     }
     
@@ -44,8 +44,6 @@ namespace nodepp { template< class T > class initializer_t : public ptr_t<T> {
         this->reset(); this->resize( N );
         type::copy( arr, arr+N, this->begin() );
     }
-
-    virtual ~initializer_t() noexcept {}
 
     /*─······································································─*/
 

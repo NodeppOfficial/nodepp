@@ -15,6 +15,7 @@ void onMain(){
     })");
 
     console::log( ppt["var3"].as<float>() );
+    console::log( ppt["var7"][1].as<int>() );
     console::log( ppt["var7"][0].as<string_t>() );
     console::log( ppt["var6"]["var1"].as<string_t>() );
 

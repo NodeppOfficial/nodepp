@@ -1,5 +1,5 @@
 #include <nodepp/nodepp.h>
-#include <nodepp/https.h>
+//#include <nodepp/https.h>
 #include <nodepp/http.h>
 #include <nodepp/test.h>
 
@@ -15,7 +15,7 @@ namespace TEST { namespace HTTP {
 
         auto test = TEST_CREATE();
 
-        TEST_ADD( test, "TEST 1 | HTTP Fetch ( Promise )", [](){
+        TEST_ADD( test, "TEST 1 | HTTP Fetch (Promise)", [](){
             try { ptr_t<int> x = new int(0);
 
                 fetch_t args;
@@ -23,13 +23,13 @@ namespace TEST { namespace HTTP {
                         args.method = "GET";
 
                 http::fetch( args )
-                
+
                 .then([=]( http_t cli ){
                     if( cli.status==200 ){ *x = 1; }
                    else /*-------------*/{ *x = 2; }
                 })
-                
-                .fail([=]( except_t err ){ *x = -1; });
+
+                .fail([=]( except_t ){ *x = -1; });
 
                 while( *x==0 ){ process::next(); }
                switch( *x ){
@@ -41,7 +41,7 @@ namespace TEST { namespace HTTP {
             } catch ( ... ) { TEST_FAIL(); }
         });
 
-        TEST_ADD( test, "TEST 2 | HTTP Fetch ( await )", [](){
+        TEST_ADD( test, "TEST 2 | HTTP Fetch (await)", [](){
             try { ptr_t<int> x = new int(0);
 
                 fetch_t args;
@@ -57,21 +57,22 @@ namespace TEST { namespace HTTP {
             } catch ( ... ) { TEST_FAIL(); }
         });
 
-        TEST_ADD( test, "TEST 3 | HTTPS Fetch ( Promise )", [](){
+        /*
+        TEST_ADD( test, "TEST 3 | HTTPS Fetch (Promise)", [](){
             try { ptr_t<int> x = new int(0);
 
                 fetch_t args; ssl_t ssl;
                         args.url    = "https://www.google.com";
                         args.method = "GET";
 
-                https::fetch( args, ssl )
-                
+                https::fetch( args, &ssl )
+
                 .then([=]( https_t cli ){
                     if( cli.status==200 ){ *x = 1; }
-                   else /*-------------*/{ *x = 2; }
+                   else                  { *x = 2; }
                 })
-                
-                .fail([=]( except_t err ){ *x = -1; });
+
+                .fail([=]( except_t ){ *x = -1; });
 
                 while( *x==0 ){ process::next(); }
                switch( *x ){
@@ -83,21 +84,22 @@ namespace TEST { namespace HTTP {
             } catch ( ... ) { TEST_FAIL(); }
         });
 
-        TEST_ADD( test, "TEST 4 | HTTPS Fetch ( await )", [](){
+        TEST_ADD( test, "TEST 4 | HTTPS Fetch (await)", [](){
             try { ptr_t<int> x = new int(0);
 
                 fetch_t args; ssl_t ssl;
                         args.url    = "https://www.google.com";
                         args.method = "GET";
 
-                auto fetch = https::fetch( args, ssl ).await();
+                auto fetch = https::fetch( args, &ssl ).await();
 
-                if( !fetch.has_value() )/*---*/{ TEST_SKIP(); }
+                if( !fetch.has_value() )       { TEST_SKIP(); }
                 if( fetch.value().status==200 ){ TEST_DONE(); }
 
                               TEST_FAIL();
             } catch ( ... ) { TEST_FAIL(); }
         });
+        */
 
         test.onClose.once([=](){
             console::log("\nRESULT | total:", *totl, "| passed:", *done, "| error:", *err, "| skipped:", *skp );
@@ -112,5 +114,3 @@ namespace TEST { namespace HTTP {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

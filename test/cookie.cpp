@@ -16,7 +16,7 @@ namespace TEST { namespace COOKIE {
 
         TEST_ADD( test, "TEST 1 | cookie initialization", [](){
             try { cookie_t cookie = nodepp::cookie::parse( "var1=10; var2=20; var3=30" );
-             if ( cookie.size() != 3 )/**/{ throw 0; }
+             if ( cookie.size()  != 3 )   { throw 0; }
              if ( cookie["var1"] != "10" ){ throw 0; }
                               TEST_DONE();
             } catch ( ... ) { TEST_FAIL(); }
@@ -59,5 +59,3 @@ namespace TEST { namespace COOKIE {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }

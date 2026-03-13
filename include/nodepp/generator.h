@@ -13,58 +13,6 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if !defined(GENERATOR_TIMER) && defined(NODEPP_TIMER) && defined(NODEPP_GENERATOR)
-    #define  GENERATOR_TIMER
-namespace nodepp { namespace generator { namespace timer {
-
-    GENERATOR( timer ){ public:
-
-        template< class V, class... T >
-        coEmit( V func, ulong time, const T&... args ){
-        coBegin
-            coDelay( time ); if( func(args...)<0 )
-                   { coEnd; } coGoto(0);
-        coFinish
-        }
-
-        template< class V, class... T >
-        coEmit( V func, ulong* time, const T&... args ){
-        coBegin
-            coDelay( *time ); if( func(args...)<0 )
-                   { coEnd; } coGoto(0);
-        coFinish
-        }
-
-    };
-
-    /*─······································································─*/
-
-    GENERATOR( utimer ){ public:
-
-        template< class V, class... T >
-        coEmit( V func, ulong time, const T&... args ){
-        coBegin
-            coUDelay( time ); if( func(args...)<0 )
-                    { coEnd; } coGoto(0);
-        coFinish
-        }
-
-        template< class V, class... T >
-        coEmit( V func, ulong* time, const T&... args ){
-        coBegin
-            coUDelay( *time ); if( func(args...)<0 )
-                    { coEnd; } coGoto(0);
-        coFinish
-        }
-
-    };
-
-}}}
-#undef NODEPP_GENERATOR
-#endif
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
 #if !defined(GENERATOR_FILE) && defined(NODEPP_FILE) && defined(NODEPP_GENERATOR)
     #define  GENERATOR_FILE
 namespace nodepp { namespace generator { namespace file {
@@ -88,11 +36,10 @@ namespace nodepp { namespace generator { namespace file {
         if( state<=0 ){ coEnd; }
         if( state >0 ){ data=string_t(str->get_buffer_data(),(ulong)state); }}
 
-        state = min( data.size(), size );
+        state = min( data.size(), size ); /*---------------*/
         str->set_borrow( data.splice( state, data.size() ) );
 
-    coFinish
-    }};
+    coFinish }};
 
     /*─······································································─*/
 
@@ -108,8 +55,7 @@ namespace nodepp { namespace generator { namespace file {
         if( state<=0 ){ coEnd; }
         if( state >0 ){ data += state; }} while ( state>=0 && data<msg.size() );
 
-    coFinish
-    }};
+    coFinish }};
 
     /*─······································································─*/
 
@@ -125,8 +71,8 @@ namespace nodepp { namespace generator { namespace file {
         str->set_borrow( _read.data );
 
         do{for( auto x: _read.data ){ ++state;
-            if( ch[pos]  ==x   ){ ++pos; } else { pos=0; }
-            if( ch.size()==pos ){ break; } }
+           if ( ch[pos]  ==x   ){ ++pos; } else { pos=0; }
+           if ( ch.size()==pos ){ break; } }
         } while(0);
 
         if( memcmp( _read.data.get(), ch.get(), ch.size() )==0 ){
@@ -137,24 +83,25 @@ namespace nodepp { namespace generator { namespace file {
 
         state = data.size();
 
-    coFinish
-    }
+    coFinish }
 
     template< class T > coEmit( T* str, char ch ){
-    coBegin; data.clear(); state=0;
+    coBegin; data.clear(); coYield(1); state=0;
 
         coWait( _read(str) ==1 );
             if( _read.state<=0 ){ coEnd; }
         str->set_borrow( _read.data );
 
         do{ for( auto x: _read.data ){ ++state;
-             if( ch ==x ){ break; } continue; }
+            if ( ch ==x ){ break; } continue; }
         } while(0);
 
-        data = str->get_borrow().splice( 0, state );
+        data +=str->get_borrow().splice( 0, state );
+        state =data.size();
 
-    coFinish
-    }};
+        if( data[ data.size()-1 ] == ch ){ coEnd; }
+
+    coGoto(1) ; coFinish }};
 
     /*─······································································─*/
 
@@ -163,7 +110,7 @@ namespace nodepp { namespace generator { namespace file {
     public: string_t data; int state;
 
     template< class T > coEmit( T* str ){
-    coBegin data.clear(); state=0;
+    coBegin data.clear(); coYield(1); state=0;
 
         coWait( _read(str) ==1 );
             if( _read.state<=0 ){ coEnd; }
@@ -173,12 +120,68 @@ namespace nodepp { namespace generator { namespace file {
              if('\n'==x ){ break; } continue; }
         } while(0);
 
-        data = str->get_borrow().splice( 0, state );
+        data +=str->get_borrow().splice( 0, state );
+        state =data.size();
+        
+        if( data[data.size()-1] == '\n' ){ coEnd; }
 
-    coFinish
-    }};
+    coGoto(1) ; coFinish }};
 
 }}}
+#undef NODEPP_GENERATOR
+#endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+#if !defined(GENERATOR_SSL) && defined(NODEPP_SSL) && defined(NODEPP_GENERATOR)
+    #define  GENERATOR_SSL
+
+#include "socket.h"
+
+namespace nodepp { namespace generator { namespace ssl {
+
+    GENERATOR( pipe ){
+    protected:
+
+        ptr_t<char> /*----*/ bff; ulong sy;
+        int d=0, err=0; bool x=0;
+
+    public:
+
+        pipe() noexcept : bff( CHUNK_KB(16) ) {}
+
+        template< class T, class V >
+        coEmit( T& obj, V* stream, int& c ){
+        coBegin ; err=0; d=0; sy=0;
+
+            while ((d=BIO_read( obj->wbio, &bff, bff.size() ))>0 ){
+            coWait((stream->socket_t::__write( &bff,d ))==-2 ); }
+            err=SSL_get_error( obj->ssl, c ); ERR_clear_error();
+
+            if( err == SSL_ERROR_SSL || err == SSL_ERROR_SYSCALL )
+              { c=-1; coEnd; }
+
+            if( err == SSL_ERROR_WANT_READ ){
+                
+                d=stream->socket_t::__read( &bff, bff.size() );
+                if( d > 0 ){
+                if( bff[0]!=0x16 && !x ){ c=-1; coEnd; }
+                    BIO_write( obj->rbio, &bff, d ); x=1;
+                    SSL_read ( obj->ssl , &bff, 0 ); }
+                if( d < 0 && d != -2 ){ c=-1; coEnd; }
+
+            }
+
+            if( err == SSL_ERROR_WANT_WRITE ||
+                err == SSL_ERROR_WANT_READ        
+            ) { c=0; coGoto(0); }
+
+        coFinish }
+
+    };
+
+}}}
+
 #undef NODEPP_GENERATOR
 #endif
 
@@ -197,7 +200,12 @@ namespace nodepp { namespace generator { namespace stream {
     public:
 
         template< class T, class V > coEmit( const T& inp, const V& out ){
-        coBegin inp.onPipe.emit(); out.onPipe.emit(); coYield(1);
+        coBegin 
+        
+            inp.onPipe.emit(); inp.resume();
+            out.onPipe.emit(); out.resume();
+        
+        coYield(1);
 
             while( inp.is_available() && out.is_available() ){
             while( _read1(&inp) ==1 )            { coGoto(2); }
@@ -217,8 +225,7 @@ namespace nodepp { namespace generator { namespace stream {
                     out.onData.emit( _read2.data );
             }       out.close(); inp.close();
 
-        coFinish
-        }
+        coFinish }
 
     };
 
@@ -233,17 +240,24 @@ namespace nodepp { namespace generator { namespace stream {
     public:
 
         template< class T > coEmit( const T& inp ){
-        coBegin inp.onPipe.emit();
+        coBegin 
+        
+            inp.onPipe.emit(); inp.resume();
+
             while( inp.is_available() ){
            coWait( _read(&inp) ==1 );
                if( _read.state <=0 ){ break;  }
                     inp.onData.emit(_read.data);
             }       inp.close();
-        coFinish
-        }
+
+        coFinish }
 
         template< class T, class V > coEmit( const T& inp, const V& out ){
-        coBegin inp.onPipe.emit(); out.onPipe.emit();
+        coBegin 
+
+            inp.onPipe.emit(); inp.resume();
+            out.onPipe.emit(); out.resume();
+
             while( inp.is_available() && out.is_available() ){
            coWait( _read(&inp) ==1 );
                if( _read.state <=0 ){ break;  }
@@ -251,8 +265,8 @@ namespace nodepp { namespace generator { namespace stream {
                if( _write.state<=0 ){ break;  }
                     inp.onData.emit(_read.data);
             }       inp.close(); out.close();
-        coFinish
-        }
+
+        coFinish }
 
     };
 
@@ -268,18 +282,25 @@ namespace nodepp { namespace generator { namespace stream {
 
         template< class T, class U >
         coEmit( const T& inp, const U& val ){
-        coBegin inp.onPipe.emit();
+        coBegin 
+        
+            inp.onPipe.emit(); inp.resume();
+            
             while( inp.is_available() ){
            coWait( _read(&inp,val)==1 );
                if( _read.state <=0 ){ break; }
                    inp.onData.emit(_read.data);
             }      inp.close();
-        coFinish
-        }
+        
+        coFinish }
 
         template< class T, class V, class U >
         coEmit( const T& inp, const V& out, const U& val ){
-        coBegin inp.onPipe.emit(); out.onPipe.emit();
+        coBegin 
+        
+            inp.onPipe.emit(); inp.resume();
+            out.onPipe.emit(); out.resume();
+            
             while( inp.is_available() && out.is_available() ){
            coWait( _read(&inp,val)==1 );
                if( _read.state  <=0 ){ break; }
@@ -287,8 +308,8 @@ namespace nodepp { namespace generator { namespace stream {
                if( _write.state <=0 ){ break; }
                     inp.onData.emit(_read.data);
             }       inp.close(); out.close();
-        coFinish
-        }
+        
+        coFinish }
 
     };
 
@@ -303,17 +324,24 @@ namespace nodepp { namespace generator { namespace stream {
     public:
 
         template< class T > coEmit( const T& inp ){
-        coBegin inp.onPipe.emit();
+        coBegin 
+        
+            inp.onPipe.emit(); inp.resume();
+        
             while( inp.is_available() ){
            coWait( _read(&inp)==1 );
                if( _read.state<=0 ){ break;  }
                    inp.onData.emit(_read.data);
             }      inp.close();
-        coFinish
-        }
+        
+        coFinish }
 
         template< class T, class V > coEmit( const T& inp, const V& out ){
-        coBegin inp.onPipe.emit(); out.onPipe.emit();
+        coBegin 
+            
+            inp.onPipe.emit(); inp.resume();
+            out.onPipe.emit(); out.resume();
+        
             while( inp.is_available() && out.is_available() ){
            coWait( _read(&inp) ==1 );
                if( _read.state <=0 ){ break;  }
@@ -321,8 +349,8 @@ namespace nodepp { namespace generator { namespace stream {
                if( _write.state<=0 ){ break;  }
                     inp.onData.emit(_read.data);
             }       inp.close(); out.close();
-        coFinish
-        }
+        
+        coFinish }
 
     };
 
@@ -346,7 +374,11 @@ namespace nodepp { namespace generator { namespace zlib {
     public:
 
         template< class Z, class T, class V > coEmit( const Z& zlb, const T& inp, const V& out ){
-        coBegin inp.onPipe.emit(); out.onPipe.emit();
+        coBegin 
+        
+            inp.onPipe.emit(); inp.resume();
+            out.onPipe.emit(); out.resume();
+
             while( inp.is_available() && out.is_available() ){
            coWait( _read(&inp) ==1 );
                if( _read.state <=0 ){ break; }
@@ -355,19 +387,22 @@ namespace nodepp { namespace generator { namespace zlib {
                if( _write.state<=0 ){ break; }
                     inp.onData.emit( borrow );
             }       inp.close(); out.close();
-        coFinish
-        }
+
+        coFinish }
 
         template< class Z, class T > coEmit( const Z& zlb, const T& inp ){
-        coBegin inp.onPipe.emit();
+        coBegin 
+        
+            inp.onPipe.emit(); inp.resume();
+
             while( inp.is_available() ){
            coWait( _read(&inp)==1 );
                if( _read.state<=0 ){ break; }
             borrow = zlb.update_inflate(_read.data);
                     inp.onData.emit( borrow );
             }       inp.close();
-        coFinish
-        }
+
+        coFinish }
 
     };
 
@@ -381,7 +416,11 @@ namespace nodepp { namespace generator { namespace zlib {
     public:
 
         template< class Z, class T, class V > coEmit( const Z& zlb, const T& inp, const V& out ){
-        coBegin inp.onPipe.emit(); out.onPipe.emit();
+        coBegin 
+        
+            inp.onPipe.emit(); inp.resume();
+            out.onPipe.emit(); out.resume();
+        
             while( inp.is_available() && out.is_available() ){
            coWait( _read(&inp) ==1 );
                if( _read.state <=0 ){ break; }
@@ -390,19 +429,22 @@ namespace nodepp { namespace generator { namespace zlib {
                if( _write.state<=0 ){ break; }
                     inp.onData.emit( borrow );
             }       inp.close(); out.close();
-        coFinish
-        }
+        
+        coFinish }
 
         template< class Z, class T > coEmit( const Z& zlb, const T& inp ){
-        coBegin inp.onPipe.emit();
+        coBegin 
+        
+            inp.onPipe.emit(); inp.resume();
+            
             while( inp.is_available() ){
            coWait( _read(&inp)==1 );
                if( _read.state<=0 ){ break; }
             borrow = zlb.update_deflate(_read.data);
                     inp.onData.emit( borrow );
             }       inp.close();
-        coFinish
-        }
+
+        coFinish }
 
     };
 
@@ -432,8 +474,8 @@ namespace nodepp { namespace generator { namespace ws {
     template< class T > bool server( T& cli ) { do {
         auto data = cli.read(); cli.set_borrow( data );
 
-        int c=0; while( (c=cli.read_header())==1 ){}
-        if( c != 0 ){ break; }
+        int c=0; while( (c=cli.read_header())==1 ) 
+        { /*unused*/ } if( c!=0 ) { break; }
 
         if( cli.headers.has("Sec-Websocket-Key") ){
 
@@ -466,7 +508,7 @@ namespace nodepp { namespace generator { namespace ws {
         });
 
         cli.write_header( "GET", url::path(url), "HTTP/1.1", header );
-        int c=0; while( (c=cli.read_header())==1 ){}
+        int c=0; while( (c=cli.read_header())==1 ){ /*unused*/ }
 
         if( c != 0 ){
             cli.onError.emit("Could not connect to server");
@@ -543,7 +585,7 @@ namespace nodepp { namespace generator { namespace ws {
 
     public:
 
-    template<class T> coEmit( T* str, char* bf, const ulong& sx ) { int c=0;
+    template<class T> coEmit( T* str, char* bf, const ulong& sx ) {
     coBegin ; memset( bf, 0, sx ); size=0; data=0; len=0; key=0;
               memset( &frame, 0, sizeof(ws_frame_t) );
 
@@ -557,7 +599,7 @@ namespace nodepp { namespace generator { namespace ws {
         coYield(1); len=0;
 
         while ( frame.LEN > 0 ){ sz = min( sx, frame.LEN );
-        coWait( str->_read_( bf, sz, len )==1 );
+        coWait( str->_read_( bf, sz, &len )==-2 );
 
         if( frame.MSK ){ for( ulong x=0; x<len; ++x ){
             bf[x]=bf[x]^frame.KEY[key]; key++; key%=4;
@@ -571,19 +613,19 @@ namespace nodepp { namespace generator { namespace ws {
 
     GENERATOR( write ){
     protected:
-            string_t bff;
-            ulong size=0;
-    public: ulong data=0;
+            ptr_t<char> bfx;
+            string_t    bff;
+            ulong    size=0;
+    public: ulong    data=0;
 
     protected:
 
-        string_t write_ws_frame( char* bf, const ulong& sx ){
-            auto bfx = ptr_t<char>( 16, '\0' ); uint idx = 0;
-            auto byt = encoder::bytes::get( sx );
+        string_t write_ws_frame( char* bf, const ulong& sx ) {
+            auto byt = encoder::bytes::get( sx ); uint idx = 0;
 
             auto x=sx; bool b=0; while( x-->0 ){
                 if( !string::is_print(bf[x]) ){ b=1; break; }
-            }   bfx[idx] = b ? (char) 0b10000010 : (char) 0b10000001;
+            }   bfx[idx] = !b ? (char) 0b10000010 : (char) 0b10000001;
 
             ++idx; if ( sx < 126 ){
                 bfx[idx] = (uchar)(byt[byt.size()-1]); ++idx;
@@ -606,16 +648,15 @@ namespace nodepp { namespace generator { namespace ws {
             return string_t( &bfx, idx );
         }
 
-    public:
+    public: write() noexcept : bfx( 16UL ) {}
 
         template<class T> coEmit( T* str, char* bf, const ulong& sx ) {
         coBegin
 
-            bff  = write_ws_frame( bf, sx ) + string_t( bf, sx ); data=0;size=0;
-            coWait(str->_write_( bff.get(),bff.size(),size )==1); data = sx;
+            bff=write_ws_frame( bf, sx ) + string_t( bf, sx ); data=0;size=0;
+            coWait(str->_write_( bff.get(),bff.size(),&size)==-2); data = sx;
 
-        coFinish
-        }
+        coFinish }
 
     };
 

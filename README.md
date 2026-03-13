@@ -1,174 +1,161 @@
-# Nodepp
+# Nodepp: The Unified Asynchronous Real-Time C++ Runtime
 
-Nodepp is a groundbreaking open-source project that simplifies C++ application development by bridging the gap between the language's raw power and the developer-friendly abstractions of Node.js. By providing a high-level API, Nodepp empowers developers to write C++ code in a familiar, Node.js-inspired style.
+[![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20WASM-blue)](https://github.com/NodeppOfficial/nodepp)
+[![Build Status](https://github.com/NodeppOfficial/nodepp/actions/workflows/main.yml/badge.svg)](https://github.com/NodeppOfficial/nodepp/actions)
+[![Valgrind Memory Test](https://img.shields.io/badge/memory-zero_leaks-green)](https://github.com/NodeppOfficial/nodepp/blob/main/benchmark/valgrind_benchmark/readme.md)
 
-One of the standout features of Nodepp is its 100% asynchronous architecture, powered by an internal Event Loop. This design efficiently manages Nodepp’s tasks, enabling you to develop scalable and concurrent applications with minimal code. Experience the power and flexibility of Nodepp as you streamline your development process and create robust applications effortlessly!
 
-## Dependencies
-```bash
-# Openssl
-    🪟: pacman -S mingw-w64-ucrt-x86_64-openssl
-    🐧: sudo apt install libssl-dev
+**Nodepp** is a vertically integrated C++ runtime engineered to eliminate the Hardware Tax in cloud and edge computing. It bridges the gap between high-level developer velocity and low-level mechanical sympathy.
 
-# Zlib
-    🪟: pacman -S mingw-w64-ucrt-x86_64-zlib
-    🐧: sudo apt install zlib1g-dev
+```
+NODEPP UNIFIED ARCHITECTURE: Co-designed components MODEL
+=========================================================
+
+[ APPLICATION LAYER ]   Logic: High-Level Async
+          ||
++---------||--------------------------------------------+
+|         ||   UNIFIED ptr_t DATA CARRIER               |
+|         || (Zero-Copy / Reference Counted)            |
+|         \/                                            |
+|  [ PROTOCOL LAYER ]   Protocol Layer: HTTP / WS / TLS |
+|         ||            Parser: ptr_t Slicing           |
+|         ||                                            |
+|         \/                                            |
+|  [ REACTOR LAYER ]    Reactor Layer: kernel_t         |
+|         ||            Engine: Epoll/KQUEUE/IOCP/NPOLL |
++---------||--------------------------------------------+
+          ||
+          \/            OS Layer: LINUX / WINDOWS / MAC
+[ HARDWARE / KERNEL ]   Source: Sockets / Registers
 ```
 
-## Features
+## 📃 Whitepaper
 
-- 📌: **Node.js-like API:** Write C++ code in a syntax and structure similar to Node.js, making it easier to learn and use.
-- 📌: **High-performance:** Leverage the speed and efficiency of C++ for demanding applications.
-- 📌: **Scalability:** Build applications that can handle large workloads and grow with your needs.
-- 📌: **Open-source:** Contribute to the project's development and customize it to your specific requirements.
+[Scaling the Talent Bridge for Green Computing: Achieving Silicon-Logic Parity through Deterministic RAII](https://nodeppofficial.github.io/nodepp-doc/whitepaper) Read the full technical breakdown, including architectural deep-dives into `ptr_t`, `kernel_t` and `coroutine_t`.
 
-## Bateries Included
+## 🌿 Sustainability & Performance (Green Computing)
 
-- 📌: Include a **build-in JSON** parser / stringify system.
-- 📌: Include a **build-in RegExp** engine for processing text strings.
-- 📌: Include Support for **UTF** manipulation | **UTF8 - UTF16 - UTF32**
-- 📌: Include a **build-in System** that make every object **Async Task** safety.
-- 📌: Include a **Smart Pointer** base **Garbage Collector** to avoid **Memory Leaks**.
-- 📌: Include support for **Reactive Programming** based on **Events** and **Observers**.
-- 📌: Include an **Event Loop** that can handle multiple events and tasks on a single thread.
-- 📌: Include support for **TCP | TLS | UDP | HTTP | WS** making it easy to create networked applications.
-- 📌: Include Support for **Poll | Epoll | Kqueue | WSAPoll** making it easy to handle multiple file descriptors.
+In the post-Moore's Law era, hardware is no longer infinitely cheap. Traditional managed runtimes (Node.js, Go, Java) prioritize abstractions that create a 11,000x Virtual Memory Gap. Nodepp reclaims this efficiency, enabling Resource-Dense Computing where a single node does the work of an entire cluster.
 
-## Build & Run
-```bash
-🐧: g++ -o main main.cpp -O3 -I ./include ; ./main
-🪟: g++ -o main main.cpp -O3 -I ./include -lws2_32 ; ./main
-```
+### 📈 Performance Benchmark: HTTP Throughput vs. Resource Tax
 
-## Test Unit
-```bash
-🐧: ( cd ./test; g++ -o main main.cpp -I../include -lssl -lcrypto -lpthread ; ./main )
-🪟: ( cd ./test; g++ -o main main.cpp -I../include -lssl -lcrypto -lws2_32  ; ./main )
-```
+> **Test:** 100k requests | 1k Concurrency | Environment: Localhost | Device: Educational-grade Dual-Core Apollo lake Chromebook [see benchmark](https://github.com/NodeppOfficial/nodepp/blob/main/benchmark/server_benchmark/readme.md)
 
-## Examples
-### Hello world
+| Metric | Bun (v1.3.5) | Go (v1.18.1) | Nodepp (V1.4.0) | Impact |
+| --- | --- | --- | --- | --- |
+| Requests / Sec | 5,985 | 6,139 | 6,851.33 | +11.6% Performance |
+| Memory (RSS) | 69.5 MB | 14.1 MB | 2.9 MB | 95.8% Reduction |
+| Max Latency | 1,452 ms | 326 ms | 245 ms | Elimination of GC Spikes |
+| p99 Latency | 1,159 ms | 249 ms | 187 ms | High-precision SLA stability |
+| Energy Efficiency | Low | Medium | Extreme | Maximum hardware utilization |
+
+### 📈 Performace Benchmark: Resource Management & Latency Jitter Analysis
+
+> **Test:** 1k Cycles | 100k Allocations | Environment: Educational-grade Dual-Core Apollo lake Chromebook [see benchmark](https://github.com/NodeppOfficial/nodepp/blob/main/benchmark/gc_benchmark/readme.md)
+
+| Runtime | Avg. Cycle Time | VIRT (Address Space) | RES (Physical RAM) | Memory Model |
+| --- | --- | --- | --- | --- |
+| Nodepp | 3.0 ms (±0.1 ms) | 6.1 MB | 2.7 MB | Deterministic RAII |
+| Bun | 7.2 ms (5-11 ms range) | 69.3 GB | 72.6 MB | Generational GC |
+| Go | < 1.0 ms* | 703.1 MB | 2.2 MB | Concurrent GC |
+
+> **Note:** Go's <1ms measurement reflects allocation latency only; reclamation is deferred to concurrent garbage collection cycles.
+
+### 📈 Performace Benchmark: High-Concurrency Benchmark - 100k Task Challenge
+
+> **Test:** 100k asynchronous tasks | Environment: Educational-grade Dual-Core Apollo lake Chromebook [see benchmark](https://github.com/NodeppOfficial/nodepp/blob/main/benchmark/task_benchmark/readme.md)
+
+| Runtime | RSS (Memory) | CPU Load | VIRT Memory | Strategy |
+| --- | --- | --- | --- | --- |
+Nodepp (Balanced) | 59.1 MB | 75.9% | 153 MB | Multi-Worker Pool |
+Nodepp (Single) | 59.0 MB | 59.9% | 62 MB | Single Event Loop |
+Bun | 64.2 MB | 24.2% | 69.3 GB | JavaScriptCore Loop |
+Go | 127.9 MB | 169.4% | 772 MB | Preemptive Goroutines |
+
+### 📈 Performace Benchmark: Nodepp Stability & Memory Benchmarks
+
+> **Test:** 4 Valgrind-based stress tests | Environment: Educational-grade Dual-Core Apollo lake Chromebook [see benchmark](https://github.com/NodeppOfficial/nodepp/blob/main/benchmark/valgrind_benchmark/readme.md)
+
+| Test Case | Objective | Iterations / Load | Memory Leaks | Result |
+| --- | --- | --- | --- | --- |
+| Atomic Longevity | High-concurrency HTTP | 100k requests | 0 bytes | PASSED |
+| Rapid Lifecycle | Smart Pointer stress | 1M object cycles | 0 bytes | PASSED |
+| Broken Pipe | Resilience to I/O failure | 100k interruptions | 0 bytes | PASSED |
+| Multi-Thread Atomicity | race conditions stress | 100k Messages * 2 workers | 0 bytes | PASSED |
+
+## ⭐ Architectural Philosophy
+
+- **📌: 1. Deterministic RAII (`ptr_t`):** Eliminates the unpredictable latency spikes (Stop-the-World) of Garbage Collectors. By utilizing Small Stack Optimization (SSO) and reference counting, memory is reclaimed with microsecond precision.
+
+- **📌: 2. Cooperative Multitasking (`coroutine_t`):** Stackless coroutines eliminate context-switching overhead. This allows for massive connection density on low-power hardware, from 8-bit industrial sensors to cloud-scale reactors.
+
+- **📌: 3. Platform-Agnostic Reactor (`kernel_t`):** A unified abstraction over native kernel I/O (Epoll, Kqueue, IOCP, and Npoll). It provides a consistent non-blocking interface across Linux, Windows, Mac, and Bare-Metal, ensuring that I/O multiplexing is always native to the silicon.
+
+## 🧭 Quick Start: High-Density HTTP
+Nodepp abstracts complex socket management into a clean, event-driven API.
+
 ```cpp
 #include <nodepp/nodepp.h>
-
-using namespace nodepp;
-
-void onMain() { 
-    console::log("Hello World!");
-}
-
-// note that we are using onMain() instead of main()
-```
-
-### HTTP Client
-```cpp
-//#pragma comment(lib, "Ws2_32.lib") msvc compiler
-
-#include <nodepp/nodepp.h>
-#include <nodepp/http.h>
-
-using namespace nodepp;
-
-void onMain(){
-
-    fetch_t args;
-            args.method = "GET";
-            args.url = "http://www.google.com/";
-            args.headers = header_t({
-                { "Host", url::host(args.url) }
-            });
-
-    http::fetch( args )
-
-    .then([]( http_t cli ){
-        console::log( stream::await( cli ) );
-    })
-
-    .fail([]( except_t err ){
-        console::error( err );
-    });
-
-}
-```
-
-### HTTP Server
-```cpp
-//#pragma comment(lib, "Ws2_32.lib") msvc compiler
-
-#include <nodepp/nodepp.h>
+#include <nodepp/regex.h>
 #include <nodepp/http.h>
 #include <nodepp/date.h>
+#include <nodepp/os.h>
 
 using namespace nodepp;
 
-void onMain(){
+void onMain() {
 
-    auto server = http::server([=]( http_t cli ){ 
-
-        console::log( cli.path, cli.get_fd() );
+    auto server = http::server([]( http_t cli ){
         
         cli.write_header( 200, header_t({
             { "content-type", "text/html" }
-        }));
-        
-        cli.write( date::fulltime() );
-        cli.close(); // optional | GC automaticaly close unused sockets
+        }) );
+
+        cli.write( regex::format( R"(
+            <h1> hello world </h1>
+            <h2> ${0} </h2>
+        )", date::fulltime() ));
+
+        cli.close();
 
     });
 
-    server.listen( "localhost", 8000, [=]( socket_t server ){
-        console::log("server started at http://localhost:8000");
+    server.listen( "0.0.0.0", 8000, []( socket_t /*unused*/ ){
+        console::log("Server listening on port 8000");
     });
 
 }
 ```
 
-### More Examples [here](https://github.com/NodeppOfficial/Nodepp/tree/main/examples)
+## 🛟 Ecosystem
 
-## Projects made with NodePP
-- 🔗: [Draw on your PC using your smartphone](https://github.com/ScreenDraw/PCDraw)
-- 🔗: [Simple multiplayer Game With Raylib](https://medium.com/@EDBCBlog/create-your-own-online-multiplayer-small-fast-and-fun-with-raylib-nodepp-and-websockets-190f5c174094)
-- 🔗: [Cursed Luna - A simple Raylib Game](https://github.com/EDBCREPO/Space-Shocker)
-- 🔗: [Smart Card Reader(Nodepp-Arduino)](https://github.com/EDBCREPO/emv-reader)
-- 🔗: [Serial Port arduino using Nodepp](https://github.com/EDBCREPO/Arduino_PC)
-- 🔗: [Simple Raylib Real-Time Chat](https://github.com/EDBCREPO/simple-raylib-websocket-chat)
-- 🔗: [Simple Bitget Trading Bot](https://github.com/EDBCREPO/simple-binance-bot-nodepp)
+The Nodepp project is supported by a suite of modular extensions designed to follow the same unified design patterns:
 
-Check out some articles on [Medium](https://medium.com/@EDBCBlog)
+- **📌: Data Parsing:** [XML](https://github.com/NodeppOfficial/nodepp-xml)
+- **📌: Tor:** [Torify](https://github.com/NodeppOfficial/nodepp-torify), [JWT](https://github.com/NodeppOfficial/nodepp-jwt).
+- **📌: Security:** [Argon2](https://github.com/NodeppOfficial/nodepp-argon2), 
+- **📌: Web:** [ExpressPP](https://github.com/NodeppOfficial/nodepp-express), [ApifyPP](https://github.com/NodeppOfficial/nodepp-apify).
+- **📌: IoT/Embedded:** [SerialPort](https://github.com/NodeppOfficial/nodepp-serial), [Bluetooth](https://github.com/NodeppOfficial/nodepp-bluetooth).
+- **📌: Databases:** [Redis](https://github.com/NodeppOfficial/nodepp-redis), [Postgres](https://github.com/NodeppOfficial/nodepp-postgres), [MariaDB](https://github.com/NodeppOfficial/nodepp-mariadb), [Sqlite](https://github.com/NodeppOfficial/nodepp-sqlite).
 
-## Compatibility
-- 🔗: [NodePP for Window | Linux | Mac | Bsd ](https://github.com/NodeppOfficial/nodepp)
-- 🔗: [NodePP for Arduino](https://github.com/NodeppOfficial/nodepp-arduino)
-- 🔗: [Nodepp for WASM](https://github.com/NodeppOfficial/nodepp-wasm)
+## 🌐 One Codebase, Every Platform
+Nodepp is the only framework that lets you share logic between the deepest embedded layers and the highest web layers.
 
-## Official Libraries for Nodepp
-- 🔗: [ExpressPP](https://github.com/NodeppOfficial/nodepp-express) -> Express equivalent for Nodepp
-- 🔗: [ApifyPP](https://github.com/NodeppOfficial/nodepp-apify)     -> Socket.io equivalent for Nodepp
-- 🔗: [SerialPP](https://github.com/NodeppOfficial/nodepp-serial)   -> Serial Port for Nodepp
-- 🔗: [Argon2](https://github.com/NodeppOfficial/nodepp-argon2)     -> Argon2 for Nodepp
-- 🔗: [Torify](https://github.com/NodeppOfficial/nodepp-torify)     -> HTTP|Ws over Tor
-- 🔗: [NginxPP](https://github.com/NodeppOfficial/nodepp-nginx)     -> Reverse Proxy
-- 🔗: [InputPP](https://github.com/NodeppOfficial/nodepp-input)     -> Fake Inputs
-- 🔗: [JWT](https://github.com/NodeppOfficial/nodepp-jwt)           -> JSON Web Token
-- 🔗: [NmapPP](https://github.com/NodeppOfficial/nodepp-nmap)       -> Scan IPs and Ports
-- 🔗: [Redis](https://github.com/NodeppOfficial/nodepp-redis)       -> Redis Client for Nodepp
-- 🔗: [Sqlite](https://github.com/NodeppOfficial/nodepp-sqlite)     -> Sqlite Client for Nodepp
-- 🔗: [MariaDB](https://github.com/NodeppOfficial/nodepp-mariadb)   -> MariaDB Client for Nodepp
-- 🔗: [Postgres](https://github.com/NodeppOfficial/nodepp-postgres) -> Postgres Client for Nodepp
-  
-## Contribution
+- **📌: Hardware:** [NodePP for Arduino](https://github.com/NodeppOfficial/nodepp-arduino)
+- **📌: Desktop:** [Nodepp for Desktop](https://github.com/NodeppOfficial/nodepp)
+- **📌: Browser:** [Nodepp for WASM](https://github.com/NodeppOfficial/nodepp-wasm)
+- **📌: IOT:** [ Nodepp for ESP32 ](https://github.com/NodeppOfficial/nodepp-esp32)
 
-If you want to contribute to **Nodepp**, you are welcome to do so! You can contribute in several ways:
+## ❤️‍🩹 Contributing
 
-- ☕ Buying me a Coffee
-- 📢 Reporting bugs and issues
-- 📝 Improving the documentation
-- 📌 Adding new features or improving existing ones
-- 🧪 Writing tests and ensuring compatibility with different platforms
-- 🔍 Before submitting a pull request, make sure to read the contribution guidelines.
+Nodepp is an open-source project that values Mechanical Sympathy and Technical Excellence.
+
+- **📌: Sponsorship:** Support the project via [Ko-fi](https://ko-fi.com/edbc_repo).
+- **📌: Bug Reports:** Open an issue via GitHub.
+- **📌: License:** MIT.
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/edbc_repo)
 
-## License
-
+## 🛡️ License
 **Nodepp** is distributed under the MIT License. See the LICENSE file for more details.

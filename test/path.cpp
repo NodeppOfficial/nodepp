@@ -55,5 +55,3 @@ namespace TEST { namespace PATH {
     }
 
 }}
-
-// void onMain(){ TEST::CONSOLE::TEST_RUNNER(); }
