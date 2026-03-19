@@ -95,7 +95,7 @@ namespace nodepp { namespace coroutine {
         case  0: tmp.flag=STATE::CO_STATE_BLOCK; break;
         case  1: tmp.flag=STATE::CO_STATE_YIELD; break;
         default: tmp.flag=STATE::CO_STATE_START; break;
-    }   
+    }
     
     DONE:; return out; }
 }}

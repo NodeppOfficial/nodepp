@@ -14,6 +14,12 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#if !defined( NODEPP_THREAD_SUPPORTED )
+    #error "This OS Does not support atomic.h"
+#endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
     #include "windows/atomic.h"
 #elif _KERNEL_ == NODEPP_KERNEL_POSIX

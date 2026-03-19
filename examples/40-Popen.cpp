@@ -5,9 +5,18 @@ using namespace nodepp;
 
 void onMain(){
 
-    auto pid = popen::async( "curl https://www.google.com -Ls" );
+    auto pid = popen::add( "curl https://www.google.com -Ls" );
 
-    pid.onData([]( string_t data ){ console::log( data ); });
-    pid.onClose([=](){ console::log("done"); });
+    if( !pid.has_value() ){ 
+        throw except_t( "something went wrong" );
+    }
+
+    pid.value().onData([]( string_t data ){ 
+        console::log( data ); 
+    });
+
+    pid.value().onClose([=](){ 
+        console::log("done"); 
+    });
 
 }

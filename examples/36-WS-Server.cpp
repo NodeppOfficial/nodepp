@@ -22,7 +22,7 @@ void onMain(){
 
     server.onConnect([=]( ws_t cli ){
 
-        console::log("connected", cli.get_peername() );
+        console::log("connected" );
 
         cli.onData([=]( string_t data ){
             console::log( data );

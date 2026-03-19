@@ -23,8 +23,6 @@ protected:
         obj->state |= STATE::FS_STATE_KILL;
     }
 
-    using _read_ = generator::file::read;
-
     bool is_state( uchar value ) const noexcept {
         if( obj->state & value ){ return true; }
     return false; }
@@ -44,9 +42,6 @@ protected:
     };
 
 protected:
-
-    ptr_t<_read_> _read1 = new _read_();
-    ptr_t<_read_> _read2 = new _read_();
 
     struct NODE {
         uchar /*------*/ state=STATE::FS_STATE_CLOSE;
@@ -101,7 +96,6 @@ protected:
 
 public:
 
-    event_t<>          onResume;
     event_t<except_t>  onError;
     event_t<>          onClose;
     event_t<>          onDrain;
@@ -130,42 +124,16 @@ public:
     /*─······································································─*/
 
     void free() const noexcept {
-        
+
         if( is_state( STATE::FS_STATE_REUSE ) && !std_input().is_feof() && obj.count()>1 ){ return; }
-        if( is_state( STATE::FS_STATE_KILL  ) ) /*-------*/ { return; }
+        if( is_state( STATE::FS_STATE_KILL  ) ) /*-------*/ { return; } 
         if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) )
           { kill(); onDrain.emit(); } else { kill(); }
-        
-    /*
-        obj->std_error.close(); obj->std_output.close();
-        obj->std_input.close(); 
-    */
-    
-        onResume.clear(); onError.clear(); 
-        onDerr  .clear(); onOpen .clear();
-        onData  .clear(); onDout .clear(); onClose.emit();
 
-    }
+        onError.clear(); onDerr.clear(); 
+        onOpen .clear(); onData.clear(); 
+        onDout .clear(); onClose.emit();
 
-    /*─······································································─*/
-
-    inline int next() noexcept {
-        if( is_closed() ){ free(); return -1; }
-    coBegin ; onOpen.emit(); 
-    
-        coYield(1); coDelay( 100 );  do {
-        if((*_read1)(&std_output())==1) { coGoto(2); }
-        if(  _read1->state <= 0 )       { coGoto(2); }
-        onData.emit(_read1->data);
-        onDout.emit(_read1->data); coNext; } while(1);   
-        
-        coYield(2); coDelay( 100 );  do {
-        if((*_read2)(&std_error())==1 ) { coGoto(1); }
-        if(  _read2->state <= 0 )       { coGoto(1); }
-        onData.emit(_read2->data);
-        onDerr.emit(_read2->data); coNext; } while(1);
-        
-    coGoto(1); coFinish
     }
 
     /*─······································································─*/
@@ -175,38 +143,19 @@ public:
         if( exitCode == STILL_ACTIVE ) { return true; }} return false;
     }
 
+    /*─······································································─*/
+
     bool is_closed()    const noexcept { return is_state( STATE::FS_STATE_DISABLE ) || !is_alive() || std_output().is_closed(); }
-    bool is_available() const noexcept { return is_closed()== false; }
+    bool is_available() const noexcept { return is_closed() == false; }
     int  get_fd()       const noexcept { return obj->fd; }
 
     /*─······································································─*/
 
-    void resume() const noexcept { if(is_state(STATE::FS_STATE_OPEN) ){ return; } set_state(STATE::FS_STATE_OPEN ); onResume.emit(); }
-    void   stop() const noexcept { if(is_state(STATE::FS_STATE_REUSE)){ return; } set_state(STATE::FS_STATE_REUSE); onDrain .emit(); }
-    void  flush() const noexcept { std_input().flush(); std_output().flush(); std_error().flush(); }
-
-    /*─······································································─*/
-
     void close() const noexcept {
-        if( is_state (STATE::FS_STATE_DISABLE) ){ return; }
-            set_state( STATE::FS_STATE_CLOSE ); DONE:;
-    onDrain.emit(); free(); }
-
-    /*─······································································─*/
-
-    template< class... T >
-    int write( const T&... args )     const noexcept { return std_input().write( args... ); }
-
-    template< class... T >
-    string_t read( const T&... args ) const noexcept { return std_output().read( args... ); }
-
-    /*─······································································─*/
-
-    template< class... T >
-    int _write( const T&... args ) const noexcept { return std_input()._write( args... ); }
-
-    template< class... T >
-    int _read( const T&... args )  const noexcept { return std_output()._read( args... ); }
+        if( is_state ( STATE::FS_STATE_DISABLE ) ){ return; }
+            set_state( STATE::FS_STATE_CLOSE   );
+        onDrain.emit(); free(); 
+    }
 
     /*─······································································─*/
 

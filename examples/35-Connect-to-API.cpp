@@ -23,7 +23,7 @@ void onMain(){
         }
 
         auto raw = stream::await( cli );
-        auto obj = json::parse( raw );
+        auto obj = json::parse  ( raw.value() );
 
         console::log( "country:", obj["country"].as<string_t>() );
         console::log( "city:"   , obj["city"]   .as<string_t>() );

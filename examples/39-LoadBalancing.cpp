@@ -12,6 +12,8 @@ using namespace nodepp;
 void server( int process ){
 
     auto server = http::server([=]( http_t cli ){ 
+
+        console::log( ">>", cli.path );
         
         cli.write_header( 200, header_t({
             { "Content-Type", "text/html" }
@@ -32,9 +34,15 @@ void onMain(){
 
     if ( process::is_child() ){ server( os::pid() ); } else {
     for( auto x = os::cpus(); x--; ){
-         cluster::add().onData([=]( string_t data ){
+
+         auto pid = cluster::add();
+         
+    if ( !pid.has_value() ){ throw except_t( "something went wrong" ); }
+
+         pid.value().onData([=]( string_t data ){
             conio::log( data );
          });
+
     }}
 
 }

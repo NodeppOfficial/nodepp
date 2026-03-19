@@ -340,8 +340,7 @@ namespace nodepp { namespace type {
     /*─······································································─*/
 
     template<typename T, typename U> struct pair { T first;  U second; };
-
-}}
+}   template<typename T, typename U> using pair_t = type::pair< T,U >; }
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

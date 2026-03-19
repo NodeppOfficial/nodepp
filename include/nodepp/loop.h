@@ -19,7 +19,7 @@ private:
 
     using NODE_CLB = function_t<int>;
     using NODE_TASK= type::pair<ulong,void*>;
-    using NODE_PAIR= type::pair<NODE_CLB,ref_t<task_t>>;
+    using NODE_PAIR= type::pair<NODE_CLB,ptr_t<task_t>>;
 
 protected:
 
@@ -166,7 +166,7 @@ public: loop_t() noexcept : obj( new NODE() ) {}
     ptr_t<task_t> add( T cb, const V&... args ) const noexcept {
     ptr_t<task_t> tsk( 0UL, task_t() ); auto clb = type::bind( cb );
 
-        obj->queue .push({[=](){ return (*clb)( args... );}, tsk });
+        obj->queue .push({[=](){ return (*clb)(args...); }, tsk });
         obj->normal.push( obj->queue.last() ); 
 
         tsk->addr = obj->queue.last();

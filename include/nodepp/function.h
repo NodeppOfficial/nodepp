@@ -31,6 +31,7 @@ public:
     bool     empty() const noexcept { return func_ptr.null (); }
     bool      null() const noexcept { return func_ptr.null (); }
     void      free() const noexcept { /*--*/ func_ptr.free (); }
+    void     clear() const noexcept { /*--*/ func_ptr.free (); }
     
     /*─······································································─*/
 

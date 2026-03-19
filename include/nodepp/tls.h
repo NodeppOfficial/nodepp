@@ -28,11 +28,16 @@ class tls_t {
 private:
 
     using NODE_CLB = function_t<void,ssocket_t>;
+    enum STATE {
+         TLS_STATE_UNKNOWN   = 0b00000000,
+         TLS_STATE_USED      = 0b00000001,
+         TLS_STATE_CLOSED    = 0b00000010
+    };
 
 protected:
 
     struct NODE {
-        char  state=0;
+        int  state= 0;
         ssl_t     ctx;
         agent_t agent;
         NODE_CLB func;
@@ -59,31 +64,40 @@ public:
 
     /*─······································································─*/
 
-    void     close() const noexcept { if(obj->state<=0){return;} obj->state=-1; onClose.emit(); }
-    bool is_closed() const noexcept { return obj == nullptr ? 1: obj->state<=0; }
+    bool is_closed() const noexcept { return obj->state & STATE::TLS_STATE_CLOSED; }
+    void     close() const noexcept { 
+        if( is_closed() ){ return; } 
+        obj->state = STATE::TLS_STATE_CLOSED; 
+        onClose.emit(); 
+    }
 
     /*─······································································─*/
 
     void listen( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
-        if( obj->state == 1 ){ return; } if( obj->ctx.create_server()==-1 )
-          { onError.emit("Error Initializing SSL context"); return; }
-        if( dns::lookup(host).empty() ){ onError.emit("dns couldn't get ip"); return; }
 
-        ssocket_t sk; obj->state=1;
+        if( obj->state & STATE::TLS_STATE_CLOSED )
+          { onError.emit("tls listener is closed"); return; } 
+        if( obj->state & STATE::TLS_STATE_USED )
+          { onError.emit("tls listener is used");   return; } 
+
+        if( obj->ctx.create_server()==-1 )
+          { onError.emit("Error Initializing SSL context"); return; }
+
+        ssocket_t sk; obj->state= STATE::TLS_STATE_USED;
         sk.SOCK     = SOCK_STREAM ;
         sk.IPPROTO  = IPPROTO_TCP ;
 
-        if( sk.socket( dns::lookup(host), port )<0 ){
+        if( sk.socket( dns::lookup( host, sk.AF ), port )==-1 ){
             onError.emit("Error while creating TLS"); 
             close(); sk.free(); return; 
         }   sk.set_sockopt( obj->agent );
 
-        if( sk.bind()<0 ){
+        if( sk.bind() == -1 ){
             onError.emit("Error while binding TLS"); 
             close(); sk.free(); return; 
         }
 
-        if( sk.listen()<0 ){ 
+        if( sk.listen() == -1 ){ 
             onError.emit("Error while listening TLS"); 
             close(); sk.free(); return; 
         }   
@@ -95,7 +109,7 @@ public:
         process::poll( sk, POLL_STATE::READ | POLL_STATE::EDGE, [=](){
         int c=-1; while( self.count() < MAX_BATCH ) {
 
-            while( (c=sk._accept())==-2 ){ return 0; } if(c<0) { 
+            while((c=sk._accept())==-2){ return 0; } if(c==-1){ 
                 self->onError.emit("Error while accepting TLS");
             return -1; }
             
@@ -120,16 +134,20 @@ public:
     /*─······································································─*/
 
     void connect( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
-        if( obj->state == 1 ){ return; } if( obj->ctx.create_client()==-1 )
-          { onError.emit("Error Initializing SSL context"); return; }
-        if( dns::lookup(host).empty() )
-          { onError.emit("dns couldn't get ip"); return; }
 
-        ssocket_t sk; obj->state=1;
+        if( obj->state & STATE::TLS_STATE_CLOSED )
+          { onError.emit("tls listener is closed"); return; } 
+        if( obj->state & STATE::TLS_STATE_USED )
+          { onError.emit("tls listener is used");   return; }
+
+        if( obj->ctx.create_client()==-1 )
+          { onError.emit("Error Initializing SSL context"); return; }
+
+        ssocket_t sk; obj->state= STATE::TLS_STATE_USED;
         sk.SOCK     = SOCK_STREAM ;
         sk.IPPROTO  = IPPROTO_TCP ;
 
-        if( sk.socket( dns::lookup(host), port )<0 ){
+        if( sk.socket( dns::lookup( host, sk.AF ), port )==-1 ){
             onError.emit("Error while creating TLS"); 
             close(); sk.free(); return; 
         }
@@ -143,7 +161,7 @@ public:
 
         process::add([=](){ int c=0;
 
-            while( (c=sk._connect())==-2 ){ return 1; } if(c<=0){
+            while( (c=sk._connect())==-2 ){ return 1; } if(c==-1){
                 self->onError.emit("Error while connecting TLS");
             return -1; }
 

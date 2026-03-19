@@ -113,7 +113,7 @@ namespace nodepp { namespace encoder { namespace bin {
 
     template< class T >
     ptr_t<bool> get( T num ){
-        ptr_t<bool> out ( sizeof(num) * 8, 0 );
+    ptr_t<bool> out ( sizeof(num) * 8, 0 );
         for ( auto x=sizeof(num)*8; x--; ){
               out[x] = num & 1 ; num >>= 1;
         }     return out;

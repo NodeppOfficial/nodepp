@@ -17,8 +17,6 @@
 namespace nodepp { namespace process {
 
     kernel_t& NODEPP_EV_LOOP(){ thread_local static kernel_t evloop; return evloop; }
-
-    atomic_t<bool> _EXIT_ = false;
     
     /*─······································································─*/
 
@@ -45,7 +43,7 @@ namespace nodepp { namespace process {
 
     /*─······································································─*/
 
-    inline bool should_close(){ return NODEPP_EV_LOOP().empty() || _EXIT_.get(); }
+    inline bool should_close(){ return NODEPP_EV_LOOP().empty() || *NODEPP_EV_LOOP().should_close(); }
     inline bool        empty(){ return NODEPP_EV_LOOP().empty(); }
     inline ulong        size(){ return NODEPP_EV_LOOP().size (); }
     inline void        clear(){ /*--*/ NODEPP_EV_LOOP().clear(); }
@@ -55,9 +53,9 @@ namespace nodepp { namespace process {
     inline int next(){ return NODEPP_EV_LOOP().next(); }
 
     inline void exit( int err=0 ){ 
-        if( should_close() ){ goto DONE; }
-        _EXIT_.set(true); clear(); DONE:; ::exit(err); 
-    }
+        if( should_close() ) /*--------*/ { goto DONE; }
+        *NODEPP_EV_LOOP().should_close() = true; clear(); 
+    DONE:; ::exit(err);  }
 
 }}
 

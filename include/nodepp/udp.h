@@ -27,11 +27,16 @@ class udp_t {
 private:
 
     using NODE_CLB = function_t<void,socket_t>;
+    enum STATE {
+         UDP_STATE_UNKNOWN   = 0b00000000,
+         UDP_STATE_USED      = 0b00000001,
+         UDP_STATE_CLOSED    = 0b00000010
+    };
 
 protected:
 
     struct NODE {
-        char state= 0; 
+        int  state= 0; 
         agent_t agent;
         NODE_CLB func;
     };  ptr_t<NODE> obj;
@@ -55,25 +60,32 @@ public:
 
     /*─······································································─*/
 
-    void     close() const noexcept { if(obj->state<=0){return;} obj->state=-1; onClose.emit(); }
-    bool is_closed() const noexcept { return obj == nullptr ? 1: obj->state<=0; }
+    bool is_closed() const noexcept { return obj->state & STATE::UDP_STATE_CLOSED; }
+    void     close() const noexcept { 
+        if( is_closed() ){ return; } 
+        obj->state = STATE::UDP_STATE_CLOSED; 
+        onClose.emit(); 
+    }
 
     /*─······································································─*/
 
     void listen( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
-        if( obj->state == 1 ) { return; } if( dns::lookup(host).empty() )
-          { onError.emit("dns couldn't get ip"); close(); return; }
 
-        socket_t sk; obj->state=1;
+        if( obj->state & STATE::UDP_STATE_CLOSED )
+          { onError.emit("udp listener is closed"); return; } 
+        if( obj->state & STATE::UDP_STATE_USED )
+          { onError.emit("udp listener is used");   return; } 
+
+        socket_t sk; obj->state= STATE::UDP_STATE_USED;
         sk.SOCK    = SOCK_DGRAM  ;
         sk.IPPROTO = IPPROTO_UDP ;
 
-        if( sk.socket( dns::lookup(host), port )<0 ){
+        if( sk.socket( dns::lookup( host, sk.AF ), port )==-1 ){
             onError.emit("Error while creating UDP"); 
             close(); sk.free(); return; 
         }   sk.set_sockopt( obj->agent );
 
-        if( sk.bind()<0 ){
+        if( sk.bind() == -1 ){
             onError.emit("Error while binding UDP"); 
             close(); sk.free(); return; 
         }
@@ -99,14 +111,17 @@ public:
     /*─······································································─*/
 
     void connect( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
-        if( obj->state == 1 ){ return; } if( dns::lookup(host).empty() )
-          { onError.emit("dns couldn't get ip"); return; }
 
-        socket_t sk; obj->state=1;
+        if( obj->state & STATE::UDP_STATE_CLOSED )
+          { onError.emit("udp listener is closed"); return; } 
+        if( obj->state & STATE::UDP_STATE_USED )
+          { onError.emit("udp listener is used");   return; } 
+
+        socket_t sk; obj->state= STATE::UDP_STATE_USED;
         sk.SOCK    = SOCK_DGRAM  ;
         sk.IPPROTO = IPPROTO_UDP ;
 
-        if( sk.socket( dns::lookup(host), port )<0 ){
+        if( sk.socket( dns::lookup( host, sk.AF ), port )==-1 ){
             onError.emit("Error while creating UDP"); 
             close(); sk.free(); return; 
         }   
@@ -158,4 +173,8 @@ namespace udp {
 
 }
 
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

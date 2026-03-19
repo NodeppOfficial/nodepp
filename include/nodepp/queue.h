@@ -281,9 +281,9 @@ public:
 
     /*─······································································─*/
 
-    void clear() const noexcept { while( !empty() ){ shift(); } }
-    void erase() const noexcept { while( !empty() ){ shift(); } }
-    void  free() const noexcept { while( !empty() ){ shift(); } }
+    void clear() const noexcept { while( !empty() ){ pop(); } }
+    void erase() const noexcept { while( !empty() ){ pop(); } }
+    void  free() const noexcept { while( !empty() ){ pop(); } }
 
     /*─······································································─*/
 

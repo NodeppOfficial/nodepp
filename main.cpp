@@ -1,22 +1,25 @@
 #include <nodepp/nodepp.h>
-#include <nodepp/tls.h>
+#include <nodepp/udp.h>
 #include <nodepp/fs.h>
 
 using namespace nodepp;
 
 void server(){
 
-    auto ssl    = ssl_t(); ssl.set_alpn_protocol_list({ "h2", "http/1.1" });
+    auto server = udp::server();
 
-    auto server = tls::server( &ssl );
+    server.onConnect([=]( socket_t cli ){
 
-    server.onConnect([=]( ssocket_t cli ){
-
-        console::log("connected", cli.ssl->get_alpn_protocol() );
+        cli.set_timeout(0);
+        console::log("connected" );
 
         cli.onData([=]( string_t data ){
+        //  auto tmp = cli.get_client_address();
+        //  /*async logic or coroutines*/
+        //  cli.set_client_address( tmp );
+            console::log( "AAA" );
             cli.write( "<: received" );
-            console::log( data );
+            console::log( ">>", data );
         });
 
         cli.onClose([=](){
@@ -27,14 +30,51 @@ void server(){
 
     });
 
-    server.onError([=]( except_t err ){
-        console::log( err.what() );
-    });
-
-    server.listen( "localhost", 8000, []( ssocket_t ){
-        console::log("-> tls://localhost:8000");
+    server.listen( "localhost", 8000, []( socket_t srv ){
+        console::log("-> udb://localhost:8000");
     });
 
 }
 
-void onMain() { server(); }
+void client(){
+
+    auto client = udp::client();
+
+    client.onConnect([=]( socket_t cli ){
+
+        cli.set_timeout(0);
+        console::log("connected" );
+        auto cin = fs::std_input();
+    
+        cli.onData([=]( string_t data ){
+            console::log( data );
+        });
+
+        cin.onData([=]( string_t data ){
+            cli.write( data );
+        });
+
+        cli.onClose([=](){
+            console::log("closed");
+            cin.close();
+        });
+
+        stream::pipe( cli );
+        stream::pipe( cin );
+
+    });
+
+    client.connect( "localhost", 8000, []( socket_t cli ){
+        console::log("-> udp://localhost:8000");
+    });
+
+}
+
+void onMain() {
+
+    if( process::env::get("mode")=="client" ) 
+      { client(); } else { server(); }
+
+}
+
+// g++ -o main main.cpp -I./include ; ./main ?mode=client

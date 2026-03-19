@@ -36,7 +36,7 @@ private:
     using ETIMER  = struct timespec;
 
     enum FLAG { 
-         KV_STATE_UNKNONW = 0b00000000, 
+         KV_STATE_UNKNOWN = 0b00000000, 
          KV_STATE_WRITE   = 0b00000001,
          KV_STATE_READ    = 0b00000010,
          KV_STATE_EDGE    = 0b10000000,
@@ -94,6 +94,11 @@ protected:
 
     /*─······································································─*/
 
+    bool batch() const noexcept { 
+         obj->batch = min( obj->batch, (uchar) MAX_BATCH );
+         return obj->probe.get()>0 ? obj->batch--!=0 : true; 
+    }
+
     void* get_nearest_timeout( ulong time ) const noexcept {
         if( time == 0 ){ return nullptr; }
 
@@ -135,8 +140,8 @@ protected:
         queue_t<kevent_t> kv_queue;
         probe_t /*-----*/ probe;
         ptr_t<EPOLLFD>    ev;
-        int pd, ed, idx; 
-        bool pl = true ;
+        uchar batch = MAX_BATCH;
+        int pd, ed, idx; bool pl=true; 
     };  ptr_t<NODE> obj;
 
 public:
@@ -152,7 +157,7 @@ public:
 
     if( obj->pd==-1 || obj->ed==-1 )
       { throw except_t("Can't Initialize kernel_t"); }
-        obj->ev.resize( MAX_PATH );
+        obj->ev.resize( MAX_BATCH );
 
         EPOLLFD event;
         event.data.fd  = obj->ed; 
@@ -169,6 +174,8 @@ public:
     ulong size() const noexcept { return obj->ev_queue.size() + obj->kv_queue.size() + obj->probe.get() + obj.count()-1; }
 
     void clear() const noexcept { /*--*/ obj->ev_queue.clear(); obj->kv_queue.clear(); obj->probe.clear(); }
+    
+    bool* should_close() const noexcept { return &SHOULD_CLOSE(); }
 
     bool empty() const noexcept { return size()==0; }
 
@@ -206,7 +213,22 @@ public:
         task->addr  = append( kv ); 
         task->sign  = &obj;
 
-    return task->addr==nullptr ? loop_add( cb, args... ) : task; }
+        if( task->addr==nullptr ){ if( is_std( kv.fd ) ){  
+            
+            auto clb = type::bind( cb ); 
+
+            return loop_add( coroutine::add( COROUTINE(){
+            coBegin; 
+
+                while( (*clb)( args... )>=0 )
+                     { coDelay( 100 ); }
+
+            coFinish
+            }));
+
+        } else { return loop_add( cb, args... ); }}
+
+    return task; }
 
     template< class... T >
     ptr_t<task_t> loop_add( const T&... args ) noexcept {
@@ -235,7 +257,7 @@ public:
 
     inline int next() const {
 
-        while( obj->ev_queue.next() >= 0 ){ return 1; }
+        while( obj->ev_queue.next() >= 0 && batch() ){ return 1; } 
         process::set_timeout(obj->ev_queue.get_delay());
         auto stamp = process::now();
 
@@ -275,12 +297,12 @@ public:
             do { switch( y->data.callback() ) {
             case -1: remove(y); /*----------------------*/ coEnd; break;
             case  0: y->data.flag &=~ FLAG::KV_STATE_USED; coEnd; break;
-            case  1: break; } coNext; } while(1);
+            case  1: /*------------------*/ break; } coNext; } while(1);
 
         coFinish
         }));
 
-    } process::clear_timeout(); return 1; }
+    } process::clear_timeout(); obj->batch = MAX_BATCH; return 1; }
 
 };}
 
@@ -301,7 +323,7 @@ private:
     using KPOLLFD = struct kevent;
 
     enum FLAG { 
-         KV_STATE_UNKNONW = 0b00000000, 
+         KV_STATE_UNKNOWN = 0b00000000, 
          KV_STATE_WRITE   = 0b00000001,
          KV_STATE_READ    = 0b00000010,
          KV_STATE_EDGE    = 0b10000000,
@@ -364,6 +386,11 @@ protected:
 
     /*─······································································─*/
 
+    bool batch() const noexcept { 
+         obj->batch = min( obj->batch, (uchar) MAX_BATCH );
+         return obj->probe.get()>0 ? obj->batch--!=0 : true; 
+    }
+
     void* get_nearest_timeout( ulong time ) const noexcept {
         if( time == 0 ){ return nullptr; }
 
@@ -405,7 +432,8 @@ protected:
         queue_t<kevent_t> kv_queue;
         probe_t /*-----*/ probe;
         ptr_t<KPOLLFD>    ev;
-        int pd, idx; 
+        int pd, idx;      
+        uchar batch = MAX_BATCH;
     };  ptr_t<NODE> obj;
 
 public:
@@ -419,7 +447,7 @@ public:
 
     if( obj->pd==-1 )
       { throw except_t("Can't Initialize kernel_t"); }
-        obj->ev.resize( MAX_PATH );
+        obj->ev.resize( MAX_BATCH );
 
         KPOLLFD ev;
         EV_SET( &ev, 0, EVFILT_USER, EV_ADD, 0, 0, nullptr );
@@ -434,6 +462,8 @@ public:
     ulong size() const noexcept { return obj->ev_queue.size() + obj->kv_queue.size() + obj->probe.get() + obj.count()-1; }
 
     void clear() const noexcept { /*--*/ obj->ev_queue.clear(); obj->kv_queue.clear(); obj->probe.clear(); }
+    
+    bool* should_close() const noexcept { return &SHOULD_CLOSE(); }
 
     bool empty() const noexcept { return size()==0; }
 
@@ -471,7 +501,20 @@ public:
         task->addr  = append( kv ); 
         task->sign  = &obj;
 
-    return task->addr==nullptr ? loop_add( cb, args... ) : task; }
+        if( task->addr==nullptr ){ if( is_std( kv.fd ) ){  
+
+            return loop_add( coroutine::add( COROUTINE(){
+            coBegin; 
+
+                while( (*clb)( args... )>=0 )
+                     { coDelay( 100 ); }
+
+            coFinish
+            }));
+
+        } else { return loop_add( cb, args... ); }}
+
+    return task; }
 
     template< class... T >
     ptr_t<task_t> loop_add( const T&... args ) noexcept {
@@ -503,7 +546,7 @@ public:
 
     inline int next() const {
 
-        while( obj->ev_queue.next() >= 0 ){ return 1; } 
+        while( obj->ev_queue.next() >= 0 && batch() ){ return 1; } 
         process::set_timeout(obj->ev_queue.get_delay());
         auto stamp = process::now();
 
@@ -534,12 +577,12 @@ public:
                 do { switch( y->data.callback() ) {
                 case -1: remove(y); /*----------------------*/ coEnd; break;
                 case  0: y->data.flag &=~ FLAG::KV_STATE_USED; coEnd; break;
-                case  1: break; } coNext; } while(1);
+                case  1: /*------------------*/ break; } coNext; } while(1);
 
             coFinish
             }));
 
-        } process::clear_timeout(); return 1; }
+        } process::clear_timeout(); obj->batch = MAX_BATCH; return 1; }
 
 };}
 
@@ -553,7 +596,7 @@ namespace nodepp { class kernel_t {
 private:
 
     enum FLAG { 
-         KV_STATE_UNKNONW = 0b00000000, 
+         KV_STATE_UNKNOWN = 0b00000000, 
          KV_STATE_WRITE   = 0b00000001,
          KV_STATE_READ    = 0b00000010,
          KV_STATE_EDGE    = 0b10000000,
@@ -566,6 +609,12 @@ private:
         function_t<int> callback;
         ulong timeout; int fd, flag; 
     };
+
+    bool is_std( int fd ) const noexcept { 
+        return fd == STDOUT_FILENO ||
+               fd == STDIN_FILENO  ||
+               fd == STDERR_FILENO ;
+    }
 
     /*─······································································─*/
 
@@ -600,6 +649,8 @@ public:
     ulong size() const noexcept { return obj->ev_queue.size() + obj->probe.get() + obj.count()-1; }
 
     void clear() const noexcept { /*--*/ obj->ev_queue.clear(); obj->probe.clear(); }
+    
+    bool* should_close() const noexcept { return &SHOULD_CLOSE(); }
 
     bool empty() const noexcept { return size()==0; }
 
@@ -608,12 +659,22 @@ public:
     /*─······································································─*/
 
     template< class T, class U, class... W >
-    ptr_t<task_t> poll_add ( T /*unused*/, int /*unused*/, U cb, ulong timeout=0, const W&... args ) noexcept {
+    ptr_t<task_t> poll_add ( T str, int /*unused*/, U cb, ulong timeout=0, const W&... args ) noexcept {
+
         auto time = type::bind( timeout>0 ? timeout + process::now() : timeout );
-        auto clb  = type::bind( cb ); return obj->ev_queue.add( [=](){ 
-        if( *time > 0 && *time < process::now() ){ return -1; }
-            return (*clb)( args... )>=0 ? 1 : -1; 
-        } );
+        auto clb  = type::bind( cb ); 
+        
+        return obj->ev_queue.add( coroutine::add( COROUTINE(){
+        coBegin 
+
+            if( *time > 0 && *time < process::now() ){ coEnd; }
+            if( is_std( str.get_fd() ) ) /**/ { coDelay(100); }
+
+            coSet(0); return (*clb)( args... ) >= 0 ? 1 : -1; 
+
+        coFinish
+        }));
+
     }
 
     template< class T, class... V >
@@ -625,7 +686,7 @@ public:
 
     inline int next() const {
 
-        while( obj->ev_queue.next() >= 0 ){ return 1; } 
+        while( obj->ev_queue.next() == 1 ){ return 1; } 
         process::set_timeout(obj->ev_queue.get_delay());
         process::delay( get_delay_ms() );
         process::clear_timeout();
