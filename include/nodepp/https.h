@@ -136,8 +136,9 @@ namespace nodepp { namespace https {
     /*─······································································─*/
     
     inline promise_t<https_t,except_t> fetch ( const fetch_t& args, ssl_t* ssl=nullptr, agent_t* opt=nullptr ) {
-           auto agent = type::bind( opt  ); auto cert = type::bind( ssl );
-           auto fetch = type::bind( args ); /*--------------------------*/ 
+           auto agent = type::bind( opt==nullptr ? agent_t() : *opt );
+           auto cert  = type::bind( ssl  ); /*----------------------*/
+           auto fetch = type::bind( args ); /*----------------------*/ 
     return promise_t<https_t,except_t>([=]( res_t<https_t> res, rej_t<except_t> rej ){
 
         if( !url::is_valid( fetch->url ) ){ rej(except_t("invalid URL")); return; }
@@ -159,7 +160,7 @@ namespace nodepp { namespace https {
         }, &cert, &agent );
 
         skt.onError([=]( except_t error ){ rej(error); });
-        skt.connect( dip, uri.port );
+        skt.connect( uri.rawname, uri.port );
 
     }); }
 

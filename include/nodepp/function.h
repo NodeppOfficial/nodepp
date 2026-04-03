@@ -31,6 +31,7 @@ public:
     bool     empty() const noexcept { return func_ptr.null (); }
     bool      null() const noexcept { return func_ptr.null (); }
     void      free() const noexcept { /*--*/ func_ptr.free (); }
+    void     clear() const noexcept { /*--*/ func_ptr.free (); }
     
     /*─······································································─*/
 
@@ -57,11 +58,11 @@ private:
 
     public:
 
-        func_impl( const F& f ) : func(f) { /*------------------------*/ }
-        virtual V invoke( const T&... arg ) const { return func(arg...); }
+        func_impl( const F& f ) : func( type::bind(f) ) { /*-------------*/ }
+        virtual V invoke( const T&... arg ) const { return (*func)(arg...); }
 
     private:
-        F func;
+        ptr_t<F> func;
     };
     
     /*─······································································─*/

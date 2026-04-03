@@ -16,48 +16,55 @@
 
 namespace nodepp { namespace process {
 
-    kernel_t& NODEPP_EV_LOOP(){ thread_local static kernel_t evloop; return evloop; }
-
-    atomic_t<bool> _EXIT_ = false;
+    kernel_t& NODEPP_EVLOOP(){ thread_local static kernel_t out; return out; }
+    invoke_t& NODEPP_INVOKE(){ thread_local static invoke_t out; return out; }
     
     /*─······································································─*/
 
     template< class... T >
-    void await( const T&... args ){ while(NODEPP_EV_LOOP().await( args... )==1){/*unused*/} }
+    void revoke( const T&... args ){ NODEPP_INVOKE().off( args... ); }
 
     template< class... T >
-    ptr_t<task_t> foop( const T&... args ){ return NODEPP_EV_LOOP().loop_add( args... ); }
+    int call( const T&... args ){ return NODEPP_INVOKE().emit( args... ); }
 
     template< class... T >
-    ptr_t<task_t> loop( const T&... args ){ return NODEPP_EV_LOOP().loop_add( args... ); }
-
-    template< class... T >
-    ptr_t<task_t> poll( const T&... args ){ return NODEPP_EV_LOOP().poll_add( args... ); }
-
-    template< class... T >
-    ptr_t<task_t> add ( const T&... args ){ return NODEPP_EV_LOOP().loop_add( args... ); }
+    string_t invoke( const T&... args ){ return NODEPP_INVOKE().add( args... ); }
     
     /*─······································································─*/
 
-    inline void clear( ptr_t<task_t> address ){ NODEPP_EV_LOOP().off( address ); }
-    inline void   off( ptr_t<task_t> address ){ NODEPP_EV_LOOP().off( address ); }
-    inline int   emit() /*-----------------*/ { return NODEPP_EV_LOOP().emit (); }
+    template< class... T >
+    void await( const T&... args ){ while(NODEPP_EVLOOP().await( args... )==1){/*unused*/} }
+
+    template< class... T >
+    ptr_t<task_t> loop( const T&... args ){ return NODEPP_EVLOOP().loop_add( args... ); }
+
+    template< class... T >
+    ptr_t<task_t> poll( const T&... args ){ return NODEPP_EVLOOP().poll_add( args... ); }
+
+    template< class... T >
+    ptr_t<task_t> add ( const T&... args ){ return NODEPP_EVLOOP().loop_add( args... ); }
+    
+    /*─······································································─*/
+
+    inline void clear( ptr_t<task_t> address ){ NODEPP_EVLOOP().off( address ); }
+    inline void   off( ptr_t<task_t> address ){ NODEPP_EVLOOP().off( address ); }
+    inline int   wake() /*-----------------*/ { return NODEPP_EVLOOP().wake (); }
 
     /*─······································································─*/
 
-    inline bool should_close(){ return NODEPP_EV_LOOP().empty() || _EXIT_.get(); }
-    inline bool        empty(){ return NODEPP_EV_LOOP().empty(); }
-    inline ulong        size(){ return NODEPP_EV_LOOP().size (); }
-    inline void        clear(){ /*--*/ NODEPP_EV_LOOP().clear(); }
+    inline bool should_close(){ return NODEPP_EVLOOP().empty() || *NODEPP_EVLOOP().should_close(); }
+    inline bool        empty(){ return NODEPP_EVLOOP().empty(); }
+    inline ulong        size(){ return NODEPP_EVLOOP().size (); }
+    inline void        clear(){ /*--*/ NODEPP_EVLOOP().clear(); }
 
     /*─······································································─*/
 
-    inline int next(){ return NODEPP_EV_LOOP().next(); }
+    inline int next(){ return NODEPP_EVLOOP().next(); }
 
     inline void exit( int err=0 ){ 
-        if( should_close() ){ goto DONE; }
-        _EXIT_.set(true); clear(); DONE:; ::exit(err); 
-    }
+        if( should_close() ) /*--------*/ { goto DONE; }
+        *NODEPP_EVLOOP().should_close() = true; clear(); 
+    DONE:; ::exit(err);  }
 
 }}
 

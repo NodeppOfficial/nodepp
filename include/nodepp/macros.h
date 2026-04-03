@@ -14,6 +14,14 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#if defined(_POSIX_THREADS) && (_POSIX_THREADS > 0)
+#define NODEPP_THREAD_SUPPORTED
+#else
+#define thread_local  
+#endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 template< class T > T   min( const T& min, const T& max ){ return min < max ? min : max; }
 template< class T > T   max( const T& min, const T& max ){ return max > min ? max : min; }
 template< class T > T clamp( const T& val, const T& _min, const T& _max ){ return max( _min, min( _max, val ) ); }
@@ -90,11 +98,13 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+bool&   SHOULD_CLOSE(){ static bool out=false; return out; }
+#define MAX_SOCKET      limit::get_soft_fileno()
 #define TIMEOUT         process::get_timeout()
 
 #define HASH_TABLE_SIZE 16
 #define MAX_BATCH       16
-#define MAX_SSO         64
+#define MAX_SSO         16
 #define MAX_PATH        1024
 #define MAX_POOL_SIZE   1024
 #define UNBFF_SIZE      4096

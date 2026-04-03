@@ -67,7 +67,8 @@ namespace nodepp { namespace generator { namespace file {
     coBegin; state=0; pos=0; data.clear();
 
         coWait( _read(str) ==1 );
-            if( _read.state<=0 ){ state=-1; coEnd; }
+            if( _read.state<=0 )
+              { state = data.size(); coEnd; }
         str->set_borrow( _read.data );
 
         do{for( auto x: _read.data ){ ++state;
@@ -89,7 +90,8 @@ namespace nodepp { namespace generator { namespace file {
     coBegin; data.clear(); coYield(1); state=0;
 
         coWait( _read(str) ==1 );
-            if( _read.state<=0 ){ coEnd; }
+            if( _read.state<=0 )
+              { state = data.size(); coEnd; }
         str->set_borrow( _read.data );
 
         do{ for( auto x: _read.data ){ ++state;
@@ -113,7 +115,8 @@ namespace nodepp { namespace generator { namespace file {
     coBegin data.clear(); coYield(1); state=0;
 
         coWait( _read(str) ==1 );
-            if( _read.state<=0 ){ coEnd; }
+            if( _read.state<=0 )
+              { state = data.size(); coEnd; }
         str->set_borrow(_read.data);
 
         do{ for( auto x: _read.data ){ ++state;

@@ -22,9 +22,7 @@ protected:
         ::CloseHandle( obj->pi.hThread ); 
     } obj->state |= STATE::FS_STATE_KILL; }
 
-    using _read_ = generator::file::read;
-
-        bool is_state( uchar value ) const noexcept {
+    bool is_state( uchar value ) const noexcept {
         if( obj->state & value ){ return true; }
     return false; }
 
@@ -43,9 +41,6 @@ protected:
     };
 
 protected:
-
-    ptr_t<_read_> _read1 = new _read_();
-    ptr_t<_read_> _read2 = new _read_();
 
     struct NODE {
         uchar     state=STATE::FS_STATE_CLOSE;
@@ -81,7 +76,9 @@ protected:
                     obj->si.hStdOutput= fdb[1];
                     obj->si.dwFlags  |= STARTF_USESTDHANDLES;
 
-        arg.unshift( process::args[0].get () ); arg.push( "?CHILD=TRUE" );
+        arg.unshift( process::arguments()[0].get() ); 
+        arg.push( "?CHILD=TRUE" );
+        
         auto CMD = arg.join( string::space() );
         auto ENV = env.join( string::null () );
 
@@ -105,7 +102,6 @@ protected:
 
 public:
 
-    event_t<>          onResume;
     event_t<except_t>  onError;
     event_t<>          onClose;
     event_t<>          onDrain;
@@ -128,43 +124,16 @@ public:
     /*─······································································─*/
 
     void free() const noexcept {
-        
+
         if( is_state( STATE::FS_STATE_REUSE ) && !readable().is_feof() && obj.count()>1 ){ return; }
-        if( is_state( STATE::FS_STATE_KILL  ) ) /*-------*/ { return; }
+        if( is_state( STATE::FS_STATE_KILL  ) ) /*-------*/ { return; } 
         if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) )
           { kill(); onDrain.emit(); } else { kill(); }
 
-    /*
-        obj->input.close(); obj->output.close();
-        obj->error.close();
-    */
+        onError.clear(); onDerr.clear(); 
+        onOpen .clear(); onData.clear(); 
+        onDout .clear(); onClose.emit();
 
-        onResume.clear(); onError.clear(); 
-        onOpen  .clear(); onDerr .clear(); 
-        onData  .clear(); onDout .clear(); onClose.emit();
-        
-    }
-
-    /*─······································································─*/
-
-    inline int next() noexcept {
-        if( is_closed() ){ free(); return -1; }
-    coBegin ; onOpen.emit(); 
-    
-        coYield(1); coDelay( 100 ); do {
-        if((*_read1)(&readable())==1)  { coGoto(2); }
-        if(  _read1->state <= 0 )      { coGoto(2); }
-        onData.emit(_read1->data);
-        onDout.emit(_read1->data); coNext; } while(1);    
-        
-        coYield(2); coDelay( 100 );  do {
-        if( process::is_child() )       { coGoto(1); }
-        if((*_read2)(&std_error())==1 ) { coGoto(1); }
-        if(  _read2->state <= 0 )       { coGoto(1); }
-        onData.emit(_read2->data);
-        onDerr.emit(_read2->data); coNext; } while(0);
-        
-    coGoto(1); coFinish
     }
 
     /*─······································································─*/
@@ -174,44 +143,19 @@ public:
         if( exitCode == STILL_ACTIVE ) { return true; }} return false;
     }
 
+    /*─······································································─*/
+
     bool is_closed()    const noexcept { return is_state( STATE::FS_STATE_DISABLE ) || !is_alive() || readable().is_closed(); }
-    bool is_available() const noexcept { return is_closed()== false; }
+    bool is_available() const noexcept { return is_closed() == false; }
     int  get_fd()       const noexcept { return obj->fd; }
 
     /*─······································································─*/
 
-    void resume() const noexcept { if(is_state(STATE::FS_STATE_OPEN) ){ return; } set_state(STATE::FS_STATE_OPEN ); onResume.emit(); }
-    void   stop() const noexcept { if(is_state(STATE::FS_STATE_REUSE)){ return; } set_state(STATE::FS_STATE_REUSE); onDrain .emit(); }
-    void  flush() const noexcept { writable().flush(); readable().flush(); std_error().flush(); }
-
-    /*─······································································─*/
-
     void close() const noexcept {
-        if( is_state (STATE::FS_STATE_DISABLE) ){ return; }
-            set_state( STATE::FS_STATE_CLOSE ); DONE:;
-    onDrain.emit(); free(); }
-
-    /*─······································································─*/
-
-    template< class... T >
-    int werror( const T&... args )    const noexcept { return std_error().write( args... ); }
-
-    template< class... T >
-    int write( const T&... args )     const noexcept { return writable().write( args... ); }
-
-    template< class... T >
-    string_t read( const T&... args ) const noexcept { return readable().read( args... ); }
-
-    /*─······································································─*/
-
-    template< class... T >
-    int _werror( const T&... args ) const noexcept { return std_error()._write( args... ); }
-
-    template< class... T >
-    int _write( const T&... args ) const noexcept { return writable()._write( args... ); }
-
-    template< class... T >
-    int _read( const T&... args )  const noexcept { return readable()._read( args... ); }
+        if( is_state ( STATE::FS_STATE_DISABLE ) ){ return; }
+            set_state( STATE::FS_STATE_CLOSE   );
+        onDrain.emit(); free(); 
+    }
 
     /*─······································································─*/
 

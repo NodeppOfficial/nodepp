@@ -28,7 +28,9 @@ public:
    	    process::onSIGERROR.off( obj->ev );
     }
 
-    except_t() noexcept : obj( new NODE() ) {}
+    except_t( /*--*/ ) noexcept : obj( new NODE() ) {}
+
+    except_t( null_t ) noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
@@ -52,6 +54,10 @@ public:
         obj->msg = msg; auto inp = type::bind( this );
         obj->ev  = process::onSIGERROR.once([=](int){ inp->print(); });
     }
+
+    /*─······································································─*/
+
+    explicit operator bool(void) const noexcept { return !empty(); } 
 
     /*─······································································─*/
 

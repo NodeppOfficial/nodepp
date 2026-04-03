@@ -27,11 +27,16 @@ class udp_t {
 private:
 
     using NODE_CLB = function_t<void,socket_t>;
+    enum STATE {
+         UDP_STATE_UNKNOWN   = 0b00000000,
+         UDP_STATE_USED      = 0b00000001,
+         UDP_STATE_CLOSED    = 0b00000010
+    };
 
 protected:
 
     struct NODE {
-        char state= 0; 
+        int  state= 0; 
         agent_t agent;
         NODE_CLB func;
     };  ptr_t<NODE> obj;
@@ -55,25 +60,33 @@ public:
 
     /*─······································································─*/
 
-    void     close() const noexcept { if(obj->state<=0){return;} obj->state=-1; onClose.emit(); }
-    bool is_closed() const noexcept { return obj == nullptr ? 1: obj->state<=0; }
+    bool is_closed() const noexcept { return obj->state & STATE::UDP_STATE_CLOSED; }
+    void     close() const noexcept { 
+        if( is_closed() ){ return; } 
+        obj->state = STATE::UDP_STATE_CLOSED; 
+        onClose.emit(); 
+    }
 
     /*─······································································─*/
 
-    void listen( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
-        if( obj->state == 1 ) { return; } if( dns::lookup(host).empty() )
-          { onError.emit("dns couldn't get ip"); close(); return; }
+    void listen( const dns_t& addr, int port, NODE_CLB cb=nullptr ) const noexcept {
 
-        socket_t sk; obj->state=1;
-        sk.SOCK    = SOCK_DGRAM  ;
-        sk.IPPROTO = IPPROTO_UDP ;
+        if( obj->state & STATE::UDP_STATE_CLOSED )
+          { onError.emit("udp listener is closed"); return; } 
+        if( obj->state & STATE::UDP_STATE_USED )
+          { onError.emit("udp listener is used");   return; } 
 
-        if( sk.socket( dns::lookup(host), port )<0 ){
+        socket_t sk; obj->state= STATE::UDP_STATE_USED;
+        sk.AF      = addr.family;
+        sk.SOCK    = SOCK_DGRAM ;
+        sk.IPPROTO = IPPROTO_UDP;
+
+        if( sk.socket( addr.address, port )==-1 ){
             onError.emit("Error while creating UDP"); 
             close(); sk.free(); return; 
         }   sk.set_sockopt( obj->agent );
 
-        if( sk.bind()<0 ){
+        if( sk.bind() == -1 ){
             onError.emit("Error while binding UDP"); 
             close(); sk.free(); return; 
         }
@@ -96,22 +109,31 @@ public:
 
     }
 
+    void listen( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
+    auto addr = dns::lookup( host, obj->agent.socket_family );
+         if( addr.empty() ){ onError.emit( "dns address not found" ); return; }
+         listen( addr[0], port, cb );
+    }
+
     /*─······································································─*/
 
-    void connect( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
-        if( obj->state == 1 ){ return; } if( dns::lookup(host).empty() )
-          { onError.emit("dns couldn't get ip"); return; }
+    void connect( const dns_t& addr, int port, NODE_CLB cb=nullptr ) const noexcept {
 
-        socket_t sk; obj->state=1;
-        sk.SOCK    = SOCK_DGRAM  ;
-        sk.IPPROTO = IPPROTO_UDP ;
+        if( obj->state & STATE::UDP_STATE_CLOSED )
+          { onError.emit("udp listener is closed"); return; } 
+        if( obj->state & STATE::UDP_STATE_USED )
+          { onError.emit("udp listener is used");   return; } 
 
-        if( sk.socket( dns::lookup(host), port )<0 ){
+        socket_t sk; obj->state= STATE::UDP_STATE_USED;
+        sk.AF      = addr.family;
+        sk.SOCK    = SOCK_DGRAM ;
+        sk.IPPROTO = IPPROTO_UDP;
+
+        if( sk.socket( addr.address, port )==-1 ){
             onError.emit("Error while creating UDP"); 
             close(); sk.free(); return; 
-        }   
+        }   sk.set_sockopt( obj->agent );
         
-        sk.set_sockopt( obj->agent );
         auto self = type::bind( this );
         sk.onDrain.once([=](){ self->close(); });
 
@@ -128,6 +150,12 @@ public:
 
         return -1; });
 
+    }
+
+    void connect( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
+    auto addr = dns::lookup( host, obj->agent.socket_family );
+         if( addr.empty() ){ onError.emit( "dns address not found" ); return; }
+         connect( addr[0], port, cb );
     }
 
     /*─······································································─*/
@@ -158,4 +186,8 @@ namespace udp {
 
 }
 
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

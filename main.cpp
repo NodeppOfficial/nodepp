@@ -1,40 +1,41 @@
 #include <nodepp/nodepp.h>
-#include <nodepp/tls.h>
-#include <nodepp/fs.h>
+#include <nodepp/worker.h>
+#include <nodepp/timer.h>
 
 using namespace nodepp;
 
-void server(){
+void onMain(){
 
-    auto ssl    = ssl_t(); ssl.set_alpn_protocol_list({ "h2", "http/1.1" });
+    ptr_t<int> x = new int(10); mutex_t mut;
 
-    auto server = tls::server( &ssl );
+    worker::add( mutex::add( mut, coroutine::add( COROUTINE(){
+    coBegin
 
-    server.onConnect([=]( ssocket_t cli ){
+        while( *x > 0 ){
+            console::log( "wrk2>> Hello World", *x );
+        *x-=1; coDelay(100); }
 
-        console::log("connected", cli.ssl->get_alpn_protocol() );
+    coFinish
+    }) ));
 
-        cli.onData([=]( string_t data ){
-            cli.write( "<: received" );
-            console::log( data );
-        });
+    worker::add( mutex::add( mut, coroutine::add( COROUTINE(){
+    coBegin
 
-        cli.onClose([=](){
-            console::log("closed");
-        });
+        while( *x > 0 ){
+            console::log( "wrk1>> Hello World", *x );
+        *x-=1; coDelay(100); }
 
-        stream::pipe( cli );
+    coFinish
+    }) ));
 
-    });
+    worker::add( mutex::add( mut, coroutine::add( COROUTINE(){
+    coBegin
 
-    server.onError([=]( except_t err ){
-        console::log( err.what() );
-    });
+        while( *x > 0 ){
+            console::log( "wrk0>> Hello World", *x );
+        *x-=1; coDelay(100); }
 
-    server.listen( "localhost", 8000, []( ssocket_t ){
-        console::log("-> tls://localhost:8000");
-    });
+    coFinish
+    }) ));
 
 }
-
-void onMain() { server(); }

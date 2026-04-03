@@ -20,7 +20,11 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace process { array_t<string_t> args;
+namespace nodepp { namespace process {
+
+    array_t<string_t>& arguments() { static array_t<string_t> arguments; return arguments; }
+
+    /*─······································································─*/
 
     template< class... T >
     void error( const T&... msg ){ throw except_t( msg... ); }
@@ -29,12 +33,18 @@ namespace nodepp { namespace process { array_t<string_t> args;
 
     inline void start( int argc, char** args ){
         onSIGEXIT.once([=](){ process::exit(0); }); int i=0;
-        do{ if(!regex::test(args[i],"^\\?") ) {
-                process::args.push(args[i]);
-        } else {
+
+        auto& tmp = arguments(); do{ 
+
+            if (!regex::test(args[i],"^\\?") ) 
+               { tmp.push(args[i]); } else {
             for( auto &x: query::parse( args[i] ).data() )
                { env::set( x.first, x.second ); }
-        }} while( i ++< argc - 1 ); signal::start(); 
+            }
+
+        } while( i ++< argc - 1 ); 
+        
+        signal::start(); 
     }
 
     /*─······································································─*/
