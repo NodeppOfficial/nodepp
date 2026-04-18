@@ -138,10 +138,10 @@ public:
     void  free() const noexcept { off(); }
     void   off() const noexcept {
         obj->state |= PROMISE_STATE::CLOSED;
-    //  obj->node_clb.clear();
         obj->rej_clb .clear();
+        obj->res_clb .clear();
         obj->fin_clb .clear();
-        obj->fin_clb .clear();
+    //  obj->node_clb.clear();
     }
 
     /*─······································································─*/

@@ -18,8 +18,6 @@ namespace nodepp { class popen_t : public generator_t {
 protected:
 
     void kill() const noexcept { 
-        ::CloseHandle( obj->pi.hProcess ); 
-        ::CloseHandle( obj->pi.hThread ); 
         obj->state |= STATE::FS_STATE_KILL;
     }
 
@@ -44,6 +42,7 @@ protected:
 protected:
 
     struct NODE {
+
         uchar /*------*/ state=STATE::FS_STATE_CLOSE;
         PROCESS_INFORMATION pi;
         file_t std_output;
@@ -51,6 +50,12 @@ protected:
         file_t std_error;
         STARTUPINFO   si;
         int           fd;
+
+       ~NODE(){
+            ::CloseHandle( obj->pi.hProcess ); 
+            ::CloseHandle( obj->pi.hThread  ); 
+        }
+
     };  ptr_t<NODE> obj;
 
     void _init_( const string_t& path, array_t<string_t> arg, array_t<string_t> env ) {
@@ -127,12 +132,11 @@ public:
 
         if( is_state( STATE::FS_STATE_REUSE ) && !std_input().is_feof() && obj.count()>1 ){ return; }
         if( is_state( STATE::FS_STATE_KILL  ) ) /*-------*/ { return; } 
-        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) )
-          { kill(); onDrain.emit(); } else { kill(); }
+        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) ){ onDrain.emit(); }
 
         onError.clear(); onDerr.clear(); 
         onOpen .clear(); onData.clear(); 
-        onDout .clear(); onClose.emit();
+        onDout .clear(); onClose.emit(); kill();
 
     }
 
@@ -152,10 +156,9 @@ public:
     /*─······································································─*/
 
     void close() const noexcept {
-        if( is_state ( STATE::FS_STATE_DISABLE ) ){ return; }
-            set_state( STATE::FS_STATE_CLOSE   );
-        onDrain.emit(); free(); 
-    }
+    if( is_state ( STATE::FS_STATE_DISABLE ) ) { return; }
+        onDrain.emit(); set_state( STATE::FS_STATE_CLOSE );
+    free(); }
 
     /*─······································································─*/
 

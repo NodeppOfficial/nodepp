@@ -1,4 +1,5 @@
 #include <nodepp/nodepp.h>
+#include <nodepp/worker.h>
 #include <nodepp/tls.h>
 #include <nodepp/fs.h>
 
@@ -76,9 +77,12 @@ void client(){
 
 void onMain() {
 
-    if( process::env::get("mode")=="client" ) 
-      { client(); } else { server(); }
+    worker::add( coroutine::add( COROUTINE(){
+    coBegin /*--*/ ; server();
+    process::wait(); coFinish }));
+
+    worker::add( coroutine::add( COROUTINE(){
+    coBegin /*--*/ ; client();
+    process::wait(); coFinish }));
 
 }
-
-// g++ -o main main.cpp -I./include ; ./main ?mode=client

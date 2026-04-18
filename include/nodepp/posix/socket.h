@@ -15,6 +15,11 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#if defined(NODEPP_OS_APPLE) || defined(NODEPP_OS_IOS)
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -22,6 +27,10 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <netdb.h>
+
+#if defined(NODEPP_OS_APPLE) || defined(NODEPP_OS_IOS)
+    #pragma clang diagnostic pop
+#endif
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -42,7 +51,7 @@ namespace nodepp {
 
 struct ip_t    { string_t address; uint port; };
 struct agent_t {
-    ulong buffer_size   = CHUNK_SIZE;
+    ulong buffer_size   = NODEPP_CHUNK_SIZE;
     ulong conn_timeout  = 60000;
     ulong recv_timeout  = 0;
     ulong send_timeout  = 0;
@@ -67,9 +76,6 @@ protected:
 
     void kill() const noexcept {
         obj->state |= STATE::FS_STATE_KILL; 
-        ::shutdown( obj->fd, SHUT_WR ); 
-        ::close   ( obj->fd ); 
-        obj->fd = INVALID_SOCKET;
     }
 
     SOCKADDR_ST& get_addr() const noexcept { 
@@ -116,6 +122,12 @@ protected:
         generator::file::line  _line ;
         generator::file::read  _read ;
         generator::file::write _write;
+
+       ~NODE(){ if( fd == INVALID_SOCKET ){ return; }
+            ::shutdown( fd, SHUT_WR ); 
+            ::close   ( fd /*----*/ );  
+        }
+        
     };  ptr_t<NODE> obj;
 
     /*─······································································─*/
@@ -381,8 +393,8 @@ public:
 
     /*─······································································─*/
 
-    void  resume() const noexcept { if(is_state(STATE::FS_STATE_OPEN )){ return; } set_state(STATE::FS_STATE_OPEN ); onResume.emit(); }
-    void    stop() const noexcept { if(is_state(STATE::FS_STATE_REUSE)){ return; } set_state(STATE::FS_STATE_REUSE); onDrain .emit(); }
+    void  resume() const noexcept { if(is_state(STATE::FS_STATE_OPEN )){ return; } onResume.emit(); set_state(STATE::FS_STATE_OPEN ); }
+    void    stop() const noexcept { if(is_state(STATE::FS_STATE_REUSE)){ return; } onDrain .emit(); set_state(STATE::FS_STATE_REUSE); }
     void   reset() const noexcept { if(is_state(STATE::FS_STATE_KILL )){ return; } resume(); pos(0); }
     void   flush() const noexcept { obj->buffer.fill(0); }
 
@@ -397,9 +409,9 @@ public:
     /*─······································································─*/
 
     void close() const noexcept {
-        if( is_state ( STATE::FS_STATE_DISABLE ) ){ return; }
-            set_state( STATE::FS_STATE_CLOSE   );
-    onDrain.emit(); free(); }
+        if( is_state ( STATE::FS_STATE_DISABLE ) ) { return; }
+            onDrain.emit(); set_state( STATE::FS_STATE_CLOSE );
+    free(); }
 
     /*─······································································─*/
 
@@ -462,7 +474,7 @@ public:
 
     /*─······································································─*/
 
-    socket_t( int fd, ulong _size=CHUNK_SIZE ) : obj( new NODE() ) { _socket_::start_device();
+    socket_t( int fd, ulong _size=NODEPP_CHUNK_SIZE ) : obj( new NODE() ) { _socket_::start_device();
         if( fd == INVALID_SOCKET ){ throw except_t("Such Socket has an Invalid fd"); }
         obj->fd = fd; set_nonbloking_mode(); set_buffer_size(_size);
     }
@@ -475,13 +487,12 @@ public:
 
     void free() const noexcept {
 
-        if( is_state( STATE::FS_STATE_REUSE ) && !is_feof() && obj.count()>1 ){ return; }
+        if( is_state( STATE::FS_STATE_REUSE ) && !is_feof() && obj.count() >1 ){ return; }
         if( is_state( STATE::FS_STATE_KILL  ) ) /*-------*/ { return; } 
-        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) )
-          { kill(); onDrain.emit(); } else { kill(); }
+        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) ){ onDrain.emit(); }
 
         onUnpipe.clear(); onResume.clear();
-        onError .clear(); onData  .clear();
+        onError .clear(); onData  .clear(); kill();
         onOpen  .clear(); onPipe  .clear(); onClose.emit();
 
     }
@@ -494,7 +505,7 @@ public:
         if((obj->fd=::socket( AF, SOCK, IPPROTO )) == INVALID_SOCKET )
           { onError.emit("can't initializate socket fd"); return -1; }
 
-        set_buffer_size( CHUNK_SIZE );
+        set_buffer_size( NODEPP_CHUNK_SIZE );
         set_nonbloking_mode();
         set_reuse_address (1);
 
@@ -552,7 +563,7 @@ public:
     /*─······································································─*/
 
     int listen() const noexcept { if( !is_server() ){ return -1; }
-        return ::listen( obj->fd, MAX_SOCKET ) ?-1: 1;
+        return ::listen( obj->fd, NODEPP_MAX_SOCKET ) ?-1: 1;
     }
 
     int accept() const noexcept { int c=0;
@@ -569,7 +580,7 @@ public:
 
     /*─······································································─*/
 
-    string_t read( ulong size=CHUNK_SIZE ) const noexcept {
+    string_t read( ulong size=NODEPP_CHUNK_SIZE ) const noexcept {
         while( obj->_read( this, size ) == 1 )
              { process::next(); }
         return obj->_read.data;

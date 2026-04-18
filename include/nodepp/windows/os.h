@@ -21,21 +21,21 @@
 namespace nodepp { namespace os {
     
     inline string_t hostname(){
-        char buffer[UNBFF_SIZE]; DWORD bufferSize = UNBFF_SIZE;
+        char buffer[NODEPP_UNBFF_SIZE]; DWORD bufferSize = NODEPP_UNBFF_SIZE;
         GetComputerNameA(buffer,&bufferSize); return string_t( buffer, bufferSize );
     }
     
     /*─······································································─*/
 
     inline string_t user(){ 
-        char buffer[UNBFF_SIZE]; DWORD bufferSize = UNBFF_SIZE;
+        char buffer[NODEPP_UNBFF_SIZE]; DWORD bufferSize = NODEPP_UNBFF_SIZE;
         GetUserNameA(buffer, &bufferSize); return string_t( buffer, bufferSize );
     }
     
     /*─······································································─*/
 
-    inline string_t cwd(){ char buffer[ UNBFF_SIZE ];
-        DWORD length = GetCurrentDirectoryA( UNBFF_SIZE, buffer );
+    inline string_t cwd(){ char buffer /**/ [NODEPP_UNBFF_SIZE];
+        DWORD length = GetCurrentDirectoryA( NODEPP_UNBFF_SIZE, buffer );
         return string_t( buffer, length );
     }
     

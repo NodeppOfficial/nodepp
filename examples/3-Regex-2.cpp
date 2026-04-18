@@ -12,6 +12,12 @@ void onMain(){
         ![Imagen4](URL5)
     )";
 
+    // nodepp compile regex but if you need to be faster use static to pre-compile regex and keep
+    // as long as the function lives, but take care with () memory copy, because can lead 
+    // to race conditions if shared with multiple threads
+    // thread_local static regex_t( "(pattern)" ); <- multithread safe
+    // /*--------*/ static regex_t( "(pattern)" ); <- multithread unsafe
+
     regex_t reg ("!\\[([^\\]]+)\\]\\(([^\\)]+)\\)");
 
     console::log( "-- --" );

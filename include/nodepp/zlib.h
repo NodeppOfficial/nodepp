@@ -63,7 +63,7 @@ public:
     
    ~zlib_t() noexcept { if( obj.count()>1 || obj->state==0 ){ return; } free(); }
 
-    zlib_t( int type=0, ulong size=CHUNK_SIZE ) noexcept : obj( new NODE ) { 
+    zlib_t( int type=0, ulong size=NODEPP_CHUNK_SIZE ) noexcept : obj( new NODE ) { 
         obj->bff  = ptr_t<char>( size ); 
         obj->type = type; _init_(); 
     }

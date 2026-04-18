@@ -1,10 +1,10 @@
 #include <nodepp/nodepp.h>
-#include <nodepp/wait.h>
+#include <nodepp/listener.h>
 #include <nodepp/test.h>
 
 using namespace nodepp;
 
-namespace TEST { namespace WAIT {
+namespace TEST { namespace LISTENER {
 
     void TEST_RUNNER(){
         ptr_t<uint> totl = new uint(0);
@@ -16,7 +16,7 @@ namespace TEST { namespace WAIT {
 
         TEST_ADD( test, "TEST 1 | wait initialization 1", [](){
             try { ptr_t<int> x = new int(0);
-                  wait_t<string_t> wait; wait.on("test",[=](){ *x=1; });
+                  listener_t<string_t> wait; wait.on("test",[=](){ *x=1; });
                   wait.emit("test");
              if ( wait.empty() ){ throw 0; }
              if ( *x==0 )/*---*/{ throw 0; }
@@ -26,7 +26,7 @@ namespace TEST { namespace WAIT {
 
         TEST_ADD( test, "TEST 2 | wait initialization 2", [](){
             try { ptr_t<int> x = new int(0);
-                  wait_t<string_t,int> wait; wait.on("test",[=]( int y ){ *x=y; });
+                  listener_t<string_t,int> wait; wait.on("test",[=]( int y ){ *x=y; });
                   wait.emit("test",1);
              if ( wait.empty() ){ throw 0; }
              if ( *x==0 )/*---*/{ throw 0; }
@@ -36,7 +36,7 @@ namespace TEST { namespace WAIT {
 
         TEST_ADD( test, "TEST 3 | once execution", [](){
             try { ptr_t<int> x = new int(0);
-                  wait_t<string_t> wait; wait.once("test",[=](){ *x+=1; });
+                  listener_t<string_t> wait; wait.once("test",[=](){ *x+=1; });
                   wait.emit("test"); wait.emit("test"); wait.emit("test");
              if ( *x!=1 )/**/{ throw 0; }
                               TEST_DONE();
@@ -45,32 +45,10 @@ namespace TEST { namespace WAIT {
 
         TEST_ADD( test, "TEST 4 | on execution", [](){
             try { ptr_t<int> x = new int(0);
-                  wait_t<string_t> wait; wait.on("test",[=](){ *x+=1; });
+                  listener_t<string_t> wait; wait.on("test",[=](){ *x+=1; });
                   wait.emit("test"); wait.emit("test"); wait.emit("test");
              if ( wait.empty() ){ throw 0; }
              if ( *x!=3 )/*---*/{ throw 0; }
-                              TEST_DONE();
-            } catch ( ... ) { TEST_FAIL(); }
-        });
-
-        TEST_ADD( test, "TEST 5 | skipping", [](){
-            try { ptr_t<int> x = new int(0);
-                  wait_t<string_t> wait; wait.on("test",[=](){ *x+=1; });
-                  wait.stop();   wait.emit("test"); 
-                  wait.resume(); wait.emit("test"); wait.emit("test");
-             if ( wait.empty() ){ throw 0; }
-             if ( *x!=2 )/*---*/{ throw 0; }
-                              TEST_DONE();
-            } catch ( ... ) { TEST_FAIL(); }
-        });
-
-        TEST_ADD( test, "TEST 6 | stopping", [](){
-            try { ptr_t<int> x = new int(0);
-                  wait_t<string_t> wait; wait.on("test",[=](){ *x+=1; });
-                  wait.stop();       wait.emit("test"); 
-                  wait.emit("test"); wait.emit("test");
-             if ( wait.empty() ){ throw 0; }
-             if ( *x!=0 )/*---*/{ throw 0; }
                               TEST_DONE();
             } catch ( ... ) { TEST_FAIL(); }
         });

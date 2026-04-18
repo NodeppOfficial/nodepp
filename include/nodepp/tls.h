@@ -65,53 +65,44 @@ public:
     /*─······································································─*/
 
     bool is_closed() const noexcept { return obj->state & STATE::TLS_STATE_CLOSED; }
-    void     close() const noexcept { 
-        if( is_closed() ){ return; } 
-        obj->state = STATE::TLS_STATE_CLOSED; 
-        onClose.emit(); 
-    }
+    void     close() const noexcept { free(); }
 
     /*─······································································─*/
 
     void listen( const dns_t& addr, int port, NODE_CLB cb=nullptr ) const noexcept {
 
         if( obj->state & STATE::TLS_STATE_CLOSED )
-          { onError.emit("tls listener is closed"); return; } 
+          { onError.emit( "tls listener is closed" ); return; } 
         if( obj->state & STATE::TLS_STATE_USED )
-          { onError.emit("tls listener is used");   return; } 
+          { onError.emit( "tls listener is used" );   return; } 
 
         if( obj->ctx.create_server()==-1 )
-          { onError.emit("Error Initializing SSL context"); return; }
+          { onError.emit( "Error Initializing SSL context" ); return; }
 
-        ssocket_t sk; obj->state= STATE::TLS_STATE_USED;
+        ssocket_t sk; obj->state = STATE::TLS_STATE_USED;
         sk.AF      = addr.family ;
         sk.SOCK    = SOCK_STREAM ;
         sk.IPPROTO = IPPROTO_TCP ;
 
         if( sk.socket( addr.address, port )==-1 ){
-            onError.emit("Error while creating TLS"); 
-            close(); sk.free(); return; 
+            onError.emit( "Error while creating TLS" ); return; 
         }   sk.set_sockopt( obj->agent );
 
         if( sk.bind() == -1 ){
-            onError.emit("Error while binding TLS"); 
-            close(); sk.free(); return; 
+            onError.emit( "Error while binding TLS" ); return; 
         }
 
         if( sk.listen() == -1 ){ 
-            onError.emit("Error while listening TLS"); 
-            close(); sk.free(); return; 
+            onError.emit( "Error while listening TLS" ); return; 
         }   
         
-        auto self=type::bind( this );
-        cb( sk );  onOpen.emit( sk ); 
-        sk.onDrain.once([=](){ self->close(); });
+        cb(sk); onOpen.emit(sk); auto self=type::bind( this ); 
             
         process::poll( sk, POLL_STATE::READ | POLL_STATE::EDGE, [=](){
-        int c=-1; while( self.count() < MAX_BATCH ) {
+        int c=-1; while( self.count() < NODEPP_MAX_BATCH_SIZE ) {
 
             while((c=sk._accept())==-2){ return 0; } if(c==-1){ 
-                self->onError.emit("Error while accepting TLS");
+                self->onError.emit( "Error while accepting TLS" );
             return -1; }
             
             auto cli   = ssocket_t( self->obj->ctx, c ); 
@@ -143,33 +134,29 @@ public:
     void connect( const dns_t& addr, int port, NODE_CLB cb=nullptr ) const noexcept {
 
         if( obj->state & STATE::TLS_STATE_CLOSED )
-          { onError.emit("tls listener is closed"); return; } 
+          { onError.emit( "tls listener is closed" ); return; } 
         if( obj->state & STATE::TLS_STATE_USED )
-          { onError.emit("tls listener is used");   return; }
+          { onError.emit( "tls listener is used" );   return; }
 
         if( obj->ctx.create_client()==-1 )
-          { onError.emit("Error Initializing SSL context"); return; }
+          { onError.emit( "Error Initializing SSL context" ); return; }
 
-        ssocket_t sk; obj->state= STATE::TLS_STATE_USED;
+        ssocket_t sk; obj->state = STATE::TLS_STATE_USED;
         sk.AF      = addr.family ;
         sk.SOCK    = SOCK_STREAM ;
         sk.IPPROTO = IPPROTO_TCP ;
 
         if( sk.socket( addr.address, port )==-1 ){
-            onError.emit("Error while creating TLS"); 
-            close(); sk.free(); return; 
+            onError.emit( "Error while creating TLS" ); return; 
         }   sk.set_sockopt( obj->agent );
         
         sk.ssl = new ssl_t( obj->ctx, sk.get_fd() );
         sk.ssl->set_hostname( addr.hostname );
 
-        auto self = type::bind( this ); 
-        sk.onDrain.once([=](){ self->close(); }); 
-
-        process::add([=](){ int c=0;
+        auto self = type::bind(this); process::add([=](){ int c=0;
 
             while( (c=sk._connect())==-2 ){ return 1; } if(c==-1){
-                self->onError.emit("Error while connecting TLS");
+                self->onError.emit( "Error while connecting TLS" );
             return -1; }
 
             cb(sk); self->onSocket.emit(sk);
@@ -194,9 +181,11 @@ public:
     /*─······································································─*/
 
     void free() const noexcept {
-        if( is_closed() ){ return; }close();
+        if( is_closed() ){ return; }
+        obj->state = STATE::TLS_STATE_CLOSED; 
         onConnect.clear(); onSocket.clear();
         onError  .clear(); onOpen  .clear();
+        onClose  .emit ();
     }
 
 };

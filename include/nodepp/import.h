@@ -26,6 +26,16 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#ifndef NODEPP_DISABLE_STL_SUPPORT
+#include <string>
+#include <queue>
+#include <array>
+#include <vector>
+#include <functional>
+#endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #include "macros.h"
 #include "task.h"
 #include "type.h"
@@ -63,8 +73,8 @@
 
 #include "os.h"
 #include "query.h"
-#include "kernel.h"
 #include "invoke.h"
+#include "kernel.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

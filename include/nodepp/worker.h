@@ -22,9 +22,11 @@
 
 #if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
     #include "mutex.h"
+    #include "expected.h"
     #include "windows/worker.h"
 #elif _KERNEL_ == NODEPP_KERNEL_POSIX
     #include "mutex.h"
+    #include "expected.h"
     #include "posix/worker.h"
 #else
     #error "This OS Does not support worker.h"

@@ -132,6 +132,14 @@ namespace TEST { namespace ARRAY {
             } catch ( ... ) { TEST_FAIL(); }
         });
 
+        TEST_ADD( test, "TEST 13 | array type::move", [](){
+            try { array_t<uint> a ({ 10, 20, 30 });
+                  array_t<uint> b = type::move( a );
+            if ( b.size() == 3 && a.empty() )
+               { TEST_DONE(); } TEST_FAIL();
+            } catch ( ... )   { TEST_FAIL(); }
+        });
+
         test.onClose.once([=](){
             console::log("\nRESULT | total:", *totl, "| passed:", *done, "| error:", *err, "| skipped:", *skp );
         });

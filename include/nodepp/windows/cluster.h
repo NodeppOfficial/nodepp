@@ -17,10 +17,9 @@
 namespace nodepp { class cluster_t : public generator_t {
 protected:
 
-    void kill() const noexcept { if( is_parent() ){ 
-        ::CloseHandle( obj->pi.hProcess ); 
-        ::CloseHandle( obj->pi.hThread ); 
-    } obj->state |= STATE::FS_STATE_KILL; }
+    void kill() const noexcept { 
+        obj->state |= STATE::FS_STATE_KILL; 
+    }
 
     bool is_state( uchar value ) const noexcept {
         if( obj->state & value ){ return true; }
@@ -43,6 +42,7 @@ protected:
 protected:
 
     struct NODE {
+
         uchar     state=STATE::FS_STATE_CLOSE;
         PROCESS_INFORMATION pi;
         STARTUPINFO  si;
@@ -50,6 +50,13 @@ protected:
         file_t    input;
         file_t   output;
         file_t    error;
+
+       ~NODE(){
+        if( !process::env::get("CHILD").empty() ){ return; }
+            ::CloseHandle( obj->pi.hProcess ); 
+            ::CloseHandle( obj->pi.hThread  ); 
+        }
+
     };  ptr_t<NODE> obj;
 
     void _init_( array_t<string_t> arg, array_t<string_t> env ) {
@@ -125,14 +132,13 @@ public:
 
     void free() const noexcept {
 
-        if( is_state( STATE::FS_STATE_REUSE ) && !readable().is_feof() && obj.count()>1 ){ return; }
+        if( is_state( STATE::FS_STATE_REUSE ) && !readable().is_feof() && obj.count() >1 ){ return; }
         if( is_state( STATE::FS_STATE_KILL  ) ) /*-------*/ { return; } 
-        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) )
-          { kill(); onDrain.emit(); } else { kill(); }
+        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) ){ onDrain.emit(); }
 
         onError.clear(); onDerr.clear(); 
         onOpen .clear(); onData.clear(); 
-        onDout .clear(); onClose.emit();
+        onDout .clear(); onClose.emit(); kill();
 
     }
 
@@ -152,9 +158,9 @@ public:
     /*─······································································─*/
 
     void close() const noexcept {
-        if( is_state ( STATE::FS_STATE_DISABLE ) ){ return; }
-            set_state( STATE::FS_STATE_CLOSE   );
-        onDrain.emit(); free(); 
+        if( is_state ( STATE::FS_STATE_DISABLE ) ) { return; }
+            onDrain.emit(); set_state( STATE::FS_STATE_CLOSE );
+        free(); 
     }
 
     /*─······································································─*/

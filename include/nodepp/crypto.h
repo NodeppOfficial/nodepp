@@ -201,7 +201,7 @@ public:
    ~xor_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     void update( string_t msg ) const noexcept { 
-        if( !obj->state ){ return; } ulong chunk=0, /*-------------*/ base=CHUNK_SIZE;
+        if( !obj->state ){ return; } ulong chunk=0, /*-------------*/ base=NODEPP_CHUNK_SIZE;
         while( chunk < msg.size() ){ string_t tmp = msg.slice_view( chunk, chunk + base );
             forEach( y, obj->ctx ){ forEach( x, tmp ){ 
                 x = x ^ y.key[ y.pos % y.key.size() ]; ++y.pos; 
@@ -244,7 +244,7 @@ protected:
     void _init_( const EVP_CIPHER* type, const string_t& key, const string_t& iv ){
         if( key.empty() ){ throw except_t("can't initializate encrypt_t"); }
 
-        obj->bff        = ptr_t<uchar>(CHUNK_SIZE,'\0');
+        obj->bff        = ptr_t<uchar>(NODEPP_CHUNK_SIZE,'\0');
         int req_key_len = EVP_CIPHER_key_length( type );
         int req_iv_len  = EVP_CIPHER_iv_length ( type );
         obj->ctx        = EVP_CIPHER_CTX_new(); 
@@ -319,7 +319,7 @@ protected:
     void _init_( const EVP_CIPHER* type, const string_t& key, const string_t& iv ){
         if( key.empty() ){ throw except_t("can't initializate decrypt_t"); }
 
-        obj->bff        = ptr_t<uchar>(CHUNK_SIZE,'\0');
+        obj->bff        = ptr_t<uchar>(NODEPP_CHUNK_SIZE,'\0');
         int req_key_len = EVP_CIPHER_key_length( type );
         int req_iv_len  = EVP_CIPHER_iv_length ( type );
         obj->ctx        = EVP_CIPHER_CTX_new(); 
@@ -541,7 +541,7 @@ public:
    ~base64_encoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     base64_encoder_t() noexcept : obj( new NODE() ) {
-        obj->state = 1; obj->bff = ptr_t<char>( CHUNK_SIZE, '\0' );
+        obj->state = 1; obj->bff = ptr_t<char>( NODEPP_CHUNK_SIZE, '\0' );
 
         CTX item1; memset( &item1, 0, sizeof(CTX) );
             item1.pos1 = 0; item1.pos2 =-6; 
@@ -622,7 +622,7 @@ public:
    ~base64_decoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     base64_decoder_t() noexcept : obj( new NODE() ) {
-        obj->state = 1; obj->bff = ptr_t<char>( CHUNK_SIZE, '\0' );
+        obj->state = 1; obj->bff = ptr_t<char>( NODEPP_CHUNK_SIZE, '\0' );
 
         CTX item1; memset( &item1, 0, sizeof(CTX) );
             item1.pos1 = 0; item1.pos2 =-8; 

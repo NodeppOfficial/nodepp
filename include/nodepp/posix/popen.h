@@ -23,11 +23,8 @@ namespace nodepp { class popen_t : public generator_t {
 protected:
 
     void kill() const noexcept { 
-    if( obj->fd != -1 ){
-        ::kill( obj->fd, SIGKILL ); int c=0;
-    do{ /*unused*/ } 
-        while( ::waitpid( obj->fd, &c, WNOHANG )<0 );
-    }   obj->state |= STATE::FS_STATE_KILL; }
+        obj->state |= STATE::FS_STATE_KILL; 
+    }
 
     bool is_state( uchar value ) const noexcept {
         if( obj->state & value ){ return true; }
@@ -50,11 +47,18 @@ protected:
 protected:
 
     struct NODE {
+
         uchar   state = STATE::FS_STATE_CLOSE;
         int     fd    = -1;
         file_t  std_input ;
         file_t  std_error ;
         file_t  std_output;
+
+       ~NODE(){ 
+        if( fd == -1 ) /*------*/ { return; }
+            ::kill( fd, SIGKILL ); int c=0;
+        do{ /*unused*/ } while( ::waitpid( fd, &c, WNOHANG )<0 ); }
+
     };  ptr_t<NODE> obj;
 
     template< class T >
@@ -127,12 +131,11 @@ public:
 
         if( is_state( STATE::FS_STATE_REUSE ) && !std_input().is_feof() && obj.count()>1 ){ return; }
         if( is_state( STATE::FS_STATE_KILL  ) ) /*-------*/ { return; } 
-        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) )
-          { kill(); onDrain.emit(); } else { kill(); }
+        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) ){ onDrain.emit(); }
 
         onError.clear(); onDerr.clear(); 
         onOpen .clear(); onData.clear(); 
-        onDout .clear(); onClose.emit();
+        onDout .clear(); onClose.emit(); kill();
 
     }
 
@@ -153,16 +156,16 @@ public:
     /*─······································································─*/
 
     void close() const noexcept {
-        if( is_state ( STATE::FS_STATE_DISABLE ) ){ return; }
-            set_state( STATE::FS_STATE_CLOSE   );
-        onDrain.emit(); free(); 
+        if( is_state ( STATE::FS_STATE_DISABLE ) ) { return; }
+            onDrain.emit(); set_state( STATE::FS_STATE_CLOSE );
+        free(); 
     }
 
     /*─······································································─*/
 
-    file_t& std_error()  const noexcept { return obj->std_error;  }
+    file_t& std_error () const noexcept { return obj->std_error;  }
     file_t& std_output() const noexcept { return obj->std_output; }
-    file_t& std_input()  const noexcept { return obj->std_input;  }
+    file_t& std_input () const noexcept { return obj->std_input;  }
 
 };}
 

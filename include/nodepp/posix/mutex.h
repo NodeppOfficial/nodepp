@@ -21,9 +21,9 @@
 namespace nodepp { namespace worker {
 
     inline void    delay( ulong time ){ process::delay(time); }
-    inline void    yield(){ delay(TIMEOUT); sched_yield(); }
-    inline pthread_t pid(){ return pthread_self(); }
-    inline void     exit(){ pthread_exit(NULL); }
+    inline void    yield(){ delay(1); sched_yield(); }
+    inline pthread_t pid(){ return pthread_self  (); }
+//  inline void     exit(){ pthread_exit(NULL); } <- insecure
 
 }}
 
@@ -33,29 +33,26 @@ namespace nodepp { class mutex_t {
 protected:
 
     struct NODE {
+        pthread_mutex_t     fd;
         atomic_t<bool> alive=1;
-        pthread_mutex_t fd;
+       ~NODE(){ pthread_mutex_destroy(&fd); }
     };  ptr_t<NODE> obj;
 
 public:
+
+   ~mutex_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
     mutex_t() : obj( new NODE() ) {
         if( pthread_mutex_init(&obj->fd,NULL)!=0 )
           { throw except_t("Cant Start Mutex");  }
             /*-----------------*/ obj->alive=1;
     }
-
-    virtual ~mutex_t() noexcept {
-        if( obj->alive == 0 ){ return; }
-        if( obj.count() > 1 ){ return; } 
-    free(); }
     
     /*─······································································─*/
 
     void free() const noexcept {
         if( obj->alive == 0 ){ return; }
         /*----------*/ obj->alive = 0;
-        pthread_mutex_destroy(&obj->fd);
     }
     
     /*─······································································─*/

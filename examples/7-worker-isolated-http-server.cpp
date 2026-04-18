@@ -7,9 +7,8 @@
 using namespace nodepp;
 
 mutex_t  mutx;
-invoke_t invk;
 
-void isolated_event_loop( uint cpu_id, string_t addr ){ worker::add([=](){ 
+void isolated_event_loop( uint cpu_id ){ worker::add([=](){ 
     //  this worker runs it's own event loop in parallel
 
     auto server = http::server([=]( http_t cli ){
@@ -23,8 +22,6 @@ void isolated_event_loop( uint cpu_id, string_t addr ){ worker::add([=](){
             <h3> load balanced nodepp server </h3>
         ));
 
-        invk.emit( addr, cpu_id );
-
     });
 
     server.listen( "localhost", 8000, [=]( socket_t ){
@@ -37,12 +34,8 @@ return -1; }); }
 
 void onMain(){
 
-    auto addr = invk.add([=]( any_t value ){ mutx.lock([&](){
-         console::log( "->", value.as<int>() );
-    }); return 1; });
-
     for( auto x=os::cpus(); x-->0; ){
-         isolated_event_loop( x, addr );
+         isolated_event_loop( x );
     }
 
 }

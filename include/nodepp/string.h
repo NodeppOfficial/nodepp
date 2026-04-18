@@ -109,6 +109,22 @@ protected:
 
 public:
 
+    #ifndef NODEPP_DISABLE_STL_SUPPORT
+
+    string_t( const std::string& str ) noexcept {
+        ulong N = str.length();
+        if ( N == 0 ){ return; } buffer = string::buffer(N);
+        type::copy( str.data(), str.data()+N, begin() );
+    }
+
+    string_t( std::string&& str ) noexcept {
+        ulong N = str.length();
+        if ( N == 0 ){ return; } buffer = string::buffer(N);
+        type::move( str.data(), str.data()+N, begin() );
+    }
+
+    #endif
+
     string_t() noexcept { buffer.clear(); }
 
     string_t( const char* argc ) noexcept {
@@ -607,8 +623,8 @@ namespace string {
 
     template< class... T >
     string_t format( const string_t& str, const T&... args ){
-        char buffer[CHUNK_SIZE]; /*-----------------------*/
-        snprintf( buffer, CHUNK_SIZE, (char*)str, args... );
+        char buffer[NODEPP_CHUNK_SIZE]; /*-----------------------*/
+        snprintf( buffer, NODEPP_CHUNK_SIZE, (char*)str, args... );
         return buffer;
     }
 

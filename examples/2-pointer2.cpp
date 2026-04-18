@@ -21,19 +21,12 @@ void onMain(){
         console::log( "count->",  GC.count() );
     return -1; });
 
-    process::await([&](){
+    process::await([&](){ // <- here & is safe because await block the main thread but not the EvLoop.
         console::log("-- 2 --");
         console::log( "addr ->",  GC );
         console::log( "value->", *GC );
         console::log( "count->",  GC.count() );
     return -1; });
-
-    process::onSIGCLOSE.once([=](){
-        console::log("-- 3 --");
-        console::log( "addr ->",  GC );
-        console::log( "value->", *GC );
-        console::log( "count->",  GC.count() );
-    });
 
     console::log("-- 4 --");
     console::log( "addr ->",  GC );

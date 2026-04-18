@@ -44,7 +44,7 @@ namespace nodepp { namespace encoder { namespace hash {
 
     inline ulong get( int key, int tableSize ) { return key % tableSize; }
 
-    inline ulong get( const string_t& key )    { return get( key, HASH_TABLE_SIZE ); }
+    inline ulong get( const string_t& key )    { return get( key, NODEPP_HASH_TABLE_SIZE ); }
 
 }}}
 
@@ -257,8 +257,7 @@ namespace nodepp { namespace encoder { namespace base64 {
 
     inline string_t set( const string_t &in ) {
 
-        queue_t<char> out; int pos1=0, pos2=-8;
-        array_t<int> T( 256, -1 );
+        queue_t<char> out; int pos1=0, pos2=-8; ptr_t<int> T( 256, -1 );
 
         for ( int i=0; i<64; ++i ) T[NODEPP_BASE64[i]] = i;
         for ( uchar c: in ) { if ( T[c]==-1 ) break;

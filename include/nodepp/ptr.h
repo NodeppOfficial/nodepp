@@ -21,7 +21,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { template< class T, ulong STACK_SIZE=MAX_SSO > class ptr_t {
+namespace nodepp { template< class T, ulong STACK_SIZE = NODEPP_MAX_SSO_SIZE > class ptr_t {
 private:
 
     static constexpr ulong SSO = ( STACK_SIZE>0 && type::is_trivially_copyable<T>::value ) ? STACK_SIZE : 1;
@@ -220,6 +220,8 @@ protected:
          limit  = other.limit ;
     }
 
+    bool& shutdown() const noexcept { return NODEPP_SHTDWN(); }
+
 public:
 
     ptr_t& operator=( /*-*/ ptr_t&& other ) noexcept { mve(type::move(other)); return *this; }
@@ -257,7 +259,7 @@ public:
     /*─······································································─*/
 
     T& operator[]( ulong i ) const noexcept { 
-       return !empty() && i<size() ? data()[i] : data()[i%size()];
+       return i<size() ? data()[i] : !empty() ? data()[i%size()] : data()[0];
     }
 
     /*─······································································─*/
@@ -349,7 +351,7 @@ public:
 
     /*─······································································─*/
 
-    ulong    count() const noexcept { return null() ? 0 /*-*/ : SHOULD_CLOSE() ? 1 : (ulong) address->count; }
+    ulong    count() const noexcept { return null() ? 0 /*-*/ : shutdown() ? 1 : (ulong) address->count; }
     ulong     size() const noexcept { return null() ? 0 /*-*/ : limit - offset; }
     
     T*       begin() const noexcept { return null() ? nullptr : _begin_( address ); }

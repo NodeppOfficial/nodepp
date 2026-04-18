@@ -30,9 +30,10 @@ protected:
 
 public:
 
-    coroutine_t( T callback ) noexcept : obj( 0UL, NODE() ) { obj->callback = callback; }
+    template< class T >
+    coroutine_t( const T& callback ) noexcept : obj( new NODE() ) { obj->callback = callback; }
 
-    coroutine_t() noexcept : obj( 0UL, NODE() ) { obj->alive = 0; }
+    coroutine_t() noexcept : obj( new NODE() ) { obj->alive = 0; }
 
     /*─······································································─*/
 
@@ -51,10 +52,12 @@ public:
     bool is_available() const noexcept { return obj->alive; }
     
     /*─······································································─*/
-
-    coEmit() const { return next(); } int next() const {
-        if   ( !obj->alive ){ return -1; }
-        return  obj->callback( obj->state, obj->time );
+    
+    int operator()() const { return emit(); }
+    
+    int emit() const {
+        if  ( !obj->alive ){ return -1; }
+        return obj->callback( obj->state, obj->time );
     }
 
 }; }

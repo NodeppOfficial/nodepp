@@ -17,7 +17,7 @@
 #if defined(_POSIX_THREADS) && (_POSIX_THREADS > 0)
 #define NODEPP_THREAD_SUPPORTED
 #else
-#define thread_local  
+#define thread_local /*unused*/
 #endif
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -28,24 +28,24 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define coDelay(VALUE)           do { _time_=process::millis()+VALUE; while( process::millis()<_time_ ){ coErrno(VALUE,_LINE_,1); }} while(0);
-#define coUDelay(VALUE)          do { _time_=process::micros()+VALUE; while( process::micros()<_time_ ){ coNext; }} while(0);
-#define coErrno(DELAY,STATE,OUT) do { coSet(STATE); coroutine::getno( OUT,coGet,DELAY ); return OUT; case STATE:; } while(0);
+#define coDelay(VALUE)           do { _time_=nodepp::process::millis()+VALUE; while( nodepp::process::millis()<_time_ ){ coErrno(VALUE,_LINE_,1); }} while(0);
+#define coUDelay(VALUE)          do { _time_=nodepp::process::micros()+VALUE; while( nodepp::process::micros()<_time_ ){ /*------------*/ coNext; }} while(0);
+#define coErrno(DELAY,STATE,OUT) do { coSet(STATE);  nodepp ::coroutine::getno( OUT,coGet,DELAY ); return OUT; case STATE:; } while(0);
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define coGoto(VALUE)  do { coSet( VALUE ); coroutine::getno(1,coGet); return 1; } while(0);
-#define coStay(VALUE)  do { coSet( VALUE ); coroutine::getno(0,coGet); return 0; } while(0);
-#define coNext         do { coErrno(0UL,_LINE_,1); /*-------------------------*/ } while(0);
-#define coYield(VALUE) do { coErrno(0UL, VALUE,1); /*-------------------------*/ } while(0);
-#define coWait(VALUE)  do { while( VALUE ){ /*------------------------*/ coNext;}} while(0);
-#define coEnd          do { _time_=0; _state_=_time_; /**/ coroutine::getno(-1); } while(0); return -1;
-#define coStop            } _time_=0; _state_=_time_; /**/ coroutine::getno(-1); } while(0); return -1;
+#define coGoto(VALUE)  do { coSet( VALUE ); nodepp::coroutine::getno(1,coGet); return 1; } while(0);
+#define coStay(VALUE)  do { coSet( VALUE ); nodepp::coroutine::getno(0,coGet); return 0; } while(0);
+#define coNext         do { coErrno(0UL,_LINE_,1); /*---------------------------------*/ } while(0);
+#define coYield(VALUE) do { coErrno(0UL, VALUE,1); /*---------------------------------*/ } while(0);
+#define coWait(VALUE)  do { while( VALUE ){ /*-------------------------------*/ coNext; }} while(0);
+#define coEnd          do { _time_=0; _state_=_time_; /**/ nodepp::coroutine::getno(-1); } while(0); return -1;
+#define coStop            } _time_=0; _state_=_time_; /**/ nodepp::coroutine::getno(-1); } while(0); return -1;
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #define coStart  thread_local static int _state_=0; thread_local static ulong _time_=0; coBegin
-#define coBegin  do { switch(_state_) { case 0:; coroutine::getno(-2);
+#define coBegin  do { switch(_state_) { case 0:; nodepp::coroutine::getno(-2);
 #define coEmit   int operator()
 
 #define coSet(VALUE) _state_ = VALUE
@@ -54,15 +54,15 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define onMain INIT(); int main( int argc, char** args ) { \
-   process::start( argc,args ); INIT(); \
-   process::stop(); return 0;           \
-}  void INIT
+#define onMain NODEPP_BEGIN(); int main( int argc, char** args ) { \
+   nodepp::process::start( argc,args ); NODEPP_BEGIN(); \
+   nodepp::process::wait (); return 0 ; \
+}  void NODEPP_BEGIN
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#define GENERATOR(NAME) struct NAME : public nodepp::generator_t
 #define COROUTINE()     [=]( int& _state_, ulong& _time_ )
-#define GENERATOR(NAME) struct NAME : public generator_t
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -81,7 +81,6 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define _JSON_(...) json::parse(_STRING_(__VA_ARGS__))
 #define _FUNC_  __PRETTY_FUNCTION__
 #define _STRING_(...) #__VA_ARGS__
 #define _NAME_  __FUNCTION__
@@ -98,17 +97,13 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-bool&   SHOULD_CLOSE(){ static bool out=false; return out; }
-#define MAX_SOCKET      limit::get_soft_fileno()
-#define TIMEOUT         process::get_timeout()
-
-#define HASH_TABLE_SIZE 16
-#define MAX_BATCH       16
-#define MAX_SSO         16
-#define MAX_PATH        1024
-#define MAX_POOL_SIZE   1024
-#define UNBFF_SIZE      4096
-#define CHUNK_SIZE      65536
+#define NODEPP_MAX_SOCKET       nodepp::limit::get_soft_fileno()
+#define NODEPP_MAX_PATH_SIZE    1024
+#define NODEPP_MAX_BATCH_SIZE   16
+#define NODEPP_MAX_SSO_SIZE     16
+#define NODEPP_HASH_TABLE_SIZE  16
+#define NODEPP_UNBFF_SIZE       4096
+#define NODEPP_CHUNK_SIZE       65536
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -245,7 +240,7 @@ bool&   SHOULD_CLOSE(){ static bool out=false; return out; }
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define typeof(DATA) string_t( typeid(DATA).name() )
+#define typeof(DATA) nodepp::string_t( typeid(DATA).name() )
 
 #define ullong  unsigned long long int
 #define ulong   unsigned long int
@@ -279,7 +274,10 @@ bool&   SHOULD_CLOSE(){ static bool out=false; return out; }
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-using null_t = decltype( nullptr );
+namespace nodepp {
+static bool& NODEPP_SHTDWN(){ static bool out=false; return out; }
+/*--*/ using null_t = decltype( nullptr );
+}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

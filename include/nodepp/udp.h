@@ -61,11 +61,7 @@ public:
     /*─······································································─*/
 
     bool is_closed() const noexcept { return obj->state & STATE::UDP_STATE_CLOSED; }
-    void     close() const noexcept { 
-        if( is_closed() ){ return; } 
-        obj->state = STATE::UDP_STATE_CLOSED; 
-        onClose.emit(); 
-    }
+    void     close() const noexcept { free(); }
 
     /*─······································································─*/
 
@@ -76,25 +72,20 @@ public:
         if( obj->state & STATE::UDP_STATE_USED )
           { onError.emit("udp listener is used");   return; } 
 
-        socket_t sk; obj->state= STATE::UDP_STATE_USED;
+        socket_t sk; obj->state = STATE::UDP_STATE_USED;
         sk.AF      = addr.family;
         sk.SOCK    = SOCK_DGRAM ;
         sk.IPPROTO = IPPROTO_UDP;
 
         if( sk.socket( addr.address, port )==-1 ){
-            onError.emit("Error while creating UDP"); 
-            close(); sk.free(); return; 
+            onError.emit( "Error while creating UDP" ); return; 
         }   sk.set_sockopt( obj->agent );
 
         if( sk.bind() == -1 ){
-            onError.emit("Error while binding UDP"); 
-            close(); sk.free(); return; 
+            onError.emit( "Error while binding UDP" ); return; 
         }
 
-        auto self = type::bind( this );
-        sk.onDrain.once([=](){ self->close(); });
-
-        process::add([=](){
+        auto self = type::bind(this); process::add([=](){
 
             cb(sk); self->onSocket.emit(sk);
             /*---*/ self->obj->func(sk);
@@ -120,24 +111,20 @@ public:
     void connect( const dns_t& addr, int port, NODE_CLB cb=nullptr ) const noexcept {
 
         if( obj->state & STATE::UDP_STATE_CLOSED )
-          { onError.emit("udp listener is closed"); return; } 
+          { onError.emit( "udp listener is closed" ); return; } 
         if( obj->state & STATE::UDP_STATE_USED )
-          { onError.emit("udp listener is used");   return; } 
+          { onError.emit( "udp listener is used" );   return; } 
 
-        socket_t sk; obj->state= STATE::UDP_STATE_USED;
+        socket_t sk; obj->state = STATE::UDP_STATE_USED;
         sk.AF      = addr.family;
         sk.SOCK    = SOCK_DGRAM ;
         sk.IPPROTO = IPPROTO_UDP;
 
         if( sk.socket( addr.address, port )==-1 ){
-            onError.emit("Error while creating UDP"); 
-            close(); sk.free(); return; 
+            onError.emit( "Error while creating UDP" ); return; 
         }   sk.set_sockopt( obj->agent );
         
-        auto self = type::bind( this );
-        sk.onDrain.once([=](){ self->close(); });
-
-        process::add([=](){
+        auto self = type::bind(this); process::add([=](){
         
             cb(sk); self->onSocket.emit(sk);
             /*---*/ self->obj->func(sk);
@@ -161,9 +148,11 @@ public:
     /*─······································································─*/
 
     void free() const noexcept {
-        if( is_closed() ){ return; }close();
+        if( is_closed() ){ return; }
+        obj->state = STATE::UDP_STATE_CLOSED; 
         onConnect.clear(); onSocket.clear();
         onError  .clear(); onOpen  .clear();
+        onClose  .emit ();
     }
 
 };

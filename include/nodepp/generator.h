@@ -21,7 +21,7 @@ namespace nodepp { namespace generator { namespace file {
     protected: ulong d; ulong* r;
     public:    string_t data; int state;
 
-    template< class T > coEmit( T* str, ulong size=CHUNK_SIZE ){
+    template< class T > coEmit( T* str, ulong size = NODEPP_CHUNK_SIZE ){
     coBegin; data.clear(); state=0; d=0;
 
         if( !str->is_available()       ){ coEnd; } r=str->get_range();
@@ -552,9 +552,9 @@ namespace nodepp { namespace generator { namespace ws {
 
     protected:
 
-        void read_ws_hdr_frame( char* bf, ulong& size ){ size=0;
-
-            do { array_t<bool> y;
+        void read_ws_hdr_frame( char* bf, ulong& size ) { 
+            
+            size=0; do { array_t<bool> y;
 
                 y = array_t<bool>(encoder::bin::get( bf[0] ));
 
@@ -576,7 +576,7 @@ namespace nodepp { namespace generator { namespace ws {
 
         }
 
-        void read_ws_hdr_lensk( char* bf, ulong& size ){
+        void read_ws_hdr_lensk( char* bf, ulong& size ) {
 
             if ( frame.MSK == 1 ){ size -= 4;
             for( ulong x=0; x<4; ++x ){ frame.KEY[x] = bf[x+size]; }}
@@ -585,6 +585,10 @@ namespace nodepp { namespace generator { namespace ws {
             for( ulong x=0; x < size; ++x ){ frame.LEN=frame.LEN << 8 | (uchar) bf[x]; }}
 
         }
+        
+        string_t pong_frame() const noexcept { return ptr_t<char>({ 0x8A, 0x00 }); }
+        string_t ping_frame() const noexcept { return ptr_t<char>({ 0x89, 0x00 }); }
+        string_t end_frame () const noexcept { return ptr_t<char>({ 0x88, 0x00 }); }
 
     public:
 
@@ -595,10 +599,16 @@ namespace nodepp { namespace generator { namespace ws {
         coWait(str->__read( bf, 2   )==-2); read_ws_hdr_frame( bf, len );
         coWait(str->__read( bf, len )==-2); read_ws_hdr_lensk( bf, len );
 
-        if( frame.LEN ==  0 ){ data=0; coGoto(0); }
-        if( frame.OPC ==  8 ){ data=0; coEnd;     }
-        if( frame.OPC >= 20 ){ data=0; coEnd;     }
+        if( frame.OPC ==  8 ){ data=0; str->write( end_frame () ); coEnd;     }
+        if( frame.OPC >= 20 ){ data=0; str->write( end_frame () ); coEnd;     }
+        if( frame.OPC ==  9 ){ data=0; str->write( pong_frame() ); coGoto(0); }
 
+        if( frame.OPC >= 11 || frame.OPC == 10 ||
+          ( frame.OPC >=  3 && frame.OPC <= 7  )
+        ) { data=0; coGoto(0); }
+        
+        if( frame.LEN ==  0 ){ data=0; coGoto(0); }
+        
         coYield(1); len=0;
 
         while ( frame.LEN > 0 ){ sz = min( sx, frame.LEN );
@@ -623,12 +633,13 @@ namespace nodepp { namespace generator { namespace ws {
 
     protected:
 
-        string_t write_ws_frame( char* bf, const ulong& sx ) {
+        string_t write_ws_frame( char* bf, const ulong& sx, uchar opcode=0 ) {
             auto byt = encoder::bytes::get( sx ); uint idx = 0;
 
-            auto x=sx; bool b=0; while( x-->0 ){
-                if( !string::is_print(bf[x]) ){ b=1; break; }
-            }   bfx[idx] = !b ? (char) 0b10000010 : (char) 0b10000001;
+            if( opcode == 0 ) {
+                auto x=sx; bool b=0; while( x-->0 ){ if( !string::is_print(bf[x]) ){ b=1; break; } }   
+                     bfx[idx] = !b ? (char) 0x82 : (char) 0x81;
+            } else { bfx[idx] = (char)(0x80 | opcode); }
 
             ++idx; if ( sx < 126 ){
                 bfx[idx] = (uchar)(byt[byt.size()-1]); ++idx;

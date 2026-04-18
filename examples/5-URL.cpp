@@ -9,12 +9,14 @@ using namespace nodepp;
 
 void onMain(){
 	
-    string_t uri = "http://becerra:enmanuel@www.google.com/path/to/file#done?var1=10&var2=50&var3=100&var4=hello_world!";
+    string_t uri = "http://becerra:enmanuel@[www.google.com]:8000/path/to/file#done?var1=10&var2=50&var3=100&var4=hello_world!";
     auto     ppt = url::parse( uri ); 
 
     console::log( "hostname:", ppt.hostname );
     console::log( "protocol:", ppt.protocol );
     console::log( "pathname:", ppt.pathname );
+    console::log( "rawname:" , ppt.rawname  );
+    console::log( "family:",   ppt.family );
     console::log( "search:",   ppt.search );
     console::log( "origin:",   ppt.origin );
     console::log( "port:",     ppt.port );

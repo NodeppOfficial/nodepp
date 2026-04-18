@@ -6,36 +6,34 @@ using namespace nodepp;
 
 void onMain(){
 
-    ptr_t<int> x = new int(10); mutex_t mut;
+    event_t<> ev;
 
-    worker::add( mutex::add( mut, coroutine::add( COROUTINE(){
-    coBegin
+    worker::add([=](){
+        auto krn = type::bind( process::kernel() );
+        process::add([=](){
+            console::log( ">>", process::size() );
+        return 1; });
+        ev.on([=](){ 
+            krn->loop_add([=](){
+                console::log( "hello world" );
+            return 1; });
+        });
+        console::log( "real0:", &process::kernel() );
+    process::wait(); return -1; });
 
-        while( *x > 0 ){
-            console::log( "wrk2>> Hello World", *x );
-        *x-=1; coDelay(100); }
+    worker::add([=](){
+        ev.on([=](){ console::log( "<B>", &process::kernel() ); });
+        console::log( "real1:", &process::kernel() );
+    return -1; });
 
-    coFinish
-    }) ));
+    worker::add([=](){
+        ev.on([=](){ console::log( "<C>", &process::kernel() ); });
+        console::log( "real2:", &process::kernel() );
+    return -1; });
 
-    worker::add( mutex::add( mut, coroutine::add( COROUTINE(){
-    coBegin
-
-        while( *x > 0 ){
-            console::log( "wrk1>> Hello World", *x );
-        *x-=1; coDelay(100); }
-
-    coFinish
-    }) ));
-
-    worker::add( mutex::add( mut, coroutine::add( COROUTINE(){
-    coBegin
-
-        while( *x > 0 ){
-            console::log( "wrk0>> Hello World", *x );
-        *x-=1; coDelay(100); }
-
-    coFinish
-    }) ));
+    timer::timeout([=](){
+        ev.emit();
+        console::log( "<D>", &process::kernel() );
+    },1000);
 
 }

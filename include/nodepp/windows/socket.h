@@ -26,7 +26,7 @@ namespace nodepp { namespace _socket_ {
     inline void start_device(){ 
     static bool sockets=false;
         if( sockets == false ){ WSADATA wsaData;
-            process::onSIGEXIT.once([=](){ WSACleanup(); });
+            process::NODEPP_SIGNAL().onSIGEXIT.once([=](){ WSACleanup(); });
         if( WSAStartup(MAKEWORD(2,2),&wsaData)!= 0 )
           { throw except_t("Failed to initialize Winsock"); }
         }   sockets = true;
@@ -40,7 +40,7 @@ namespace nodepp {
 
 struct ip_t    { string_t address; uint port; };
 struct agent_t {
-    ulong buffer_size   = CHUNK_SIZE;
+    ulong buffer_size   = NODEPP_CHUNK_SIZE;
     ulong conn_timeout  = 60000;
     ulong recv_timeout  = 0;
     ulong send_timeout  = 0;
@@ -64,11 +64,6 @@ protected:
 protected:
 
     void kill() const noexcept {
-        CancelIoEx((HANDLE)obj->fd, &obj->ovr);
-        CancelIoEx((HANDLE)obj->fd, &obj->ovw);
-        ::shutdown   ( obj->fd , SD_RECEIVE ); 
-        ::closesocket( obj->fd );
-        obj->fd     = INVALID_SOCKET;
         obj->state |= STATE::FS_STATE_KILL;
     }
 
@@ -124,6 +119,14 @@ protected:
         generator::file::line  _line ;
         generator::file::read  _read ;
         generator::file::write _write;
+
+       ~NODE(){ if( fd == INVALID_SOCKET ){ return; }
+            CancelIoEx   ((HANDLE) fd, &ovr);
+            CancelIoEx   ((HANDLE) fd, &ovw);
+            ::shutdown   ( fd , SD_RECEIVE ); 
+            ::closesocket( fd /*--------*/ );
+        }
+
     };  ptr_t<NODE> obj;
 
     /*─······································································─*/
@@ -411,8 +414,8 @@ public:
 
     void close() const noexcept {
         if( is_state ( STATE::FS_STATE_DISABLE ) ){ return; }
-            set_state( STATE::FS_STATE_CLOSE   );
-    onDrain.emit(); free(); }
+            onDrain.emit(); set_state( STATE::FS_STATE_CLOSE   );
+    free(); }
 
     /*─······································································─*/
 
@@ -475,7 +478,7 @@ public:
 
     /*─······································································─*/
 
-    socket_t( SOCKET fd, ulong _size=CHUNK_SIZE ) : obj( new NODE() ) { _socket_::start_device();
+    socket_t( SOCKET fd, ulong _size=NODEPP_CHUNK_SIZE ) : obj( new NODE() ) { _socket_::start_device();
         if( fd == INVALID_SOCKET ){ throw except_t("Such Socket has an Invalid fd"); }
         obj->fd = fd; set_nonbloking_mode(); set_buffer_size(_size);
     }
@@ -488,13 +491,12 @@ public:
 
     void free() const noexcept {
 
-        if( is_state( STATE::FS_STATE_REUSE ) && !is_feof() && obj.count()>1 ){ return; }
+        if( is_state( STATE::FS_STATE_REUSE ) && !is_feof() && obj.count() >1 ){ return; }
         if( is_state( STATE::FS_STATE_KILL  ) ) /*-------*/ { return; }
-        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) )
-          { kill(); onDrain.emit(); } else { kill(); }
+        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) ){ onDrain.emit(); }
 
         onUnpipe.clear(); onResume.clear();
-        onError .clear(); onData  .clear(); 
+        onError .clear(); onData  .clear(); kill();
         onOpen  .clear(); onPipe  .clear(); onClose.emit();
 
     }
@@ -515,7 +517,7 @@ public:
         WSAIoctl(obj->fd, SIO_GET_EXTENSION_FUNCTION_POINTER, &GuidConnectEx, sizeof(GuidConnectEx),
                 &obj->lpfnConnectEx, sizeof(obj->lpfnConnectEx), &c, NULL, NULL);
 
-        set_buffer_size( CHUNK_SIZE );
+        set_buffer_size( NODEPP_CHUNK_SIZE );
         set_nonbloking_mode();
         set_reuse_address (1);
 
@@ -611,7 +613,7 @@ public:
     /*─······································································─*/
 
     int listen() const noexcept { if( !is_server() ){ return -1; }
-        return ::listen( obj->fd, MAX_SOCKET ) ?-1: 1;
+        return ::listen( obj->fd, NODEPP_MAX_SOCKET ) ?-1: 1;
     }
 
     int accept() const noexcept { int c=0;
@@ -628,7 +630,7 @@ public:
 
     /*─······································································─*/
 
-    string_t read( ulong size=CHUNK_SIZE ) const noexcept {
+    string_t read( ulong size=NODEPP_CHUNK_SIZE ) const noexcept {
         while( obj->_read( this, size ) == 1 )
              { process::next(); }
         return obj->_read.data;

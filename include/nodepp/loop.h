@@ -18,8 +18,8 @@ namespace nodepp { class loop_t {
 private:
 
     using NODE_CLB = function_t<int>;
-    using NODE_TASK= type::pair<ulong,void*>;
-    using NODE_PAIR= type::pair<NODE_CLB,ptr_t<task_t>>;
+    using NODE_TASK= pair_t<ulong,void*>;
+    using NODE_PAIR= pair_t<NODE_CLB,ptr_t<task_t>>;
 
 protected:
 
@@ -58,7 +58,7 @@ protected:
     /*─······································································─*/
 
     inline int normal_queue_next() const {
-    
+
         if( obj->normal.empty() ) /*-*/ { return -1; } do {
         if( obj->normal.get()==nullptr ){ return -1; }
 
@@ -78,7 +78,9 @@ protected:
 
         int c=0; ulong d=0; while( ([&](){
             
-            do{ c=y->data.first(); auto z=coroutine::getno();
+            do{ auto mem = &y->data.second;
+                c=y->data.first  (); auto z = coroutine::getno();
+            if( obj->normal.empty() || &y->data.second != mem  ){ return -1; }
             if( c==1 && z.flag&coroutine::STATE::CO_STATE_DELAY )
               { d=z.delay; goto GOT3; } switch(c) {
                 case  1 :  goto GOT1;   break;
@@ -105,7 +107,7 @@ protected:
 
                 auto z = obj->blocked.as( get_nearest_timeout( wake_time ) );
                 obj->blocked.insert( z, NODE_TASK( { wake_time, y } ));
-                obj->normal .erase(x); 
+                obj->normal .erase (x); 
 
             return -1; } while(0);
 

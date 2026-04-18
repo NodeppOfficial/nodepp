@@ -24,7 +24,7 @@ namespace nodepp { namespace process { namespace env {
     
     inline int remove( const string_t& name ){ return SetEnvironmentVariableA( name.c_str(), nullptr ); }
 
-    inline string_t get( const string_t& name ){ ptr_t<char> buffer ( UNBFF_SIZE );
+    inline string_t get( const string_t& name ){ ptr_t<char> buffer ( NODEPP_UNBFF_SIZE );
         auto x = GetEnvironmentVariableA( name.c_str(), &buffer, buffer.size() );
         return string_t( &buffer, (ulong) x );
     }
@@ -35,12 +35,14 @@ namespace nodepp { namespace process { namespace env {
         auto file = file_t( path, "r" );
 
         while( !file.is_closed() ){
+
             /*--------*/ reg.match_all( file.read_line() );
             auto match = reg.get_memory  ();
             /*--------*/ reg.clear_memory();
 
             if ( match.size() != 2 ){ continue; } 
             set( match[0], match[1] );
+            
         }
         
     } catch(...) { return -1; } return 1; }
