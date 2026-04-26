@@ -20,14 +20,27 @@
 
 namespace nodepp { namespace fs {
 
-    inline file_t std_input ( const ulong& _size=CHUNK_SIZE ){ return file_t( GetStdHandle( STD_INPUT_HANDLE ), _size ); }
-    inline file_t std_output( const ulong& _size=CHUNK_SIZE ){ return file_t( GetStdHandle( STD_OUTPUT_HANDLE), _size ); }
-    inline file_t std_error ( const ulong& _size=CHUNK_SIZE ){ return file_t( GetStdHandle( STD_ERROR_HANDLE ), _size ); }
+    inline file_t std_input ( const ulong& _size=NODEPP_CHUNK_SIZE ){ return file_t( GetStdHandle( STD_INPUT_HANDLE ), _size ); }
+    inline file_t std_output( const ulong& _size=NODEPP_CHUNK_SIZE ){ return file_t( GetStdHandle( STD_OUTPUT_HANDLE), _size ); }
+    inline file_t std_error ( const ulong& _size=NODEPP_CHUNK_SIZE ){ return file_t( GetStdHandle( STD_ERROR_HANDLE ), _size ); }
 
     /*─······································································─*/
 
-    inline file_t readable( const string_t& path, const ulong& _size=CHUNK_SIZE ){ return file_t( path, "r", _size ); }
-    inline file_t writable( const string_t& path, const ulong& _size=CHUNK_SIZE ){ return file_t( path, "w", _size ); }
+    inline file_t readable( const string_t& path, const ulong& _size=NODEPP_CHUNK_SIZE ){ return file_t( path, "r", _size ); }
+    inline file_t writable( const string_t& path, const ulong& _size=NODEPP_CHUNK_SIZE ){ return file_t( path, "w", _size ); }
+
+    /*─······································································─*/
+
+    inline bool exists_folder( const string_t& path ){
+        if( path.empty() ){ return 0; } DWORD attributes = GetFileAttributesA( path.c_str() );
+        return ( attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY) );
+    }
+
+    inline bool exists_file( const string_t& path ){
+        if( path.empty() ) /*----------------*/ { return 0; }
+        if( exists_folder( path ) ) /*-------*/ { return 0; }
+        return !GetFileAttributesA( path.c_str() ) ? 0 : 1;
+    }
 
     /*─······································································─*/
 
@@ -75,29 +88,98 @@ namespace nodepp { namespace fs {
 
     /*─······································································─*/
 
-    inline void read_file( const string_t& path, function_t<void,string_t> cb ){
-        if( path.empty() ){ return; } try {
-            file_t _file( path, "r" );
-            _file.onData( cb ); stream::pipe(_file);
-        } catch( except_t ){}
-    }
+    inline promise_t<string_t,except_t> read_file( const string_t& path ){
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res,  rej_t<except_t> rej
+    ){
 
-    inline string_t read_file( const string_t& path ){ string_t s;
-        if( path.empty() ){ return s; } try {
-            file_t _file( path, "r" );
-            return stream::await(_file);
-        } catch( except_t ){}
-    return nullptr; }
+        if( !exists_file( path ) ){ rej( "file not found" ); return; }
+
+        auto rd1 = type::bind( generator::file::read() );
+        auto fl1 = type::bind( file_t( path, "r" ) );
+        auto bff = ptr_t<string_t>( 0UL );
+
+        process::add( coroutine::add( COROUTINE(){
+        coBegin
+
+            while( fl1->is_available() ){
+                
+                coWait( (*rd1)( &fl1 ) == 1 );
+                if( rd1->state<=0 ){ break; }
+
+               *bff += rd1->data;
+
+            coNext; } res( *bff );
+
+        coFinish
+        }));
+
+    }); }
+
+    /*─······································································─*/
+
+    inline promise_t<ulong,except_t> write_file( const string_t& path, const string_t& message ){
+    return promise_t<ulong,except_t> ([=]( 
+        res_t<ulong> res, rej_t<except_t> rej
+    ){
+        
+        auto rd1 = type::bind( generator::file::write() );
+        auto fl1 = type::bind( file_t( path, "w" ) );
+        auto bff = ptr_t<ulong>( 0UL, 0UL );
+
+        process::add( coroutine::add( COROUTINE(){
+        coBegin
+
+            while( fl1->is_available() ){
+                
+                coWait( (*rd1)( &fl1, message ) == 1 );
+                if( rd1->state<=0 ){ break; }
+
+               *bff += rd1->state;
+
+            coNext; } res( *bff );
+
+        coFinish
+        }));
+
+    }); }
+
+    /*─······································································─*/
+
+    inline promise_t<ulong,except_t> append_file( const string_t& path, const string_t& message ){
+    return promise_t<ulong,except_t> ([=]( 
+        res_t<ulong> res,  rej_t<except_t> rej
+    ){
+        
+        if( !exists_file( path ) ){ rej( "file not found" ); return; }
+
+        auto rd1 = type::bind( generator::file::write() );
+        auto fl1 = type::bind( file_t( path, "a+" ) );
+        auto bff = ptr_t<ulong>( 0UL, 0UL );
+
+        process::add( coroutine::add( COROUTINE(){
+        coBegin
+
+            while( fl1->is_available() ){
+                
+                coWait( (*rd1)( &fl1, message ) == 1 );
+                if( rd1->state<=0 ){ break; }
+
+               *bff += rd1->state;
+
+            coNext; } res( *bff );
+
+        coFinish
+        }));
+
+    }); }
 
     /*─······································································─*/
 
     inline int copy_file( const string_t& src, const string_t& des ){
-        if( src.empty() || des.empty() ){ return -1; } try {
-            file_t _file_a ( src, "r" );
-            file_t _file_b ( des, "w" );
-            stream::pipe( _file_a, _file_b ); 
-        return 0; } catch( except_t ) {} return -1;
-    }
+        if( !exists_file( src ) ){ return -1; } 
+        stream::pipe( file_t( src, "r" ), file_t( des, "w" ) ); 
+    return 1; }
 
     /*─······································································─*/
 
@@ -117,43 +199,23 @@ namespace nodepp { namespace fs {
 
     inline int remove_file( const string_t& path ){
         if( path.empty() ){ return -1; }
-        return remove( path.c_str() );
-    }
-
-    /*─······································································─*/
-
-    inline bool exists_file( const string_t& path ){
-        if  ( path.empty() )/*-*/{ return 0; }
-        try { file_t( path, "r" ); return 1;
-            } catch( except_t ){ } return 0;
+        return DeleteFileA( path.c_str() );
     }
 
     /*─······································································─*/
 
     inline int create_file( const string_t& path ){
-        if  ( path.empty() )/*--*/{ return -1; }
-        try { file_t( path, "w+" ); return  1;
-            } catch( except_t ){  } return  0;
+        if  ( exists_folder( path ) ){ return -1; }
+        if  ( path.empty() )/*-----*/{ return -1; }
+        file_t( path, "w+" ); /*----*/ return  1;
     }
 
     /*─······································································─*/
 
     inline ulong file_size( const string_t& path ){
-        try { file_t file( path, "r" );
-              return file.size();
-        } catch( except_t ){} return 0;
-    }
-
-    /*─······································································─*/
-
-    inline void write_file( const string_t& path, const string_t& data ){
-        file_t file( path, "w" ); file.write( data );
-    }
-
-    /*─······································································─*/
-
-    inline void append_file( const string_t& path, const string_t& data ){
-        file_t file( path, "a" ); file.write( data );
+        if( exists_file( path ) ){
+            return file_t( path, "r" ).size();
+        }   return 0;
     }
 
     /*─······································································─*/
@@ -184,15 +246,8 @@ namespace nodepp { namespace fs {
 
     /*─······································································─*/
 
-    inline bool exists_folder( const string_t& path ){
-        if( path.empty() ){ return 0; } DWORD attributes = GetFileAttributesA( path.c_str() );
-        return ( attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY) );
-    }
-
-    /*─······································································─*/
-
-    inline void read_folder( const string_t& path, function_t<void,string_t> cb ){
-        if( path.empty() ){ return; } 
+    inline int read_folder_iterator( const string_t& path, function_t<void,string_t> cb ){
+        if( path.empty() ){ return -1; } 
 
         auto findData = type::bind( new WIN32_FIND_DATAA() );
         memset( &findData, 0, sizeof(WIN32_FIND_DATAA) );
@@ -200,7 +255,7 @@ namespace nodepp { namespace fs {
         string_t npath= path::push( path, "*" );
         HANDLE hFind  = FindFirstFileA( npath.c_str(), &findData );
 
-        if( hFind == INVALID_HANDLE_VALUE ){ return; }
+        if( hFind == INVALID_HANDLE_VALUE ){ return -1; }
 
         process::add( coroutine::add( COROUTINE(){
         coBegin
@@ -216,18 +271,25 @@ namespace nodepp { namespace fs {
         coFinish
         }));
         
-    }
+    return 1; }
 
     /*─······································································─*/
 
-    inline ptr_t<string_t> read_folder( const string_t& path ){
-        if( path.empty() ){ return nullptr; }
+    inline promise_t<ptr_t<string_t>,except_t> read_folder( const string_t& path ){
+    return promise_t<ptr_t<string_t>,except_t> ([=](
+        res_t<ptr_t<string_t>> res, rej_t<except_t> rej
+    ){  process::add([=](){
+
+        if( path.empty() )
+          { rej( except_t( "invalid path" ) ); return -1; }
+        
         string_t npath = path::push( path, "*" );
 
         WIN32_FIND_DATAA findData; queue_t<string_t> list;
         HANDLE hFind = FindFirstFileA( npath.c_str(), &findData );
 
-        if( hFind == INVALID_HANDLE_VALUE ){ return nullptr; }
+        if( hFind==INVALID_HANDLE_VALUE )
+          { rej( except_t( "invalid dir" ) ); return -1; }
 
         while( FindNextFileA(hFind,&findData) != 0 ){
             string_t fileName = findData.cFileName;
@@ -235,20 +297,14 @@ namespace nodepp { namespace fs {
               { list.push( fileName ); }
         }
 
-        FindClose( hFind ); return list.data();
-    }
-
-    /*─······································································─*/
-
-    inline long folder_size( const string_t& path ){
-          auto list = read_folder( path );
-        return list.size();
-    }
+        FindClose( hFind ); res( list.data() );
+    
+    return -1; }); });}
 
     /*─······································································─*/
 
     inline bool is_folder( const string_t& path ){ return exists_folder(path); }
-    inline bool   is_file( const string_t& path ){ return exists_file(path); }
+    inline bool   is_file( const string_t& path ){ return exists_file  (path); }
 
     /*─······································································─*/
 

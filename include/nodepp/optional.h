@@ -12,7 +12,11 @@
 #ifndef NODEPP_OPTIONAL
 #define NODEPP_OPTIONAL
 
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #include "any.h"
+
+/*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { 
 template< class T > class optional_t {
@@ -35,10 +39,16 @@ public:
 
     /*─······································································─*/
 
-    T value() const { if ( !has_value() || !obj->data.has_value() ) {
-        throw  except_t("Optional does not have a value");
-    }   return obj->data.template as<T>(); }
+    T value() const { 
+        if( !has_value() || !obj->data.has_value() )
+          { NODEPP_THROW_ERROR("optional does not have a value"); }
+        return obj->data.template as<T>(); 
+    }
     
 };}
 
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

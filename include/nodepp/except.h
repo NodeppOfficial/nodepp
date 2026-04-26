@@ -17,50 +17,42 @@
 namespace nodepp { class except_t {
 protected:
 
-    struct NODE {
-        ptr_t<task_t> ev; string_t msg;
-    };  ptr_t<NODE> obj;
+    string_t msg;
 
 public:
 
-   ~except_t() noexcept {
-        if( obj->ev == nullptr ){ return; }
-   	    process::onSIGERROR.off( obj->ev );
-    }
+    except_t( /*--*/ ) noexcept {}
 
-    except_t() noexcept : obj( new NODE() ) {}
+    except_t( null_t ) noexcept {}
 
     /*─······································································─*/
 
     template< class T, class = typename type::enable_if<type::is_class<T>::value,T>::type >
-    except_t( const T& except_type ) noexcept : obj( new NODE() ) {
-        obj->msg = except_type.what(); auto inp = type::bind( this );
-        obj->ev  = process::onSIGERROR.once([=](int){ inp->print(); });
-    }
+    except_t( const T& except_type ) noexcept { msg = except_type.what(); }
+
+    /*─······································································─*/
+
+    except_t( const string_t& message ) noexcept { msg = message; }
 
     /*─······································································─*/
 
     template< class... T >
-    except_t( const T&... msg ) noexcept : obj( new NODE() ) {
-        obj->msg = string::join( " ", msg... ); auto inp = type::bind( this );
-        obj->ev  = process::onSIGERROR.once([=](int){ inp->print(); });
+    except_t( const T&... message ) noexcept {
+        msg = string::join( " ", message... );
     }
 
     /*─······································································─*/
 
-    except_t( const string_t& msg ) noexcept : obj( new NODE() ) {
-        obj->msg = msg; auto inp = type::bind( this );
-        obj->ev  = process::onSIGERROR.once([=](int){ inp->print(); });
-    }
+    explicit operator bool(void) const noexcept { return !empty(); } 
 
     /*─······································································─*/
 
-    void       print() const noexcept { console::error(obj->msg); }
-    bool       empty() const noexcept { return obj->msg.empty(); }
-    const char* what() const noexcept { return obj->msg.c_str(); }
+    void       print() const noexcept { console::error(msg); }
+    bool       empty() const noexcept { return msg.empty(); }
+    const char* what() const noexcept { return msg.c_str(); }
     operator   char*() const noexcept { return (char*)what(); }
-    string_t    data() const noexcept { return obj->msg; }
-    string_t   value() const noexcept { return obj->msg; }
+    string_t    data() const noexcept { return msg; }
+    string_t   value() const noexcept { return msg; }
 
 };}
 

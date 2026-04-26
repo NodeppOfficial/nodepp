@@ -92,6 +92,14 @@ namespace TEST { namespace STRING {
             } catch ( ... ) { TEST_FAIL(); }
         });
 
+        TEST_ADD( test, "TEST 11 | string type::move", [](){
+            try { string_t a = "aaa";
+                  string_t b = type::move( a );
+            if ( b.size() == 3 && a.empty() )
+               { TEST_DONE(); } TEST_FAIL();
+            } catch ( ... )   { TEST_FAIL(); }
+        });
+
         test.onClose.once([=](){
             console::log("\nRESULT | total:", *totl, "| passed:", *done, "| error:", *err, "| skipped:", *skp );
         });

@@ -59,6 +59,7 @@ protected:
         ptr_t<uchar> bff;
         uint length= 0;
         bool state = 0;
+       ~NODE() { if( ctx ){ EVP_MD_CTX_free( ctx ); } }
     };  ptr_t<NODE> obj;
 
     string_t hex() const noexcept { 
@@ -74,7 +75,7 @@ public:
         obj->ctx   = EVP_MD_CTX_new();
         obj->state = 1;
         if ( !obj->ctx || !EVP_DigestInit_ex( obj->ctx, type, NULL ) )
-           { throw except_t("can't initializate hash_t"); }
+           { NODEPP_THROW_ERROR("can't initializate hash_t"); }
     }
 
    ~hash_t() noexcept { if( obj.count()>1 ){ return; } free(); }
@@ -92,7 +93,6 @@ public:
     void free() const noexcept { 
         if( obj->state == 0 ){ return; } obj->state = 0;
         EVP_DigestFinal_ex( obj->ctx, &obj->bff, &obj->length );
-        EVP_MD_CTX_free( obj->ctx ); 
     }
 
     bool is_available() const noexcept { return obj->state == 1; }
@@ -127,12 +127,12 @@ public:
 
     template< class T >
     hmac_t( const string_t& key, const T& type, ulong length ) 
-    :  obj( new NODE() ) { if( key.empty() ){ throw except_t("can't initializate hmac_t"); }
+    :  obj( new NODE() ) { if( key.empty() ){ NODEPP_THROW_ERROR("can't initializate hmac_t"); }
         obj->bff   = ptr_t<uchar>( length ); 
         obj->ctx   = HMAC_CTX_new(); 
         obj->state = 1;
         if ( !obj->ctx || !HMAC_Init_ex( obj->ctx, key.data(), key.size(), type, nullptr ) )
-           { throw except_t("can't initializate hmac_t"); }
+           { NODEPP_THROW_ERROR("can't initializate hmac_t"); }
     }
     
    ~hmac_t() noexcept { if( obj.count()>1 ){ return; } free(); }
@@ -187,7 +187,7 @@ public:
     event_t<string_t> onData;
 
     xor_t( const string_t& key ) : obj( new NODE() ) {
-        if( key.empty() ){ throw except_t("can't initializate xor_t"); }
+        if( key.empty() ){ NODEPP_THROW_ERROR("can't initializate xor_t"); }
     
         CTX item1; //memset( &item1, 0, sizeof(CTX) );
             item1.key  = key; item1.pos = 0;
@@ -201,7 +201,7 @@ public:
    ~xor_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     void update( string_t msg ) const noexcept { 
-        if( !obj->state ){ return; } ulong chunk=0, /*-------------*/ base=CHUNK_SIZE;
+        if( !obj->state ){ return; } ulong chunk=0, /*-------------*/ base=NODEPP_CHUNK_SIZE;
         while( chunk < msg.size() ){ string_t tmp = msg.slice_view( chunk, chunk + base );
             forEach( y, obj->ctx ){ forEach( x, tmp ){ 
                 x = x ^ y.key[ y.pos % y.key.size() ]; ++y.pos; 
@@ -219,8 +219,8 @@ public:
 
     void free() const noexcept { 
         if ( obj->state == 0 ){ return; } 
-             obj->state = 0; onClose.emit(); 
-             onData.clear();
+             obj->state = 0; 
+        onClose.emit(); onData.clear();
     }
 
     void close() const noexcept { free(); } 
@@ -238,12 +238,13 @@ protected:
         string_t buff;
         bool state =0;
         int    len =0;
+       ~NODE() { if( ctx ){ EVP_CIPHER_CTX_free( ctx ); } }
     };  ptr_t<NODE> obj;
 
     void _init_( const EVP_CIPHER* type, const string_t& key, const string_t& iv ){
-        if( key.empty() ){ throw except_t("can't initializate encrypt_t"); }
+        if( key.empty() ){ NODEPP_THROW_ERROR("can't initializate encrypt_t"); }
 
-        obj->bff        = ptr_t<uchar>(CHUNK_SIZE,'\0');
+        obj->bff        = ptr_t<uchar>(NODEPP_CHUNK_SIZE,'\0');
         int req_key_len = EVP_CIPHER_key_length( type );
         int req_iv_len  = EVP_CIPHER_iv_length ( type );
         obj->ctx        = EVP_CIPHER_CTX_new(); 
@@ -255,7 +256,7 @@ protected:
         memcpy( niv .get(), iv .get(), min( niv .size(), iv .size() ) );
 
         if ( !obj->ctx || !EVP_EncryptInit_ex( obj->ctx, type, NULL, nkey.data(), niv.data() ) )
-           { throw except_t("can't initializate encrypt_t"); }
+           { NODEPP_THROW_ERROR("can't initializate encrypt_t"); }
 
     }
 
@@ -287,7 +288,6 @@ public:
     void free() const noexcept { 
         if( obj->state == 0 ){ return; } obj->state = 0;
         EVP_EncryptFinal( obj->ctx, &obj->bff, &obj->len );
-        EVP_CIPHER_CTX_free( obj->ctx ); 
         if ( obj->len > 0 ) { if ( onData.empty() ) {
                  obj->buff += string_t( (char*)&obj->bff, (ulong) obj->len );
         } else { onData.emit( string_t( (char*)&obj->bff, (ulong) obj->len ) ); 
@@ -313,12 +313,13 @@ protected:
         string_t buff;
         bool state =0; 
         int    len =0;
+       ~NODE() { if( ctx ){ EVP_CIPHER_CTX_free( ctx ); } }
     };  ptr_t<NODE> obj;
 
     void _init_( const EVP_CIPHER* type, const string_t& key, const string_t& iv ){
-        if( key.empty() ){ throw except_t("can't initializate decrypt_t"); }
+        if( key.empty() ){ NODEPP_THROW_ERROR("can't initializate decrypt_t"); }
 
-        obj->bff        = ptr_t<uchar>(CHUNK_SIZE,'\0');
+        obj->bff        = ptr_t<uchar>(NODEPP_CHUNK_SIZE,'\0');
         int req_key_len = EVP_CIPHER_key_length( type );
         int req_iv_len  = EVP_CIPHER_iv_length ( type );
         obj->ctx        = EVP_CIPHER_CTX_new(); 
@@ -330,7 +331,7 @@ protected:
         memcpy( niv .get(), iv .get(), min( niv .size(), iv .size() ) );
 
         if ( !obj->ctx || !EVP_DecryptInit_ex( obj->ctx, type, NULL, nkey.data(), niv.data() ) )
-           { throw except_t("can't initializate encrypt_t"); }
+           { NODEPP_THROW_ERROR("can't initializate encrypt_t"); }
 
     }
     
@@ -362,7 +363,6 @@ public:
     void free() const noexcept { 
         if( obj->state == 0 ){ return; } obj->state = 0;
         EVP_DecryptFinal( obj->ctx, &obj->bff, &obj->len ); 
-        EVP_CIPHER_CTX_free( obj->ctx ); 
         if ( obj->len > 0 ) { if ( onData.empty() ) {
                  obj->buff += string_t( (char*)&obj->bff, (ulong) obj->len );
         } else { onData.emit( string_t( (char*)&obj->bff, (ulong) obj->len ) ); 
@@ -386,6 +386,7 @@ protected:
         string_t chr; bool state =0;
         queue_t<string_t> bff;
         BIGNUM* bn = nullptr;
+       ~NODE() { if( bn ){ BN_clear_free( bn ); } }
     };  ptr_t<NODE> obj;
 
     string_t encode( string_t msg ) const noexcept {
@@ -414,7 +415,7 @@ public:
 
     encoder_t( const string_t& chr ) : obj( new NODE() ) { 
         obj->state = 1; obj->chr = chr; obj->bn = (BIGNUM*) BN_new();
-        if( !obj->bn ){ throw except_t("can't initializate encoder"); }
+        if( !obj->bn ){ NODEPP_THROW_ERROR("can't initializate encoder"); }
     }
     
    ~encoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
@@ -429,9 +430,9 @@ public:
     }
 
     void free() const noexcept { 
-        if( obj->state == 1 ){ return; } obj->state = 0;
-        if( obj->bn != nullptr ){ BN_clear_free( obj->bn ); }
-            onClose.emit(); onData.clear();
+        if( obj->state == 1 ){ return; } 
+            obj->state =  0;
+        onClose.emit(); onData.clear();
     }
 
     bool is_available() const noexcept { return obj->state == 1; }
@@ -451,6 +452,7 @@ protected:
         string_t chr; bool state=0;
         queue_t<string_t> bff;
         BIGNUM* bn =nullptr;
+       ~NODE() { if( bn ){ BN_clear_free( bn ); } }
     };  ptr_t<NODE> obj;
 
     string_t decode( string_t msg ) const noexcept {
@@ -485,7 +487,7 @@ public:
 
     decoder_t( const string_t& chr ) : obj( new NODE() ) { 
         obj->state = 1; obj->chr = chr; obj->bn = (BIGNUM*) BN_new();
-        if( !obj->bn ){ throw except_t("can't initializate decoder"); }
+        if( !obj->bn ){ NODEPP_THROW_ERROR("can't initializate decoder"); }
     }
     
    ~decoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
@@ -500,9 +502,9 @@ public:
     }
 
     void free() const noexcept { 
-        if( obj->state == 1 ){ return; } obj->state = 0;
-        if( obj->bn != nullptr ){ BN_clear_free( obj->bn ); }
-            onClose.emit(); onData.clear();
+        if( obj->state == 1 ){ return; } 
+            obj->state = 0;
+        onClose.emit(); onData.clear();
     }
 
     bool is_available() const noexcept { return obj->state == 1; }
@@ -539,7 +541,7 @@ public:
    ~base64_encoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     base64_encoder_t() noexcept : obj( new NODE() ) {
-        obj->state = 1; obj->bff = ptr_t<char>( CHUNK_SIZE, '\0' );
+        obj->state = 1; obj->bff = ptr_t<char>( NODEPP_CHUNK_SIZE, '\0' );
 
         CTX item1; memset( &item1, 0, sizeof(CTX) );
             item1.pos1 = 0; item1.pos2 =-6; 
@@ -549,22 +551,33 @@ public:
     }
 
     void update( string_t msg ) const noexcept { 
-        if( !obj->state ){ return; } ulong chunk=0, /*--------*/ base=obj->bff.size();
-        while( chunk < msg.size() ){ auto tmp = msg.slice_view( chunk, chunk + base );
-            string_t out; obj->ctx->len = 0; forEach ( x, tmp ) {
+        if( !obj->state ){ return; }
+        
+        ulong chunk = 0; 
+        ulong base = obj->bff.size();
+        
+        while( chunk < msg.size() ) { 
+            string_t tmp = msg.slice_view( chunk, chunk + base );
+            obj->ctx->len = 0; 
+        for  ( auto &x: tmp ) {
+                
+            obj->ctx->pos1 = ( obj->ctx->pos1 << 8 ) | (uint8_t)x; 
+            obj->ctx->pos2 += 8;
 
-                obj->ctx->pos1 = ( obj->ctx->pos1 << 8 ) + x; obj->ctx->pos2 += 8;
+            while ( obj->ctx->pos2 >= 0 ) { 
+                obj->bff[obj->ctx->len] = CRYPTO_BASE64[(obj->ctx->pos1 >> obj->ctx->pos2) & 0x3F];
+                obj->ctx->pos2 -= 6; ++obj->ctx->len; 
+            }   obj->ctx->pos1 &= 0x3F; 
+        
+        } if ( obj->ctx->len > 0 ) {
+            
+            string_t out = string_t( &obj->bff, obj->ctx->len );
+            obj->ctx->size += obj->ctx->len;
+            if   ( onData.empty() ) { obj->buff.push( out ); } 
+            else { onData.emit( out ); }}
 
-                while ( obj->ctx->pos2 >= 0 ) { 
-                    obj->bff[obj->ctx->len] = CRYPTO_BASE64[(obj->ctx->pos1>>obj->ctx->pos2)&0x3F];
-                    obj->ctx->pos2 -= 6; ++obj->ctx->len;
-                }
-
-            }   obj->ctx->size += obj->ctx->len; out = string_t( &obj->bff, obj->ctx->len );
-
-            if ( obj->ctx->len == 0 ){ return; }
-            if ( onData.empty()     ){ obj->buff.push( out ); } else { onData.emit( out ); }
         chunk += base; }
+
     }
 
     void free() const noexcept { if ( obj->state == 0 ){ return; } 
@@ -573,7 +586,7 @@ public:
         if( obj->ctx->pos2 > -6 ){ 
             obj->bff[obj->ctx->len] = CRYPTO_BASE64[((obj->ctx->pos1<<8)>>(obj->ctx->pos2+8))&0x3F];
             obj->ctx->len++; 
-        } while ( ( obj->ctx->len + obj->ctx->size ) % 4 ){ 
+        } while ( ( obj->ctx->len + obj->ctx->size ) % 4 ) { 
             obj->bff[obj->ctx->len] = '='; 
             obj->ctx->len++;
         } 
@@ -620,7 +633,7 @@ public:
    ~base64_decoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     base64_decoder_t() noexcept : obj( new NODE() ) {
-        obj->state = 1; obj->bff = ptr_t<char>( CHUNK_SIZE, '\0' );
+        obj->state = 1; obj->bff = ptr_t<char>( NODEPP_CHUNK_SIZE, '\0' );
 
         CTX item1; memset( &item1, 0, sizeof(CTX) );
             item1.pos1 = 0; item1.pos2 =-8; 
@@ -685,6 +698,13 @@ protected:
         EVP_PKEY*  pkey = nullptr;
         X509*       ctx = nullptr;
         bool      state = 0;
+
+       ~NODE() { 
+            if( ctx  ){ X509_free     ( ctx  ); }
+            if( pkey ){ EVP_PKEY_free ( pkey ); }
+            if( name ){ X509_NAME_free( name ); }
+        }
+
     };  ptr_t<NODE> obj;
 
 public:
@@ -702,7 +722,7 @@ public:
         EVP_PKEY_CTX_free(pctx);
 
         obj->state = 1; if( !obj->ctx || !obj->pkey ) 
-        { throw except_t("can't initializate X509_t"); }
+        { NODEPP_THROW_ERROR("can't initializate X509_t"); }
 
     }
 
@@ -712,7 +732,7 @@ public:
 
     EVP_PKEY* get_pkey() const noexcept { return obj->pkey; }
 
-    void generate( string_t _name, string_t _contry, string_t _organization, ulong _time=31536000L ) const {
+    int generate( string_t _name, string_t _contry, string_t _organization, ulong _time=31536000L ) const {
 
         X509_set_version( obj->ctx, 2 ); ASN1_INTEGER_set( X509_get_serialNumber(obj->ctx), 1 );
         
@@ -724,16 +744,13 @@ public:
         X509_set_issuer_name ( obj->ctx, obj->name );
 
         if( _time != 0 ){
-            X509_gmtime_adj( X509_getm_notBefore(obj->ctx), 0 );
+            X509_gmtime_adj( X509_getm_notBefore(obj->ctx), 0     );
             X509_gmtime_adj( X509_getm_notAfter (obj->ctx), _time );
-        }
+        }   X509_set_pubkey( obj->ctx, obj->pkey ); 
 
-        X509_set_pubkey( obj->ctx, obj->pkey ); 
+        if( !X509_sign( obj->ctx, obj->pkey, EVP_sha256() ) ){ return -1; }
 
-        if( !X509_sign( obj->ctx, obj->pkey, EVP_sha256() ) )
-          { throw except_t("can't generate X509 certificates"); }
-
-    }
+    return 1; }
 
     string_t write_private_key_to_memory( const char* pass=NULL ) const {
         BIO* bo = BIO_new( BIO_s_mem() ); char* data;
@@ -757,19 +774,19 @@ public:
         BIO_free(bo); return res;
     }
 
-    void write_private_key( const string_t& path, const char* pass=NULL ) const {
-        file_t fp( path, "w" ); fp.write( write_private_key_to_memory( pass ) );
+    int write_private_key( const string_t& path, const char* pass=NULL ) const {
+        if( fs::write_file( path, write_private_key_to_memory( pass ) ).await() )
+          { return -1; } return 1;
     }
 
-    void write_certificate( const string_t& path ) const {
-        file_t fp( path, "w" ); fp.write( write_certificate_to_memory() );
+    int write_certificate( const string_t& path ) const {
+        if( fs::write_file( path, write_certificate_to_memory() ).await() )
+          { return -1; } return 1;
     }
 
     void free() const noexcept { 
-        if( obj->state == 0 ){ return; } obj->state = 0; 
-        if( obj->ctx != nullptr ){ X509_free( obj->ctx ); }
-        if( obj->pkey!= nullptr ){ EVP_PKEY_free( obj->pkey ); }
-        if( obj->name!= nullptr ){ X509_NAME_free( obj->name ); }
+        if( obj->state == 0 ){ return; } 
+            obj->state = 0; 
     }
 
 };
@@ -791,13 +808,19 @@ protected:
         BIGNUM* num = nullptr;
         ptr_t<uchar> bff;
         bool  state = 0;
+
+       ~NODE() {
+            if( num ){ BN_free ( num ); }
+            if( rsa ){ RSA_free( rsa ); }
+        }
+
     };  ptr_t<NODE> obj;
     
 public:
 
     rsa_t() : obj( new NODE() ) {
         obj->rsa = RSA_new(); obj->num = BN_new (); obj->state = 1;
-        if( !obj->num || !obj->rsa ){ throw except_t("creating rsa object"); }
+        if( !obj->num || !obj->rsa ){ NODEPP_THROW_ERROR("creating rsa object"); }
     }
 
    ~rsa_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
@@ -810,19 +833,19 @@ public:
         obj->bff.resize( RSA_size(obj->rsa) ); return c;
     }
 
-    void read_private_key_from_memory( const string_t& key, const char* pass=NULL ) const {
+    int read_private_key_from_memory( const string_t& key, const char* pass=NULL ) const {
         BIO* bo = BIO_new( BIO_s_mem() ); BIO_write( bo, key.get(), key.size() );
         if( !PEM_read_bio_RSAPrivateKey( bo, &obj->rsa, &PASS_CLB, (void*)pass ) ){
-            BIO_free(bo); throw except_t( "Invalid RSA Key" );
+            BIO_free(bo); return -1;
         }   BIO_free(bo); obj->bff.resize(RSA_size(obj->rsa));
-    }
+    return 1; }
 
-    void read_public_key_from_memory( const string_t& key, const char* pass=NULL ) const {
+    int read_public_key_from_memory( const string_t& key, const char* pass=NULL ) const {
         BIO* bo = BIO_new( BIO_s_mem() ); BIO_write( bo, key.get(), key.size() );
         if( !PEM_read_bio_RSAPublicKey( bo, &obj->rsa, &PASS_CLB, (void*)pass ) ){
-            BIO_free(bo); throw except_t( "Invalid RSA Key" );
+            BIO_free(bo); return -1;
         }   BIO_free(bo); obj->bff.resize(RSA_size(obj->rsa));
-    }
+    return 1; }
 
     string_t write_private_key_to_memory( const char* pass=NULL ) const {
         BIO* bo = BIO_new( BIO_s_mem() ); char* data;
@@ -840,20 +863,24 @@ public:
         BIO_free(bo); return res;
     }
 
-    void read_private_key( const string_t& path, const char* pass=NULL ) const {
-        file_t fp( path, "r" ); read_private_key_from_memory( stream::await(fp), pass );
-    }
+    int read_private_key( const string_t& path, const char* pass=NULL ) const {
+        auto raw = fs::read_file( path ).await(); if( !raw ){ return -1; }
+        read_private_key_from_memory( raw.value(), pass );
+    return 1; }
 
     int write_private_key( const string_t& path, const char* pass=NULL ) const {
-        file_t fp( path, "w" ); return fp.write( write_private_key_to_memory( pass ) );
+        if( !fs::write_file( path, write_private_key_to_memory( pass ) ).await() )
+          { return -1; } return 1;
     }
 
-    void read_public_key( const string_t& path, const char* pass=NULL ) const {
-        file_t fp( path, "r" ); read_public_key_from_memory( stream::await(fp), pass );
-    }
+    int read_public_key( const string_t& path, const char* pass=NULL ) const {
+        auto raw = fs::read_file( path ).await(); if( !raw ){ return -1; }
+        read_public_key_from_memory( raw.value(), pass );
+    return 1; }
 
     int write_public_key( const string_t& path, const char* pass=NULL ) const {
-        file_t fp( path, "w" ); return fp.write( write_public_key_to_memory( pass ) );
+        if( !fs::write_file( path, write_public_key_to_memory( pass ) ).await() )
+          { return -1; } return 1;
     }
 
     string_t public_encrypt( string_t msg, int padding=RSA_PKCS1_PADDING ) const {
@@ -909,9 +936,8 @@ public:
     void close() const noexcept { free(); } 
 
     void free() const noexcept { 
-        if( obj->state == 0 ){ return; } obj->state =0;
-        if( obj->num != nullptr ){ BN_free( obj->num ); }
-        if( obj->rsa != nullptr ){ RSA_free( obj->rsa ); }
+        if( obj->state == 0 ){ return; } 
+            obj->state =  0;
     }
     
 };
@@ -927,13 +953,21 @@ protected:
         BIGNUM   *priv_key  = nullptr;
         EC_KEY   *key_pair  = nullptr;
         bool      state = 0;
+
+       ~NODE() {
+            if( priv_key  ){ BN_free      ( priv_key ); }
+        //  if( key_pair  ){ EC_KEY_free  ( key_pair ); }
+            if( pub_key   ){ EC_POINT_free( pub_key ); }
+            if( key_group ){ EC_GROUP_free( key_group ); }
+        }
+
     };  ptr_t<NODE> obj;
     
 public:
 
     template< class T >
     ec_t( const string_t& key, const T& type ) noexcept :obj( new NODE() ) {
-        if( key.empty() ){ throw except_t("can't initializate ec_t"); }
+        if( key.empty() ){ NODEPP_THROW_ERROR("can't initializate ec_t"); }
 
         obj->state     = 1;
         obj->key_pair  = EC_KEY_new_by_curve_name(type);
@@ -976,11 +1010,8 @@ public:
     string_t get_private_key() const noexcept { return BN_bn2hex( obj->priv_key ); }
 
     void free() const noexcept { 
-        if( obj->state == 0 ){ return; } obj->state = 0;
-        if( obj->priv_key  != nullptr ){ BN_free( obj->priv_key ); }
-    //  if( obj->key_pair  != nullptr ){ EC_KEY_free( obj->key_pair ); }
-        if( obj->pub_key   != nullptr ){ EC_POINT_free( obj->pub_key ); }
-        if( obj->key_group != nullptr ){ EC_GROUP_free( obj->key_group ); }
+        if( obj->state == 0 ){ return; } 
+            obj->state =  0;
     }
 
     bool is_available() const noexcept { return obj->state == 1; }
@@ -1000,13 +1031,19 @@ protected:
         DH     *dh = nullptr;
         BIGNUM *k  = nullptr;
         bool state = 0;
+
+       ~NODE() {
+            if( dh ){ DH_free( dh ); }
+            if( k  ){ BN_free( k  ); }
+        }
+
     };  ptr_t<NODE> obj;
 
 public:
 
     dh_t() : obj( new NODE() ) {
         obj->dh = DH_new(); obj->k = BN_new(); obj->state = 1;
-        if( !obj->dh || !obj->k ){ throw except_t( "creating new dh" ); }
+        if( !obj->dh || !obj->k ){ NODEPP_THROW_ERROR( "creating new dh" ); }
     }
 
    ~dh_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
@@ -1040,9 +1077,8 @@ public:
     }
 
     void free() const noexcept {
-        if( obj->state == 0 ){ return; } obj->state = 0;
-        if( obj->dh != nullptr ){ DH_free( obj->dh ); }
-        if( obj->k  != nullptr ){ BN_free( obj->k ); }
+        if( obj->state == 0 ){ return; } 
+            obj->state =  0;
     }
 
     bool verify( const string_t& hex, const string_t& sgn ) const {
@@ -1050,10 +1086,9 @@ public:
     }
 
     string_t sign( const string_t& hex ) const {
-        if( !obj->state ){ return nullptr; } 
-        ptr_t<uchar> shared( DH_size( obj->dh ) );
-        if( !BN_hex2bn( &obj->k,hex.data() ) )
-          { throw except_t( "invalid key" ); }
+        if( !obj->state ) /*----------------*/ { return nullptr; } 
+        ptr_t<uchar> shared( DH_size( obj->dh ));
+        if( !BN_hex2bn( &obj->k,hex.data() )  ){ return nullptr; }
         int len = DH_compute_key( &shared, obj->k, obj->dh );
         return encoder::buffer::buff2hex( string_t( (char*) &shared, (ulong) len ) );
     }
@@ -1073,8 +1108,8 @@ protected:
     }
 
     struct NODE {
-        DSA    *dsa = nullptr;
-        bool    state = 0;
+        DSA *dsa = nullptr; bool state = 0;
+       ~NODE() { if( dsa ) DSA_free( dsa ); }
     };  ptr_t<NODE> obj;
     
 public:
@@ -1101,16 +1136,16 @@ public:
         return encoder::buffer::buff2hex( string_t( (char*) &sgn, (ulong) len ) );
     }
 
-    void read_private_key_from_memory( const string_t& key, const char* pass=NULL ) const {
+    int read_private_key_from_memory( const string_t& key, const char* pass=NULL ) const {
         BIO* bo = BIO_new( BIO_s_mem() ); BIO_write( bo, key.get(), key.size() );
         if( !PEM_read_bio_DSAPrivateKey( bo, &obj->dsa, &PASS_CLB, (void*)pass ) )
-          { BIO_free(bo); throw except_t( "Invalid DSA Key" ); } BIO_free(bo);
+          { BIO_free(bo); return -1; } BIO_free(bo); return 1;
     }
 
-    void read_public_key_from_memory( const string_t& key, const char* pass=NULL ) const {
+    int read_public_key_from_memory( const string_t& key, const char* pass=NULL ) const {
         BIO* bo = BIO_new( BIO_s_mem() ); BIO_write( bo, key.get(), key.size() );
         if( !PEM_read_bio_DSA_PUBKEY( bo, &obj->dsa, &PASS_CLB, (void*)pass ) )
-          { BIO_free(bo); throw except_t( "Invalid DSA Key" ); } BIO_free(bo);
+          { BIO_free(bo); return -1; } BIO_free(bo); return 1;
     }
 
     string_t write_private_key_to_memory( const char* pass=NULL ) const {
@@ -1129,32 +1164,36 @@ public:
         BIO_free(bo); return res;
     }
 
-    void read_private_key( const string_t& path, const char* pass=NULL ) const {
-        file_t fp( path, "r" ); read_private_key_from_memory( stream::await(fp), pass );
+    int read_private_key( const string_t& path, const char* pass=NULL ) const {
+        auto raw = fs::read_file( path ).await(); if( !raw ){ return -1; }
+        read_private_key_from_memory( raw.value(), pass );
+    return 1; }
+
+    int write_private_key( const string_t& path, const char* pass=NULL ) const {
+        if( !fs::write_file( path, write_private_key_to_memory( pass ) ).await() )
+          { return -1; } return 1;
     }
 
-    void write_private_key( const string_t& path, const char* pass=NULL ) const {
-        file_t fp( path, "w" ); fp.write( write_private_key_to_memory( pass ) );
+    int read_public_key( const string_t& path, const char* pass=NULL ) const {
+        auto raw = fs::read_file( path ).await(); if( !raw ){ return -1; }
+        read_public_key_from_memory( raw.value(), pass );
     }
 
-    void read_public_key( const string_t& path, const char* pass=NULL ) const {
-        file_t fp( path, "r" ); read_public_key_from_memory( stream::await(fp), pass );
-    }
-
-    void write_public_key( const string_t& path ) const {
-        file_t fp( path, "w" ); fp.write( write_public_key_to_memory() );
+    int write_public_key( const string_t& path ) const {
+        if( !fs::write_file( path, write_public_key_to_memory() ).await() )
+          { return -1; } return 1;
     }
 
     void free() const noexcept { 
-        if( obj->state == 0 ){ return; } obj->state = 0;
-        if( obj->dsa != nullptr ) DSA_free( obj->dsa );
+        if( obj->state == 0 ){ return; } 
+            obj->state =  0;
     }
 
     bool is_available() const noexcept { return obj->state == 1; }
 
-    bool is_closed() const noexcept { return obj->state == 0; }
+    bool    is_closed() const noexcept { return obj->state == 0; }
 
-    void close() const noexcept { free(); } 
+    void        close() const noexcept { free(); } 
     
 };
 

@@ -22,9 +22,9 @@
 namespace nodepp { namespace worker {
 
     inline void delay( ulong time ){ process::delay(time); }
-    inline void yield(){ delay(TIMEOUT); SwitchToThread(); }
+    inline void yield(){ delay(1); SwitchToThread (); }
     inline DWORD  pid(){ return GetCurrentThreadId(); }
-    inline void  exit(){ ExitThread(0); }
+//  inline void  exit(){ ExitThread(0); } <- insecure
 
 }}
 
@@ -35,28 +35,26 @@ protected:
 
     struct NODE {
         atomic_t<bool> alive=1;
-        HANDLE /*-*/ fd;
+        HANDLE /*--------*/ fd;
+       ~NODE(){ CloseHandle(fd); }
     };  ptr_t<NODE> obj;
 
 public:
 
+   ~mutex_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
+
     mutex_t() : obj( new NODE() ) {
         obj->fd   = CreateMutex( NULL, 0, NULL );
         if( obj->fd == NULL )
-          { throw except_t("Cant Start Mutex"); }
+          { NODEPP_THROW_ERROR("Cant Start Mutex"); }
             /*-----------------*/ obj->alive=1; 
     }
-
-    virtual ~mutex_t() noexcept {
-        if( obj->alive == 0 ){ return; }
-        if( obj.count() > 1 ){ return; } 
-    free(); }
     
     /*─······································································─*/
 
     void free() const noexcept {
-         if( obj->alive == 0 ){ return; }
-             obj->alive =  0; CloseHandle( obj->fd );
+         if( obj->alive == 0 ){ return; } 
+         /*----------*/ obj->alive = 0;
     }
     
     /*─······································································─*/

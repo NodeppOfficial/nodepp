@@ -54,6 +54,36 @@ protected:
 
 public: 
 
+    #if NODEPP_ALLOW_STD_SUPPORT==1
+
+    template< std::size_t N >
+    array_t( const std::array<T,N>& arr ) noexcept {
+        if ( N == 0 ){ return; } buffer = ptr_t<T>( N );
+        type::copy( arr.data(), arr.data()+N, begin() );
+    }
+
+    template< std::size_t N >
+    array_t( std::array<T,N>&& arr ) noexcept {
+        if ( N == 0 ){ return; } buffer = ptr_t<T>( N );
+        type::move( arr.data(), arr.data()+N, begin() );
+    }
+
+    array_t( const std::vector<T>& arr ) noexcept {
+        ulong N = arr.size();
+        if ( N == 0 ){ return; } buffer = ptr_t<T>( N );
+        type::copy( arr.data(), arr.data()+N, begin() );
+    }
+
+    array_t( std::vector<T>&& arr ) noexcept {
+        ulong N = arr.size();
+        if ( N == 0 ){ return; } buffer = ptr_t<T>( N );
+        type::move( arr.data(), arr.data()+N, begin() );
+    }
+
+    #endif
+
+    /*─······································································─*/
+
     array_t( const ulong& n, const T& c ) noexcept {
         if ( n == 0 ){ return; } buffer = ptr_t<T>( n, c );
     }

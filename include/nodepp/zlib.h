@@ -16,7 +16,12 @@
 
 #include <zlib.h>
 #include <zconf.h>
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #include "stream.h"
+#include "promise.h"
+#include "expected.h"
 #include "generator.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -30,6 +35,12 @@ protected:
         int  mode = 0;
         int  type = 0;
         ptr_t<char> bff;
+
+       ~NODE() { switch( mode ){
+            case -1: inflateEnd( &fd ); break;
+            case  1: deflateEnd( &fd ); break;
+        }}
+
     };  ptr_t<NODE> obj;
 
     void _init_() const noexcept {
@@ -52,7 +63,7 @@ public:
     
    ~zlib_t() noexcept { if( obj.count()>1 || obj->state==0 ){ return; } free(); }
 
-    zlib_t( int type=0, ulong size=CHUNK_SIZE ) noexcept : obj( new NODE ) { 
+    zlib_t( int type=0, ulong size=NODEPP_CHUNK_SIZE ) noexcept : obj( new NODE ) { 
         obj->bff  = ptr_t<char>( size ); 
         obj->type = type; _init_(); 
     }
@@ -60,9 +71,8 @@ public:
     /*─······································································─*/
     
     void free() const noexcept {
-        if( obj->state == 0 ){ return; } obj->state = 0;
-        if( obj->mode  ==-1 ){ inflateEnd( &obj->fd ); }
-        if( obj->mode  == 1 ){ deflateEnd( &obj->fd ); }
+        if( obj->state == 0 ){ return; } 
+            obj->state = 0;
         onDrain.emit(); onClose.emit();
     }
     
@@ -150,12 +160,42 @@ namespace nodepp { namespace zlib { namespace inflate {
            generator::zlib::pipe_inflate task; auto zlib = zlib_t(15);
     return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
 
-    template< class V, class... T >
-    string_t await( const V& file, const T&... args ){ string_t out;
-        generator::zlib::pipe_inflate task; auto zlib =zlib_t(15);
-        file.onData([&]( string_t data ){ out += data; });
-        process::await( task, zlib, file, args... );
-    return out; }
+    /*─······································································─*/
+
+    template< class T, class V >
+    promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() || fb.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb );
+
+    }); }
+
+    template< class T >
+    promise_t<string_t,except_t> resolve( const T& fa ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa );
+
+    }); }
+
+    /*─······································································─*/
+
+    template< class... T >
+    expected_t<string_t,except_t> await( const T&... args ){
+        return resolve( args... ).await();
+    }
     
     inline zlib_t get(){ return zlib_t(15); }
 
@@ -177,12 +217,42 @@ namespace nodepp { namespace zlib { namespace deflate {
            generator::zlib::pipe_deflate task; auto zlib = zlib_t(15);
     return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
 
-    template< class V, class... T >
-    string_t await( const V& file, const T&... args ){ string_t out;
-        generator::zlib::pipe_deflate task; auto zlib =zlib_t(15);
-        file.onData([&]( string_t data ){ out += data; });
-        process::await( task, zlib, file, args... );
-    return out; }
+    /*─······································································─*/
+
+    template< class T, class V >
+    promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() || fb.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb );
+
+    }); }
+
+    template< class T >
+    promise_t<string_t,except_t> resolve( const T& fa ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa );
+
+    }); }
+
+    /*─······································································─*/
+
+    template< class... T >
+    expected_t<string_t,except_t> await( const T&... args ){
+        return resolve( args... ).await();
+    }
     
     inline zlib_t get(){ return zlib_t(15); }
 
@@ -204,12 +274,42 @@ namespace nodepp { namespace zlib { namespace raw_inflate {
            generator::zlib::pipe_inflate task; auto zlib = zlib_t(-15);
     return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
 
-    template< class V, class... T >
-    string_t await( const V& file, const T&... args ){ string_t out;
-        generator::zlib::pipe_inflate task; auto zlib =zlib_t(-15);
-        file.onData([&]( string_t data ){ out += data; });
-        process::await( task, zlib, file, args... );
-    return out; }
+    /*─······································································─*/
+
+    template< class T, class V >
+    promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() || fb.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb );
+
+    }); }
+
+    template< class T >
+    promise_t<string_t,except_t> resolve( const T& fa ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa );
+
+    }); }
+
+    /*─······································································─*/
+
+    template< class... T >
+    expected_t<string_t,except_t> await( const T&... args ){
+        return resolve( args... ).await();
+    }
     
     inline zlib_t get(){ return zlib_t(-15); }
 
@@ -231,12 +331,42 @@ namespace nodepp { namespace zlib { namespace raw_deflate {
            generator::zlib::pipe_deflate task; auto zlib = zlib_t(-15);
     return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
 
-    template< class V, class... T >
-    string_t await( const V& file, const T&... args ){ string_t out;
-        generator::zlib::pipe_deflate task; auto zlib =zlib_t(-15);
-        file.onData([&]( string_t data ){ out += data; });
-        process::await( task, zlib, file, args... );
-    return out; }
+    /*─······································································─*/
+
+    template< class T, class V >
+    promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() || fb.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb );
+
+    }); }
+
+    template< class T >
+    promise_t<string_t,except_t> resolve( const T& fa ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa );
+
+    }); }
+
+    /*─······································································─*/
+
+    template< class... T >
+    expected_t<string_t,except_t> await( const T&... args ){
+        return resolve( args... ).await();
+    }
     
     inline zlib_t get(){ return zlib_t(-15); }
 
@@ -258,12 +388,42 @@ namespace nodepp { namespace zlib { namespace gunzip {
            generator::zlib::pipe_inflate task; auto zlib = zlib_t(15|32);
     return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
 
-    template< class V, class... T >
-    string_t await( const V& file, const T&... args ){ string_t out;
-        generator::zlib::pipe_inflate task;auto zlib=zlib_t(15|32);
-        file.onData([&]( string_t data ){ out += data; });
-        process::await( task, zlib, file, args... );
-    return out; }
+    /*─······································································─*/
+
+    template< class T, class V >
+    promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() || fb.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb );
+
+    }); }
+
+    template< class T >
+    promise_t<string_t,except_t> resolve( const T& fa ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa );
+
+    }); }
+
+    /*─······································································─*/
+
+    template< class... T >
+    expected_t<string_t,except_t> await( const T&... args ){
+        return resolve( args... ).await();
+    }
     
     inline zlib_t get(){ return zlib_t(15|32); }
     
@@ -285,12 +445,42 @@ namespace nodepp { namespace zlib { namespace gzip {
            generator::zlib::pipe_deflate task; auto zlib = zlib_t(15|16);
     return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
 
-    template< class V, class... T >
-    string_t await( const V& file, const T&... args ){ string_t out;
-        generator::zlib::pipe_deflate task;auto zlib=zlib_t(15|16);
-        file.onData([&]( string_t data ){ out += data; });
-        process::await( task, zlib, file, args... );
-    return out; }
+    /*─······································································─*/
+
+    template< class T, class V >
+    promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() || fb.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb );
+
+    }); }
+
+    template< class T >
+    promise_t<string_t,except_t> resolve( const T& fa ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa );
+
+    }); }
+
+    /*─······································································─*/
+
+    template< class... T >
+    expected_t<string_t,except_t> await( const T&... args ){
+        return resolve( args... ).await();
+    }
     
     inline zlib_t get(){ return zlib_t(15|16); }
 

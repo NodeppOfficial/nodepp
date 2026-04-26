@@ -24,8 +24,8 @@ namespace nodepp { class file_t {
 protected:
 
     void kill() const noexcept {
-        obj->state |= STATE::FS_STATE_KILL;
-    if( !is_std() ){ ::close( obj->fd ); }}
+        obj->state |= STATE::FS_STATE_KILL; 
+    }
 
     bool is_state( uchar value ) const noexcept {
         if( obj->state & value ){ return true; }
@@ -60,15 +60,14 @@ protected:
         generator::file::line  _line ;
         generator::file::read  _read ;
         generator::file::write _write;
+        
+       ~NODE(){ 
+        if( fd == STDOUT_FILENO ||
+            fd == STDIN_FILENO  ||
+            fd == STDERR_FILENO 
+        ) { return; } ::close( fd ); }
+
     };  ptr_t<NODE> obj;
-
-    /*─······································································─*/
-
-    bool is_std() const noexcept { 
-        return obj->fd == STDOUT_FILENO ||
-               obj->fd == STDIN_FILENO  ||
-               obj->fd == STDERR_FILENO ;
-    }
 
     /*─······································································─*/
 
@@ -111,14 +110,14 @@ public:
 
     /*─······································································─*/
 
-    file_t( const string_t& path, const string_t& mode, const ulong& _size=CHUNK_SIZE ) : obj( new NODE() ) {
+    file_t( const string_t& path, const string_t& mode, const ulong& _size=NODEPP_CHUNK_SIZE ) : obj( new NODE() ) {
             obj->fd = open( path.data(), get_fd_flag( mode ), 0644 ); /*-----------*/
-        if( obj->fd < 0 ){ throw except_t("such file or directory does not exist"); }
+        if( obj->fd < 0 ){ NODEPP_THROW_ERROR("such file or directory does not exist"); }
         set_nonbloking_mode(); set_buffer_size( _size );
     }
 
-    file_t( const int& fd, const ulong& _size=CHUNK_SIZE ) : obj( new NODE() ) {
-        if( fd<0 ){ throw except_t("such file or directory does not exist"); }
+    file_t( const int& fd, const ulong& _size=NODEPP_CHUNK_SIZE ) : obj( new NODE() ) {
+        if( fd<0 ){ NODEPP_THROW_ERROR("such file or directory does not exist"); }
         obj->fd = fd; set_nonbloking_mode(); set_buffer_size( _size );
     }
 
@@ -128,8 +127,8 @@ public:
 
     /*─······································································─*/
 
-    void  resume() const noexcept { if(is_state(STATE::FS_STATE_OPEN )){ return; } set_state(STATE::FS_STATE_OPEN ); onResume.emit(); }
-    void    stop() const noexcept { if(is_state(STATE::FS_STATE_REUSE)){ return; } set_state(STATE::FS_STATE_REUSE); onDrain .emit(); }
+    void  resume() const noexcept { if(is_state(STATE::FS_STATE_OPEN )){ return; } onResume.emit(); set_state(STATE::FS_STATE_OPEN ); }
+    void    stop() const noexcept { if(is_state(STATE::FS_STATE_REUSE)){ return; } onDrain .emit(); set_state(STATE::FS_STATE_REUSE); }
     void   reset() const noexcept { if(is_state(STATE::FS_STATE_KILL )){ return; } resume(); pos(0); }
     void   flush() const noexcept { obj->buffer.fill(0); }
 
@@ -143,9 +142,9 @@ public:
     /*─······································································─*/
 
     void close() const noexcept {
-        if( is_state ( STATE::FS_STATE_DISABLE ) ){ return; }
-            set_state( STATE::FS_STATE_CLOSE   );
-    onDrain.emit(); free(); }
+        if( is_state ( STATE::FS_STATE_DISABLE ) ) { return; }
+            onDrain.emit(); set_state( STATE::FS_STATE_CLOSE );
+    free(); }
 
     /*─······································································─*/
 
@@ -195,13 +194,12 @@ public:
 
     void free() const noexcept {
 
-        if( is_state( STATE::FS_STATE_REUSE ) && !is_feof() && obj.count()>1 ){ return; }
+        if( is_state( STATE::FS_STATE_REUSE ) && !is_feof() && obj.count() >1 ){ return; }
         if( is_state( STATE::FS_STATE_KILL  ) ) /*-------*/ { return; } 
-        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) )
-          { kill(); onDrain.emit(); } else { kill(); }
-       
+        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) ){ onDrain.emit(); } 
+        
         onUnpipe.clear(); onResume.clear();
-        onError .clear(); onData  .clear(); 
+        onError .clear(); onData  .clear(); kill();
         onOpen  .clear(); onPipe  .clear(); onClose.emit();
 
     }
@@ -230,7 +228,7 @@ public:
 
     /*─······································································─*/
 
-    string_t read( ulong size=CHUNK_SIZE ) const noexcept {
+    string_t read( ulong size=NODEPP_CHUNK_SIZE ) const noexcept {
         while( obj->_read( this, size ) == 1 )
              { process::next(); }
         return obj->_read.data;

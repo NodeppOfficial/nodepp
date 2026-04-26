@@ -12,7 +12,11 @@
 #ifndef NODEPP_EXPECTED
 #define NODEPP_EXPECTED
 
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #include "any.h"
+
+/*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp {
 template <typename T, typename E> struct expected_t { 
@@ -23,7 +27,6 @@ protected:
 public:
 
     expected_t( const T& val ) noexcept : obj( new NODE() ) { obj->has = true ; obj->data = val; }
-
     expected_t( const E& err ) noexcept : obj( new NODE() ) { obj->has = false; obj->data = err; }
 
     /*─······································································─*/
@@ -33,16 +36,24 @@ public:
 
     /*─······································································─*/
 
-    T value() const { if( !has_value() || !obj->data.has_value() ) {
-        throw  except_t("expected does not have a value");
-    }   return obj->data.template as<T>(); }
+    T value() const { 
+        if( !has_value() || !obj->data.has_value() )
+          { NODEPP_THROW_ERROR("expected does not have a value"); }
+        return obj->data.template as<T>(); 
+    }
 
     /*─······································································─*/
 
-    E error() const { if( has_value() || !obj->data.has_value() ) {
-        throw  except_t("expected does not have a value");
-    }   return obj->data.template as<E>(); }
+    E error() const { 
+        if( has_value() || !obj->data.has_value() )
+          { NODEPP_THROW_ERROR("expected does not have a value"); }
+        return obj->data.template as<E>(); 
+    }
 
 };}
 
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

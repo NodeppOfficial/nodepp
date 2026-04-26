@@ -52,16 +52,16 @@ public:
 
     template< ulong N >
     map_t( const T (&args) [N] ) noexcept : obj( new NODE() ) {
-        obj->table = ptr_t<LIST>( HASH_TABLE_SIZE );
+        obj->table = ptr_t<LIST>( NODEPP_HASH_TABLE_SIZE );
         for( auto &x: args ) { append(x); }
     }
 
     map_t( null_t ) noexcept : obj( new NODE() ){
-        obj->table = ptr_t<LIST>( HASH_TABLE_SIZE );
+        obj->table = ptr_t<LIST>( NODEPP_HASH_TABLE_SIZE );
     }
 
     map_t() noexcept : obj( new NODE() ) {
-        obj->table = ptr_t<LIST>( HASH_TABLE_SIZE );
+        obj->table = ptr_t<LIST>( NODEPP_HASH_TABLE_SIZE );
     }
 
     /*─······································································─*/

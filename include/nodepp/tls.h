@@ -28,11 +28,16 @@ class tls_t {
 private:
 
     using NODE_CLB = function_t<void,ssocket_t>;
+    enum STATE {
+         TLS_STATE_UNKNOWN   = 0b00000000,
+         TLS_STATE_USED      = 0b00000001,
+         TLS_STATE_CLOSED    = 0b00000010
+    };
 
 protected:
 
     struct NODE {
-        char  state=0;
+        int  state= 0;
         ssl_t     ctx;
         agent_t agent;
         NODE_CLB func;
@@ -59,44 +64,45 @@ public:
 
     /*─······································································─*/
 
-    void     close() const noexcept { if(obj->state<=0){return;} obj->state=-1; onClose.emit(); }
-    bool is_closed() const noexcept { return obj == nullptr ? 1: obj->state<=0; }
+    bool is_closed() const noexcept { return obj->state & STATE::TLS_STATE_CLOSED; }
+    void     close() const noexcept { free(); }
 
     /*─······································································─*/
 
-    void listen( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
-        if( obj->state == 1 ){ return; } if( obj->ctx.create_server()==-1 )
-          { onError.emit("Error Initializing SSL context"); return; }
-        if( dns::lookup(host).empty() ){ onError.emit("dns couldn't get ip"); return; }
+    void listen( const dns_t& addr, int port, NODE_CLB cb=nullptr ) const noexcept {
 
-        ssocket_t sk; obj->state=1;
-        sk.SOCK     = SOCK_STREAM ;
-        sk.IPPROTO  = IPPROTO_TCP ;
+        if( obj->state & STATE::TLS_STATE_CLOSED )
+          { onError.emit( "tls listener is closed" ); return; } 
+        if( obj->state & STATE::TLS_STATE_USED )
+          { onError.emit( "tls listener is used" );   return; } 
 
-        if( sk.socket( dns::lookup(host), port )<0 ){
-            onError.emit("Error while creating TLS"); 
-            close(); sk.free(); return; 
+        if( obj->ctx.create_server()==-1 )
+          { onError.emit( "Error Initializing SSL context" ); return; }
+
+        ssocket_t sk; obj->state = STATE::TLS_STATE_USED;
+        sk.AF      = addr.family ;
+        sk.SOCK    = SOCK_STREAM ;
+        sk.IPPROTO = IPPROTO_TCP ;
+
+        if( sk.socket( addr.address, port )==-1 ){
+            onError.emit( "Error while creating TLS" ); return; 
         }   sk.set_sockopt( obj->agent );
 
-        if( sk.bind()<0 ){
-            onError.emit("Error while binding TLS"); 
-            close(); sk.free(); return; 
+        if( sk.bind() == -1 ){
+            onError.emit( "Error while binding TLS" ); return; 
         }
 
-        if( sk.listen()<0 ){ 
-            onError.emit("Error while listening TLS"); 
-            close(); sk.free(); return; 
+        if( sk.listen() == -1 ){ 
+            onError.emit( "Error while listening TLS" ); return; 
         }   
         
-        auto self=type::bind( this );
-        cb( sk );  onOpen.emit( sk ); 
-        sk.onDrain.once([=](){ self->close(); });
+        cb(sk); onOpen.emit(sk); auto self=type::bind( this ); 
             
         process::poll( sk, POLL_STATE::READ | POLL_STATE::EDGE, [=](){
-        int c=-1; while( self.count() < MAX_BATCH ) {
+        int c=-1; while( self.count() < NODEPP_MAX_BATCH_SIZE ) {
 
-            while( (c=sk._accept())==-2 ){ return 0; } if(c<0) { 
-                self->onError.emit("Error while accepting TLS");
+            while((c=sk._accept())==-2){ return 0; } if(c==-1){ 
+                self->onError.emit( "Error while accepting TLS" );
             return -1; }
             
             auto cli   = ssocket_t( self->obj->ctx, c ); 
@@ -117,34 +123,40 @@ public:
 
     }
 
+    void listen( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
+    auto addr = dns::lookup( host, obj->agent.socket_family );
+         if( addr.empty() ){ onError.emit( "dns address not found" ); return; }
+         listen( addr[0], port, cb );
+    }
+
     /*─······································································─*/
 
-    void connect( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
-        if( obj->state == 1 ){ return; } if( obj->ctx.create_client()==-1 )
-          { onError.emit("Error Initializing SSL context"); return; }
-        if( dns::lookup(host).empty() )
-          { onError.emit("dns couldn't get ip"); return; }
+    void connect( const dns_t& addr, int port, NODE_CLB cb=nullptr ) const noexcept {
 
-        ssocket_t sk; obj->state=1;
-        sk.SOCK     = SOCK_STREAM ;
-        sk.IPPROTO  = IPPROTO_TCP ;
+        if( obj->state & STATE::TLS_STATE_CLOSED )
+          { onError.emit( "tls listener is closed" ); return; } 
+        if( obj->state & STATE::TLS_STATE_USED )
+          { onError.emit( "tls listener is used" );   return; }
 
-        if( sk.socket( dns::lookup(host), port )<0 ){
-            onError.emit("Error while creating TLS"); 
-            close(); sk.free(); return; 
-        }
+        if( obj->ctx.create_client()==-1 )
+          { onError.emit( "Error Initializing SSL context" ); return; }
+
+        ssocket_t sk; obj->state = STATE::TLS_STATE_USED;
+        sk.AF      = addr.family ;
+        sk.SOCK    = SOCK_STREAM ;
+        sk.IPPROTO = IPPROTO_TCP ;
+
+        if( sk.socket( addr.address, port )==-1 ){
+            onError.emit( "Error while creating TLS" ); return; 
+        }   sk.set_sockopt( obj->agent );
         
         sk.ssl = new ssl_t( obj->ctx, sk.get_fd() );
-        sk.ssl->set_hostname( host );
+        sk.ssl->set_hostname( addr.hostname );
 
-        sk.set_sockopt( obj->agent );
-        auto self = type::bind( this ); 
-        sk.onDrain.once([=](){ self->close(); }); 
+        auto self = type::bind(this); process::add([=](){ int c=0;
 
-        process::add([=](){ int c=0;
-
-            while( (c=sk._connect())==-2 ){ return 1; } if(c<=0){
-                self->onError.emit("Error while connecting TLS");
+            while( (c=sk._connect())==-2 ){ return 1; } if(c==-1){
+                self->onError.emit( "Error while connecting TLS" );
             return -1; }
 
             cb(sk); self->onSocket.emit(sk);
@@ -160,12 +172,20 @@ public:
 
     }
 
+    void connect( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
+    auto addr = dns::lookup( host, obj->agent.socket_family );
+         if( addr.empty() ){ onError.emit( "dns address not found" ); return; }
+         connect( addr[0], port, cb );
+    }
+
     /*─······································································─*/
 
     void free() const noexcept {
-        if( is_closed() ){ return; }close();
+        if( is_closed() ){ return; }
+        obj->state = STATE::TLS_STATE_CLOSED; 
         onConnect.clear(); onSocket.clear();
         onError  .clear(); onOpen  .clear();
+        onClose  .emit ();
     }
 
 };
