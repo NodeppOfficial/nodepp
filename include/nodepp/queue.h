@@ -66,6 +66,22 @@ protected:
 
 public:
 
+    #if NODEPP_ALLOW_STD_SUPPORT==1
+
+    queue_t( std::queue<V>&& que ) noexcept : obj( new DONE() ) { while( !que.empty() ){
+        push( type::move( que.front() ) ); que.pop();
+    }}
+
+    queue_t( const std::queue<V>& que ) noexcept : obj( new DONE() ) { 
+        std::queue<V> tmp = que; while( !tmp.empty() ){
+            push( tmp.front() ); tmp.pop();
+        }
+    }
+
+    #endif
+
+    /*─······································································─*/
+
    ~queue_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
     /*─······································································─*/
@@ -281,9 +297,9 @@ public:
 
     /*─······································································─*/
 
-    void clear() const noexcept { while( !empty() ){ shift(); } }
-    void erase() const noexcept { while( !empty() ){ shift(); } }
-    void  free() const noexcept { while( !empty() ){ shift(); } }
+    void clear() const noexcept { while( !empty() ){ pop(); } }
+    void erase() const noexcept { while( !empty() ){ pop(); } }
+    void  free() const noexcept { while( !empty() ){ pop(); } }
 
     /*─······································································─*/
 

@@ -1,4 +1,4 @@
-#define NODEPP_ATOMIC_SMART_POINTER_OFF
+#define NODEPP_ALLOW_THREADS 0
 
 #include <nodepp/nodepp.h>
 #include <nodepp/http.h>

@@ -24,7 +24,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { class ssl_t { 
+namespace nodepp { class ssl_t {
 protected:
     
     using onSNI = function_t<ssl_t*,string_t>;
@@ -39,7 +39,6 @@ protected:
 
     struct NODE {
         string_t     key, crt, cha, alpn, tmp_list;
-        int          tpy  = SSL_FILETYPE_PEM;
         ptr_t<string_t> protocol_list;
 
         SSL_CTX*     ctx  = nullptr;
@@ -52,6 +51,13 @@ protected:
 
         ptr_t<X509_t>cert;
         ptr_t<onSNI>  sni;
+
+       ~NODE() {
+            if( ssl ){ SSL_clear   ( ssl ); 
+                /*--*/ SSL_free    ( ssl ); }
+            if( ctx ){ SSL_CTX_free( ctx ); }
+        }
+
     };  ptr_t<NODE>   obj;
 
     /*─······································································─*/
@@ -98,8 +104,8 @@ protected:
     int x = 1; 
 
         if( !cha.empty() && x==1 ){ x=SSL_CTX_use_certificate_chain_file( ctx, (char*)cha ); }
-        if( !crt.empty() && x==1 ){ x=SSL_CTX_use_certificate_file      ( ctx, (char*)crt, obj->tpy ); }
-        if( !key.empty() && x==1 ){ x=SSL_CTX_use_PrivateKey_file       ( ctx, (char*)key, obj->tpy ); }
+        if( !crt.empty() && x==1 ){ x=SSL_CTX_use_certificate_file      ( ctx, (char*)crt, SSL_FILETYPE_PEM ); }
+        if( !key.empty() && x==1 ){ x=SSL_CTX_use_PrivateKey_file       ( ctx, (char*)key, SSL_FILETYPE_PEM ); }
 
         if( obj->cert != nullptr && x==1 ){
         if( !SSL_CTX_use_certificate  (ctx,obj->cert->get_cert()) || !ctx ){ x = 0; goto DONE; }
@@ -125,7 +131,7 @@ protected:
         if( servername ){ 
             ssl_t* xtc = func(servername); 
         if( xtc != nullptr ){ 
-            SSL_set_SSL_CTX( ssl, xtc->get_ctx() );
+            SSL_set_SSL_CTX( ssl, xtc->obj->ctx );
         } else { 
             *ad  = SSL_AD_UNRECOGNIZED_NAME;
             return SSL_TLSEXT_ERR_ALERT_FATAL;
@@ -194,7 +200,7 @@ public:
 
     ssl_t( const string_t& _key, const string_t& _cert, const string_t& _chain ) : obj( new NODE() ) {
        if(!fs::exists_file(_key) || !fs::exists_file(_cert) || !fs::exists_file(_chain) )
-         { throw except_t("such key, cert or chain does not exist"); } 
+         { NODEPP_THROW_ERROR("such key, cert or chain does not exist"); } 
            obj->key = _key;  obj->crt = _cert; obj->cha = _chain;
            obj->state = STATE::SSL_STATE_USED;
     }
@@ -205,7 +211,7 @@ public:
 
     ssl_t( const string_t& _key, const string_t& _cert ) : obj( new NODE() ) { 
        if(!fs::exists_file(_key) || !fs::exists_file(_cert) )
-         { throw except_t("such key or cert does not exist"); }
+         { NODEPP_THROW_ERROR("such key or cert does not exist"); }
            obj->key = _key; obj->crt = _cert; 
            obj->state = STATE::SSL_STATE_USED;
     }
@@ -213,10 +219,10 @@ public:
     /*─······································································─*/
 
     ssl_t( ssl_t xtc, int /*unused*/ ) : obj( new NODE() ) { 
-       if( xtc.get_ctx() == nullptr ){ throw except_t("ctx has no context"); }
+       if( xtc.obj->ctx == nullptr ){ NODEPP_THROW_ERROR("ctx has no context"); }
            
         obj->state = STATE::SSL_STATE_USED;
-        obj->ctx   = xtc.get_ctx(); 
+        obj->ctx   = xtc.obj->ctx; 
         obj->state|= xtc.obj->state;
         obj->ssl   = SSL_new(obj->ctx);
         obj->alpn  = xtc.get_alpn_protocol();
@@ -263,21 +269,9 @@ public:
     return 1; }
 
     /*─······································································─*/
-
-    void set_ctx_type( int type ) const noexcept { obj->tpy = type; }
-    SSL_CTX*  get_ctx()           const noexcept { return obj->ctx; }
-    SSL*      get_ssl()           const noexcept { return obj->ssl; }
-    
-    /*─······································································─*/
-
-    string_t get_key_path() noexcept { return obj->key; }
-    string_t get_crt_path() noexcept { return obj->crt; }
-    string_t get_cha_path() noexcept { return obj->cha; }
-    
-    /*─······································································─*/
     
     int create_client() const noexcept { if( !is_available() ){ return -1; }
-        obj->ctx = create_client_context(); obj->state &= ~STATE::SSL_STATE_SERVER; 
+        obj->ctx = create_client_context(); obj->state &=~ STATE::SSL_STATE_SERVER; 
         int  res = configure_context( obj->ctx, obj->key, obj->crt, obj->cha );
         if( !obj->tmp_list.empty() ){ SSL_set_alpn_protos( 
              obj->ssl, (const uchar*) obj->tmp_list.get (),
@@ -390,23 +384,12 @@ public:
             if( c >  0 ){ *sy+= c; continue; } break/**/;
         }   return sx;
     }
-    
+
     /*─······································································─*/
 
     void free() const noexcept {
-
-        if( obj->ssl != nullptr && is_available() ){
-        if( is_connected() ){ SSL_shutdown( obj->ssl ); }   
-            /*-------------*/ SSL_clear   ( obj->ssl ); 
-            /*-------------*/ SSL_free    ( obj->ssl ); 
-        } 
-
-        if( obj->ctx != nullptr && is_available() ){
-            SSL_CTX_free( obj->ctx );
-        }
-
+        if( is_connected() ){ SSL_shutdown( obj->ssl ); }
         obj->state = STATE::SSL_STATE_UNKNOWN;
-
     }
     
 };}

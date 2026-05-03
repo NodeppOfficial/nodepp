@@ -49,6 +49,7 @@ public:
     int read_header() noexcept {  
 
         if( process::millis() > get_conn_timeout() ){ return -1; }
+        if( is_closed() /*----------------------*/ ){ return -1; }
         thread_local static ptr_t<regex_t> reg({
             regex_t( "[^ \r]+" ),
             regex_t( "^[^?#]+" ),
@@ -100,21 +101,11 @@ public:
 
     template< class T > void write_header( const T& fetch, const string_t& path ) const noexcept {
 
-        bool b = !fetch->body.empty() || fetch->file.is_available();
-        string_t res = string::format( "%s %s %s\r\n", fetch->method.get(), path.get(), fetch->version.get() );
+        string_t res = string::format( "%s %s %s\r\n", fetch.method.get(), path.get(), fetch.version.get() );
 
-        for( auto x:fetch->headers.data() ){ res += string::format("%s: %s\r\n",(char*)x.first.to_capital_case(),(char*)x.second); }
-        if ( !b ) /*--------------------*/ { res += "\r\n"; } 
-        if ( fetch->method == "HEAD" )/**/ { write(res); close(); return; }
-        if ( !b ) /*--------------------*/ { res += "\r\n"; write( res ); return; }
-        
-        if( !fetch->file.is_closed() ) { 
-            res += string::format("Content-Length: %lu\r\n\r\n",fetch->file.size()); write( res );
-            while( fetch->file.is_available() ){ write( fetch->file.read() ); } //write( "\r\n" ); 
-        } elif( !fetch->body.empty() ) { 
-            res += string::format("Content-Length: %lu\r\n\r\n",fetch->body.size());
-            res += fetch->body; /*res+="\r\n";*/ write( res );
-        } else { res += "\r\n"; write( res ); }
+        for( auto x:fetch.headers.data() ){ res += string::format("%s: %s\r\n",(char*)x.first.to_capital_case(),(char*)x.second); }
+        /*-------------------------------*/ res += "\r\n"; write( res ); if( !fetch.body.empty() ){ write( fetch.body ); }
+        if ( fetch.method == "HEAD" )/*-*/{ close(); return; }
 
     }
 
@@ -125,33 +116,34 @@ public:
 namespace nodepp { namespace https {
 
     inline tls_t server( function_t<void,https_t> cb, ssl_t* ssl=nullptr, agent_t* opt=nullptr ){
-        return tls_t([=]( https_t cli ){
+    return tls_t([=]( https_t cli ){
 
-            int c=0; while((c=cli.read_header())==1){ /*unused*/ }
-            if( c==0 ){ cb(cli); return; }
+        int c=0; while((c=cli.read_header())==1){ /*unused*/ }
+        if( c==0 ){ cb(cli); return; }
         
-        cli.close(); }, ssl, opt );
-    }
+    cli.close(); }, ssl, opt ); }
     
     /*─······································································─*/
     
-    inline promise_t<https_t,except_t> fetch ( const fetch_t& args, ssl_t* ssl=nullptr, agent_t* opt=nullptr ) {
-           auto agent = type::bind( opt  ); auto cert = type::bind( ssl );
-           auto fetch = type::bind( args ); /*--------------------------*/ 
+    inline promise_t<https_t,except_t> fetch ( const fetch_t& fetch, ssl_t* ssl=nullptr, agent_t* opt=nullptr, function_t<void,https_t> clb=nullptr ) {
+           auto agent = type::bind( opt==nullptr ? agent_t() : *opt );
+           auto cert  = type::bind( ssl  ); /*----------------------*/
     return promise_t<https_t,except_t>([=]( res_t<https_t> res, rej_t<except_t> rej ){
 
-        if( !url::is_valid( fetch->url ) ){ rej(except_t("invalid URL")); return; }
-             url_t uri = url::parse( fetch->url );
+        if( !url::is_valid( fetch.url ) ){ rej(except_t("invalid URL")); return; }
+             url_t uri = url::parse( fetch.url );
 
-        if( !fetch->query.empty() ){ uri.search=query::format(fetch->query); }
-        string_t dip = uri.hostname ; fetch->headers["Connection"] = "close";
-        /*-------------------------*/ fetch->headers["Host"] = dip;
+        if( !fetch.query.empty() ){ uri.search=query::format(fetch.query); }
+        string_t dip = uri.hostname ; fetch.headers["Connection"] = "close";
+        /*-------------------------*/ fetch.headers["Host"] = dip;
         string_t dir = uri.pathname + uri.search + uri.hash;
 
         auto skt = tls_t([=]( https_t cli ){
 
-            cli.set_timeout( fetch->timeout ); cli.write_header( fetch, dir );
-            int c=0; while((c=cli.read_header())==1){ /*unused*/ }
+            cli.set_timeout( fetch.timeout ); cli.write_header( fetch, dir );
+            int c=0; clb( cli ); cli.write( "\r\n" );
+
+            while((c=cli.read_header())==1){ /*unused*/ }
 
             if( c==0 ){ res(cli); return; } cli.close();
             rej(except_t("Could not connect to server"));
@@ -159,7 +151,7 @@ namespace nodepp { namespace https {
         }, &cert, &agent );
 
         skt.onError([=]( except_t error ){ rej(error); });
-        skt.connect( dip, uri.port );
+        skt.connect( uri.rawname, uri.port );
 
     }); }
 

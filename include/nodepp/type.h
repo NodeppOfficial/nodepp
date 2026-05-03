@@ -198,7 +198,11 @@ namespace nodepp { namespace type {
     
     /*─······································································─*/
 
-    template<typename T> void swap( T& a, T& b ) noexcept { T temp = a; a = b; b = temp; }
+    template <ulong Index, typename Head, typename... Tail >
+    struct get_by_index { using type = typename get_by_index< Index - 1 , Tail...>::type; };
+
+    template <typename Head, typename... Tail>
+    struct get_by_index<0, Head, Tail...> { using type = Head; };
 
     /*─······································································─*/
 
@@ -219,6 +223,11 @@ namespace nodepp { namespace type {
     template <> struct is_unsigned<unsigned int>       : true_type {};
     template <> struct is_unsigned<unsigned long>      : true_type {};
     template <> struct is_unsigned<unsigned long long> : true_type {};
+
+    /*─······································································─*/
+
+    template< typename... T > struct is_empty   : false_type {};
+    template< /*---------*/ > struct is_empty<> : true_type  {};
 
     /*─······································································─*/
 
@@ -321,10 +330,6 @@ namespace nodepp { namespace type {
         static constexpr bool value = __is_class(T);
     };
 
-    template<typename T> struct is_empty {
-        static constexpr bool value = __is_empty(T);
-    };
-
     template<typename T> struct is_union {
         static constexpr bool value = __is_union(T);
     };
@@ -340,12 +345,13 @@ namespace nodepp { namespace type {
     /*─······································································─*/
 
     template<typename T, typename U> struct pair { T first;  U second; };
-
-}}
+}   template<typename T, typename U> using pair_t = type::pair< T,U >; }
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace type {
+
+    template<typename T> void swap( T& a, T& b ) noexcept { T temp = a; a = b; b = temp; }
 
     template<typename T> typename remove_reference<T>::type&& move(T&& arg){ 
       return static_cast<typename remove_reference<T>::type&&>( arg ); 
@@ -366,6 +372,14 @@ namespace nodepp { namespace type {
           --src_last;
            *dst_first=*src_last;
           ++dst_first;
+        }
+    }
+    
+    template < class A, class B >
+    void move( A src_first, A src_last, B dst_first ) {
+        while ( src_first != src_last ) {
+            *dst_first = move( *src_first );
+          ++src_first; ++dst_first;
         }
     }
 

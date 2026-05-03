@@ -43,6 +43,22 @@ namespace TEST { namespace PTR {
             } catch ( ... ) { TEST_FAIL(); }
         });
 
+        TEST_ADD( test, "TEST 13 | ptr type::move", [](){
+            try { ptr_t<uint> a (0UL); a[0] = 20;
+                  ptr_t<uint> b = type::move( a );
+            if ( !b.null() && a.null() )
+               { TEST_DONE(); } TEST_FAIL();
+            } catch ( ... )   { TEST_FAIL(); }
+        });
+
+        TEST_ADD( test, "TEST 14 | ptr type::move", [](){
+            try { ptr_t<uint> a ({ 10, 20, 30 });
+                  ptr_t<uint> b = type::move( a );
+            if ( b.size() == 3 && a.empty() )
+               { TEST_DONE(); } TEST_FAIL();
+            } catch ( ... )   { TEST_FAIL(); }
+        });
+
         test.onClose.once([=](){
             console::log("\nRESULT | total:", *totl, "| passed:", *done, "| error:", *err, "| skipped:", *skp );
         });

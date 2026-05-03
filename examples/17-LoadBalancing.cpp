@@ -1,0 +1,52 @@
+#include <nodepp/nodepp.h>
+
+#include <nodepp/cluster.h>
+#include <nodepp/timer.h>
+#include <nodepp/http.h>
+#include <nodepp/path.h>
+#include <nodepp/date.h>
+#include <nodepp/fs.h>
+
+using namespace nodepp;
+
+void server( int process ){
+
+    auto server = http::server([=]( http_t cli ){ 
+
+        console::log( ">>", cli.path );
+        
+        cli.write_header( 200, header_t({
+            { "Content-Type", "text/html" }
+        }) );
+        
+        cli.write("Hello World! \n");
+        cli.write("Load Balanced Server");
+
+    });
+
+    server.onError([=]( except_t err ){
+        console::log( ">>", err.what() );
+    });
+
+    server.listen( "localhost", 8000, [=]( socket_t server ){
+        console::log("-> http://localhost:8000");
+    });
+
+}
+
+void onMain(){
+
+    if ( process::is_child() ){ server( os::pid() ); } else {
+    for( auto x = os::cpus(); x--; ){
+
+         auto pid = cluster::add();
+         
+    if ( !pid.has_value() ){ throw except_t( "something went wrong" ); }
+
+         pid.value().onData([=]( string_t data ){
+            conio::log( data );
+         });
+
+    }}
+
+}

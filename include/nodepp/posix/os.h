@@ -21,11 +21,15 @@
 
 namespace nodepp { namespace os {
     
-    inline string_t hostname(){ char buff[UNBFF_SIZE]; return ::gethostname(buff,UNBFF_SIZE)==0 ? buff : nullptr; }
+    inline string_t hostname(){ 
+        char buff /*----------*/ [NODEPP_UNBFF_SIZE]; 
+        return ::gethostname(buff,NODEPP_UNBFF_SIZE)==0 ? buff : nullptr; }
     
     /*─······································································─*/
 
-    inline string_t cwd(){ char buff[UNBFF_SIZE]; return ::getcwd(buff,UNBFF_SIZE)==nullptr ? nullptr : buff; }
+    inline string_t cwd(){
+        char buff /*-----*/ [NODEPP_UNBFF_SIZE]; 
+        return ::getcwd(buff,NODEPP_UNBFF_SIZE)==nullptr ? nullptr : buff; }
     
     /*─······································································─*/
 

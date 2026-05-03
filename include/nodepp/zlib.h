@@ -16,7 +16,12 @@
 
 #include <zlib.h>
 #include <zconf.h>
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #include "stream.h"
+#include "promise.h"
+#include "expected.h"
 #include "generator.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -24,12 +29,23 @@
 namespace nodepp { class zlib_t {
 protected:
 
+    enum STATE {
+         STATE_ZLIB_IDLE    = 0b00000000,
+         STATE_ZLIB_OPEN    = 0b00000001,
+         STATE_ZLIB_INFLATE = 0b00000010,
+         STATE_ZLIB_DEFLATE = 0b00000100,
+    };
+
     struct NODE {
-        z_stream  fd;
-        bool state= 1;
-        int  mode = 0;
-        int  type = 0;
+
+        int state = STATE_ZLIB_IDLE; 
+        int type  = 0; z_stream fd;
         ptr_t<char> bff;
+
+       ~NODE() { 
+        if( state & STATE::STATE_ZLIB_DEFLATE ){ deflateEnd( &fd ); }
+        if( state & STATE::STATE_ZLIB_INFLATE ){ inflateEnd( &fd ); }}
+
     };  ptr_t<NODE> obj;
 
     void _init_() const noexcept {
@@ -39,6 +55,9 @@ protected:
         obj->fd.next_in  = Z_NULL;
         obj->fd.avail_in = Z_NULL;
     }
+
+    bool is_inflate() const noexcept { return obj->state & STATE_ZLIB_INFLATE; }
+    bool is_deflate() const noexcept { return obj->state & STATE_ZLIB_DEFLATE; }
 
 public:
 
@@ -52,7 +71,8 @@ public:
     
    ~zlib_t() noexcept { if( obj.count()>1 || obj->state==0 ){ return; } free(); }
 
-    zlib_t( int type=0, ulong size=CHUNK_SIZE ) noexcept : obj( new NODE ) { 
+    zlib_t( int type=0, ulong size=NODEPP_CHUNK_SIZE ) noexcept : obj( new NODE ) { 
+        obj->state= STATE::STATE_ZLIB_OPEN;
         obj->bff  = ptr_t<char>( size ); 
         obj->type = type; _init_(); 
     }
@@ -60,26 +80,26 @@ public:
     /*─······································································─*/
     
     void free() const noexcept {
-        if( obj->state == 0 ){ return; } obj->state = 0;
-        if( obj->mode  ==-1 ){ inflateEnd( &obj->fd ); }
-        if( obj->mode  == 1 ){ deflateEnd( &obj->fd ); }
-        onDrain.emit(); onClose.emit();
+        if( is_closed() ){ return; } 
+        obj->state &=~ STATE_ZLIB_OPEN;
+        onDrain.emit (); onClose.emit ();
+        onDrain.clear(); onClose.clear();
     }
     
     /*─······································································─*/
 
     void        close() const noexcept { free(); }
-    bool    is_closed() const noexcept { return obj->state == 0; }
-    bool is_available() const noexcept { return obj->state == 1; }
+    bool    is_closed() const noexcept { return !is_available(); }
+    bool is_available() const noexcept { return obj->state & STATE_ZLIB_OPEN; }
     
     /*─······································································─*/
 
     string_t update_inflate( string_t data, int mode=Z_PARTIAL_FLUSH ) const noexcept {
-        if( is_closed() || data.size() == 0 || obj->mode < 0 ){ return nullptr; }
+        if( is_closed() || data.size() == 0 || is_deflate() ){ return nullptr; }
 
-        if( obj->mode == 0 ){ if( inflateInit2( &obj->fd, obj->type ) != Z_OK ){ 
+        if( !is_inflate() ){ if( inflateInit2( &obj->fd, obj->type ) != Z_OK ){ 
             onError.emit( "Failed to initialize zlib for decompression." ); close(); return nullptr;
-        } onOpen.emit(); obj->mode = 1; } string_t output; ulong size =0;
+        }   onOpen .emit(); obj->state |= STATE::STATE_ZLIB_INFLATE; } string_t output; ulong size =0;
         
             obj->fd.avail_in = data.size();
             obj->fd.avail_out= obj->bff.size();
@@ -104,11 +124,11 @@ public:
     }
 
     string_t update_deflate( string_t data, int mode=Z_PARTIAL_FLUSH ) const noexcept { 
-        if( is_closed() || data.size() == 0 || obj->mode > 0 ){ return nullptr; }
+        if( is_closed() || data.size() == 0 || is_inflate() ){ return nullptr; }
         
-        if( obj->mode == 0 ){ if( deflateInit2( &obj->fd, Z_DEFAULT_COMPRESSION, Z_DEFLATED, obj->type, 8, Z_DEFAULT_STRATEGY ) != Z_OK ){ 
+        if( !is_deflate() ){ if( deflateInit2( &obj->fd, Z_DEFAULT_COMPRESSION, Z_DEFLATED, obj->type, 8, Z_DEFAULT_STRATEGY ) != Z_OK ){ 
             onError.emit( "Failed to initialize zlib for compression." ); close(); return nullptr;
-        } onOpen.emit(); obj->mode = -1; } string_t output; ulong size =0;
+        }   onOpen .emit(); obj->state |= STATE::STATE_ZLIB_DEFLATE; } string_t output; ulong size =0;
 
             obj->fd.avail_in = data.size();
             obj->fd.avail_out= obj->bff.size();
@@ -150,12 +170,42 @@ namespace nodepp { namespace zlib { namespace inflate {
            generator::zlib::pipe_inflate task; auto zlib = zlib_t(15);
     return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
 
-    template< class V, class... T >
-    string_t await( const V& file, const T&... args ){ string_t out;
-        generator::zlib::pipe_inflate task; auto zlib =zlib_t(15);
-        file.onData([&]( string_t data ){ out += data; });
-        process::await( task, zlib, file, args... );
-    return out; }
+    /*─······································································─*/
+
+    template< class T, class V >
+    promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() || fb.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb );
+
+    }); }
+
+    template< class T >
+    promise_t<string_t,except_t> resolve( const T& fa ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa );
+
+    }); }
+
+    /*─······································································─*/
+
+    template< class... T >
+    expected_t<string_t,except_t> await( const T&... args ){
+        return resolve( args... ).await();
+    }
     
     inline zlib_t get(){ return zlib_t(15); }
 
@@ -177,12 +227,42 @@ namespace nodepp { namespace zlib { namespace deflate {
            generator::zlib::pipe_deflate task; auto zlib = zlib_t(15);
     return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
 
-    template< class V, class... T >
-    string_t await( const V& file, const T&... args ){ string_t out;
-        generator::zlib::pipe_deflate task; auto zlib =zlib_t(15);
-        file.onData([&]( string_t data ){ out += data; });
-        process::await( task, zlib, file, args... );
-    return out; }
+    /*─······································································─*/
+
+    template< class T, class V >
+    promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() || fb.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb );
+
+    }); }
+
+    template< class T >
+    promise_t<string_t,except_t> resolve( const T& fa ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa );
+
+    }); }
+
+    /*─······································································─*/
+
+    template< class... T >
+    expected_t<string_t,except_t> await( const T&... args ){
+        return resolve( args... ).await();
+    }
     
     inline zlib_t get(){ return zlib_t(15); }
 
@@ -204,12 +284,42 @@ namespace nodepp { namespace zlib { namespace raw_inflate {
            generator::zlib::pipe_inflate task; auto zlib = zlib_t(-15);
     return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
 
-    template< class V, class... T >
-    string_t await( const V& file, const T&... args ){ string_t out;
-        generator::zlib::pipe_inflate task; auto zlib =zlib_t(-15);
-        file.onData([&]( string_t data ){ out += data; });
-        process::await( task, zlib, file, args... );
-    return out; }
+    /*─······································································─*/
+
+    template< class T, class V >
+    promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() || fb.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb );
+
+    }); }
+
+    template< class T >
+    promise_t<string_t,except_t> resolve( const T& fa ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa );
+
+    }); }
+
+    /*─······································································─*/
+
+    template< class... T >
+    expected_t<string_t,except_t> await( const T&... args ){
+        return resolve( args... ).await();
+    }
     
     inline zlib_t get(){ return zlib_t(-15); }
 
@@ -231,12 +341,42 @@ namespace nodepp { namespace zlib { namespace raw_deflate {
            generator::zlib::pipe_deflate task; auto zlib = zlib_t(-15);
     return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
 
-    template< class V, class... T >
-    string_t await( const V& file, const T&... args ){ string_t out;
-        generator::zlib::pipe_deflate task; auto zlib =zlib_t(-15);
-        file.onData([&]( string_t data ){ out += data; });
-        process::await( task, zlib, file, args... );
-    return out; }
+    /*─······································································─*/
+
+    template< class T, class V >
+    promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() || fb.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb );
+
+    }); }
+
+    template< class T >
+    promise_t<string_t,except_t> resolve( const T& fa ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa );
+
+    }); }
+
+    /*─······································································─*/
+
+    template< class... T >
+    expected_t<string_t,except_t> await( const T&... args ){
+        return resolve( args... ).await();
+    }
     
     inline zlib_t get(){ return zlib_t(-15); }
 
@@ -258,12 +398,42 @@ namespace nodepp { namespace zlib { namespace gunzip {
            generator::zlib::pipe_inflate task; auto zlib = zlib_t(15|32);
     return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
 
-    template< class V, class... T >
-    string_t await( const V& file, const T&... args ){ string_t out;
-        generator::zlib::pipe_inflate task;auto zlib=zlib_t(15|32);
-        file.onData([&]( string_t data ){ out += data; });
-        process::await( task, zlib, file, args... );
-    return out; }
+    /*─······································································─*/
+
+    template< class T, class V >
+    promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() || fb.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb );
+
+    }); }
+
+    template< class T >
+    promise_t<string_t,except_t> resolve( const T& fa ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa );
+
+    }); }
+
+    /*─······································································─*/
+
+    template< class... T >
+    expected_t<string_t,except_t> await( const T&... args ){
+        return resolve( args... ).await();
+    }
     
     inline zlib_t get(){ return zlib_t(15|32); }
     
@@ -285,12 +455,42 @@ namespace nodepp { namespace zlib { namespace gzip {
            generator::zlib::pipe_deflate task; auto zlib = zlib_t(15|16);
     return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
 
-    template< class V, class... T >
-    string_t await( const V& file, const T&... args ){ string_t out;
-        generator::zlib::pipe_deflate task;auto zlib=zlib_t(15|16);
-        file.onData([&]( string_t data ){ out += data; });
-        process::await( task, zlib, file, args... );
-    return out; }
+    /*─······································································─*/
+
+    template< class T, class V >
+    promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() || fb.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb );
+
+    }); }
+
+    template< class T >
+    promise_t<string_t,except_t> resolve( const T& fa ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){  ptr_t<string_t> bff ( 0UL );
+
+        if( fa.is_closed() )
+          { rej( except_t( "invalid fd" ) ); return; }
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa );
+
+    }); }
+
+    /*─······································································─*/
+
+    template< class... T >
+    expected_t<string_t,except_t> await( const T&... args ){
+        return resolve( args... ).await();
+    }
     
     inline zlib_t get(){ return zlib_t(15|16); }
 

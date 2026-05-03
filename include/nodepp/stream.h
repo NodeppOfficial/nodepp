@@ -16,6 +16,7 @@
 
 #include "file.h"
 #include "event.h"
+#include "promise.h"
 #include "generator.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -45,6 +46,7 @@ namespace nodepp { namespace stream {
     
     template< class T >
     ptr_t<task_t> line( const T& fa ){ generator::stream::line arg;
+    return process::add( arg, fa );
     return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, arg, 0UL, fa ); }
     
     /*─······································································─*/
@@ -58,18 +60,51 @@ namespace nodepp { namespace stream {
     return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, arg, 0UL, fa ); }
 
     /*─······································································─*/
-    
+
     template< class T >
-    string_t await( const T& fp ){ 
-        queue_t<string_t> out; generator::stream::pipe arg;
-        fp.onData([&]( string_t data ){ out.push(data); });
-    process::await( arg, fp ); return array_t<string_t>( out.data() ).join(""); }
+    promise_t< string_t, except_t > resolve( const T& fa ){
+    return promise_t< string_t, except_t > ([=](
+        res_t<string_t> res, rej_t<except_t> rej
+    ){
+
+        if( fa.is_closed() ){ rej( except_t( "closed file" ) ); return; }
+
+        ptr_t<string_t> bff ( 0UL );
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); });
+        stream::pipe( fa );
+
+    }); }
+
+    template< class T, class V >
+    promise_t< string_t, except_t > resolve( const T& fa, const V& fb ){
+    return promise_t< string_t, except_t > ([=](
+        res_t<string_t> res, rej_t<except_t> rej
+    ){
+
+        if( fa.is_closed() ){ rej( except_t( "closed file" ) ); return; }
+        if( fb.is_closed() ){ rej( except_t( "closed file" ) ); return; }
+
+        ptr_t<string_t> bff ( 0UL );
+
+        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
+        fa.onDrain([=](){ res( *bff ); });
+        stream::pipe( fa, fb );
+
+    }); }
+
+    /*─······································································─*/
     
     template< class T, class V >
-    ulong await( const T& fa, const V& fb ){ 
-        ulong out; /*-----------*/ generator::stream::pipe arg;
-        fa.onData([&]( string_t data ){ out += data.size(); });
-    process::await( arg, fa, fb ); return out; }
+    expected_t<string_t,except_t> await( const T& fa, const V& fb ){ 
+        return stream::resolve( fa, fb ).await();
+    }
+    
+    template< class T >
+    expected_t<string_t,except_t> await( const T& fa ){ 
+        return stream::resolve( fa ).await(); 
+    }
     
     /*─······································································─*/
 

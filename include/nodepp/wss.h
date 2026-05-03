@@ -96,7 +96,7 @@ namespace nodepp { namespace wss {
             stream::pipe      (cli);
         return -1; });
 
-    }); skt.connect( url::hostname(uri), url::port(uri) ); return skt; }
+    }); skt.connect( url::rawname(uri), url::port(uri) ); return skt; }
 
 }}
 

@@ -109,11 +109,11 @@ protected:
 
         if( pattern[off] == ']' || pattern[off] == '{' ||
             pattern[off] == '}' || pattern[off] == ')' // regex error handling
-        ) { throw except_t(string::format( "regex: %d %c", off, pattern[off] )); }
+        ) { NODEPP_THROW_ERROR(string::format( "regex: %d %c", off, pattern[off] )); }
 
         elif( pattern[off]=='[' ){
         int end=0; if(( end=get_next_key(pattern,off) )==-1 ){ /*-------------*/
-            throw except_t(string::format( "regex: %d %c", off, pattern[off] ));
+            NODEPP_THROW_ERROR(string::format( "regex: %d %c", off, pattern[off] ));
         }   int beg = pattern[off+1]=='^'? off+2:off+1;
             item=compile_range(pattern.slice_view(beg,end));
             item.data=pattern[off+1]=='^'? 0xff : 0x00;
@@ -122,7 +122,7 @@ protected:
 
         elif( pattern[off]== '(' ){
         int end=0; if(( end=get_next_key(pattern,off) )==-1 ){ /*-------------*/
-            throw except_t(string::format( "regex: %d %c", off, pattern[off] ));
+            NODEPP_THROW_ERROR(string::format( "regex: %d %c", off, pattern[off] ));
         }   item=compile(pattern.slice_view( off+1, end ));
             item.data=0xff; item.flag=0x09; off=end;
         }
@@ -503,10 +503,10 @@ namespace nodepp { namespace regex {
 
         for( auto &x: reg[0].search_all( val ) ){
         auto y = string::to_uint( reg[1].match( val.slice_view( x[0], x[1] ) ) );
-        if ( y >= count ){ break; }
-             out.push( val.slice( idx,x[0] ) );
+        if ( y >= count ){ continue; }
+             out.push( val.slice_view( idx,x[0] ) );
              out.push( string::get( y , args... ) ); idx = x[1];
-        }    out.push( val.slice( idx ) );
+        }    out.push( val.slice_view( idx ) );
 
         return array_t<string_t>( out.data() ).join("");
     }
