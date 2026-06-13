@@ -141,7 +141,7 @@ namespace nodepp { namespace fs {
         process::add( coroutine::add( COROUTINE(){
         coBegin
 
-            while( fl1->is_available() ){
+            while( fl1->is_available() && *bff < message.size() ){
                 
                 coWait( (*rd1)( &fl1, message ) == 1 );
                 if( rd1->state<=0 ){ break; }

@@ -22,10 +22,10 @@ private:
 protected:
 
     struct NODE {
-        T   callback; 
+        T      callback; 
         ulong time=0;
-        int state =0;
-        bool alive=1;
+        int     state=0;
+        bool    alive=1;
     };  ptr_t<NODE> obj;
 
 public:

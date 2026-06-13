@@ -19,11 +19,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp {
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-class udp_t {
+namespace nodepp { class udp_t {
 private:
 
     using NODE_CLB = function_t<void,socket_t>;
@@ -36,7 +32,7 @@ private:
 protected:
 
     struct NODE {
-        int  state= 0; 
+        int state = 0; 
         agent_t agent;
         NODE_CLB func;
     };  ptr_t<NODE> obj;
@@ -65,7 +61,7 @@ public:
 
     /*─······································································─*/
 
-    void listen( const dns_t& addr, int port, NODE_CLB cb=nullptr ) const noexcept {
+    void listen( const dns_t& addr, int port, NODE_CLB clb=nullptr ) const noexcept {
 
         if( obj->state & STATE::UDP_STATE_CLOSED )
           { onError.emit("udp listener is closed"); return; } 
@@ -87,8 +83,8 @@ public:
 
         auto self = type::bind(this); process::add([=](){
 
-            cb(sk); self->onSocket.emit(sk);
-            /*---*/ self->obj->func(sk);
+            clb(sk); self->onSocket.emit(sk);
+            /*----*/ self->obj->func(sk);
                 
             if( sk.is_available() ){ 
                 sk.onOpen      .emit(  );
@@ -100,15 +96,15 @@ public:
 
     }
 
-    void listen( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
+    void listen( const string_t& host, int port, NODE_CLB clb=nullptr ) const noexcept {
     auto addr = dns::lookup( host, obj->agent.socket_family );
          if( addr.empty() ){ onError.emit( "dns address not found" ); return; }
-         listen( addr[0], port, cb );
+         listen( addr[0], port, clb );
     }
 
     /*─······································································─*/
 
-    void connect( const dns_t& addr, int port, NODE_CLB cb=nullptr ) const noexcept {
+    void connect( const dns_t& addr, int port, NODE_CLB clb=nullptr ) const noexcept {
 
         if( obj->state & STATE::UDP_STATE_CLOSED )
           { onError.emit( "udp listener is closed" ); return; } 
@@ -126,8 +122,8 @@ public:
         
         auto self = type::bind(this); process::add([=](){
         
-            cb(sk); self->onSocket.emit(sk);
-            /*---*/ self->obj->func(sk);
+            clb(sk); self->onSocket.emit(sk);
+            /*----*/ self->obj->func(sk);
 
             if( sk.is_available() ){ 
                 sk.onOpen      .emit(  );
@@ -139,10 +135,10 @@ public:
 
     }
 
-    void connect( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
+    void connect( const string_t& host, int port, NODE_CLB clb=nullptr ) const noexcept {
     auto addr = dns::lookup( host, obj->agent.socket_family );
          if( addr.empty() ){ onError.emit( "dns address not found" ); return; }
-         connect( addr[0], port, cb );
+         connect( addr[0], port, clb );
     }
 
     /*─······································································─*/
@@ -155,11 +151,11 @@ public:
         onConnect.clear(); onClose .clear();
     }
 
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace udp {
+namespace nodepp { namespace udp {
 
     inline udp_t server( agent_t* opt=nullptr ){
         auto skt = udp_t( nullptr, opt ); return skt;
@@ -169,11 +165,7 @@ namespace udp {
         auto skt = udp_t( nullptr, opt ); return skt;
     }
 
-}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-}
+}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

@@ -14,7 +14,8 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if defined(NODEPP_THREAD_SUPPORTED)
+#if defined(NODEPP_THREAD_SUPPORTED) && (NODEPP_ALLOW_PTR_ATOMIC_COUNTER==1)
+#define NODEPP_PTR_ATOMIC_SUPPORTED
 #include "atomic.h"
 #endif
 
@@ -25,7 +26,7 @@ private:
 
     static constexpr ulong SSO = ( STACK_SIZE>0 && type::is_trivially_copyable<T>::value ) ? STACK_SIZE : 1;
 
-#ifdef NODEPP_THREAD_SUPPORTED
+#ifdef NODEPP_PTR_ATOMIC_SUPPORTED
 
     struct NODE_STACK {
         atomic_t<ulong> /*------*/ count; 
@@ -87,7 +88,7 @@ private:
         if( address == nullptr ){ return -1; }
         if( address->count ==0 ){ return -1; }
 
-    #ifdef NODEPP_THREAD_SUPPORTED
+    #ifdef NODEPP_PTR_ATOMIC_SUPPORTED
         if( address->count.sub(1) == 1 )
           { _free_(address); delete address; }
     #else
@@ -172,7 +173,7 @@ private:
 
     inline int _cpy_( NODE* address, NODE*& output ) const noexcept {
         if( _null_( address ) ){ return -1; }
-    #ifdef NODEPP_THREAD_SUPPORTED
+    #ifdef NODEPP_PTR_ATOMIC_SUPPORTED
         output = address; address->count.add(1);
     #else
         output = address; address->count++;
@@ -229,31 +230,33 @@ public:
 
     /*─······································································─*/
 
-    ptr_t( /*-*/ ptr_t&& other ) noexcept { mve(type::move(other)); }
-    ptr_t( const ptr_t&  other ) noexcept { cpy(other); }
+    ptr_t( const ptr_t<T>& value, ulong _offset, ulong _limit ) noexcept : address(nullptr) {
+        cpy( value ); slice( _offset, _limit ); 
+    }
 
     /*─······································································─*/
 
-    ptr_t( const ptr_t<T>& value, ulong _offset, ulong _limit ) noexcept {
-    cpy  ( value ); slice( _offset, _limit ); }
+    ptr_t( /*-*/ ptr_t&& other ) noexcept : address(nullptr) { mve(type::move(other)); }
+    ptr_t( const ptr_t&  other ) noexcept : address(nullptr) { cpy(other); }
 
     /*─······································································─*/
 
-    ptr_t( ulong N, const T& value ) noexcept { resize( N, value ); }
-    ptr_t( T* value, ulong N ) /*-*/ noexcept { resize( value, N ); }
-    ptr_t( T* value ) /*----------*/ noexcept { resize( value ); }
-    ptr_t( ulong N ) /*-----------*/ noexcept { resize( N ); }
+    ptr_t( ulong N, const T& value ) noexcept : address(nullptr) { resize( N, value ); }
+    ptr_t( T* value, ulong N ) /*-*/ noexcept : address(nullptr) { resize( value, N ); }
+    ptr_t( T* value ) /*----------*/ noexcept : address(nullptr) { resize( value ); }
+    ptr_t( ulong N ) /*-----------*/ noexcept : address(nullptr) { resize( N ); }
 
     /*─······································································─*/
 
     template < class V, ulong N >
-    ptr_t( const V (&value)[N] ) noexcept
-    /*-*/{ resize(N); type::copy( value, value+N, begin() ); }
+    ptr_t( const V (&value)[N] ) noexcept : address(nullptr) { 
+        resize(N); type::copy( value, value+N, begin() ); 
+    }
 
     /*─······································································─*/
 
-    ptr_t() noexcept { /*----*/ }
-   ~ptr_t() noexcept { clear(); }
+    ptr_t() noexcept : address(nullptr) { /*----*/ }
+   ~ptr_t() noexcept /*--------------*/ { clear(); }
 
     /*─······································································─*/
 
@@ -291,12 +294,12 @@ public:
         return n_buffer; } return nullptr;
     }
 
-    void slice( ulong _offset, ulong _limit ) noexcept {
-        if( _offset > _limit  ){ limit=0, offset=0; return; }
-        if( _null_( address ) ){ /*--------------*/ return; }
+    ptr_t& slice( ulong _offset, ulong _limit ) noexcept {
+        if( _offset > _limit  ){ limit=0, offset=0; return *this; }
+        if( _null_( address ) ){ /*--------------*/ return *this; }
         limit =min( address->length, _limit  + offset );
         offset=min( address->length, _offset + offset ); 
-    }
+    return *this; }
 
     /*─······································································─*/
 

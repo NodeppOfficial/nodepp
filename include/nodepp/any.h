@@ -42,18 +42,18 @@ public:
     void set( const T& f ) noexcept { any_ptr = new any_impl<T>(f); }
 
     template< class T >
-    T as() const { return get<T>(); }
+    bool is() const noexcept { return type_size()==sizeof(T); }
 
     template< class T >
-    T get() const {
+    T& as() const { return get<T>(); }
 
-        if( !has_value() ) /*----*/ { NODEPP_THROW_ERROR("any_t is null"); } /*---------*/
-        if( type_size()!=sizeof(T) ){ NODEPP_THROW_ERROR("any_t incompatible sizetype"); }
+    template< class T >
+    T& get() const { void* ptr = nullptr; any_ptr->ptr( ptr ); 
 
-        alignas(T) char any [ sizeof(T) / sizeof(char) ]; 
-        any_ptr->get((void*)&any); return *(T*)(any);
+        if( ptr==nullptr ){ NODEPP_THROW_ERROR("any_t is null"); }
+        if( !is<T>() )/**/{ NODEPP_THROW_ERROR("any_t incompatible sizetype"); }
 
-    }
+    return * type::cast<T>(ptr); }
 
     /*─······································································─*/
 
@@ -61,10 +61,9 @@ private:
 
     class any_base {
     public:
-        virtual ~any_base() noexcept {}
-        virtual void  get( void* /*unused*/ ) const noexcept {}
-        virtual void  set( void* /*unused*/ ) /*-*/ noexcept {}
-        virtual ulong size() /*------------*/ const noexcept =0;
+        virtual ~any_base () /*---------*/ noexcept {}
+        virtual void  ptr ( void*& ) const noexcept {}
+        virtual ulong size() /*---*/ const noexcept =0;
     };
 
     /*─······································································─*/
@@ -73,9 +72,8 @@ private:
     class any_impl : public any_base {
     public:
         any_impl( const T& f ) noexcept : any( type::bind(f) ) {}
-        virtual ulong size() /*------*/ const noexcept { return any.null(/**/) ?0 : sizeof(T)  ; }
-        virtual void  get( void* argc ) const noexcept { memcpy( argc, (void*)&any, sizeof(T) ); }
-        virtual void  set( void* argc ) /*-*/ noexcept { memcpy( (void*)&any, argc, sizeof(T) ); }
+        virtual ulong size() /*-------*/ const noexcept { return any.null() ?0 : sizeof(T)  ; }
+        virtual void  ptr( void*& argc ) const noexcept { argc = &any; }
     private:
         ptr_t<T> any;
     };

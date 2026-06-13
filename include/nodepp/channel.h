@@ -26,21 +26,23 @@ private:
     struct NODE { 
         /*--------*/ queue_t<T> queue; 
         ulong limit; mutex_t mut; 
-    };  ptr_t<NODE> obj;
+    };  atomic_ptr_t<NODE> obj;
 
 public:
 
-    channel_t( ulong limit=0 ) noexcept : obj( new NODE() ){ obj->limit=limit; }
+    channel_t( ulong limit=0 ) noexcept : obj( new NODE() ) { obj->limit=limit; }
 
     /*─······································································─*/
 
     bool empty() const noexcept { return obj->queue.empty(); }
+
     ulong size() const noexcept { return obj->queue.size (); }
 
+    /*─······································································─*/
+
     void free () const noexcept { clear(); }
-    void clear() const noexcept { obj->mut.lock([&](){
-         obj->queue.clear();
-    }); }
+    void clear() const noexcept { 
+    obj->mut.lock([&](){ obj->queue.clear(); }); }
 
     /*─······································································─*/
 

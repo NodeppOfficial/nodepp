@@ -24,19 +24,20 @@ namespace nodepp { namespace generator { namespace file {
     template< class T > coEmit( T* str, ulong size = NODEPP_CHUNK_SIZE ){
     coBegin; data.clear(); state=0; d=0;
 
-        if( !str->is_available()       ){ coEnd; } r=str->get_range();
-        if( !str->get_borrow().empty() ){ data = str->get_borrow(); }
+        if( !str->is_available()       ){ coEnd; } r=str->get_range ();
+        if( !str->get_borrow().empty() ){ data =/*-*/str->get_borrow(); }
 
-        if( r[1] != 0  ){ auto pos = str->pos(); d = r[1]-r[0];
+        if( r[1] != 0  ){ auto pos=str->pos(); d=r[1]-r[0];
         if( pos < r[0] ){ str->del_borrow(); str->pos(r[0]); }
       elif( pos >=r[1] ){ coEnd; } } else { d = str->get_buffer_size(); }
 
         if( data.empty() ){ 
             coWait((state=str->_read(str->get_buffer_data(),min(d,size)))==-2);
-        if( state<=0 ){ coEnd; }
-        if( state >0 ){ data=string_t(str->get_buffer_data(),(ulong)state); }}
+        if( state <= 0 ) { coEnd; } else { 
+            data=string_t( str->get_buffer_data(), state );
+        }}
 
-        state = min( data.size(), size ); /*---------------*/
+        state=/*--*/min( data.size(), size );
         str->set_borrow( data.splice( state, data.size() ) );
 
     coFinish }};
@@ -46,14 +47,14 @@ namespace nodepp { namespace generator { namespace file {
     GENERATOR( write ){
     public: ulong data; int state;
 
-    template< class T > coEmit( T* str, const string_t& msg ){
+    template< class T > coEmit( T* str, string_t msg ){
     coBegin state=0; data=0;
 
         if(!str->is_available() || msg.empty() ){ coEnd; }
 
         do{ coWait((state=str->_write( msg.data()+data, msg.size()-data ))==-2 );
-        if( state<=0 ){ coEnd; }
-        if( state >0 ){ data += state; }} while ( state>=0 && data<msg.size() );
+        if( state<=0 ) { break; } else { data += state; }} 
+        while( state>=0 && data<msg.size() );
 
     coFinish }};
 
@@ -131,60 +132,6 @@ namespace nodepp { namespace generator { namespace file {
     coGoto(1) ; coFinish }};
 
 }}}
-#undef NODEPP_GENERATOR
-#endif
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-#if !defined(GENERATOR_SSL) && defined(NODEPP_SSL) && defined(NODEPP_GENERATOR)
-    #define  GENERATOR_SSL
-
-#include "socket.h"
-
-namespace nodepp { namespace generator { namespace ssl {
-
-    GENERATOR( pipe ){
-    protected:
-
-        ptr_t<char> /*----*/ bff; ulong sy;
-        int d=0, err=0; bool x=0;
-
-    public:
-
-        pipe() noexcept : bff( CHUNK_KB(16) ) {}
-
-        template< class T, class V >
-        coEmit( T& obj, V* stream, int& c ){
-        coBegin ; err=0; d=0; sy=0;
-
-            while ((d=BIO_read( obj->wbio, &bff, bff.size() ))>0 ){
-            coWait((stream->socket_t::__write( &bff,d ))==-2 ); }
-            err=SSL_get_error( obj->ssl, c ); ERR_clear_error();
-
-            if( err == SSL_ERROR_SSL || err == SSL_ERROR_SYSCALL )
-              { c=-1; coEnd; }
-
-            if( err == SSL_ERROR_WANT_READ ){
-                
-                d=stream->socket_t::__read( &bff, bff.size() );
-                if( d > 0 ){
-                if( bff[0]!=0x16 && !x ){ c=-1; coEnd; }
-                    BIO_write( obj->rbio, &bff, d ); x=1;
-                    SSL_read ( obj->ssl , &bff, 0 ); }
-                if( d < 0 && d != -2 ){ c=-1; coEnd; }
-
-            }
-
-            if( err == SSL_ERROR_WANT_WRITE ||
-                err == SSL_ERROR_WANT_READ        
-            ) { c=0; coGoto(0); }
-
-        coFinish }
-
-    };
-
-}}}
-
 #undef NODEPP_GENERATOR
 #endif
 
@@ -475,11 +422,13 @@ namespace nodepp { namespace generator { namespace ws {
     /*─······································································─*/
 
     template< class T > bool server( T& cli ) { do {
-        auto data = cli.read(); cli.set_borrow( data );
+        auto data = cli.read(); int c=0; 
+        cli.set_borrow( data );
 
-        int c=0; while( (c=cli.read_header())==1 ) 
-        { /*unused*/ } if( c!=0 ) { break; }
-
+        while((c=cli.read_header())==1 ){
+        if   ( cli.is_waiting() ){ process::next(); }}
+        
+        if( c!=0 ) /*----------------*/ { break; }
         if( cli.headers.has("Sec-Websocket-Key") ){
 
             string_t sec = cli.headers["Sec-Websocket-Key"];
@@ -511,7 +460,10 @@ namespace nodepp { namespace generator { namespace ws {
         });
 
         cli.write_header( "GET", url::path(url), "HTTP/1.1", header );
-        int c=0; while( (c=cli.read_header())==1 ){ /*unused*/ }
+        int c=0; 
+
+        while((c=cli.read_header())==1 ){
+        if   ( cli.is_waiting() ){ process::next(); }}
 
         if( c != 0 ){
             cli.onError.emit("Could not connect to server");
@@ -628,27 +580,30 @@ namespace nodepp { namespace generator { namespace ws {
     protected:
             ptr_t<char> bfx;
             string_t    bff;
+            char    mask[4];
             ulong    size=0;
     public: ulong    data=0;
 
     protected:
 
-        string_t write_ws_frame( char* bf, const ulong& sx, uchar opcode=0 ) {
+        string_t write_ws_frame( char* bf, ulong sx, uchar opcode, char* mask ) {
             auto byt = encoder::bytes::get( sx ); uint idx = 0;
 
-            if( opcode == 0 ) {
-                auto x=sx; bool b=0; while( x-->0 ){ if( !string::is_print(bf[x]) ){ b=1; break; } }   
-                     bfx[idx] = !b ? (char) 0x82 : (char) 0x81;
-            } else { bfx[idx] = (char)(0x80 | opcode); }
+            if( opcode == 0 ){ bool b=0; for ( ulong x=0; x<sx; x++ ){
+            if( !string::is_print( bf[x] ) ){ b=1; break; }}
+                     bfx[idx] = !b? 0x82:0x81;
+            } else { bfx[idx] = 0x80 | opcode; } ++idx; 
+            
+            bfx[idx] = mask==nullptr ? 0x00 : 0x80;
 
-            ++idx; if ( sx < 126 ){
-                bfx[idx] = (uchar)(byt[byt.size()-1]); ++idx;
+            if ( sx < 126 ){
+                bfx[idx]|= (uchar)(byt[byt.size()-1]); ++idx;
             } elif ( sx < 65536 ){
-                bfx[idx] = (uchar)( 126 ); ++idx;
+                bfx[idx]|= (uchar)( 126 ); /*-------*/ ++idx;
                 bfx[idx] = (uchar)(byt[byt.size()-2]); ++idx;
                 bfx[idx] = (uchar)(byt[byt.size()-1]); ++idx;
             } else {
-                bfx[idx] = (uchar)( 127 ); ++idx;
+                bfx[idx]|= (uchar)( 127 ); /*-------*/ ++idx;
                 bfx[idx] = (uchar)(byt[byt.size()-8]); ++idx;
                 bfx[idx] = (uchar)(byt[byt.size()-7]); ++idx;
                 bfx[idx] = (uchar)(byt[byt.size()-6]); ++idx;
@@ -657,6 +612,11 @@ namespace nodepp { namespace generator { namespace ws {
                 bfx[idx] = (uchar)(byt[byt.size()-3]); ++idx;
                 bfx[idx] = (uchar)(byt[byt.size()-2]); ++idx;
                 bfx[idx] = (uchar)(byt[byt.size()-1]); ++idx;
+            } if( mask != nullptr ) {
+                bfx[idx] = (uchar)(mask[0]); /*-----*/ ++idx;
+                bfx[idx] = (uchar)(mask[1]); /*-----*/ ++idx;
+                bfx[idx] = (uchar)(mask[2]); /*-----*/ ++idx;
+                bfx[idx] = (uchar)(mask[3]); /*-----*/ ++idx;
             }
 
             return string_t( &bfx, idx );
@@ -667,8 +627,16 @@ namespace nodepp { namespace generator { namespace ws {
         template<class T> coEmit( T* str, char* bf, const ulong& sx ) {
         coBegin
 
-            bff=write_ws_frame( bf, sx ) + string_t( bf, sx ); data=0;size=0;
-            coWait(str->_write_( bff.get(),bff.size(),&size)==-2); data = sx;
+            if( !str->is_server() ){ int* tmp = (int*) mask; *tmp = rand(); }
+            bff =write_ws_frame( bf, sx, 0, str->is_server() ? nullptr:mask )
+                +string_t( bf, sx ); data=0; size=0;
+            
+            if ( !str->is_server() ){  ulong sy=0; 
+            for( char *y = bff.end()-sx; y<bff.end(); y++ )
+               { *y ^= mask[ sy++%4 ];
+            }  }
+            
+            coWait( str->_write_( bff.get(), bff.size(), &size) == -2 ); data = sx;
 
         coFinish }
 

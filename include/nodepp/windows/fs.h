@@ -39,7 +39,8 @@ namespace nodepp { namespace fs {
     inline bool exists_file( const string_t& path ){
         if( path.empty() ) /*----------------*/ { return 0; }
         if( exists_folder( path ) ) /*-------*/ { return 0; }
-        return !GetFileAttributesA( path.c_str() ) ? 0 : 1;
+        DWORD   attributes = GetFileAttributesA( path.c_str() );
+        return( attributes!= INVALID_FILE_ATTRIBUTES );
     }
 
     /*─······································································─*/
@@ -130,7 +131,7 @@ namespace nodepp { namespace fs {
         process::add( coroutine::add( COROUTINE(){
         coBegin
 
-            while( fl1->is_available() ){
+            while( fl1->is_available() && *bff < message.size() ){
                 
                 coWait( (*rd1)( &fl1, message ) == 1 );
                 if( rd1->state<=0 ){ break; }
@@ -160,7 +161,7 @@ namespace nodepp { namespace fs {
         process::add( coroutine::add( COROUTINE(){
         coBegin
 
-            while( fl1->is_available() ){
+            while( fl1->is_available() && *bff < message.size() ){
                 
                 coWait( (*rd1)( &fl1, message ) == 1 );
                 if( rd1->state<=0 ){ break; }

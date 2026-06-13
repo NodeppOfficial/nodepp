@@ -44,17 +44,15 @@ namespace tuple {
 
     template <ulong Index, typename Head, typename... Tail>
     struct get_helper {
-        static typename tuple_element<Index, Head, Tail...>::type& get(const tuple_t<Head, Tail...>& tuple) {
-            return get_helper<Index - 1, Tail...>::get(tuple.tail());
-        }
-    };
+    static typename tuple_element<Index, Head, Tail...>::type& get(const tuple_t<Head, Tail...>& tuple) {
+        return get_helper<Index - 1, Tail...>::get(tuple.tail());
+    }};
 
     template <typename Head, typename... Tail>
     struct get_helper<0, Head, Tail...> {
-        static Head& get(const tuple_t<Head, Tail...>& tuple) {
-            return tuple.head();
-        }
-    };
+    static Head& get(const tuple_t<Head, Tail...>& tuple) {
+        return tuple.head();
+    }};
 
     /*─······································································─*/
 

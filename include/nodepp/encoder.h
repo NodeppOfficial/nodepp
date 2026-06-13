@@ -34,6 +34,41 @@ namespace nodepp { namespace encoder { namespace key {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+namespace nodepp { namespace encoder { namespace ofuscator { 
+
+    inline uchar_64 atob( void* address, void* sign_ptr ){
+
+        void* msk1   = &NODEPP_SHTDWN();
+        void* msk2   = sign_ptr;
+            
+        uchar_64 raw = ( (uchar_64) address ) & (((uchar_64)-1)>>16);
+        uchar_64 msk = ( (uchar_64) msk1    ) & (((uchar_64)-1)>>16);
+        uchar_64 col =   (uchar_64) address   ^   (uchar_64) msk2 ;
+
+        uchar_64 sum = ( col^(col>>16)^(col>>32)^(col>>48)) & 0xffff;
+        return ( raw ^ msk ) | ( sum << 48 );
+
+    }
+
+    inline void* btoa( uchar_64 address, void* sign_ptr ){
+
+        void* msk1   = &NODEPP_SHTDWN();
+        void* msk2   = sign_ptr;
+
+        uchar_64 msk = ( (uchar_64)  msk1  )& (((uchar_64)-1)>>16);
+        void*    raw = (void*)((address^msk)& (((uchar_64)-1)>>16) );
+        uchar_64 col = (uchar_64) raw       ^   (uchar_64) msk2 ;
+
+        uchar_64 sum = ( col^(col>>16)^(col>>32)^(col>>48)) & 0xffff;
+        uchar_64 out = ( address >>48) /*----------------*/ & 0xffff;
+        return out==sum ? raw : nullptr ; 
+
+    }
+
+}}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 namespace nodepp { namespace encoder { namespace hash {
 
     inline ulong get( const string_t& key, int tableSize ) {
@@ -281,23 +316,63 @@ namespace nodepp { namespace encoder { namespace base64 {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+namespace nodepp { namespace ctz { 
+
+    inline int count( uchar_8 value ) noexcept {
+        if ( value == 0 ) { return 8; } int count = 0;
+        if ( ( value & 0x0FU ) == 0x00U ) { count += 4; value >>= 4; }
+        if ( ( value & 0x03U ) == 0x00U ) { count += 2; value >>= 2; }
+        return count + ( 1 - ( value & 0x01U ) );
+    }
+
+    inline int count( uchar_16 value ) noexcept {
+        if ( value == 0 ) { return 16; } int count = 0;
+        if ( ( value & 0x00FFU ) == 0x0000U ) { count += 8; value >>= 8; }
+        if ( ( value & 0x000FU ) == 0x0000U ) { count += 4; value >>= 4; }
+        if ( ( value & 0x0003U ) == 0x0000U ) { count += 2; value >>= 2; }
+        return count + ( 1 - ( value & 0x01U ) );
+    }
+
+    inline int count( uchar_32 value ) noexcept {
+        if ( value == 0 ) { return 32; } int count = 0;
+        if ( ( value & 0x0000FFFFUL ) == 0x00000000UL ) { count += 16; value >>= 16; }
+        if ( ( value & 0x000000FFUL ) == 0x00000000UL ) { count += 8;  value >>= 8;  }
+        if ( ( value & 0x0000000FUL ) == 0x00000000UL ) { count += 4;  value >>= 4;  }
+        if ( ( value & 0x00000003UL ) == 0x00000000UL ) { count += 2;  value >>= 2;  }
+        return count + ( 1 - ( value & 0x01UL ) );
+    }
+
+    inline int count( uchar_64 value ) noexcept {
+        if ( value == 0 ) { return 64; } int count = 0;
+        if ( ( value & 0xFFFFFFFFULL ) == 0x0000000000000000ULL ) { count += 32; value >>= 32; }
+        if ( ( value & 0x0000FFFFULL ) == 0x0000000000000000ULL ) { count += 16; value >>= 16; }
+        if ( ( value & 0x000000FFULL ) == 0x0000000000000000ULL ) { count += 8;  value >>= 8;  }
+        if ( ( value & 0x0000000FULL ) == 0x0000000000000000ULL ) { count += 4;  value >>= 4;  }
+        if ( ( value & 0x00000003ULL ) == 0x0000000000000000ULL ) { count += 2;  value >>= 2;  }
+        return count + ( 1 - ( value & 0x01ULL ) );
+    }
+
+}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 namespace nodepp { namespace encoder { namespace utf8 {
-    inline ptr_t<uint16> to_utf16( ptr_t<uint8> inp ){ return utf::utf8_to_utf16( inp ); }
-    inline ptr_t<uint32> to_utf32( ptr_t<uint8> inp ){ return utf::utf8_to_utf32( inp ); }
+    inline ptr_t<uchar_16> to_utf16( ptr_t<uchar_8> inp ){ return utf::utf8_to_utf16( inp ); }
+    inline ptr_t<uchar_32> to_utf32( ptr_t<uchar_8> inp ){ return utf::utf8_to_utf32( inp ); }
 }}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace encoder { namespace utf16 {
-    inline ptr_t<uint8>  to_utf8 ( ptr_t<uint16> inp ){ return utf::utf16_to_utf8 ( inp ); }
-    inline ptr_t<uint32> to_utf32( ptr_t<uint16> inp ){ return utf::utf16_to_utf32( inp ); }
+    inline ptr_t<uchar_8>  to_utf8 ( ptr_t<uchar_16> inp ){ return utf::utf16_to_utf8 ( inp ); }
+    inline ptr_t<uchar_32> to_utf32( ptr_t<uchar_16> inp ){ return utf::utf16_to_utf32( inp ); }
 }}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace encoder { namespace utf32 {
-    inline ptr_t<uint8>  to_utf8 ( ptr_t<uint32> inp ){ return utf::utf32_to_utf8 ( inp ); }
-    inline ptr_t<uint16> to_utf16( ptr_t<uint32> inp ){ return utf::utf32_to_utf16( inp ); }
+    inline ptr_t<uchar_8>  to_utf8 ( ptr_t<uchar_32> inp ){ return utf::utf32_to_utf8 ( inp ); }
+    inline ptr_t<uchar_16> to_utf16( ptr_t<uchar_32> inp ){ return utf::utf32_to_utf16( inp ); }
 }}}
 
 /*────────────────────────────────────────────────────────────────────────────*/

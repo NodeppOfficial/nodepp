@@ -40,16 +40,16 @@ namespace nodepp {
 
 struct ip_t    { string_t address; uint port; };
 struct agent_t {
-    ulong buffer_size   = NODEPP_CHUNK_SIZE;
-    ulong conn_timeout  = 60000;
-    ulong recv_timeout  = 0;
-    ulong send_timeout  = 0;
-    bool  reuse_address = 1;
-    bool  no_delay_mode = 0;
-    bool  reuse_port    = 1;
-    bool  keep_alive    = 0;
-    bool  broadcast     = 0;
-    int   socket_family = AF_UNSPEC;
+    ulong buffer_size    = NODEPP_CHUNK_SIZE;
+    ulong conn_timeout   = 60000;
+    ulong recv_timeout   = 0;
+    ulong send_timeout   = 0;
+    bool  reuse_address  = 1;
+    bool  no_delay_mode  = 0;
+    bool  reuse_port     = 1;
+    bool  keep_alive     = 0;
+    bool  broadcast      = 0;
+    int   socket_family  = AF_UNSPEC;
 };
 
 class socket_t {
@@ -84,11 +84,12 @@ protected:
     enum STATE {
          FS_STATE_UNKNOWN = 0b00000000,
          FS_STATE_OPEN    = 0b00000001,
+         FS_STATE_REUSE   = 0b01000000,
          FS_STATE_CLOSE   = 0b00000010,
          FS_STATE_READING = 0b00010000,
          FS_STATE_WRITING = 0b00100000,
          FS_STATE_KILL    = 0b00000100,
-         FS_STATE_REUSE   = 0b00001000,
+         FS_STATE_STOP    = 0b00001000,
          FS_STATE_DISABLE = 0b00001110,
          FS_STATE_SERVER  = 0b10000000
     };
@@ -97,10 +98,9 @@ protected:
 
     struct NODE {
 
-        ulong recv_timeout=0; 
-        ulong send_timeout=0;
-        ulong conn_timeout=0;
-        ulong range[2] = { 0, 0 };
+        ulong recv_timeout=0; uchar_64 tag   = 0UL;
+        ulong send_timeout=0; uchar_64 pd    = 0UL;
+        ulong conn_timeout=0; ulong range[2] = { 0, 0 };
 
         WSAOVERLAPPED ovr, ovw ;
         SOCKET fd  = INVALID_SOCKET;
@@ -144,6 +144,7 @@ protected:
         if( obj->state & ( STATE::FS_STATE_READING | STATE::FS_STATE_WRITING ) ){
         if( GetOverlappedResult((HANDLE)obj->fd, ov, &c, FALSE) )
           { goto DONE; }} else { goto DONE; }
+
         if( is_blocked( c ) )  { return 1 ; }
     
     DONE:; return 0; }
@@ -196,8 +197,7 @@ public:
         en.tv_sec  =  time / 1000; 
         en.tv_usec = (time % 1000) * 1000;
         int c = setsockopt( obj->fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&en, sizeof(en) ); 
-        obj->recv_timeout = process::millis() + time; 
-        return c == 0 ? time : 0;
+        obj->recv_timeout = process::millis() + time; return c == 0 ? time : 0;
     }
 
     ulong set_send_timeout( ulong time ) const noexcept {
@@ -214,18 +214,18 @@ public:
         return c;
     }
 
-    int set_recv_buff( uint en ) const noexcept {
-    int c= setsockopt( obj->fd, SOL_SOCKET, SO_RCVBUF, (char*)&en, sizeof(en) ); 
-        return c;
-    }
-
-    int set_send_buff( uint en ) const noexcept {
-    int c= setsockopt( obj->fd, SOL_SOCKET, SO_SNDBUF, (char*)&en, sizeof(en) );
-        return c;
-    }
-
     int set_accept_connection( uint en ) const noexcept {
     int c= setsockopt( obj->fd, SOL_SOCKET, SO_ACCEPTCONN, (char*)&en, sizeof(en) ); 
+        return c;
+    }
+
+    int set_send_buff( uint en ) const noexcept { uint x = max( 1500U, en );
+    int c= setsockopt( obj->fd, SOL_SOCKET, SO_SNDBUF, (char*)&x, sizeof(x) ); 
+        return c;
+    }
+
+    int set_recv_buff( uint en ) const noexcept { uint x = max( 1500U, en );
+    int c= setsockopt( obj->fd, SOL_SOCKET, SO_RCVBUF, (char*)&x, sizeof(x) ); 
         return c;
     }
 
@@ -389,7 +389,7 @@ public:
 
     /*─······································································─*/
 
-    ulong set_timeout( ulong time ) const noexcept {
+    ulong    set_timeout( ulong time ) const noexcept {
         set_conn_timeout( time );
         set_recv_timeout( time );
         set_send_timeout( time ); return time;
@@ -397,15 +397,16 @@ public:
 
     /*─······································································─*/
 
-    void  resume() const noexcept { if(is_state(STATE::FS_STATE_OPEN )){ return; } set_state(STATE::FS_STATE_OPEN ); onResume.emit(); }
-    void    stop() const noexcept { if(is_state(STATE::FS_STATE_REUSE)){ return; } set_state(STATE::FS_STATE_REUSE); onDrain .emit(); }
-    void   reset() const noexcept { if(is_state(STATE::FS_STATE_KILL )){ return; } resume(); pos(0); }
+    void  resume() const noexcept { if(!is_state(STATE::FS_STATE_STOP )){ return; } onResume .emit(); obj->state &=~ STATE::FS_STATE_STOP; }
+    void    stop() const noexcept { if( is_state(STATE::FS_STATE_STOP )){ return; } onDrain  .emit(); obj->state |=  STATE::FS_STATE_STOP; }
+    void   reset() const noexcept { if( is_state(STATE::FS_STATE_KILL )){ return; } resume(); pos(0); }
     void   flush() const noexcept { obj->buffer.fill(0); }
 
     /*─······································································─*/
 
     bool    is_closed() const noexcept { return is_state(STATE::FS_STATE_DISABLE) || is_feof() || obj->fd==INVALID_SOCKET; }
-    bool    is_server() const noexcept { return obj->state & STATE::FS_STATE_SERVER; }
+    bool  is_reusable() const noexcept { return is_state(STATE::FS_STATE_REUSE  ); }
+    bool    is_server() const noexcept { return is_state(STATE::FS_STATE_SERVER ); }
     bool      is_feof() const noexcept { return obj->feof <= 0 && obj->feof != -2; }
     bool   is_waiting() const noexcept { return obj->feof == -2; }
     bool is_available() const noexcept { return !is_closed(); }
@@ -413,14 +414,29 @@ public:
     /*─······································································─*/
 
     void close() const noexcept {
-        if( is_state ( STATE::FS_STATE_DISABLE ) ) { return; }
-            onDrain.emit(); set_state( STATE::FS_STATE_CLOSE );
+        if( is_state ( STATE::FS_STATE_DISABLE )){ return; } onDrain.emit(); 
+        if( is_state ( STATE::FS_STATE_REUSE   )){ return; }
+            set_state( STATE::FS_STATE_CLOSE   );
     free(); }
 
     /*─······································································─*/
 
-    SOCKET    get_fd() const noexcept { return obj == nullptr ? INVALID_SOCKET : obj->fd;    }
-    ulong* get_range() const noexcept { return obj == nullptr ?        nullptr : obj->range; }
+    void   set_range( ulong x, ulong y ) const noexcept { obj->range[0] = x; obj->range[1] = y; }
+    ulong* get_range() /*-------------*/ const noexcept { return obj->range; }
+
+    /*─······································································─*/
+
+    void set_reusable( bool mode ) const noexcept { 
+    switch( (int) mode ){
+        case 1 : obj->state |=  STATE::FS_STATE_REUSE; break;
+        default: obj->state &=~ STATE::FS_STATE_REUSE; break;
+    }}
+
+    /*─······································································─*/
+    
+    uchar_64&  get_pd() const noexcept { return obj->pd ; }
+    SOCKET     get_fd() const noexcept { return obj->fd ; }
+    uchar_64&     tag() const noexcept { return obj->tag; }
 
     /*─······································································─*/
 
@@ -440,9 +456,9 @@ public:
 
     ulong pos( ulong /*unused*/ ) const noexcept { return 0; }
 
-    ulong size() const noexcept { return 0; }
+    ulong   size() const noexcept { return 0; }
 
-    ulong  pos() const noexcept { return 0; }
+    ulong    pos() const noexcept { return 0; }
 
     /*─······································································─*/
 
@@ -483,7 +499,7 @@ public:
         obj->fd = fd; set_nonbloking_mode(); set_buffer_size(_size);
     }
 
-    virtual ~socket_t() noexcept { if( obj.count()>1 && !is_closed() ){ return; } free(); }
+   ~socket_t() noexcept { if( obj.count()>1 && !is_closed() ){ return; } free(); }
 
     socket_t() noexcept : obj( new NODE() ) { _socket_::start_device(); }
 
@@ -491,10 +507,10 @@ public:
 
     void free() const noexcept {
 
-        if( is_state( STATE::FS_STATE_REUSE ) && !is_feof() && obj.count() >1 ){ return; }
+        if( is_state( STATE::FS_STATE_STOP  ) && !is_feof() && obj.count() >1 ){ return; }
         if( is_state( STATE::FS_STATE_KILL  ) ){ return; } /*-----------------*/ kill();
-        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) ){ onDrain.emit(); }
-
+        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_STOP ) ) { onDrain.emit(); }
+        
         onClose.emit();
 
         onUnpipe.clear(); onResume.clear();
@@ -572,9 +588,9 @@ public:
         if( is_server() || obj->lpfnConnectEx==nullptr ){ return -1; } DWORD c=0;
 
         if( obj->state & STATE::FS_STATE_READING ){
-        if( is_blocked( false, c ) ){ return -2; }
-            int c = ::setsockopt( obj->fd, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, NULL, 0 ); 
-            obj->state &=~ STATE::FS_STATE_READING; return c==0 ? 1 : -1;
+        if( is_blocked( false, c ) ){ obj->feof=-2; return -2; }
+            int c=::setsockopt( obj->fd, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, NULL, 0 ); 
+            obj->state &=~ STATE::FS_STATE_READING; obj->feof=1; return c==0 ? 1 : -1;
         }
 
         memset( &obj->ovr, 0, sizeof(WSAOVERLAPPED) ); obj->state|= STATE::FS_STATE_READING;
@@ -584,9 +600,9 @@ public:
         ::bind( obj->fd, (SOCKADDR*)&any, sizeof(any) );
         
         if( obj->lpfnConnectEx( obj->fd, (SOCKADDR*) &obj->server_addr, obj->addrlen, NULL, 0, &c, &obj->ovr ) ){
-            int c = ::setsockopt( obj->fd, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, NULL, 0 ); 
-            obj->state &=~ STATE::FS_STATE_READING; return c==0 ? 1 : -1;
-        } elif( is_blocked( c ) ) { return -2; } 
+            int c=::setsockopt( obj->fd, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, NULL, 0 ); 
+            obj->state &=~ STATE::FS_STATE_READING; obj->feof=1; return c==0 ? 1 : -1;
+        } elif( is_blocked(c) ) { obj->feof=-2; return -2; } 
     
     return -1; }
 
@@ -595,10 +611,10 @@ public:
         if( !is_server() || obj->lpfnAcceptEx==nullptr ){ return -1; } DWORD c=0;
 
         if( obj->state & STATE::FS_STATE_WRITING ){
-        if( is_blocked( true, c ) ){ return -2; }
-            int c = ::setsockopt( obj->tmp, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&obj->fd, sizeof(SOCKET) );
+        if( is_blocked( true, c ) ){ obj->feof=-2; return -2; }
+            int c=::setsockopt( obj->tmp, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&obj->fd, sizeof(SOCKET) );
             c = c==0 ? (int) obj->tmp : INVALID_SOCKET; obj->tmp = INVALID_SOCKET; 
-            obj->state &=~ STATE::FS_STATE_WRITING; return c; 
+            obj->state &=~ STATE::FS_STATE_WRITING; obj->feof=1; return c; 
         }
 
         memset( &obj->ovw, 0, sizeof(WSAOVERLAPPED) ); obj->state|= STATE::FS_STATE_WRITING;
@@ -606,10 +622,10 @@ public:
           { obj->tmp = WSASocketW( AF, SOCK, IPPROTO, NULL, 0, WSA_FLAG_OVERLAPPED ); }
 
         if( obj->lpfnAcceptEx( obj->fd, obj->tmp, obj->addr_buf, 0, sizeof(SOCKADDR_IN)+16, sizeof(SOCKADDR_IN)+16, &c, &obj->ovw ) ){
-            int c = ::setsockopt( obj->tmp, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&obj->fd, sizeof(SOCKET) );
+            int c=::setsockopt( obj->tmp, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&obj->fd, sizeof(SOCKET) );
             c = c==0 ? (int) obj->tmp : INVALID_SOCKET; obj->tmp = INVALID_SOCKET; 
-            obj->state &=~ STATE::FS_STATE_WRITING; return c; 
-        } elif( is_blocked( c ) ) { return -2; } 
+            obj->state &=~ STATE::FS_STATE_WRITING; obj->feof=1; return c; 
+        } elif( is_blocked(c) ) { obj->feof=-2; return -2; } 
         
     return -1; }
 
@@ -633,21 +649,7 @@ public:
 
     /*─······································································─*/
 
-    string_t read( ulong size=NODEPP_CHUNK_SIZE ) const noexcept {
-        while( obj->_read( this, size ) == 1 )
-             { process::next(); }
-        return obj->_read.data;
-    }
-
     char read_char() const noexcept { return read(1)[0]; }
-
-    ulong write( const string_t& msg ) const noexcept {
-        while( obj->_write( this, msg ) == 1 )
-             { process::next(); }
-        return obj->_write.data;
-    }
-
-    /*─······································································─*/
 
     string_t read_until( string_t ch ) const noexcept {
         while( obj->_until( this, ch ) == 1 )
@@ -669,6 +671,20 @@ public:
 
     /*─······································································─*/
 
+    string_t read( ulong size=NODEPP_CHUNK_SIZE ) const noexcept {
+        while( obj->_read( this, size ) == 1 )
+             { process::next(); }
+        return obj->_read.data;
+    }
+
+    ulong write( const string_t& msg ) const noexcept {
+        while( obj->_write( this, msg ) == 1 )
+             { process::next(); }
+        return obj->_write.data;
+    }
+
+    /*─······································································─*/
+
     virtual int _read ( char* bf, const ulong& sx ) const noexcept { return __read ( bf, sx ); }
     virtual int _write( char* bf, const ulong& sx ) const noexcept { return __write( bf, sx ); }
 
@@ -680,25 +696,25 @@ public:
 
         if( obj->state & STATE::FS_STATE_READING ){
         if( is_blocked( false, c ) ){ return -2; }
-            obj->state&=~ STATE::FS_STATE_READING;
+            obj->state&=~STATE::FS_STATE_READING;
             obj->feof  = c==0 ? -1 : (int) c; 
         return obj->feof; }
 
         SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
         memset( &obj->ovr, 0, sizeof(WSAOVERLAPPED) );
         obj->state|= STATE::FS_STATE_READING;
-        WSABUF wbuf={ sx, bf }; 
+        WSABUF rbuf={ sx, bf }; 
 
         int res = SOCK != SOCK_DGRAM
-                ? WSARecv    ( obj->fd, &wbuf, 1, &c, &f, &obj->ovr , NULL )
-                : WSARecvFrom( obj->fd, &wbuf, 1, &c, &f, (SOCKADDR*) &addr, &len, &obj->ovr, NULL );
+        ? WSARecv    ( obj->fd, &rbuf, 1, &c, &f, &obj->ovr , NULL )
+        : WSARecvFrom( obj->fd, &rbuf, 1, &c, &f, (SOCKADDR*) &addr, &len, &obj->ovr, NULL );
 
         if( res==0 ) {
             obj->state&=~ STATE::FS_STATE_READING;
             obj->feof  = c==0 ? -1: (int) c;
         } elif( is_blocked( c ) ) { obj->feof = -2; return -2; } 
 
-    return ( obj->feof <= 0 && obj->feof != -2 ) ? -1 : obj->feof; }
+    return is_feof() ? -1 : obj->feof; }
 
     virtual int __write( char* bf, const ulong& sx ) const noexcept {
         if( process::millis() > get_send_timeout() || is_closed() )
@@ -706,7 +722,7 @@ public:
 
         if( obj->state & STATE::FS_STATE_WRITING ){
         if( is_blocked( true, c ) ){ return -2; }
-            obj->state&=~ STATE::FS_STATE_WRITING;
+            obj->state&=~STATE::FS_STATE_WRITING;
             obj->feof  = c==0 ? -1 : (int) c; 
         return obj->feof; }
 
@@ -716,33 +732,31 @@ public:
         WSABUF wbuf ={ sx, bf };
 
         int res = SOCK != SOCK_DGRAM
-                ? WSASend  ( obj->fd, &wbuf, 1, &c, 0, &obj->ovw , NULL )
-                : WSASendTo( obj->fd, &wbuf, 1, &c, 0, (SOCKADDR*) &addr, len, &obj->ovw, NULL );
+        ? WSASend  ( obj->fd, &wbuf, 1, &c, 0, &obj->ovw , NULL )
+        : WSASendTo( obj->fd, &wbuf, 1, &c, 0, (SOCKADDR*) &addr, len, &obj->ovw, NULL );
 
         if( res==0 ) {
             obj->state&=~ STATE::FS_STATE_WRITING;
             obj->feof  = c==0 ? -1: (int) c;
         } elif( is_blocked( c ) ) { obj->feof = -2; return -2; } 
 
-    return ( obj->feof <= 0 && obj->feof != -2 ) ? -1 : obj->feof; }
+    return is_feof() ? -1 : obj->feof; }
 
     /*─······································································─*/
 
     int _write_( char* bf, const ulong& sx, ulong* sy ) const noexcept {
-        if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
-            int c = __write( bf + *sy, sx - *sy );
-            if( c <= 0 && c != -2 ) /*----*/ { return -2; }
-            if( c >  0 ){ *sy+= c; continue; } break/**/;
-        }   return sx;
-    }
+    if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
+        int c = __write( bf + *sy, sx - *sy );
+        if( c==-2 ) /*--*/ { return -2; }
+        if( c > 0 ){ *sy+= c; continue; } 
+    break; } return *sy; }
 
     int _read_( char* bf, const ulong& sx, ulong* sy ) const noexcept {
-        if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
-            int c = __read( bf + *sy, sx - *sy );
-            if( c <= 0 && c != -2 ) /*----*/ { return -2; }
-            if( c >  0 ){ *sy+= c; continue; } break/**/;
-        }   return sx;
-    }
+    if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
+        int c = __read( bf + *sy, sx - *sy );
+        if( c==-2 ) /*--*/ { return -2; }
+        if( c > 0 ){ *sy+= c; continue; } 
+    break; } return *sy; }
 
 };}
 

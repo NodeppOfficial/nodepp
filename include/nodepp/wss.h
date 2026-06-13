@@ -65,7 +65,7 @@ namespace nodepp { namespace wss {
             cli.set_timeout(0); cli.resume();
             skt.onConnect.resume( );
             skt.onConnect.emit(cli);
-            stream::pipe      (cli);
+            stream::pipe /**/ (cli);
         return -1; });
 
     }); return skt; }

@@ -49,6 +49,26 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+namespace nodepp { class NODEPP_CRYPTO_INITIALIZATOR { public:
+
+    static void* _realloc_( void* ptr, size_t size, const char* /*unused*/, int /*unused*/ ) 
+    { return NODEPP_ALLOC().realloc(ptr, size); }
+
+    static void* _malloc_( size_t size, const char* /*unused*/, int /*unused*/ ) 
+    { return NODEPP_ALLOC().malloc(size); }
+
+    static void _free_( void* ptr, const char* /*unused*/, int /*unused*/ ) 
+    { NODEPP_ALLOC().free(ptr); }
+
+    NODEPP_CRYPTO_INITIALIZATOR(){
+    static bool flag = false; if( !flag ){
+        CRYPTO_set_mem_functions(_malloc_, _realloc_, _free_);
+    } flag = true; }
+
+};}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 namespace nodepp {
 
 class hash_t {
@@ -70,6 +90,7 @@ public:
 
     template< class T >
     hash_t( const T& type, ulong length ) : obj( new NODE() ) { 
+    NODEPP_CRYPTO_INITIALIZATOR();
          
         obj->bff   = ptr_t<uchar>( length );
         obj->ctx   = EVP_MD_CTX_new();
@@ -85,7 +106,7 @@ public:
     void update( string_t msg ) const noexcept { 
         if( !obj->state ){ return; } ulong chunk=0, base=(ulong)( obj->bff.size() );
         while( chunk < msg.size() ){ 
-            string_t tmp = msg.slice_view( chunk, chunk + base );
+            string_t tmp = msg.slice( chunk, chunk + base );
             EVP_DigestUpdate( obj->ctx, (uchar*) tmp.data(), tmp.size() );
         chunk += base; }
     }
@@ -126,13 +147,16 @@ protected:
 public:
 
     template< class T >
-    hmac_t( const string_t& key, const T& type, ulong length ) 
-    :  obj( new NODE() ) { if( key.empty() ){ NODEPP_THROW_ERROR("can't initializate hmac_t"); }
+    hmac_t( const string_t& key, const T& type, ulong length ) : obj( new NODE() ) { 
+    NODEPP_CRYPTO_INITIALIZATOR();
+
+        if( key.empty() ){ NODEPP_THROW_ERROR("can't initializate hmac_t"); }
         obj->bff   = ptr_t<uchar>( length ); 
         obj->ctx   = HMAC_CTX_new(); 
         obj->state = 1;
         if ( !obj->ctx || !HMAC_Init_ex( obj->ctx, key.data(), key.size(), type, nullptr ) )
            { NODEPP_THROW_ERROR("can't initializate hmac_t"); }
+
     }
     
    ~hmac_t() noexcept { if( obj.count()>1 ){ return; } free(); }
@@ -142,7 +166,7 @@ public:
     void update( string_t msg ) const noexcept { 
         if( !obj->state ){ return; } ulong chunk=0, base=(ulong)( obj->bff.size() );
         while( chunk < msg.size() ){ 
-            string_t tmp = msg.slice_view( chunk, chunk + base );
+            string_t tmp = msg.slice( chunk, chunk + base );
             HMAC_Update( obj->ctx, (uchar*) tmp.data(), tmp.size() );
         chunk += base; }
     }
@@ -187,6 +211,8 @@ public:
     event_t<string_t> onData;
 
     xor_t( const string_t& key ) : obj( new NODE() ) {
+    NODEPP_CRYPTO_INITIALIZATOR();
+    
         if( key.empty() ){ NODEPP_THROW_ERROR("can't initializate xor_t"); }
     
         CTX item1; //memset( &item1, 0, sizeof(CTX) );
@@ -196,19 +222,20 @@ public:
         obj->ctx = ptr_t<CTX> ({ item1 });
     }
 
-    xor_t() noexcept : obj( new NODE() ) { obj->state = 0; }
+    xor_t() noexcept : obj( new NODE() ) {
+        NODEPP_CRYPTO_INITIALIZATOR(); obj->state = 0; 
+    }
     
    ~xor_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     void update( string_t msg ) const noexcept { 
-        if( !obj->state ){ return; } ulong chunk=0, /*-------------*/ base=NODEPP_CHUNK_SIZE;
-        while( chunk < msg.size() ){ string_t tmp = msg.slice_view( chunk, chunk + base );
-            forEach( y, obj->ctx ){ forEach( x, tmp ){ 
-                x = x ^ y.key[ y.pos % y.key.size() ]; ++y.pos; 
-            }} if ( tmp.empty() )     { return; }
-             elif ( onData.empty() )  { obj->bff +=tmp; }
-             else { onData.emit(tmp); }
-        chunk += base; }
+        if( !obj->state ){ return; } ulong chunk=0, /*-----*/ base=NODEPP_CHUNK_SIZE;
+        while( chunk < msg.size() ){ string_t tmp = msg.slice( chunk, chunk + base );
+        forEach( x, tmp ){ CTX &y = obj->ctx[0];
+            x = x ^ y.key[ y.pos % y.key.size() ]; ++y.pos; 
+        }  if ( tmp   .empty() )  { return; }
+         elif ( onData.empty() )  { obj->bff +=tmp; }
+         else { onData.emit(tmp); } chunk += base ; }
     }
 
     bool is_available() const noexcept { return obj->state == 1; }
@@ -265,13 +292,17 @@ public:
     event_t<string_t> onData;
     event_t<>         onClose;
 
-    encrypt_t( const string_t& iv, const string_t& key, const EVP_CIPHER* type ) : obj( new NODE() ) { _init_( type, key, iv ); }
+    encrypt_t( const string_t& iv, const string_t& key, const EVP_CIPHER* type ) : obj( new NODE() ) { 
+        NODEPP_CRYPTO_INITIALIZATOR(); _init_( type, key, iv ); 
+    }
 
-    encrypt_t( const string_t& key, const EVP_CIPHER* type ) : obj( new NODE() ) { _init_( type, key, nullptr ); }
+    encrypt_t( const string_t& key, const EVP_CIPHER* type ) : obj( new NODE() ) {     
+        NODEPP_CRYPTO_INITIALIZATOR(); _init_( type, key, nullptr ); 
+    }
 
     void update( string_t msg ) const noexcept { 
         if( !obj->state ){ return; } ulong chunk=0, base=(ulong)( obj->bff.size() );
-        while( chunk < msg.size() ){ auto tmp = msg.slice_view( chunk, chunk + base );
+        while( chunk < msg.size() ){ auto tmp = msg.slice( chunk, chunk + base );
             EVP_EncryptUpdate( obj->ctx, &obj->bff, &obj->len, (uchar*)tmp.get(), tmp.size() );
             if ( obj->len > 0 ) { if ( onData.empty() ) {
                      obj->buff += string_t( (char*)&obj->bff, (ulong) obj->len );
@@ -340,13 +371,17 @@ public:
     event_t<string_t> onData;
     event_t<>         onClose;
 
-    decrypt_t( const string_t& iv, const string_t& key, const EVP_CIPHER* type ) : obj( new NODE() ) { _init_( type, key, iv ); }
+    decrypt_t( const string_t& iv, const string_t& key, const EVP_CIPHER* type ) : obj( new NODE() ) { 
+        NODEPP_CRYPTO_INITIALIZATOR(); _init_( type, key, iv ); 
+    }
 
-    decrypt_t( const string_t& key, const EVP_CIPHER* type ) : obj( new NODE() ) { _init_( type, key, nullptr ); }
+    decrypt_t( const string_t& key, const EVP_CIPHER* type ) : obj( new NODE() ) { 
+        NODEPP_CRYPTO_INITIALIZATOR(); _init_( type, key, nullptr ); 
+    }
 
     void update( string_t msg ) const noexcept { 
         if( !obj->state ){ return; } ulong chunk=0, base=(ulong)( obj->bff.size() );
-        while( chunk < msg.size() ){ auto tmp = msg.slice_view( chunk, chunk + base );
+        while( chunk < msg.size() ){ auto tmp = msg.slice( chunk, chunk + base );
             EVP_DecryptUpdate( obj->ctx, &obj->bff, &obj->len, (uchar*)tmp.get(), tmp.size());
             if ( obj->len > 0 ) { if ( onData.empty() ) {
                      obj->buff += string_t( (char*)&obj->bff, (ulong) obj->len );
@@ -414,6 +449,7 @@ public:
     event_t<>         onClose;
 
     encoder_t( const string_t& chr ) : obj( new NODE() ) { 
+    NODEPP_CRYPTO_INITIALIZATOR();
         obj->state = 1; obj->chr = chr; obj->bn = (BIGNUM*) BN_new();
         if( !obj->bn ){ NODEPP_THROW_ERROR("can't initializate encoder"); }
     }
@@ -486,6 +522,7 @@ public:
     event_t<>         onClose;
 
     decoder_t( const string_t& chr ) : obj( new NODE() ) { 
+    NODEPP_CRYPTO_INITIALIZATOR();
         obj->state = 1; obj->chr = chr; obj->bn = (BIGNUM*) BN_new();
         if( !obj->bn ){ NODEPP_THROW_ERROR("can't initializate decoder"); }
     }
@@ -541,6 +578,8 @@ public:
    ~base64_encoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     base64_encoder_t() noexcept : obj( new NODE() ) {
+    NODEPP_CRYPTO_INITIALIZATOR();
+
         obj->state = 1; obj->bff = ptr_t<char>( NODEPP_CHUNK_SIZE, '\0' );
 
         CTX item1; memset( &item1, 0, sizeof(CTX) );
@@ -557,7 +596,7 @@ public:
         ulong base = obj->bff.size();
         
         while( chunk < msg.size() ) { 
-            string_t tmp = msg.slice_view( chunk, chunk + base );
+            string_t tmp = msg.slice( chunk, chunk + base );
             obj->ctx->len = 0; 
         for  ( auto &x: tmp ) {
                 
@@ -633,6 +672,7 @@ public:
    ~base64_decoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     base64_decoder_t() noexcept : obj( new NODE() ) {
+    NODEPP_CRYPTO_INITIALIZATOR();
         obj->state = 1; obj->bff = ptr_t<char>( NODEPP_CHUNK_SIZE, '\0' );
 
         CTX item1; memset( &item1, 0, sizeof(CTX) );
@@ -644,7 +684,7 @@ public:
 
     void update( string_t msg ) const noexcept { 
         if( !obj->state ){ return; } ulong chunk=0, /*--------*/ base=obj->bff.size();
-        while( chunk < msg.size() ){ auto tmp = msg.slice_view( chunk, chunk + base );
+        while( chunk < msg.size() ){ auto tmp = msg.slice( chunk, chunk + base );
         for  ( int x=0; x<64; x++ ){ obj->ctx->T[type::cast<int>(CRYPTO_BASE64[x])] =x; }
 
             string_t out; obj->ctx->len = 0; forEach ( x, tmp ) {
@@ -711,6 +751,7 @@ protected:
 public:
 
     X509_t( int curve_nid = NID_X9_62_prime256v1 ) : obj( new NODE() ) {
+    NODEPP_CRYPTO_INITIALIZATOR();
         
         obj->ctx = X509_new(); obj->name= X509_NAME_new();  
         /*------------------*/ obj->pkey= EVP_PKEY_new();
@@ -820,6 +861,7 @@ protected:
 public:
 
     rsa_t() : obj( new NODE() ) {
+    NODEPP_CRYPTO_INITIALIZATOR();
         obj->rsa = RSA_new(); obj->num = BN_new (); obj->state = 1;
         if( !obj->num || !obj->rsa ){ NODEPP_THROW_ERROR("creating rsa object"); }
     }
@@ -889,7 +931,7 @@ public:
 
         ulong chunk=0, base=(ulong)( obj->bff.size() ); string_t data;
         
-        while( chunk < msg.size() ){ auto tmp = msg.slice_view( chunk, chunk + base );
+        while( chunk < msg.size() ){ auto tmp = msg.slice( chunk, chunk + base );
             int c = RSA_public_encrypt( tmp.size(), (uchar*)tmp.data(), &obj->bff, obj->rsa, padding );
             data += string_t( (char*) &obj->bff, (ulong)c );
         chunk += base; } return data;
@@ -901,7 +943,7 @@ public:
 
         ulong chunk=0, base=(ulong)( obj->bff.size() ); string_t data;
         
-        while( chunk < msg.size() ){ auto tmp = msg.slice_view( chunk, chunk + base );
+        while( chunk < msg.size() ){ auto tmp = msg.slice( chunk, chunk + base );
             int c = RSA_private_encrypt( tmp.size(), (uchar*)tmp.data(), &obj->bff, obj->rsa, padding );
             data += string_t( (char*) &obj->bff, (ulong)c );
         chunk += base; } return data;
@@ -912,7 +954,7 @@ public:
 
         ulong chunk=0, base=(ulong)( obj->bff.size() ); string_t data;
         
-        while( chunk < msg.size() ){ auto tmp = msg.slice_view( chunk, chunk + base );
+        while( chunk < msg.size() ){ auto tmp = msg.slice( chunk, chunk + base );
             int c = RSA_public_decrypt( tmp.size(), (uchar*)tmp.data(), &obj->bff, obj->rsa, padding );
             data += string_t( (char*) &obj->bff, (ulong)c );
         chunk += base; } return data;
@@ -924,7 +966,7 @@ public:
 
         ulong chunk=0, base=(ulong)( obj->bff.size() ); string_t data;
         
-        while( chunk < msg.size() ){ auto tmp = msg.slice_view( chunk, chunk + base );
+        while( chunk < msg.size() ){ auto tmp = msg.slice( chunk, chunk + base );
             int c = RSA_private_decrypt( tmp.size(), (uchar*)tmp.data(), &obj->bff, obj->rsa, padding );
             data += string_t( (char*) &obj->bff, (ulong)c );
         chunk += base; } return data;
@@ -968,6 +1010,8 @@ public:
 
     template< class T >
     ec_t( const string_t& key, const T& type ) noexcept :obj( new NODE() ) {
+    NODEPP_CRYPTO_INITIALIZATOR();
+
         if( key.empty() ){ NODEPP_THROW_ERROR("can't initializate ec_t"); }
 
         obj->state     = 1;
@@ -985,6 +1029,8 @@ public:
 
     template< class T >
     ec_t( const T& type ) noexcept : obj( new NODE() ) { 
+    NODEPP_CRYPTO_INITIALIZATOR();
+
         obj->state = 1;
 
         obj->key_pair  = EC_KEY_new();
@@ -1043,6 +1089,7 @@ protected:
 public:
 
     dh_t() : obj( new NODE() ) {
+    NODEPP_CRYPTO_INITIALIZATOR();
         obj->dh = DH_new(); obj->k = BN_new(); obj->state = 1;
         if( !obj->dh || !obj->k ){ NODEPP_THROW_ERROR( "creating new dh" ); }
     }
@@ -1115,7 +1162,10 @@ protected:
     
 public:
 
-    dsa_t(): obj( new NODE() ) { obj->state = 1; obj->dsa = DSA_new(); }
+    dsa_t(): obj( new NODE() ) {
+    NODEPP_CRYPTO_INITIALIZATOR();
+        obj->state = 1; obj->dsa = DSA_new(); 
+    }
 
    ~dsa_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 

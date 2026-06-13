@@ -166,9 +166,11 @@ public: loop_t() noexcept : obj( new NODE() ) {}
 
     template< class T, class... V >
     ptr_t<task_t> add( T cb, const V&... args ) const noexcept {
-    ptr_t<task_t> tsk( 0UL, task_t() ); auto clb = type::bind( cb );
+    ptr_t<task_t> tsk( 0UL, task_t() ); 
 
-        obj->queue .push({[=](){ return (*clb)(args...); }, tsk });
+        function_t<int,V...> clb ( cb );
+
+        obj->queue .push({[=](){ return clb(args...); }, tsk });
         obj->normal.push( obj->queue.last() ); 
 
         tsk->addr = obj->queue.last();

@@ -9,7 +9,7 @@
 
 using namespace nodepp;
 
-void server( int process ){
+void onParallel(){
 
     auto server = http::server([=]( http_t cli ){ 
 
@@ -34,19 +34,4 @@ void server( int process ){
 
 }
 
-void onMain(){
-
-    if ( process::is_child() ){ server( os::pid() ); } else {
-    for( auto x = os::cpus(); x--; ){
-
-         auto pid = cluster::add();
-         
-    if ( !pid.has_value() ){ throw except_t( "something went wrong" ); }
-
-         pid.value().onData([=]( string_t data ){
-            conio::log( data );
-         });
-
-    }}
-
-}
+void onMain(){ cluster::parallel( &onParallel, os::cpus() ); }

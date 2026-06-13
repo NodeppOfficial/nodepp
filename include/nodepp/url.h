@@ -48,8 +48,8 @@ namespace url {
 
 /*────────────────────────────────────────────────────────────────────────────*/
     
-    inline map_t<string_t,uint>& protocols() {
-    static map_t<string_t,uint>  out ({
+    inline /*--------*/ map_t<string_t,uint>& protocols() {
+    thread_local static map_t<string_t,uint>  out ({
          { "https", 443 }, { "wss" , 443 },
          { "tls"  , 443 }, { "dtls", 443 },
          { "http" ,  80 }, { "ws"  ,  80 },
@@ -58,15 +58,14 @@ namespace url {
     }); return out; }
 
     inline bool is_valid( const string_t& URL ){
-        static regex_t reg( "^\\w+://[^.]+", true );
-        return reg.test( URL );
-    }
+    thread_local static regex_t reg( "^\\w+://[^.]+", true );
+    return reg.test( URL ); }
 
     /*.........................................................................*/
 
     inline string_t normalize ( string_t msg ) { 
-        string_t res = msg; static regex_t reg( "%[a-z0-9]{2}", true );
-        while( reg.test( res ) ){
+    thread_local static regex_t reg( "%[a-z0-9]{2}", true );
+        string_t res = msg; while( reg.test( res ) ){
             auto data = reg.match( res );
             auto hex  = encoder::hex::set( data.slice(1) );
             auto y    = string_t( (char*)&hex,hex.size() );
@@ -77,8 +76,8 @@ namespace url {
     /*.........................................................................*/
 
     inline string_t unnormalize ( string_t msg ) { 
-        string_t res = msg; static regex_t reg( "[^a-z0-9%]", true );
-        while( reg.test( res ) ){
+    thread_local static regex_t reg( "[^a-z0-9%]", true );
+        string_t res = msg; while( reg.test( res ) ){
             auto data = reg.match( res );
             auto hex  = encoder::hex::get( data[0] );
             res = regex::replace_all( res, data, "%"+hex );
@@ -88,19 +87,18 @@ namespace url {
     /*─······································································─*/
 
     inline string_t protocol( const string_t& URL ){ 
-        string_t null; static regex_t _a("^[^:]+");
-        if( !is_valid(URL) || !_a.test( URL ) ) 
-          { return null; } null = _a.match( URL );
-            return null;
+    thread_local static regex_t _a("^[^:]+");
+        string_t null; if( !is_valid(URL) || !_a.test( URL ) ) 
+        { return null; } null = _a.match( URL ); return null;
     }
     
     /*─······································································─*/
 
     inline string_t auth( const string_t& URL ){ 
-        string_t null; static regex_t _a("//\\w+:\\w+@");
-        if( !is_valid(URL) || !_a.test( URL ) ) 
-          { return null; } null = _a.match( URL );
-            return null.slice( 2, -1 );
+    thread_local static regex_t _a("//\\w+:\\w+@");
+        string_t null; if( !is_valid(URL) || !_a.test( URL ) ) 
+        { return null; } null = _a.match( URL );
+          return null.slice( 2, -1 );
     }
 
     inline string_t user( const string_t& URL ){ string_t null; 
@@ -116,20 +114,20 @@ namespace url {
     /*─······································································─*/
 
     inline string_t path( const string_t& URL ){
-        string_t null; static regex_t _a("/[^/?#]+");
+    thread_local static regex_t _a("/[^/?#]+"); string_t null; 
         if ( !is_valid(URL) || !_a.test(URL) ){ return "/"; }
              null = _a.match_all( URL ).slice(1).join("");
 	         return null.empty() ? "/" : null;
     }
 
     inline string_t origin( const string_t& URL ){
-        string_t null; static regex_t _a("^[^/]+//[^/?#]+");
+    thread_local static regex_t _a("^[^/]+//[^/?#]+"); string_t null;
         if( !is_valid(URL) || !_a.test( URL ) )
           { return null; } return _a.match( URL );
     }
 
     inline string_t host( const string_t& URL ){ 
-        static regex_t _a("[/@][^/#?]+");
+    thread_local static regex_t _a("[/@][^/#?]+");
         if(!is_valid(URL) ){ return nullptr; }
             auto data = _a.match( URL ).slice(1);
         if( regex::test( data, "@" ) )
@@ -138,19 +136,19 @@ namespace url {
     }
 
     inline string_t hash( const string_t& URL ){ 
-        string_t null; static regex_t _a("#[^?]*");
+    thread_local static regex_t _a("#[^?]*"); string_t null; 
         if( !is_valid(URL) || !_a.test( URL ) ) 
           { return null; } return _a.match( URL );
     }
 
     inline string_t search( const string_t& URL ){ 
-        string_t null; static regex_t _a("\\?[^#]*");
+    thread_local static regex_t _a("\\?[^#]*"); string_t null; 
         if( !is_valid(URL) || !_a.test( URL ) ) 
           { return null; } return _a.match( URL );
     }
 
     inline string_t ip_family( const string_t& URL ){
-        string_t null = host(URL); static regex_t _a("\\[[^\\]]+\\]");
+    thread_local static regex_t _a("\\[[^\\]]+\\]"); string_t null = host(URL); 
         if( !is_valid( URL ) ){ return nullptr; }
         return _a.test( null ) ? "IPv6" : "IPv4";
     }
@@ -158,13 +156,13 @@ namespace url {
     /*─······································································─*/
 
     inline string_t rawname( const string_t& URL ){ 
-        static regex_t _a("\\[[^\\]/]+\\]|[^:]+"); string_t null = host(URL); 
+    thread_local static regex_t _a("\\[[^\\]/]+\\]|[^:]+"); string_t null = host(URL); 
         if( !is_valid(URL) || !_a.test( null ) ){ return null; } 
         return _a.match( null );
     }
 
     inline string_t hostname( const string_t& URL ){ 
-        static regex_t _a("[^\\[\\]]+"); string_t null = rawname(URL); 
+    thread_local static regex_t _a("[^\\[\\]]+"); string_t null = rawname(URL); 
         if( !is_valid(URL) || !_a.test( null ) ){ return null; } 
         return _a.match( null );
     }
@@ -177,7 +175,7 @@ namespace url {
         auto     _list = protocols();
         string_t _host = host( URL );
 
-        static regex_t  _a(":\\d+$");
+        thread_local static regex_t  _a(":\\d+$");
 
         if( !_host.empty() && _a.test( _host ) ){
             return string::to_uint( _a.match( _host ).slice(1) );

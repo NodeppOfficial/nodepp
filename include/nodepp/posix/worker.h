@@ -24,19 +24,15 @@ private:
          WK_STATE_UNKNOWN = 0b00000000,
          WK_STATE_OPEN    = 0b00000001,
          WK_STATE_CLOSE   = 0b00000010,
-         WK_STATE_KILL    = 0b10000000,
-         WK_STATE_AWAIT   = 0b00000111,
+         WK_STATE_KILL    = 0b10000000
     };
 
 protected:
 
     struct NODE {
-        void* addr=nullptr;
-        void* krn =nullptr;
-        pthread_t       id;
-        int          state;
-        function_t<int> cb;
-    };  ptr_t<NODE> obj;
+        int state; pthread_t id; function_t<int> cb;
+        uchar_64 addr; void* krn= nullptr;
+    };  atomic_ptr_t<NODE> obj;
 
     static void* callback( void* arg ){
         auto self = type::cast<worker_t>(arg);
@@ -46,18 +42,33 @@ protected:
         if   ( self->obj->cb()==-1 ){ break; }
             auto info = coroutine::getno();
             auto time = info.delay;
-            process::delay( time==0 ? 1 : time );
-        }
+        process::delay( time==0 ? 1 :time ); }
 
     self->free(); return nullptr; }
+
+    int emit() const noexcept { return get_mutex().emit([&](){
+        
+        auto krn = type::bind( process::NODEPP_EVLOOP() );
+        auto self= type::bind( this );
+
+        obj->state=STATE::WK_STATE_OPEN;
+        obj->addr = get_invoker().add([=](){
+            self->obj->state = STATE::WK_STATE_CLOSE | STATE::WK_STATE_KILL;
+            self->obj->krn   = nullptr;
+        krn->wake(); return -1; });
+
+        auto pth = pthread_create( &obj->id, NULL, &callback, (void*) &self );
+        if ( pth!= 0 ){ return -1; } pthread_detach( obj->id ); 
+        
+    return 1; }); }
 
 public:
 
     template< class T, class... V >
     worker_t( T cb, const V&... arg ) noexcept : obj( new NODE() ){
-        auto clb = type::bind(cb);
-        obj->cb  = function_t<int>([=](){ return (*clb)(arg...); });
-    }
+        auto clb = function_t<int,V...>(cb);
+        obj->cb  = function_t<int>([=](){ return clb(arg...); });
+    if( emit()==-1 ){ free(); }; }
     
     /*─······································································─*/
 
@@ -66,10 +77,9 @@ public:
     worker_t() noexcept : obj( new NODE ) {}
 
     void free() const noexcept {
-         if( obj->state == 0x00 ) /*---------*/ { return; }
-         if( obj->state & STATE::WK_STATE_KILL ){ return; }
-         get_mutex  ().lock([=](){ get_invoker().emit( obj->addr ); });
-    }
+        if( obj->state == 0x00 ) /*---------*/ { return; }
+        if( obj->state & STATE::WK_STATE_KILL ){ return; }
+    get_mutex().lock([=](){ get_invoker().emit (obj->addr); }); }
     
     /*─······································································─*/
 
@@ -90,64 +100,22 @@ public:
     
     /*─······································································─*/
 
-    void    off() const noexcept { obj->state = STATE::WK_STATE_AWAIT; }
-    void  close() const noexcept { obj->state = STATE::WK_STATE_AWAIT; }
+    void   off() const noexcept { NODEPP_LOCAL_SHTDWN() = true; }
+    void close() const noexcept { NODEPP_LOCAL_SHTDWN() = true; }
     
     /*─······································································─*/
 
-    bool is_closed() const noexcept { 
-    char x = obj->state;
+    pthread_t get_fd() const noexcept { return obj->id; }
+    
+    /*─······································································─*/
+
+    bool is_closed() const noexcept { auto x = obj->state;
         return ( x & STATE::WK_STATE_KILL  ) ||
                ( x & STATE::WK_STATE_CLOSE ) ||
-                 x== STATE::WK_STATE_UNKNOWN ;
+                 x== STATE::WK_STATE_UNKNOWN ||
+        NODEPP_LOCAL_SHTDWN();
     }
     
-    /*─······································································─*/
-
-    int emit() const noexcept {
-    if( obj->state != STATE::WK_STATE_UNKNOWN && !NODEPP_SHTDWN() ){ return 0; }
-        
-        auto krn = type::bind( process::NODEPP_EVLOOP() );
-        auto self= type::bind( this );
-
-        obj->state=STATE::WK_STATE_OPEN;
-        obj->addr = get_invoker().add([=](){
-            self->obj->state = STATE::WK_STATE_CLOSE | STATE::WK_STATE_KILL;
-            self->obj->krn   = nullptr;
-        krn->wake(); return -1; });
-
-        auto pth = pthread_create( &obj->id, NULL, &callback, (void*) &self );
-        if ( pth!= 0 ){ return -1; } pthread_detach( obj->id ); 
-
-    //  while( obj->state & STATE::WK_STATE_OPEN ){ process::next(); }
-        
-    return 1; }
-
-    /*─······································································─*/
-
-    int add() const noexcept { return emit(); }
-
-    /*─······································································─*/
-
-    int await() const noexcept {
-    if( obj->state != STATE::WK_STATE_UNKNOWN && !NODEPP_SHTDWN() ){ return 0; }
-        
-        auto krn = type::bind( process::NODEPP_EVLOOP() );
-        auto self= type::bind( this );
-
-        obj->state=STATE::WK_STATE_OPEN;
-        obj->addr = get_invoker().add([=](){
-            self->obj->state = STATE::WK_STATE_CLOSE | STATE::WK_STATE_KILL;
-            self->obj->krn   = nullptr;
-        krn->wake(); return -1; });
-
-        auto pth = pthread_create( &obj->id, NULL, &callback, (void*) &self );
-        if ( pth!= 0 ){ return -1; } pthread_detach( obj->id );
-
-        while( obj->state & STATE::WK_STATE_OPEN ){ process::next(); }
-        
-    return 1; }
-
 };}
 
 /*────────────────────────────────────────────────────────────────────────────*/

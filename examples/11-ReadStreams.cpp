@@ -6,12 +6,14 @@ using namespace nodepp;
 
 void onMain(){
     
-    auto _str = fs::readable( "Path/To/File" );
+    auto file = fs::readable( "LICENSE" );
+    // file.set_range( 128, 1024 );
+    
 
-    _str.onData.on([]( string_t chunk ){
+    file.onData.on([]( string_t chunk ){
         console::log( chunk );
     });
 
-    stream::pipe( _str );
+    stream::pipe( file );
     
 }
