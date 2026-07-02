@@ -1,3 +1,5 @@
+#define MAX_BATCH 10
+
 #include <nodepp/nodepp.h>
 #include <nodepp/worker.h>
 #include <nodepp/http.h>
@@ -122,3 +124,4 @@ void onMain(){
 }
 
 /*────────────────────────────────────────────────────────────────────────────*/
+// BUGFIXED

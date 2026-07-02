@@ -26,7 +26,7 @@ protected:
     
 public:
 
-    uint      status=200;
+    uint      status = 200;
     string_t  version;
     header_t  headers;
 
@@ -46,10 +46,8 @@ public:
 
     /*─······································································─*/
 
-    int read_header() noexcept {  
-
-        if( process::millis() > get_conn_timeout() ){ return -1; }
-        if( is_closed() /*----------------------*/ ){ return -1; }
+    int read_header() noexcept { if(is_closed()){ return -1; }
+        
         thread_local static ptr_t<regex_t> reg({
             regex_t( "[^ \r]+" ),
             regex_t( "^[^?#]+" ),
@@ -116,12 +114,13 @@ public:
 namespace nodepp { namespace https {
 
     inline tls_t server( function_t<void,https_t> cb, ssl_t* ssl=nullptr, agent_t* opt=nullptr ){
-    return tls_t([=]( https_t cli ){
-
-        int c=0; while((c=cli.read_header())==1){ /*unused*/ }
-        if( c==0 ){ cb(cli); return; }
+    return tls_t([=]( https_t cli ){ int c =0; 
         
-    cli.close(); }, ssl, opt ); }
+        while((c=cli.read_header())==1){ 
+        if   ( cli.is_waiting()){ process::next(); }}
+        if( c!=0 ){ cli.close(); return; } 
+        
+    cb(cli); }, ssl, opt ); }
     
     /*─······································································─*/
     
@@ -140,15 +139,21 @@ namespace nodepp { namespace https {
 
         auto skt = tls_t([=]( https_t cli ){
 
-            cli.set_timeout( fetch.timeout ); cli.write_header( fetch, dir );
-            int c=0; clb( cli ); cli.write( "\r\n" );
+            cli.set_timeout ( fetch.timeout ); 
+            cli.write_header( fetch, dir  );
+            clb( cli ); cli.write( "\r\n" );
 
-            while((c=cli.read_header())==1){ /*unused*/ }
+        stream::readable( cli, 0UL ).then([=]( https_t cli ){ int c=0; 
+                
+            while((c=cli.read_header())==1){ 
+            if   ( cli.is_waiting()){ process::next(); }}
 
             if( c==0 ){ res(cli); return; } cli.close();
             rej(except_t("Could not connect to server"));
-            
-        }, &cert, &agent );
+
+        }).fail([=]( except_t /*unused*/ ){
+            rej(except_t("Could not connect to server"));
+        }); }, &cert, &agent );
 
         skt.onError([=]( except_t error ){ rej(error); });
         skt.connect( uri.rawname, uri.port );

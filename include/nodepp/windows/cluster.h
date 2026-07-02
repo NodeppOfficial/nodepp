@@ -35,7 +35,7 @@ protected:
          FS_STATE_OPEN    = 0b00000001,
          FS_STATE_CLOSE   = 0b00000010,
          FS_STATE_KILL    = 0b00000100,
-         FS_STATE_REUSE   = 0b00001000,
+         FS_STATE_STOP    = 0b00001000,
          FS_STATE_DISABLE = 0b00001110
     };
 
@@ -53,8 +53,8 @@ protected:
 
        ~NODE(){
         if( !process::env::get("CHILD").empty() ){ return; }
-            ::CloseHandle( obj->pi.hProcess ); 
-            ::CloseHandle( obj->pi.hThread  ); 
+            ::CloseHandle( pi.hProcess ); 
+            ::CloseHandle( pi.hThread  ); 
         }
 
     };  ptr_t<NODE> obj;
@@ -71,9 +71,9 @@ protected:
         /*---------------*/ sa.lpSecurityDescriptor = NULL; 
         /*---------------*/ sa.bInheritHandle /*-*/ = TRUE;
 
-        HANDLE fda[2]; if(!CreatePipe(&fda[0],&fda[1],&sa,CHUNK_SIZE)){ NODEPP_THROW_ERROR( "while piping stdin"  ); }
-        HANDLE fdb[2]; if(!CreatePipe(&fdb[0],&fdb[1],&sa,CHUNK_SIZE)){ NODEPP_THROW_ERROR( "while piping stdout" ); }
-        HANDLE fdc[2]; if(!CreatePipe(&fdc[0],&fdc[1],&sa,CHUNK_SIZE)){ NODEPP_THROW_ERROR( "while piping stderr" ); }
+        HANDLE fda[2]; if(!CreatePipe(&fda[0],&fda[1],&sa,NODEPP_CHUNK_SIZE)){ NODEPP_THROW_ERROR( "while piping stdin"  ); }
+        HANDLE fdb[2]; if(!CreatePipe(&fdb[0],&fdb[1],&sa,NODEPP_CHUNK_SIZE)){ NODEPP_THROW_ERROR( "while piping stdout" ); }
+        HANDLE fdc[2]; if(!CreatePipe(&fdc[0],&fdc[1],&sa,NODEPP_CHUNK_SIZE)){ NODEPP_THROW_ERROR( "while piping stderr" ); }
 
         ZeroMemory(&obj->si, sizeof(STARTUPINFO));
         ZeroMemory(&obj->pi, sizeof(PROCESS_INFORMATION));
@@ -132,9 +132,8 @@ public:
 
     void free() const noexcept {
 
-        if( is_state( STATE::FS_STATE_REUSE ) && !readable().is_feof() && obj.count() >1 ){ return; }
-        if( is_state( STATE::FS_STATE_KILL  ) ){ return; } /*-----------------*/ kill();
-        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) ){ onDrain.emit(); }
+        if( is_state( STATE::FS_STATE_KILL  ) ){ return; } kill();
+        if(!is_state( STATE::FS_STATE_CLOSE ) ){ onDrain .emit (); }
 
         onClose.emit();
 
@@ -160,10 +159,9 @@ public:
     /*─······································································─*/
 
     void close() const noexcept {
-        if( is_state ( STATE::FS_STATE_DISABLE ) ) { return; }
-            onDrain.emit(); set_state( STATE::FS_STATE_CLOSE );
-        free(); 
-    }
+        if( is_state ( STATE::FS_STATE_DISABLE ) ){ return; } onDrain.emit(); 
+            set_state( STATE::FS_STATE_CLOSE   );
+    free(); }
 
     /*─······································································─*/
 

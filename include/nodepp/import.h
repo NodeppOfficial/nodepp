@@ -21,6 +21,7 @@
 #include <typeinfo>
 #include <cstring>
 #include <cstdlib>
+#include <cstdint>
 #include <cstdio>
 #include <cmath>
 
@@ -31,7 +32,6 @@
 #include <queue>
 #include <array>
 #include <vector>
-#include <functional>
 #endif
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -42,6 +42,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#include "allocator.h"
 #include "ptr.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -73,7 +74,6 @@
 
 #include "os.h"
 #include "query.h"
-#include "invoke.h"
 #include "kernel.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/

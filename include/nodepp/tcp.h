@@ -19,11 +19,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp {
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-class tcp_t {
+namespace nodepp { class tcp_t {
 private:
 
     using NODE_CLB = function_t<void,socket_t>;
@@ -36,7 +32,7 @@ private:
 protected:
 
     struct NODE {
-        int  state= 0; 
+        int state = 0; 
         agent_t agent;
         NODE_CLB func;
     };  ptr_t<NODE> obj;
@@ -65,7 +61,7 @@ public:
 
     /*─······································································─*/
 
-    void listen( const dns_t& addr, int port, NODE_CLB cb=nullptr ) const noexcept {
+    void listen( const dns_t& addr, int port, NODE_CLB clb=nullptr ) const noexcept {
 
         if( obj->state & STATE::TCP_STATE_CLOSED )
           { onError.emit( "tcp listener is closed" ); return; } 
@@ -89,42 +85,38 @@ public:
             onError.emit( "Error while listening TCP" ); return; 
         }   
         
-        cb(sk); onOpen.emit(sk); auto self = type::bind( this ); 
-        
+        clb(sk); onOpen.emit(sk); 
+        auto self= type::bind ( this ); 
+        auto enb = ptr_t<uint>( 0UL, 0u );
+
         process::poll( sk, POLL_STATE::READ | POLL_STATE::EDGE, [=](){
-        int c=-1; while( self.count() < NODEPP_MAX_BATCH_SIZE ) {
 
-            while((c=sk._accept())==-2){ return 0; } if(c==-1){ 
-                self->onError.emit("Error while accepting TCP");
-            return -1; }
+            while( *enb > NODEPP_MAX_BATCH_SIZE ){ return 1; } int c=-1;
 
-            auto cli   = socket_t(c);
-            cli.set_sockopt( self->obj->agent );
-            auto _read = type::bind( generator::file::read() );
+            if((c= sk._accept())==-2 ){ /*-----------------------------*/ return  0; }
+            if( c==-1 ){ self->onError.emit("Error while accepting TCP"); return -1; }
+            
+            auto cli=socket_t(c); *enb += 1;
+            /**/ cli.set_sockopt( self->obj->agent );
+        
+        stream::readable( cli, 0UL ).then([=]( socket_t cli ){
 
-        process::poll( cli, POLL_STATE::READ | POLL_STATE::EDGE, [=](){
+            self->onSocket.emit(cli); self->obj->func/*-*/(cli);
+            if( cli.is_available() ){ self->onConnect.emit(cli); }
 
-            if( (*_read)(&cli)==1  ){ return  0; }
-            if(!cli.is_available() ){ return -1; }
-                
-            cli.set_borrow(_read->data); self->onSocket .emit(cli);
-            /*------------------------*/ self->obj->func(cli);
-            if( cli.is_available() )   { self->onConnect.emit(cli); }
-
-            return -1; }, self->obj->agent.conn_timeout );
-        }   return  1; }); 
+        }).finally([=](){ *enb -= 1; }); return 1; });
 
     }
 
-    void listen( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
+    void listen( const string_t& host, int port, NODE_CLB clb=nullptr ) const noexcept {
     auto addr = dns::lookup( host, obj->agent.socket_family );
          if( addr.empty() ){ onError.emit( "dns address not found" ); return; }
-         listen( addr[0], port, cb );
+         listen( addr[0], port, clb );
     }
 
     /*─······································································─*/
 
-    void connect( const dns_t& addr, int port, NODE_CLB cb=nullptr ) const noexcept {
+    void connect( const dns_t& addr, int port, NODE_CLB clb=nullptr ) const noexcept {
 
         if( obj->state & STATE::TCP_STATE_CLOSED )
           { onError.emit( "tcp listener is closed" ); return; } 
@@ -146,8 +138,8 @@ public:
                 self->onError.emit( "Error while connecting TCP" );
             return -1; }
 
-            cb(sk); self->onSocket.emit(sk);
-            /*---*/ self->obj->func(sk);
+            clb(sk); self->onSocket.emit(sk);
+            /*----*/ self->obj->func(sk);
 
             if( sk.is_available() ){ 
                 sk.onOpen      .emit(  );
@@ -155,14 +147,14 @@ public:
                 self->onConnect.emit(sk); 
             }
 
-        return -1; });
+        return -1; }); 
 
     }
 
-    void connect( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
+    void connect( const string_t& host, int port, NODE_CLB clb=nullptr ) const noexcept {
     auto addr = dns::lookup( host, obj->agent.socket_family );
          if( addr.empty() ){ onError.emit( "dns address not found" ); return; }
-         connect( addr[0], port, cb );
+         connect( addr[0], port, clb );
     }
 
     /*─······································································─*/
@@ -175,11 +167,11 @@ public:
         onConnect.clear(); onClose .clear();
     }
 
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace tcp {
+namespace nodepp { namespace tcp {
 
     inline tcp_t server( agent_t* opt=nullptr ){
     auto skt = tcp_t( nullptr, opt ); return skt; }
@@ -187,11 +179,7 @@ namespace tcp {
     inline tcp_t client( agent_t* opt=nullptr ){
     auto skt = tcp_t( nullptr, opt ); return skt; }
 
-}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-}
+}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

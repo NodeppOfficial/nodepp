@@ -1,3 +1,7 @@
+#define MAX_BATCH 10
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #include <nodepp/nodepp.h>
 #include <nodepp/worker.h>
 #include <nodepp/timer.h>
@@ -6,7 +10,11 @@
 #include <nodepp/ws.h>
 #include <nodepp/fs.h>
 
+/*────────────────────────────────────────────────────────────────────────────*/
+
 using namespace nodepp;
+
+/*────────────────────────────────────────────────────────────────────────────*/
 
 void server(){
 
@@ -48,6 +56,8 @@ void server(){
 
 }
 
+/*────────────────────────────────────────────────────────────────────────────*/
+
 void client() {
 
     auto client = ws::client( "ws://localhost:8000/" );
@@ -65,6 +75,8 @@ void client() {
 
 }
 
+/*────────────────────────────────────────────────────────────────────────────*/
+
 void onMain() {
 
     worker::add( coroutine::add( COROUTINE(){
@@ -75,14 +87,17 @@ void onMain() {
     coBegin
 
         while( true ){
+        while( process::size() > MAX_BATCH ){ coDelay(1000); }
 
-            worker::add( coroutine::add( COROUTINE(){
-            coBegin /*--*/ ; client();
-            process::wait(); coFinish }));
+            worker::add([=](){ client(); 
+            process::wait(); return -1; });
 
-        coDelay( 10 ); }
+        coNext; }
 
     coFinish
     }));
 
 }
+
+/*────────────────────────────────────────────────────────────────────────────*/
+// BUGFIXED

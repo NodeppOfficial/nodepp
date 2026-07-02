@@ -6,10 +6,7 @@
 
 using namespace nodepp;
 
-mutex_t  mutx;
-
 void isolated_event_loop( uint cpu_id ){ worker::add([=](){ 
-    //  this worker runs it's own event loop in parallel
 
     auto server = http::server([=]( http_t cli ){
 
@@ -27,10 +24,8 @@ void isolated_event_loop( uint cpu_id ){ worker::add([=](){
     server.listen( "localhost", 8000, [=]( socket_t ){
         console::log( "-> http://localhost:8000" );
     } );
-    
-    process::wait();
 
-return -1; }); }
+process::wait(); return -1; }); }
 
 void onMain(){
 

@@ -8,7 +8,7 @@ class my_class { public:
 
     my_class() { 
         auto self = type::bind( this ); // ptr_t<my_class> ( 0UL, *this );    
-    process::add( [=]() -> int {
+    process::add( [=](){
         console::log( self->variable ); // 10
         self->variable = 20;
         console::log( self->variable ); // 20

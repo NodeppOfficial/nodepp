@@ -40,7 +40,7 @@ protected:
          FS_STATE_OPEN    = 0b00000001,
          FS_STATE_CLOSE   = 0b00000010,
          FS_STATE_KILL    = 0b00000100,
-         FS_STATE_REUSE   = 0b00001000,
+         FS_STATE_STOP    = 0b00001000,
          FS_STATE_DISABLE = 0b00001110
     };
 
@@ -131,9 +131,8 @@ public:
 
     void free() const noexcept {
 
-        if( is_state( STATE::FS_STATE_REUSE ) && !readable().is_feof() && obj.count()>1 ){ return; }
-        if( is_state( STATE::FS_STATE_KILL  ) ){ return; } /*-----------------*/ kill();
-        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) ){ onDrain.emit(); }
+        if( is_state( STATE::FS_STATE_KILL  ) ){ return; } kill();
+        if(!is_state( STATE::FS_STATE_CLOSE ) ){ onDrain .emit (); }
 
         onClose.emit();
 
@@ -160,10 +159,9 @@ public:
     /*─······································································─*/
 
     void close() const noexcept {
-        if( is_state ( STATE::FS_STATE_DISABLE ) ) { return; }
-            onDrain.emit(); set_state( STATE::FS_STATE_CLOSE );
-        free(); 
-    }
+        if( is_state ( STATE::FS_STATE_DISABLE ) ){ return; } onDrain.emit(); 
+            set_state( STATE::FS_STATE_CLOSE   );
+    free(); }
 
     /*─······································································─*/
 

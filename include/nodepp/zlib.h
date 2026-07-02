@@ -36,6 +36,12 @@ protected:
          STATE_ZLIB_DEFLATE = 0b00000100,
     };
 
+    static voidpf _malloc_( voidpf opaque, uInt items, uInt size ) {
+    return nodepp::NODEPP_ALLOC().malloc((size_t)items * size); }
+
+    static void _free_ ( voidpf opaque, voidpf address ) {
+    nodepp::NODEPP_ALLOC().free(address); }
+
     struct NODE {
 
         int state = STATE_ZLIB_IDLE; 
@@ -49,8 +55,8 @@ protected:
     };  ptr_t<NODE> obj;
 
     void _init_() const noexcept {
-        obj->fd.zfree    = Z_NULL;
-        obj->fd.zalloc   = Z_NULL;
+        obj->fd.zalloc   = _malloc_;
+        obj->fd.zfree    = _free_  ;
         obj->fd.opaque   = Z_NULL;
         obj->fd.next_in  = Z_NULL;
         obj->fd.avail_in = Z_NULL;
@@ -156,172 +162,90 @@ public:
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace zlib { namespace inflate {
-
-    inline string_t get( const string_t& data ){ return zlib_t(15).update_inflate(data,Z_FINISH); }
-
-    template< class T, class V >
-    ptr_t<task_t> pipe( const T& fa, const V& fb ){ 
-           generator::zlib::pipe_inflate task; auto zlib = zlib_t(15);
-    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa, fb ); }
-
-    template< class T >
-    ptr_t<task_t> pipe( const T& fa ){ 
-           generator::zlib::pipe_inflate task; auto zlib = zlib_t(15);
-    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
-
-    /*─······································································─*/
-
-    template< class T, class V >
-    promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
-    return promise_t<string_t,except_t> ([=]( 
-        res_t<string_t> res, rej_t<except_t> rej
-    ){  ptr_t<string_t> bff ( 0UL );
-
-        if( fa.is_closed() || fb.is_closed() )
-          { rej( except_t( "invalid fd" ) ); return; }
-
-        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
-        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb );
-
-    }); }
-
-    template< class T >
-    promise_t<string_t,except_t> resolve( const T& fa ) {
-    return promise_t<string_t,except_t> ([=]( 
-        res_t<string_t> res, rej_t<except_t> rej
-    ){  ptr_t<string_t> bff ( 0UL );
-
-        if( fa.is_closed() )
-          { rej( except_t( "invalid fd" ) ); return; }
-
-        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
-        fa.onDrain([=](){ res( *bff ); }); pipe( fa );
-
-    }); }
-
-    /*─······································································─*/
-
-    template< class... T >
-    expected_t<string_t,except_t> await( const T&... args ){
-        return resolve( args... ).await();
-    }
-    
-    inline zlib_t get(){ return zlib_t(15); }
-
-}}}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-namespace nodepp { namespace zlib { namespace deflate {
-
-    inline string_t get( const string_t& data ){ return zlib_t(15).update_deflate(data,Z_FINISH); }
-
-    template< class T, class V >
-    ptr_t<task_t> pipe( const T& fa, const V& fb ){ 
-           generator::zlib::pipe_deflate task; auto zlib = zlib_t(15);
-    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa, fb ); }
-
-    template< class T >
-    ptr_t<task_t> pipe( const T& fa ){ 
-           generator::zlib::pipe_deflate task; auto zlib = zlib_t(15);
-    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
-
-    /*─······································································─*/
-
-    template< class T, class V >
-    promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
-    return promise_t<string_t,except_t> ([=]( 
-        res_t<string_t> res, rej_t<except_t> rej
-    ){  ptr_t<string_t> bff ( 0UL );
-
-        if( fa.is_closed() || fb.is_closed() )
-          { rej( except_t( "invalid fd" ) ); return; }
-
-        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
-        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb );
-
-    }); }
-
-    template< class T >
-    promise_t<string_t,except_t> resolve( const T& fa ) {
-    return promise_t<string_t,except_t> ([=]( 
-        res_t<string_t> res, rej_t<except_t> rej
-    ){  ptr_t<string_t> bff ( 0UL );
-
-        if( fa.is_closed() )
-          { rej( except_t( "invalid fd" ) ); return; }
-
-        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
-        fa.onDrain([=](){ res( *bff ); }); pipe( fa );
-
-    }); }
-
-    /*─······································································─*/
-
-    template< class... T >
-    expected_t<string_t,except_t> await( const T&... args ){
-        return resolve( args... ).await();
-    }
-    
-    inline zlib_t get(){ return zlib_t(15); }
-
-}}}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
 namespace nodepp { namespace zlib { namespace raw_inflate {
 
-    inline string_t get( const string_t& data ){ return zlib_t(-15).update_inflate(data,Z_FINISH); }
+    inline string_t get( const string_t& data, int flag ){ return zlib_t(flag).update_inflate(data,Z_FINISH); }
+    inline zlib_t   get( /*-----------------*/ int flag ){ return zlib_t(flag); }
 
     template< class T, class V >
-    ptr_t<task_t> pipe( const T& fa, const V& fb ){ 
-           generator::zlib::pipe_inflate task; auto zlib = zlib_t(-15);
+    ptr_t<task_t> pipe( const T& fa, const V& fb, int flag ){ 
+           generator::zlib::pipe_inflate task; auto zlib = zlib_t(flag);
     return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa, fb ); }
 
     template< class T >
-    ptr_t<task_t> pipe( const T& fa ){ 
-           generator::zlib::pipe_inflate task; auto zlib = zlib_t(-15);
+    ptr_t<task_t> pipe( const T& fa, int flag ){ 
+           generator::zlib::pipe_inflate task; auto zlib = zlib_t(flag);
     return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
 
     /*─······································································─*/
 
     template< class T, class V >
-    promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
+    promise_t<string_t,except_t> resolve( const T& fa, const V& fb, int flag ) {
     return promise_t<string_t,except_t> ([=]( 
         res_t<string_t> res, rej_t<except_t> rej
     ){  ptr_t<string_t> bff ( 0UL );
 
         if( fa.is_closed() || fb.is_closed() )
-          { rej( except_t( "invalid fd" ) ); return; }
+          { rej( except_t( "closed stream" ) ); return; }
 
         fa.onData ([=]( string_t chunk ){ *bff += chunk; });
-        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb );
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb, flag );
 
     }); }
 
     template< class T >
-    promise_t<string_t,except_t> resolve( const T& fa ) {
+    promise_t<string_t,except_t> resolve( const T& fa, int flag ) {
     return promise_t<string_t,except_t> ([=]( 
         res_t<string_t> res, rej_t<except_t> rej
     ){  ptr_t<string_t> bff ( 0UL );
 
         if( fa.is_closed() )
-          { rej( except_t( "invalid fd" ) ); return; }
+          { rej( except_t( "closed stream" ) ); return; }
 
         fa.onData ([=]( string_t chunk ){ *bff += chunk; });
-        fa.onDrain([=](){ res( *bff ); }); pipe( fa );
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa, flag );
 
     }); }
 
     /*─······································································─*/
 
-    template< class... T >
-    expected_t<string_t,except_t> await( const T&... args ){
-        return resolve( args... ).await();
-    }
-    
-    inline zlib_t get(){ return zlib_t(-15); }
+    template< class T, class V >
+    promise_t<string_t,except_t> await( const T& fa, const V& fb, int flag ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){
+        
+        generator::zlib::pipe_inflate task ; 
+        string_t bff; auto zlib=zlib_t(flag);
+
+        if( fa.is_closed() || fb.is_closed() )
+          { return except_t( "closed stream" ); }
+
+        fa.onData ([&]( string_t chunk ){ bff += chunk; });
+        while( task( zlib, fa, fb ) ){ process::next(); }
+
+        return bff;
+
+    }); }
+
+    template< class T >
+    promise_t<string_t,except_t> await( const T& fa, int flag ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){
+        
+        generator::zlib::pipe_inflate task ; 
+        string_t bff; auto zlib=zlib_t(flag);
+
+        if( fa.is_closed() )
+          { return except_t( "closed stream" ); }
+
+        fa.onData ([&]( string_t chunk ){ bff += chunk; });
+        while( task( zlib, fa ) ){ process::next(); }
+
+        return bff;
+
+    }); }
 
 }}}
 
@@ -329,56 +253,170 @@ namespace nodepp { namespace zlib { namespace raw_inflate {
 
 namespace nodepp { namespace zlib { namespace raw_deflate {
 
-    inline string_t get( const string_t& data ){ return zlib_t(-15).update_deflate(data,Z_FINISH); }
+    inline string_t get( const string_t& data, int flag ){ return zlib_t(flag).update_deflate(data,Z_FINISH); }
+    inline zlib_t   get( /*-----------------*/ int flag ){ return zlib_t(flag); }
 
     template< class T, class V >
-    ptr_t<task_t> pipe( const T& fa, const V& fb ){ 
-           generator::zlib::pipe_deflate task; auto zlib = zlib_t(-15);
+    ptr_t<task_t> pipe( const T& fa, const V& fb, int flag ){ 
+           generator::zlib::pipe_deflate task; auto zlib = zlib_t(flag);
     return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa, fb ); }
 
     template< class T >
-    ptr_t<task_t> pipe( const T& fa ){ 
-           generator::zlib::pipe_deflate task; auto zlib = zlib_t(-15);
+    ptr_t<task_t> pipe( const T& fa, int flag ){ 
+           generator::zlib::pipe_deflate task; auto zlib = zlib_t(flag);
     return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
 
     /*─······································································─*/
 
     template< class T, class V >
-    promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
+    promise_t<string_t,except_t> resolve( const T& fa, const V& fb, int flag ) {
     return promise_t<string_t,except_t> ([=]( 
         res_t<string_t> res, rej_t<except_t> rej
     ){  ptr_t<string_t> bff ( 0UL );
 
         if( fa.is_closed() || fb.is_closed() )
-          { rej( except_t( "invalid fd" ) ); return; }
+          { rej( except_t( "closed stream" ) ); return; }
 
         fa.onData ([=]( string_t chunk ){ *bff += chunk; });
-        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb );
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb, flag );
 
     }); }
 
     template< class T >
-    promise_t<string_t,except_t> resolve( const T& fa ) {
+    promise_t<string_t,except_t> resolve( const T& fa, int flag ) {
     return promise_t<string_t,except_t> ([=]( 
         res_t<string_t> res, rej_t<except_t> rej
     ){  ptr_t<string_t> bff ( 0UL );
 
         if( fa.is_closed() )
-          { rej( except_t( "invalid fd" ) ); return; }
+          { rej( except_t( "closed stream" ) ); return; }
 
         fa.onData ([=]( string_t chunk ){ *bff += chunk; });
-        fa.onDrain([=](){ res( *bff ); }); pipe( fa );
+        fa.onDrain([=](){ res( *bff ); }); pipe( fa, flag );
 
     }); }
 
     /*─······································································─*/
 
-    template< class... T >
-    expected_t<string_t,except_t> await( const T&... args ){
-        return resolve( args... ).await();
+    template< class T, class V >
+    promise_t<string_t,except_t> await( const T& fa, const V& fb, int flag ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){
+        
+        generator::zlib::pipe_deflate task ; 
+        string_t bff; auto zlib=zlib_t(flag);
+
+        if( fa.is_closed() || fb.is_closed() )
+          { return except_t( "closed stream" ); }
+
+        fa.onData ([&]( string_t chunk ){ bff += chunk; });
+        while( task( zlib, fa, fb ) ){ process::next(); }
+
+        return bff;
+
+    }); }
+
+    template< class T >
+    promise_t<string_t,except_t> await( const T& fa, int flag ) {
+    return promise_t<string_t,except_t> ([=]( 
+        res_t<string_t> res, rej_t<except_t> rej
+    ){
+        
+        generator::zlib::pipe_deflate task ; 
+        string_t bff; auto zlib=zlib_t(flag);
+
+        if( fa.is_closed() )
+          { return except_t( "closed stream" ); }
+
+        fa.onData ([&]( string_t chunk ){ bff += chunk; });
+        while( task( zlib, fa ) ){ process::next(); }
+
+        return bff;
+
+    }); }
+
+}}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace zlib { namespace inflate {
+
+    template< class T, class V >
+    ptr_t<task_t> pipe( const T& fa, const V& fb ){ return raw_inflate::pipe( fa, fb, 15 ); }
+
+    template< class T >
+    ptr_t<task_t> pipe( const T& fa ){ return raw_inflate::pipe( fa, 15 ); }
+
+    /*─······································································─*/
+
+    inline string_t get( const string_t& data ){ return raw_inflate::get(data,15); }
+    inline zlib_t   get( /*----------------*/ ){ return raw_inflate::get(/*-*/15); }
+
+    /*─······································································─*/
+
+    template< class T, class V >
+    promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
+        return raw_inflate::resolve( fa, fb, 15 ); 
     }
-    
-    inline zlib_t get(){ return zlib_t(-15); }
+
+    template< class T >
+    promise_t<string_t,except_t> resolve( const T& fa ) {
+        return raw_inflate::resolve( fa, 15 ); 
+    }
+
+    /*─······································································─*/
+
+    template< class T, class V >
+    promise_t<string_t,except_t> await( const T& fa, const V& fb ) {
+        return raw_inflate::await( fa, fb, 15 ); 
+    }
+
+    template< class T >
+    promise_t<string_t,except_t> await( const T& fa ) {
+        return raw_inflate::await( fa, 15 ); 
+    }
+
+}}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace zlib { namespace deflate {
+
+    template< class T, class V >
+    ptr_t<task_t> pipe( const T& fa, const V& fb ){ return raw_deflate::pipe( fa, fb, 15 ); }
+
+    template< class T >
+    ptr_t<task_t> pipe( const T& fa ){ return raw_deflate::pipe( fa, 15 ); }
+
+    /*─······································································─*/
+
+    inline string_t get( const string_t& data ){ return raw_deflate::get(data,15); }
+    inline zlib_t   get( /*----------------*/ ){ return raw_deflate::get(/*-*/15); }
+
+    /*─······································································─*/
+
+    template< class T, class V >
+    promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
+        return raw_deflate::resolve( fa, fb, 15 ); 
+    }
+
+    template< class T >
+    promise_t<string_t,except_t> resolve( const T& fa ) {
+        return raw_deflate::resolve( fa, 15 ); 
+    }
+
+    /*─······································································─*/
+
+    template< class T, class V >
+    promise_t<string_t,except_t> await( const T& fa, const V& fb ) {
+        return raw_deflate::await( fa, fb, 15 ); 
+    }
+
+    template< class T >
+    promise_t<string_t,except_t> await( const T& fa ) {
+        return raw_deflate::await( fa, 15 ); 
+    }
 
 }}}
 
@@ -386,56 +424,40 @@ namespace nodepp { namespace zlib { namespace raw_deflate {
 
 namespace nodepp { namespace zlib { namespace gunzip {
 
-    inline string_t get( const string_t& data ){ return zlib_t(15|32).update_inflate(data,Z_FINISH); }
-
     template< class T, class V >
-    ptr_t<task_t> pipe( const T& fa, const V& fb ){ 
-           generator::zlib::pipe_inflate task; auto zlib = zlib_t(15|32);
-    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa, fb ); }
+    ptr_t<task_t> pipe( const T& fa, const V& fb ){ return raw_inflate::pipe( fa, fb, 15|32 ); }
 
     template< class T >
-    ptr_t<task_t> pipe( const T& fa ){ 
-           generator::zlib::pipe_inflate task; auto zlib = zlib_t(15|32);
-    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
+    ptr_t<task_t> pipe( const T& fa ){ return raw_inflate::pipe( fa, 15|32 ); }
+
+    /*─······································································─*/
+
+    inline string_t get( const string_t& data ){ return raw_inflate::get(data,15|32); }
+    inline zlib_t   get( /*----------------*/ ){ return raw_inflate::get(/*-*/15|32); }
 
     /*─······································································─*/
 
     template< class T, class V >
     promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
-    return promise_t<string_t,except_t> ([=]( 
-        res_t<string_t> res, rej_t<except_t> rej
-    ){  ptr_t<string_t> bff ( 0UL );
-
-        if( fa.is_closed() || fb.is_closed() )
-          { rej( except_t( "invalid fd" ) ); return; }
-
-        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
-        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb );
-
-    }); }
+        return raw_inflate::resolve( fa, fb, 15|32 ); 
+    }
 
     template< class T >
     promise_t<string_t,except_t> resolve( const T& fa ) {
-    return promise_t<string_t,except_t> ([=]( 
-        res_t<string_t> res, rej_t<except_t> rej
-    ){  ptr_t<string_t> bff ( 0UL );
-
-        if( fa.is_closed() )
-          { rej( except_t( "invalid fd" ) ); return; }
-
-        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
-        fa.onDrain([=](){ res( *bff ); }); pipe( fa );
-
-    }); }
+        return raw_inflate::resolve( fa, 15|32 ); 
+    }
 
     /*─······································································─*/
 
-    template< class... T >
-    expected_t<string_t,except_t> await( const T&... args ){
-        return resolve( args... ).await();
+    template< class T, class V >
+    promise_t<string_t,except_t> await( const T& fa, const V& fb ) {
+        return raw_inflate::await( fa, fb, 15|32 ); 
     }
-    
-    inline zlib_t get(){ return zlib_t(15|32); }
+
+    template< class T >
+    promise_t<string_t,except_t> await( const T& fa ) {
+        return raw_inflate::await( fa, 15|32 ); 
+    }
     
 }}}
 
@@ -443,56 +465,40 @@ namespace nodepp { namespace zlib { namespace gunzip {
 
 namespace nodepp { namespace zlib { namespace gzip {
 
-    inline string_t get( const string_t& data ){ return zlib_t(15|16).update_deflate(data,Z_FINISH); }
-
     template< class T, class V >
-    ptr_t<task_t> pipe( const T& fa, const V& fb ){ 
-           generator::zlib::pipe_deflate task; auto zlib = zlib_t(15|16);
-    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa, fb ); }
+    ptr_t<task_t> pipe( const T& fa, const V& fb ){ return raw_deflate::pipe( fa, fb, 15|16 ); }
 
     template< class T >
-    ptr_t<task_t> pipe( const T& fa ){ 
-           generator::zlib::pipe_deflate task; auto zlib = zlib_t(15|16);
-    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, task, 0UL, zlib, fa ); }
+    ptr_t<task_t> pipe( const T& fa ){ return raw_deflate::pipe( fa, 15|16 ); }
+
+    /*─······································································─*/
+
+    inline string_t get( const string_t& data ){ return raw_deflate::get(data,15|16); }
+    inline zlib_t   get( /*----------------*/ ){ return raw_deflate::get(/*-*/15|16); }
 
     /*─······································································─*/
 
     template< class T, class V >
     promise_t<string_t,except_t> resolve( const T& fa, const V& fb ) {
-    return promise_t<string_t,except_t> ([=]( 
-        res_t<string_t> res, rej_t<except_t> rej
-    ){  ptr_t<string_t> bff ( 0UL );
-
-        if( fa.is_closed() || fb.is_closed() )
-          { rej( except_t( "invalid fd" ) ); return; }
-
-        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
-        fa.onDrain([=](){ res( *bff ); }); pipe( fa, fb );
-
-    }); }
+        return raw_deflate::resolve( fa, fb, 15|16 ); 
+    }
 
     template< class T >
     promise_t<string_t,except_t> resolve( const T& fa ) {
-    return promise_t<string_t,except_t> ([=]( 
-        res_t<string_t> res, rej_t<except_t> rej
-    ){  ptr_t<string_t> bff ( 0UL );
-
-        if( fa.is_closed() )
-          { rej( except_t( "invalid fd" ) ); return; }
-
-        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
-        fa.onDrain([=](){ res( *bff ); }); pipe( fa );
-
-    }); }
+        return raw_deflate::resolve( fa, 15|16 ); 
+    }
 
     /*─······································································─*/
 
-    template< class... T >
-    expected_t<string_t,except_t> await( const T&... args ){
-        return resolve( args... ).await();
+    template< class T, class V >
+    promise_t<string_t,except_t> await( const T& fa, const V& fb ) {
+        return raw_deflate::await( fa, fb, 15|16 ); 
     }
-    
-    inline zlib_t get(){ return zlib_t(15|16); }
+
+    template< class T >
+    promise_t<string_t,except_t> await( const T& fa ) {
+        return raw_deflate::await( fa, 15|16 ); 
+    }
 
 }}}
 

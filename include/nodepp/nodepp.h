@@ -20,9 +20,9 @@
 
 namespace nodepp { namespace process {
 
-    inline array_t<string_t>& NODEPP_ARGMNT(){ /**/ static array_t<string_t> out; return out; }
-    inline kernel_t & /*---*/ NODEPP_EVLOOP(){ thread_local static kernel_t  out; return out; }
-    inline emitter_t& /*---*/ NODEPP_INVOKE(){ thread_local static emitter_t out; return out; }
+    inline array_t<string_t>& NODEPP_ARGMNT(){ /*-*/ static array_t<string_t>/*-*/ out; return out; }
+    inline kernel_t& /*----*/ NODEPP_EVLOOP(){ thread_local static kernel_t /*--*/ out; return out; }
+    inline invoke_t<any_t>&   NODEPP_INVOKE(){ thread_local static invoke_t<any_t> out; return out; }
     
     /*─······································································─*/
 
@@ -33,7 +33,7 @@ namespace nodepp { namespace process {
     int call( const T&... args ){ return NODEPP_INVOKE().emit( args... ); }
 
     template< class... T >
-    string_t invoke( const T&... args ){ return NODEPP_INVOKE().add( args... ); }
+    uint64_t invoke( const T&... args ){ return NODEPP_INVOKE().add( args... ); }
     
     /*─······································································─*/
 
@@ -64,7 +64,10 @@ namespace nodepp { namespace process {
 
     /*─······································································─*/
 
-    inline int next(){ return NODEPP_EVLOOP().next(); }
+    inline int next(){ 
+        /*--*/ NODEPP_ALLOC ().next();
+        return NODEPP_EVLOOP().next(); 
+    }
 
     inline void exit( int err=0 ){
     if( should_close() ){ goto DONE; } do {

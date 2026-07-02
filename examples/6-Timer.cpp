@@ -7,7 +7,7 @@ void onMain(){
 
     // add: a Coroutine Based Timer
     auto C = timer::add( coroutine::add( COROUTINE(){
-        static uchar x = 100;
+    thread_local static uchar x = 100;
     coBegin
 
         while( x-->0 ){

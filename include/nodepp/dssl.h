@@ -1,0 +1,437 @@
+/*
+ * Copyright 2023 The Nodepp Project Authors. All Rights Reserved.
+ *
+ * Licensed under the MIT (the "License").  You may not use
+ * this file except in compliance with the License.  You can obtain a copy
+ * in the file LICENSE in the source distribution or at
+ * https://github.com/NodeppOfficial/nodepp/blob/main/LICENSE
+ */
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+#ifndef NODEPP_DSSL
+#define NODEPP_DSSL
+#define OPENSSL_API_COMPAT 0x10100000L
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include "initializer.h"
+#include "crypto.h"
+#include "fs.h"
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { class dssl_t {
+protected:
+    
+    using onSNI = function_t<dssl_t*,string_t>;
+
+    enum STATE { 
+         DSSL_STATE_UNKNOWN   = 0b00000000,
+         DSSL_STATE_USED      = 0b00000010,
+         DSSL_STATE_CONNECTED = 0b00000001,
+         DSSL_STATE_SERVER    = 0b10000000
+    };
+
+    struct NODE {
+        string_t key, crt, cha, tmp_list;
+
+        SSL_CTX*     ctx  = nullptr;
+        SSL*         ssl  = nullptr;
+        BIO*         bio  = nullptr;
+        int          state= 0;
+
+        ptr_t<X509_t>cert;
+        ptr_t<onSNI>  sni;
+
+       ~NODE() {
+            if( ssl ){ SSL_clear   ( ssl ); 
+                /*--*/ SSL_free    ( ssl ); }
+            if( ctx ){ SSL_CTX_free( ctx ); }
+        }
+
+    };  ptr_t<NODE>   obj;
+
+    /*─······································································─*/
+    
+    bool is_connected() const noexcept { return obj->state & STATE::DSSL_STATE_CONNECTED; }
+    
+    bool    is_server() const noexcept { return obj->state & STATE::DSSL_STATE_SERVER; }
+    
+    bool is_available() const noexcept { return obj->state & STATE::DSSL_STATE_USED; }
+
+    /*─······································································─*/
+
+    void set_ctx_options( SSL_CTX* ctx ) const noexcept {
+         SSL_CTX_set_options( ctx, SSL_OP_ALL | SSL_OP_NO_RENEGOTIATION | SSL_OP_IGNORE_UNEXPECTED_EOF );
+    }
+
+    SSL_CTX* create_server_context() const noexcept {
+        const SSL_METHOD *method = DTLS_server_method();
+        SSL_CTX* ctx = SSL_CTX_new( method );
+        SSL_CTX_set_read_ahead( ctx, 1 );
+        SSL_CTX_set_timeout( ctx, 0 );
+        set_ctx_options( ctx );
+        return ctx;
+    }
+    
+    SSL_CTX* create_client_context() const noexcept {
+        const SSL_METHOD *method = DTLS_client_method();
+        SSL_CTX* ctx = SSL_CTX_new( method ); 
+        SSL_CTX_set_read_ahead( ctx, 1 );
+        SSL_CTX_set_timeout( ctx, 0 );
+        set_ctx_options( ctx );
+        return ctx;
+    }
+
+    static int SNI_CLB ( char *buf, int size, int rwflag, void *args ) {
+        if( args == nullptr || rwflag != 1 ){ return -1; }
+        strncpy( buf, (char*)args, size ); buf[ size -1 ] = '\0';
+        return strlen ( buf );
+    }
+
+    /*─······································································─*/
+    
+    static int generate_cookie_clb( SSL *ssl, uchar *cookie, uint *cookie_len ) {
+
+        BIO *rbio = SSL_get_rbio     ( ssl  );
+        auto peer = string::to_string( rbio );
+        auto sha  = crypto::hash::SHA1(); 
+             sha.update( peer );
+
+        auto out  = sha.get ();
+        uint len  = out.size() > 32 ? 32 : out.size();
+        memcpy( cookie, out.c_str(), len ); *cookie_len = len;
+
+    return 1; }
+
+    static int verify_cookie_clb( SSL *ssl, const uchar *cookie, uint cookie_len ) {
+        
+        BIO *rbio = SSL_get_rbio     ( ssl  );
+        auto peer = string::to_string( rbio );
+        auto sha  = crypto::hash::SHA1(); 
+             sha.update( peer );
+
+        auto out = sha.get();
+        auto len = min( out.size(), (ulong) cookie_len );
+
+        if( memcmp( (uchar*) out.c_str(), (uchar*) cookie, len )==0 )
+          { return 1; }
+
+    return 0; }
+    
+    /*─······································································─*/
+
+    int configure_context( SSL_CTX* ctx, const string_t& key, const string_t& crt, const string_t& cha ) const noexcept { 
+    int x = 1; 
+
+        if( !cha.empty() && x==1 ){ x=SSL_CTX_use_certificate_chain_file( ctx, (char*)cha ); }
+        if( !crt.empty() && x==1 ){ x=SSL_CTX_use_certificate_file      ( ctx, (char*)crt, SSL_FILETYPE_PEM ); }
+        if( !key.empty() && x==1 ){ x=SSL_CTX_use_PrivateKey_file       ( ctx, (char*)key, SSL_FILETYPE_PEM ); }
+
+        if( obj->cert != nullptr && x==1 ){
+        if( !SSL_CTX_use_certificate  (ctx,obj->cert->get_cert()) || !ctx ){ x = 0; goto DONE; }
+        if( !SSL_CTX_use_PrivateKey   (ctx,obj->cert->get_pkey()) )        { x = 0; goto DONE; } 
+        if( !SSL_CTX_check_private_key(ctx) )                              { x = 0; goto DONE; }
+                                                                    } else { x = 0; /*------*/ }
+        
+        DONE:; return x==1 ? 1 : -1;
+    }
+    
+    /*─······································································─*/
+
+    static int sni_handler( SSL* ssl, int* ad, void* arg ) {
+    const char* servername = SSL_get_servername( ssl, TLSEXT_NAMETYPE_host_name );
+
+        if( ssl==nullptr || servername==nullptr || arg==nullptr ){ 
+            *ad  = SSL_AD_UNRECOGNIZED_NAME;
+            return SSL_TLSEXT_ERR_ALERT_FATAL;
+        }
+        
+        onSNI func = *((onSNI*)arg); 
+        
+        if( servername ){ 
+            dssl_t* xtc = func(servername); 
+        if( xtc != nullptr ){ 
+            SSL_set_SSL_CTX( ssl, xtc->obj->ctx );
+        } else { 
+            *ad  = SSL_AD_UNRECOGNIZED_NAME;
+            return SSL_TLSEXT_ERR_ALERT_FATAL;
+        }}  return SSL_TLSEXT_ERR_OK;
+
+    }
+    
+    /*─······································································─*/
+
+
+    template< class T >
+    int is_blocked( T* stream, int c ) const noexcept { 
+    if( c<=0 && !stream->is_closed() ){
+
+        int err =  SSL_get_error( obj->ssl, c ); ERR_clear_error();
+        if( err == SSL_ERROR_WANT_WRITE || err == SSL_ERROR_WANT_READ ){ return -2; }
+        if( err == SSL_ERROR_SSL        || err == SSL_ERROR_SYSCALL   ){ return -1; }
+
+    } return stream->is_closed() ? -1 : c; }
+
+    /*─······································································─*/
+
+    void set_ctx_sni( SSL_CTX* ctx, onSNI* func ) const noexcept {
+         SSL_CTX_set_tlsext_servername_callback( ctx, sni_handler );
+         SSL_CTX_set_tlsext_servername_arg( ctx, func );
+    }
+    
+    /*─······································································─*/
+
+    void set_nonblocking_mode() const noexcept { 
+         SSL_set_quiet_shutdown( obj->ssl, 1 ); SSL_set_mode( obj->ssl, 
+         SSL_MODE_ASYNC | SSL_MODE_AUTO_RETRY |
+         SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER  |
+         SSL_MODE_ENABLE_PARTIAL_WRITE        |
+         SSL_MODE_RELEASE_BUFFERS            );
+    }
+    
+protected:
+
+    static int bio_write( BIO *b, const char *buf, int len ) {
+    if( b==nullptr ){ return -1; }
+
+        auto stream = (socket_t*)BIO_get_data(b);
+    //  auto nbuf   = stream->get_buffer_data( );
+        auto nlen   = min( (ulong)len, stream->get_buffer_size() );
+
+        if( stream->is_closed() ){ return -1; }
+
+        int c = stream->socket_t::__write( (char*)buf, nlen );
+        if( c==-2 ){ BIO_set_retry_write(b); return -1; }
+    
+    return c; }
+    
+    static int bio_read ( BIO *b, char *buf, int len ) {
+    if( b==nullptr ){ return -1; }
+
+        auto stream = (socket_t*)BIO_get_data(b);
+        auto nbuf   = stream->get_buffer_data( );
+        auto nlen   = min( (ulong)len, stream->get_buffer_size() );
+
+        if( stream->is_closed() ){ return -1; }
+
+        int c = stream->socket_t::__read( nbuf, nlen );
+        if( c==-2 ){ BIO_set_retry_read(b); return -1; }
+        if( c>  0 ){ memcpy( buf, nbuf, c ); }
+
+    return c; }
+
+    static BIO_METHOD* bio_method() {
+    static BIO_METHOD* method = nullptr; do {
+    if( method != nullptr ){ break; }
+        method =  BIO_meth_new( BIO_TYPE_SOURCE_SINK, "ssl_method" );
+
+        BIO_meth_set_write( method, bio_write );
+        BIO_meth_set_read ( method, bio_read  );
+        BIO_meth_set_ctrl ( method, []( BIO *b, int cmd, long num, void *ptr ) -> long {
+        switch( cmd ){
+            case BIO_CTRL_FLUSH: return 1;
+        //  case BIO_CTRL_PUSH:  return 0;
+        //  case BIO_CTRL_EOF:   return 0;
+            default:             return 0;
+        } });
+
+    } while(0); return method; }
+
+public:
+    
+    /*─······································································─*/
+
+    dssl_t( const string_t& _key, const string_t& _cert, const string_t& _chain ) : obj( new NODE() ) {
+    NODEPP_CRYPTO_INITIALIZATOR();
+       if(!fs::exists_file(_key) || !fs::exists_file(_cert) || !fs::exists_file(_chain) )
+         { NODEPP_THROW_ERROR("such key, cert or chain does not exist"); } 
+           obj->key = _key;  obj->crt = _cert; obj->cha = _chain;
+           obj->state = STATE::DSSL_STATE_USED;
+    }
+    
+   ~dssl_t() { if( obj.count() > 1 ) { return; } free(); }
+    
+    /*─······································································─*/
+
+    dssl_t( const string_t& _key, const string_t& _cert ) : obj( new NODE() ) { 
+    NODEPP_CRYPTO_INITIALIZATOR();
+       if(!fs::exists_file(_key) || !fs::exists_file(_cert) )
+         { NODEPP_THROW_ERROR("such key or cert does not exist"); }
+           obj->key = _key; obj->crt = _cert; 
+           obj->state = STATE::DSSL_STATE_USED;
+    }
+
+    /*─····························································─·········─*/
+
+    dssl_t( dssl_t xtc, int /*unused*/ ) : obj( new NODE() ) { 
+    NODEPP_CRYPTO_INITIALIZATOR();
+
+       if( xtc.obj->ctx == nullptr )
+         { NODEPP_THROW_ERROR("ctx has no context"); }
+           
+        obj->state = STATE::DSSL_STATE_USED;
+        obj->ctx   = xtc.obj->ctx; 
+        obj->state|= xtc.obj->state;
+        obj->ssl   = SSL_new(obj->ctx);
+
+        SSL_CTX_up_ref( obj->ctx );
+
+        obj->bio = BIO_new( bio_method() );
+        /*------*/ BIO_set_init( obj->bio, 1 );
+
+        SSL_set_bio ( obj->ssl, obj->bio, obj->bio );
+        set_nonblocking_mode(); 
+    }
+
+    /*─······································································─*/
+
+    dssl_t() : obj( new NODE() ) { NODEPP_CRYPTO_INITIALIZATOR();
+    thread_local static ptr_t< X509_t > cert; if( cert.null() ){
+        cert= type::bind( X509_t() ); 
+        cert->generate( "Node", "Node", "Node" );
+    }   obj->state = STATE::DSSL_STATE_USED; obj->cert = cert; }
+    
+    /*─······································································─*/
+
+    void set_sni_callback ( onSNI callback ) const noexcept { 
+         obj->sni = type::bind( callback ); 
+    }
+
+    /*─······································································─*/
+    
+    int create_client() const noexcept { if( !is_available() ){ return -1; }
+        obj->ctx = create_client_context(); obj->state &=~ STATE::DSSL_STATE_SERVER; 
+        return configure_context( obj->ctx, obj->key, obj->crt, obj->cha );
+    }
+
+    int create_server() const noexcept { if( !is_available() ){ return -1; }
+        obj->ctx = create_server_context(); obj->state |= STATE::DSSL_STATE_SERVER;
+        
+    //  SSL_CTX_set_cookie_generate_cb( obj->ctx, generate_cookie_clb );
+    //  SSL_CTX_set_cookie_verify_cb  ( obj->ctx, verify_cookie_clb   );
+
+        int res = configure_context( obj->ctx, obj->key, obj->crt, obj->cha ); 
+        if( !obj->sni.null() ){ set_ctx_sni( obj->ctx, &obj->sni ); } 
+    return res; }
+    
+    /*─······································································─*/
+
+    void set_password( const char* pass ) const noexcept {
+        if( !is_available() ){ return; }
+        SSL_CTX_set_default_passwd_cb( obj->ctx, &SNI_CLB );
+        SSL_CTX_set_default_passwd_cb_userdata( obj->ctx, (void*)pass );
+    }
+
+    int set_hostname( const string_t& name ) const noexcept {
+        if( !is_available() ){ return -1; }
+        return SSL_set_tlsext_host_name( obj->ssl, name.data() );
+    }
+
+    string_t get_hostname() const noexcept {
+        if( !is_available() ){ return nullptr; }
+        int type = SSL_get_servername_type( obj->ssl );
+        return SSL_get_servername( obj->ssl, type );
+    }
+    
+    /*─······································································─*/
+
+    template< class T >
+    ulong read( T* stream, char* buffer, const ulong& size ) const noexcept { int c = 0;
+        while(( c=_read( stream, buffer, size ) )==-2 ){ process::next(); } return c;
+    }
+    
+    template< class T >
+    ulong write( T* stream, char* buffer, const ulong& size ) const noexcept { int c = 0;
+        while(( c=_write( stream, buffer, size ) )==-2 ){ process::next(); } return c;
+    }
+    
+    /*─······································································─*/
+
+    template< class T >
+    int _connect( T* stream ) const noexcept { do {
+    if( is_connected() ){ break; }
+    int c = 0;
+
+        if( is_server() ) {
+           c = DTLSv1_listen( obj->ssl, NULL );
+        if(c>0){ c = SSL_accept ( obj->ssl ); }
+        } else { c = SSL_connect( obj->ssl ); }
+
+        int o=is_blocked( stream, c );
+        if( o<=0 ){ return o; }
+
+    obj->state|=STATE::DSSL_STATE_CONNECTED;
+    return 1; } while(0); return 1; }
+
+    /*─······································································─*/
+
+    template< class T >
+    int _read ( T* stream, char* bf, ulong sx ) const noexcept { 
+        return __read ( stream, bf, sx ); 
+    }
+    
+    template< class T >
+    int _write( T* stream, char* bf, ulong sx ) const noexcept { 
+        return __write( stream, bf, sx ); 
+    }
+    
+    /*─······································································─*/
+
+    template< class T >
+    int __read( T* stream, char* bf, ulong sx ) const noexcept { 
+        if( !is_available() || !obj->ssl || stream->is_closed() ){ return -1; }
+        
+        int conn = _connect( stream );
+        if( conn <= 0 ){ return conn; }
+
+        BIO_set_data( obj->bio, (void*) stream );
+        int c = SSL_read ( obj->ssl, bf, sx );
+        return is_blocked( stream, c );
+    }
+    
+    template< class T >
+    int __write( T* stream, char* bf, ulong sx ) const noexcept  {
+        if( !is_available() || !obj->ssl || stream->is_closed() ){ return -1; }
+        
+        int conn = _connect( stream );
+        if( conn <= 0 ){ return conn; }
+
+        BIO_set_data( obj->bio, (void*) stream );
+        int c = SSL_write( obj->ssl, bf, sx );
+        return is_blocked( stream, c );
+    }
+
+    /*─······································································─*/
+
+    template< class T >
+    int _write_( T* stream, char* bf, const ulong& sx, ulong* sy ) const noexcept {
+    if( sx==0 || stream->is_closed() ){ return -1; } while( *sy<sx ) {
+        int c = __write( stream, bf + *sy, sx - *sy );
+        if( c==-2 ) /*--*/ { return -2; }
+        if( c > 0 ){ *sy+= c; continue; } 
+    break; } return *sy; }
+
+    template< class T >
+    int _read_( T* stream, char* bf, const ulong& sx, ulong* sy ) const noexcept {
+    if( sx==0 || stream->is_closed() ){ return -1; } while( *sy<sx ) {
+        int c = __read( stream, bf + *sy, sx - *sy );
+        if( c==-2 ) /*--*/ { return -2; }
+        if( c > 0 ){ *sy+= c; continue; } 
+    break; } return *sy; }
+
+    /*─······································································─*/
+
+    void free() const noexcept {
+        if( is_connected() ){ SSL_shutdown( obj->ssl ); }
+        obj->state = STATE::DSSL_STATE_UNKNOWN;
+    }
+    
+};}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+#endif

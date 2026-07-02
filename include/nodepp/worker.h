@@ -15,7 +15,7 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #if !defined( NODEPP_THREAD_SUPPORTED )
-    #error "This OS Does not support worker.h"
+#error "This OS Does not support worker.h"
 #endif
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -37,15 +37,25 @@
 namespace nodepp { namespace worker { 
 
     template< class V, class... T >
-    void await( V cb, const T&... args ){ 
-        worker_t wrk( cb, args... ); wrk.await();
-    }
-    
-    template< class V, class... T >
     worker_t add( V cb, const T&... args ){ 
-        worker_t wrk( cb, args... ); 
-        wrk.add(); return wrk; 
-    }
+    worker_t wrk( cb, args... ); return wrk; }
+
+    /*.........................................................................*/
+
+    template< class V, class... T >
+    void await( V cb, const T&... args ){
+         ptr_t<bool> wait ( 0UL, true );
+    worker::add([=](){
+        if( cb( args... )>=0 ){ return  1; }
+        *wait = false; /*----*/ return -1;
+    }); while( *wait ){ process::next(); }}
+
+    /*.........................................................................*/
+
+    inline void parallel( void(*cb)(), int count ){
+    for( int x=count-1; x-->0; ){ worker::add([=](){
+         cb(); process::wait(); return -1;
+    });} cb(); process::wait(); }
 
 }}
 

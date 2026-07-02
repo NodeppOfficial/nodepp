@@ -43,16 +43,16 @@ public:
     /*─······································································─*/
 
     ptr_t<task_t> add ( function_t<int,A...> cb ) const noexcept {
-    ptr_t<task_t> task( 0UL, task_t() ); auto clb= type::bind( cb );
+    ptr_t<task_t> task( 0UL, task_t() );
 
-        obj->que.push([=]( A... args ){
-            if( task.null() || clb.null() ) /**/ { return false; }
+        obj->que.push([=]( A... args ){ int c=-1; do {
+            if( task.null() || cb.null() ) /*-*/ { return false; }
             if( task->flag & TASK_STATE::CLOSED ){ return false; }
             if( task->flag & TASK_STATE::USED   ){ return true ; }
-                task->flag|= TASK_STATE::USED; int c=(*clb)(args...); 
+                task->flag|= TASK_STATE::USED ; c= cb( args... ); 
             if( cb.null() || task.null() ) /*-*/ { return false; }
                 task->flag&=~TASK_STATE::USED;
-        return c==-1 ? false : true; });
+        } while(c==0); return c==-1 ? false : true; });
 
         task->flag = TASK_STATE::OPEN;
         task->addr = obj->que.last();

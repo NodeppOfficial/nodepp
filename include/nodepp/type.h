@@ -66,18 +66,6 @@ namespace nodepp { namespace type {
     
     /*─······································································─*/
 
-    template <typename T, T v> struct integral_constant {
-        static constexpr T value = v;
-
-        using value_type = T;
-        using type = integral_constant<T, v>;
-
-        constexpr operator value_type()   const noexcept { return value; }
-        constexpr value_type operator()() const noexcept { return value; }
-    };
-    
-    /*─······································································─*/
-
     template <typename T> struct is_character : false_type {};
 
     template <> struct is_character<char> : true_type {};
@@ -181,14 +169,22 @@ namespace nodepp { namespace type {
     
     /*─······································································─*/
     
-    template<typename T> struct add_cv { using type = const volatile T; };
+    template<typename T> struct add_cv    { using type = const volatile T; };
     template<typename T> struct remove_cv { using type = typename remove_volatile<typename remove_const<T>::type>::type; };
 
     /*─······································································─*/
 
-    template<typename T> typename remove_reference<T>::type&& set_move(T&& arg){ return static_cast<typename remove_reference<T>::type&&>( arg ); }
-    template<typename T> typename remove_reference<T>::type&  set_copy(T&  arg){ return static_cast<typename remove_reference<T>::type&> ( arg ); }
+    template<typename T> typename remove_reference<T>::type&& move(T&& arg){ return static_cast<typename remove_reference<T>::type&&>( arg ); }
+    template<typename T> typename remove_reference<T>::type&  copy(T&  arg){ return static_cast<typename remove_reference<T>::type&> ( arg ); }
     
+    /*─······································································─*/
+
+    template< class T >
+    T&& forward( typename remove_reference<T>::type& arg ) noexcept { return static_cast<T&&>(arg); }
+
+    template< class T >
+    T&& forward( typename remove_reference<T>::type&& arg ) noexcept { return static_cast<T&&>(arg); }
+
     /*─······································································─*/
 
     template<typename T> struct   add_lvalue_reference { using type = T&; };
@@ -206,13 +202,13 @@ namespace nodepp { namespace type {
 
     /*─······································································─*/
 
-    template <typename T> struct make_unsigned { using type = T; };
+    template <typename T> struct make_unsigned  { using type = T; };
 
-    template <> struct make_unsigned<int>                { using type = unsigned int;       };
-    template <> struct make_unsigned<char>               { using type = unsigned char;      };
-    template <> struct make_unsigned<long>               { using type = unsigned long;      };
-    template <> struct make_unsigned<short>              { using type = unsigned short;     };
-    template <> struct make_unsigned<long long>          { using type = unsigned long long; };
+    template <> struct make_unsigned<int>       { using type = unsigned int;       };
+    template <> struct make_unsigned<char>      { using type = unsigned char;      };
+    template <> struct make_unsigned<long>      { using type = unsigned long;      };
+    template <> struct make_unsigned<short>     { using type = unsigned short;     };
+    template <> struct make_unsigned<long long> { using type = unsigned long long; };
 
     /*─······································································─*/
 
@@ -351,10 +347,11 @@ namespace nodepp { namespace type {
 
 namespace nodepp { namespace type {
 
-    template<typename T> void swap( T& a, T& b ) noexcept { T temp = a; a = b; b = temp; }
-
-    template<typename T> typename remove_reference<T>::type&& move(T&& arg){ 
-      return static_cast<typename remove_reference<T>::type&&>( arg ); 
+    template<typename T> 
+    void swap( T& a, T& b ) noexcept { 
+        T t = move(a); 
+          a = move(b); 
+          b = move(t);
     }
 
     template < class A >

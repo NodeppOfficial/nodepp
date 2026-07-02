@@ -37,11 +37,12 @@ protected:
     enum STATE {
          FS_STATE_UNKNOWN = 0b00000000,
          FS_STATE_OPEN    = 0b00000001,
+         FS_STATE_REUSE   = 0b01000000,
          FS_STATE_CLOSE   = 0b00000010,
          FS_STATE_READING = 0b00010000,
          FS_STATE_WRITING = 0b00100000,
          FS_STATE_KILL    = 0b00000100,
-         FS_STATE_REUSE   = 0b00001000,
+         FS_STATE_STOP    = 0b00001000,
          FS_STATE_DISABLE = 0b00001110
     };
 
@@ -49,13 +50,14 @@ protected:
 
     struct NODE {
 
-        OVERLAPPED  ovr, ovw ;
+        OVERLAPPED  ovr, ovw ; 
+        uchar_64 tag = 0UL; 
+        uchar_64 pd  = 0UL;
 
-        HANDLE      fd       = INVALID_HANDLE_VALUE;
-        ulong       range[2] = { 0, 0 };
-        DWORD       offset   = 0;
-        int         feof     = 1;
-        uchar       state    = STATE::FS_STATE_OPEN;
+        HANDLE fd       = INVALID_HANDLE_VALUE;
+        ulong  range[2] = { 0, 0 };
+        DWORD  offset   = 0; int feof = 1;
+        uchar  state    = STATE::FS_STATE_OPEN;
 
         ptr_t<char> buffer; string_t borrow;
         generator::file::until _until;
@@ -79,16 +81,15 @@ protected:
     /*─······································································─*/
 
     ptr_t<uint> get_fd_flag( const string_t& flag ){ 
-        ptr_t<uint> fg ({ 0x00,FILE_SHARE_READ|FILE_SHARE_WRITE,0x00,FILE_FLAG_OVERLAPPED });
+    ptr_t<uint> fg ({ 0x00,FILE_SHARE_READ|FILE_SHARE_WRITE,0x00,FILE_FLAG_OVERLAPPED });
         if  ( flag == "r"  ){ fg[0] |= GENERIC_READ;               fg[2] |= OPEN_EXISTING; }
         elif( flag == "w"  ){ fg[0] |= GENERIC_WRITE;              fg[2] |= CREATE_ALWAYS; }
         elif( flag == "a"  ){ fg[0] |= FILE_APPEND_DATA;           fg[2] |= OPEN_ALWAYS;   }
         elif( flag == "r+" ){ fg[0] |= GENERIC_READ|GENERIC_WRITE; fg[2] |= OPEN_EXISTING; }
         elif( flag == "w+" ){ fg[0] |= GENERIC_READ|GENERIC_WRITE; fg[2] |= OPEN_ALWAYS;   }
         elif( flag == "a+" ){ fg[0] |= FILE_APPEND_DATA;           fg[2] |= OPEN_EXISTING; }
-        else                { fg[0] |= GENERIC_READ|GENERIC_WRITE; fg[2] |= OPEN_EXISTING; }
-        return  fg;
-    }
+        else /*----------*/ { fg[0] |= GENERIC_READ|GENERIC_WRITE; fg[2] |= OPEN_EXISTING; }
+    return fg; }
     
     /*─······································································─*/
     
@@ -110,7 +111,7 @@ protected:
         if( GetOverlappedResult((HANDLE)obj->fd, ov, &c, FALSE) )
           { goto DONE; }} else { goto DONE; }
 
-        if( is_blocked( c ) ){ return 1; }
+        if( is_blocked( c ) )  { return 1 ; }
 
     DONE:; obj->offset+= c; return 0; }
     
@@ -144,32 +145,46 @@ public:
 
     /*─······································································─*/
 
-    bool     is_closed() const noexcept { return is_state(STATE::FS_STATE_DISABLE) || is_feof() || obj->fd==INVALID_HANDLE_VALUE; }
-    bool       is_feof() const noexcept { return obj->feof <= 0 && obj->feof != -2; }
-    bool    is_waiting() const noexcept { return obj->feof == -2; }
-    bool  is_available() const noexcept { return !is_closed(); }
-
-
-    /*─······································································─*/
-
-    void close() const noexcept {
-        if( is_state ( STATE::FS_STATE_DISABLE ) ) { return; }
-            onDrain.emit(); set_state( STATE::FS_STATE_CLOSE );
-    free(); }
-
-    /*─······································································─*/
-
-    void  resume() const noexcept { if(is_state(STATE::FS_STATE_OPEN )){ return; } onResume.emit(); set_state(STATE::FS_STATE_OPEN ); }
-    void    stop() const noexcept { if(is_state(STATE::FS_STATE_REUSE)){ return; } onDrain .emit(); set_state(STATE::FS_STATE_REUSE); }
-    void   reset() const noexcept { if(is_state(STATE::FS_STATE_KILL )){ return; } resume(); pos(0); }
+    void  resume() const noexcept { if(!is_state(STATE::FS_STATE_STOP )){ return; } onResume .emit(); obj->state &=~ STATE::FS_STATE_STOP; }
+    void    stop() const noexcept { if( is_state(STATE::FS_STATE_STOP )){ return; } onDrain  .emit(); obj->state |=  STATE::FS_STATE_STOP; }
+    void   reset() const noexcept { if( is_state(STATE::FS_STATE_KILL )){ return; } resume(); pos(0); }
     void   flush() const noexcept { obj->buffer.fill(0); }
     
     /*─······································································─*/
 
+    bool    is_closed() const noexcept { return is_state(STATE::FS_STATE_DISABLE) || is_feof() || obj->fd==INVALID_HANDLE_VALUE; }
+    bool  is_reusable() const noexcept { return is_state(STATE::FS_STATE_REUSE  ); }
+    bool      is_feof() const noexcept { return obj->feof <= 0 && obj->feof != -2; }
+    bool   is_waiting() const noexcept { return obj->feof == -2; }
+    bool is_available() const noexcept { return !is_closed(); }
+
+    /*─······································································─*/
+
+    void close() const noexcept {
+        if( is_state ( STATE::FS_STATE_DISABLE )){ return; } onDrain.emit(); 
+        if( is_state ( STATE::FS_STATE_REUSE   )){ return; }
+            set_state( STATE::FS_STATE_CLOSE   );
+    free(); }
+
+    /*─······································································─*/
+
     void   set_range( ulong x, ulong y ) const noexcept { obj->range[0] = x; obj->range[1] = y; }
-    ulong* get_range() const noexcept { return obj == nullptr ? nullptr : obj->range; }
-    HANDLE    get_fd() const noexcept { return obj == nullptr ? nullptr : obj->fd; }
-    
+    ulong* get_range() /*-------------*/ const noexcept { return obj->range; }
+
+    /*─······································································─*/
+
+    void set_reusable( bool mode ) const noexcept { 
+    switch( (int) mode ){
+        case 1 : obj->state |=  STATE::FS_STATE_REUSE; break;
+        default: obj->state &=~ STATE::FS_STATE_REUSE; break;
+    }}
+
+    /*─······································································─*/
+
+    HANDLE    get_fd() const noexcept { return obj->fd; }
+    uchar_64& get_pd() const noexcept { return obj->pd; }
+    uchar_64&    tag() const noexcept { return obj->tag; }
+
     /*─······································································─*/
 
     void   set_borrow( const string_t& brr ) const noexcept { obj->borrow = brr; }
@@ -204,10 +219,10 @@ public:
 
     void free() const noexcept {
 
-        if( is_state( STATE::FS_STATE_REUSE ) && !is_feof() && obj.count() >1 ){ return; }
+        if( is_state( STATE::FS_STATE_STOP  ) && !is_feof() && obj.count() >1 ){ return; }
         if( is_state( STATE::FS_STATE_KILL  ) ){ return; } /*-----------------*/ kill();
-        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) ){ onDrain.emit(); }
-       
+        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_STOP ) ) { onDrain.emit(); }
+        
         onClose.emit();
 
         onUnpipe.clear(); onResume.clear();
@@ -265,7 +280,7 @@ public:
 
         if( obj->state & STATE::FS_STATE_READING ){ 
         if( is_blocked( false, c ) ){ return -2; }
-            obj->state&=~ STATE::FS_STATE_READING; 
+            obj->state&=~STATE::FS_STATE_READING; 
             obj->feof = (int)c; return obj->feof; 
         }
 
@@ -278,14 +293,14 @@ public:
             obj->state&=~ STATE::FS_STATE_READING;
         } elif( is_blocked( c ) ) { obj->feof = -2; return -2; }
 
-    return ( obj->feof <= 0 && obj->feof != -2 ) ? -1 : obj->feof; }
+    return is_feof() ? -1 : obj->feof; }
 
     virtual int __write( char* bf, const ulong& sx ) const noexcept {
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; } DWORD c=0;
 
         if( obj->state & STATE::FS_STATE_WRITING ){
         if( is_blocked( true, c ) ){ return -2; }
-            obj->state&=~ STATE::FS_STATE_WRITING; 
+            obj->state&=~STATE::FS_STATE_WRITING; 
             obj->feof = (int)c; return obj->feof;  
         }
 
@@ -298,25 +313,23 @@ public:
             obj->state&=~ STATE::FS_STATE_WRITING;
         } elif( is_blocked( c ) ) { obj->feof = -2; return -2; }
 
-    return ( obj->feof <= 0 && obj->feof != -2 ) ? -1 : obj->feof; }
+    return is_feof() ? -1 : obj->feof; }
 
     /*─······································································─*/
 
     int _write_( char* bf, const ulong& sx, ulong* sy ) const noexcept {
-        if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
-            int c = __write( bf + *sy, sx - *sy );
-            if( c <= 0 && c != -2 ) /*----*/ { return -2; }
-            if( c >  0 ){ *sy+= c; continue; } break/**/;
-        }   return sx;
-    }
+    if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
+        int c = __write( bf + *sy, sx - *sy );
+        if( c==-2 ) /*--*/ { return -2; }
+        if( c > 0 ){ *sy+= c; continue; } 
+    break; } return *sy; }
 
     int _read_( char* bf, const ulong& sx, ulong* sy ) const noexcept {
-        if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
-            int c = __read( bf + *sy, sx - *sy );
-            if( c <= 0 && c != -2 ) /*----*/ { return -2; }
-            if( c >  0 ){ *sy+= c; continue; } break/**/;
-        }   return sx;
-    }
+    if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
+        int c = __read( bf + *sy, sx - *sy );
+        if( c==-2 ) /*--*/ { return -2; }
+        if( c > 0 ){ *sy+= c; continue; } 
+    break; } return *sy; }
     
 };}
 

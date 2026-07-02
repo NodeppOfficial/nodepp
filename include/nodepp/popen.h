@@ -15,8 +15,8 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
-#define PWROUTINE( str, cb ) worker::add( cb )
-#define PWDELAY( TIMEOUT ) worker::delay( TIMEOUT )
+#define PWROUTINE( str, cb ) worker::add(cb)
+#define PWDELAY( time )      coDelay( time )
 
     #include "fs.h"
     #include "worker.h"
@@ -26,7 +26,7 @@
 
 #elif _KERNEL_ == NODEPP_KERNEL_POSIX
 #define PWROUTINE( str, cb ) process::poll( str, POLL_STATE::READ | POLL_STATE::EDGE, cb )
-#define PWDELAY( TIMEOUT )
+#define PWDELAY( time )      coNext
 
     #include "fs.h"
     #include "promise.h"
@@ -51,24 +51,28 @@ namespace nodepp { namespace popen {
     PWROUTINE( pid->std_output(), coroutine::add( COROUTINE(){
     coBegin
 
-        if( (*rd1)( &pid->std_output() )==1 ){ coGoto(0); }
-        if( rd1->state==0 )/*-*/{ pid->free(); coEnd; }
+        while( pid->is_available    () ){
+        if( (*rd1)( &pid->std_output() )==1 ){ PWDELAY(100); continue; }
+        if( rd1->state==0 ){ break; }
         pid->onDout.emit( rd1->data );
-        pid->onData.emit( rd1->data );
+        pid->onData.emit( rd1->data ); coNext; }
+        
+        pid->free();
     
-    PWDELAY( 100 );
-    coGoto(0); coFinish; }));
+    coFinish; }));
 
     PWROUTINE( pid->std_error(), coroutine::add( COROUTINE(){
     coBegin
 
-        if( (*rd2)( &pid->std_error() )==1 ){ coGoto(0); }
-        if( rd2->state==0 )/**/{ pid->free(); coEnd; }
+        while( pid->is_available   () ){
+        if( (*rd2)( &pid->std_error() )==1 ){ PWDELAY(100); continue; }
+        if( rd2->state==0 ){ break; }
         pid->onDerr.emit( rd2->data );
-        pid->onData.emit( rd2->data );
+        pid->onData.emit( rd2->data ); coNext; }
+        
+        pid->free();
 
-    PWDELAY( 100 );
-    coGoto(0); coFinish; }));
+    coFinish; }));
 
         return *pid; 
     

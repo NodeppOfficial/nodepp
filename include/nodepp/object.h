@@ -107,14 +107,16 @@ public:
         elif( get_type_id()     == type::obj_type_id<U>  ::value ){ return true; } 
     return false; }
 
+    template< class U > 
+    U& as() const { return obj->mem.as<U>(); }
+
     template< class U >
     explicit operator    U() const { return obj->mem.as<U>(); }
     explicit operator bool() const { return has_value(); /**/ }
 
-    bool has_value()         const { return obj->type<0?false:obj->mem.has_value(); }
-    uint type_size()         const { return obj->type<0?false:obj->mem.type_size(); }
+    bool has_value() const { return obj->type<0?false:obj->mem.has_value(); }
+    uint type_size() const { return obj->type<0?false:obj->mem.type_size(); }
 
-    template< class U > U as() const { return obj->mem.as<U>(); }
 
     /*─······································································─*/
 
@@ -189,3 +191,5 @@ public:
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

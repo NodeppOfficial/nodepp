@@ -5,20 +5,20 @@
 
 using namespace nodepp;
 
-void onWorker(){
+void onWorker( int wid ){
 
     worker::add([=](){
 
         process::add( coroutine::add( COROUTINE(){
         coBegin
 
-            while( true ){
-                console::log( "hello world", (void*) worker::pid() );
-            coDelay(1000); process::clear(); }
+            console::log( "hello world", process::now(), wid );
+            coDelay(1000);
 
         coFinish
         }));
 
+    console::log( wid, "--->", process::size() );
     process::wait(); return -1; });
 
 }
@@ -30,8 +30,8 @@ void onMain(){
 
         while( true ){ 
         while( process::size() > 16 ){ coDelay(100); }
-            console::log( "--->", process::size() );
-            onWorker();
+            console::log( "main --->", process::size() );
+            onWorker( process::size() );
         coNext; }
 
     coFinish

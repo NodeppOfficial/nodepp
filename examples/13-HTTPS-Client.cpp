@@ -13,9 +13,7 @@ void onMain(){
             args.headers = header_t({
                 { "Host", url::host(args.url) }
             });
-            
-        //  args.file = file_t("PATH","r");
-        //  args.body = "MYBODY";
+    //      args.body    = "Message";                // only for post messages
 
     https::fetch( args, &ssl )
 

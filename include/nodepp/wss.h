@@ -25,14 +25,16 @@ namespace nodepp { class wss_t : public ssocket_t {
 protected:
 
     struct NODE {
-        generator::ws::write write;
-        generator::ws::read  read ;
+        generator::ws::read  read ; bool msk = false;
+        generator::ws::write write; char mask[4];
     };  ptr_t<NODE> ws;
 
 public:
 
     template< class... T >
     wss_t( const T&... args ) noexcept : ssocket_t( args... ), ws( new NODE() ){}
+
+    /*─······································································─*/
 
     virtual int _write( char* bf, const ulong& sx ) const noexcept override {
         if( is_closed() ){ return -1; } if( sx==0 ){ return  0; }
@@ -45,6 +47,15 @@ public:
         while( ws->read( this, bf, sx )==1 )/*---*/{ return -2; }
         return ws->read.data==0 ? -1 : ws->read.data;
     }
+
+    /*─······································································─*/
+
+    char* get_mask() const noexcept { 
+        if( ws->msk ){ uchar_32* tmp = (uchar_32*) ws->mask; *tmp = rand(); }
+        return ws->msk ? ws->mask : nullptr;
+    }
+
+    void  set_mask( bool mode ) const noexcept { ws->msk = mode; }
 
 };}
 
@@ -63,9 +74,10 @@ namespace nodepp { namespace wss {
 
         process::add([=](){ 
             cli.set_timeout(0); cli.resume();
+            cli.set_mask   (0);
             skt.onConnect.resume( );
             skt.onConnect.emit(cli);
-            stream::pipe      (cli);
+            stream::pipe /**/ (cli);
         return -1; });
 
     }); return skt; }
@@ -91,6 +103,7 @@ namespace nodepp { namespace wss {
 
         process::add([=](){ 
             cli.set_timeout(0); cli.resume();
+            cli.set_mask   (1);
             skt.onConnect.resume( );
             skt.onConnect.emit(cli);
             stream::pipe      (cli);

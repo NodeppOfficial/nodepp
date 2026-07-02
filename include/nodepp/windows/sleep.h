@@ -18,30 +18,38 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace process { struct NODE_INTERVAL { FILETIME ft; ULARGE_INTEGER time; }; } }
+namespace nodepp { namespace process { using NODE_INTERVAL = ULARGE_INTEGER; }}
 namespace nodepp { namespace process {
 
-    inline NODE_INTERVAL& get_time_interval(){ 
-        thread_local static NODE_INTERVAL interval;
-        GetSystemTimeAsFileTime( &interval.ft ); 
-        interval.time.HighPart = interval.ft.dwHighDateTime;
-        interval.time.LowPart  = interval.ft.dwLowDateTime;
-        return interval;
+    inline NODE_INTERVAL get_time_interval(){ 
+    thread_local static NODE_INTERVAL borrow   = {0};
+    /*---------------*/ NODE_INTERVAL interval = {0};
+    /*---------------*/ NODE_INTERVAL out      = {0};
+
+        FILETIME ft; GetSystemTimeAsFileTime(&ft);
+
+        interval.LowPart  = ft.dwLowDateTime ;
+        interval.HighPart = ft.dwHighDateTime;
+
+        if( borrow.QuadPart == 0 ){ borrow = interval; }
+        out.QuadPart = interval.QuadPart - borrow.QuadPart;
+        
+        return out;
     }
 
     inline ulong micros(){ 
         NODE_INTERVAL interval = get_time_interval(); 
-        return interval.time.QuadPart / 10; 
+        return interval.QuadPart / 10; 
     }
 
     inline ulong millis(){ 
         NODE_INTERVAL interval = get_time_interval(); 
-        return interval.time.QuadPart / 10000; 
+        return interval.QuadPart / 10000; 
     }
 
     inline ulong seconds(){ 
         NODE_INTERVAL interval = get_time_interval(); 
-        return interval.time.QuadPart / 10000000; 
+        return interval.QuadPart / 10000000; 
     }
 
 }}
