@@ -19,14 +19,6 @@ void onMain(){
             console::log( "worker running critical section method A1" );
         });
             
-        coWait( mut._lock([=](){
-            // executed in critical section method A2
-            // _lock uses try_lock() under the hood, so this will NOT block
-            // instead, it will re-schedule this task untill can get in 
-            // critical section.
-            console::log( "worker running critical section method A2" );
-        })==-2 );
-
         coNext; }
 
     coFinish

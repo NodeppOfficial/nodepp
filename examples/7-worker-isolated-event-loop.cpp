@@ -20,9 +20,7 @@ void isolated_event_loop( uint cpu_id ){ worker::add([=](){
     coFinish
     }));
 
-    process::wait();
-
-return -1; }); }
+process::wait(); return -1; }); }
 
 void onMain(){
 

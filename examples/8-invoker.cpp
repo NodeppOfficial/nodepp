@@ -4,9 +4,9 @@ using namespace nodepp;
 
 void onMain() {
 
-    invoke_t<int> ivk;
+    invoker_t<int> ivk;
 
-    void* addr = ivk.add([=]( int value ){
+    uchar_64 addr = ivk.add([=]( int value ){
         console::log( ">>", value );
     return 1; });
 

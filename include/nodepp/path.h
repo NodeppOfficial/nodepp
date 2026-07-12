@@ -54,8 +54,8 @@ namespace nodepp { struct path_t {
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace _path_ { 
-inline map_t<string_t,string_t>& mimetype() {
-static map_t<string_t,string_t>  out ({
+inline /*--------*/ map_t<string_t,string_t>& mimetype() {
+thread_local static map_t<string_t,string_t>  out ({
 
     { "txt",  "text/plain" },
     { "text", "text/plain" },
@@ -131,7 +131,7 @@ static map_t<string_t,string_t>  out ({
 namespace nodepp { namespace path {
 
     inline string_t normalize( string_t path ){
-    static regex_t reg0 = regex_t( PATH_SEL );
+    thread_local static regex_t reg0 = regex_t( PATH_SEL );
         auto sec = reg0.split( path );
         queue_t<string_t> nsec; ulong y=0;
 
@@ -154,14 +154,14 @@ namespace nodepp { namespace path {
     /*─······································································─*/
 
     inline bool is_absolute( const string_t& path ){ 
-    static regex_t reg3 = regex_t( PATH_PEG );
+    thread_local static regex_t reg3 = regex_t( PATH_PEG );
         return reg3.test(path); 
     }
 
     /*─······································································─*/
 
     inline string_t extname( const string_t& path ){ string_t m;
-    static regex_t reg("\\.\\w+$"); if( !reg.test( path ) )
+    thread_local static regex_t reg("\\.\\w+$"); if( !reg.test( path ) )
         { return m; } return reg.match( path ).slice(1);
     }
 
@@ -184,7 +184,7 @@ namespace nodepp { namespace path {
     /*─······································································─*/
 
     inline string_t dirname( const string_t& path ){
-    static regex_t reg0 = regex_t( PATH_SEL );
+    thread_local static regex_t reg0 = regex_t( PATH_SEL );
         auto vec = reg0.split( path );
         vec.pop(); return vec.join( PATH_SEP );
     }
@@ -192,7 +192,7 @@ namespace nodepp { namespace path {
     /*─······································································─*/
 
     inline string_t basename( const string_t& path ){
-    static regex_t reg1 = regex_t( PATH_ONE );
+    thread_local static regex_t reg1 = regex_t( PATH_ONE );
         auto vec = reg1.match_all( path );
         if ( vec.empty() ){ return nullptr; }
         return vec[ vec.last() ];
@@ -201,7 +201,7 @@ namespace nodepp { namespace path {
     /*─······································································─*/
 
     inline string_t basename( const string_t& path, const string_t& del ){
-    static regex_t reg1 = regex_t( PATH_ONE );
+    thread_local static regex_t reg1 = regex_t( PATH_ONE );
         auto vec = reg1.match_all( path );
         if ( vec.empty() ){ return nullptr; }
         return regex::replace( vec[ vec.last() ], del, "" );
@@ -230,7 +230,7 @@ namespace nodepp { namespace path {
     /*─······································································─*/
 
     inline path_t parse( const string_t& path ) {    
-    static regex_t reg2 = regex_t( PATH_PEG ); path_t out;
+    thread_local static regex_t reg2 = regex_t( PATH_PEG ); path_t out;
 
         if( reg2.test( path ) ){ out.root = PATH_BEG ; }
         else /*--------------*/{ out.root = PATH_ROOT; }
@@ -248,7 +248,7 @@ namespace nodepp { namespace path {
     /*─······································································─*/
 
     inline string_t relative( const string_t& path_a, const string_t& path_b ){
-    static regex_t  reg0 = regex_t( PATH_SEL );
+    thread_local static regex_t  reg0 = regex_t( PATH_SEL );
 
         auto secA = reg0.split( path::normalize(path_a) );
         auto secB = reg0.split( path::normalize(path_b) );
@@ -267,14 +267,14 @@ namespace nodepp { namespace path {
     /*─······································································─*/
 
     inline string_t push( const string_t& path, const string_t& dir ){
-    static regex_t reg0 = regex_t( PATH_SEL );
+    thread_local static regex_t reg0 = regex_t( PATH_SEL );
         auto sec = reg0.split( path::normalize(path) );
              sec.push( dir ); /*---------------------*/
              return path::normalize( sec.join( PATH_SEP ) );
     }
 
     inline string_t unshift( const string_t& path, const string_t& dir ){
-    static regex_t reg0 = regex_t( PATH_SEL );
+    thread_local static regex_t reg0 = regex_t( PATH_SEL );
         auto sec = reg0.split( path::normalize(path) );
              sec.unshift( dir ); /*------------------*/
              return path::normalize( sec.join( PATH_SEP ) );
@@ -283,13 +283,13 @@ namespace nodepp { namespace path {
     /*─······································································─*/
 
     inline string_t pop( const string_t& path ){
-    static regex_t reg0 = regex_t( PATH_SEL );
+    thread_local static regex_t reg0 = regex_t( PATH_SEL );
         auto sec = reg0.split( path::normalize(path) );
              sec.pop(); return sec.join( PATH_SEP );
     }
 
     inline string_t shift( const string_t& path ){
-    static regex_t reg0 = regex_t( PATH_SEL );
+    thread_local static regex_t reg0 = regex_t( PATH_SEL );
         auto sec = reg0.split( path::normalize(path) );
              sec.shift(); return sec.join( PATH_SEP );
     }
@@ -297,7 +297,7 @@ namespace nodepp { namespace path {
     /*─······································································─*/
 
     inline array_t<string_t> split( const string_t& path ){
-    static regex_t reg0 = regex_t( PATH_SEL );
+    thread_local static regex_t reg0 = regex_t( PATH_SEL );
         return reg0.split( path::normalize(path) );
     }
 

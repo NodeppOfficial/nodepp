@@ -233,7 +233,7 @@ public:
     }
 
     array_t remove( function_t<bool,T> func ) noexcept {
-        ulong n=size(); while( n-->0 ){ 
+        ulong n=size(); while( n--!=0 ){ 
             if( func((*this)[n]) ){ erase(n); }
         } return (*this);
     }

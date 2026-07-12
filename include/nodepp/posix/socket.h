@@ -6,7 +6,7 @@
  * in the file LICENSE in the source distribution or at
  * https://github.com/NodeppOfficial/nodepp/blob/main/LICENSE
  */
-
+ 
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #ifndef NODEPP_POSIX_SOCKET
@@ -51,16 +51,16 @@ namespace nodepp {
 
 struct ip_t    { string_t address; uint port; };
 struct agent_t {
-    ulong buffer_size   = NODEPP_CHUNK_SIZE;
-    ulong conn_timeout  = 60000;
-    ulong recv_timeout  = 0;
-    ulong send_timeout  = 0;
-    bool  reuse_address = 1;
-    bool  no_delay_mode = 0;
-    bool  reuse_port    = 1;
-    bool  keep_alive    = 0;
-    bool  broadcast     = 0;
-    int   socket_family = AF_UNSPEC;
+    ulong buffer_size    = NODEPP_CHUNK_SIZE;
+    ulong conn_timeout   = 60000;
+    ulong recv_timeout   = 0;
+    ulong send_timeout   = 0;
+    bool  reuse_address  = 1;
+    bool  no_delay_mode  = 0;
+    bool  reuse_port     = 1;
+    bool  keep_alive     = 0;
+    bool  broadcast      = 0;
+    int   socket_family  = AF_UNSPEC;
 };
 
 class socket_t {
@@ -95,11 +95,12 @@ protected:
     enum STATE {
          FS_STATE_UNKNOWN = 0b00000000,
          FS_STATE_OPEN    = 0b00000001,
+         FS_STATE_REUSE   = 0b01000000,
          FS_STATE_CLOSE   = 0b00000010,
          FS_STATE_READING = 0b00010000,
          FS_STATE_WRITING = 0b00100000,
          FS_STATE_KILL    = 0b00000100,
-         FS_STATE_REUSE   = 0b00001000,
+         FS_STATE_STOP    = 0b00001000,
          FS_STATE_DISABLE = 0b00001110,
          FS_STATE_SERVER  = 0b10000000
     };
@@ -108,14 +109,13 @@ protected:
 
     struct NODE {
 
-        ulong recv_timeout=0; 
-        ulong send_timeout=0;
-        ulong conn_timeout=0;
-        ulong range[2]= { 0, 0 };
-
-        uchar state = STATE::FS_STATE_OPEN;
+        ulong recv_timeout=0; uchar_64 tag   = 0UL;
+        ulong send_timeout=0; uchar_64 pd    = 0UL;
+        ulong conn_timeout=0; ulong range[2] = { 0, 0 };
+        
+        socklen_t addrlen; int fd=-1, feof=1; 
         SOCKADDR_ST server_addr, client_addr;
-        int fd = -1, feof = 1; socklen_t addrlen;
+        uchar state = STATE::FS_STATE_OPEN;
 
         ptr_t<char> buffer; string_t borrow;
         generator::file::until _until;
@@ -123,11 +123,25 @@ protected:
         generator::file::read  _read ;
         generator::file::write _write;
 
-       ~NODE(){ if( fd == INVALID_SOCKET ){ return; }
-            ::shutdown( fd, SHUT_WR ); 
+    #if NODEPP_EVENT_SCHEDULER == NODEPP_SCHEDULER_IOURING
+
+       ~NODE(){
+        if( fd == INVALID_SOCKET ){ return; }
+        //  ::shutdown( fd, SHUT_WR ); 
+            ::close   ( fd /*----*/ ); 
+            NODEPP_URING().free( pd );
+        }
+
+    #else
+
+       ~NODE(){
+        if( fd == INVALID_SOCKET ){ return; }
+        //  ::shutdown( fd, SHUT_WR ); 
             ::close   ( fd /*----*/ );  
         }
-        
+
+    #endif
+
     };  ptr_t<NODE> obj;
 
     /*─······································································─*/
@@ -192,8 +206,7 @@ public:
         en.tv_sec  =  time / 1000; 
         en.tv_usec = (time % 1000) * 1000;
         int c = setsockopt( obj->fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&en, sizeof(en) ); 
-        obj->recv_timeout = process::millis() + time; 
-        return c == 0 ? time : 0;
+        obj->recv_timeout = process::millis() + time; return c == 0 ? time : 0;
     }
 
     ulong set_send_timeout( ulong time ) const noexcept {
@@ -210,18 +223,18 @@ public:
         return c;
     }
 
-    int set_recv_buff( uint en ) const noexcept {
-    int c= setsockopt( obj->fd, SOL_SOCKET, SO_RCVBUF, (char*)&en, sizeof(en) ); 
-        return c;
-    }
-
-    int set_send_buff( uint en ) const noexcept {
-    int c= setsockopt( obj->fd, SOL_SOCKET, SO_SNDBUF, (char*)&en, sizeof(en) );
-        return c;
-    }
-
     int set_accept_connection( uint en ) const noexcept {
     int c= setsockopt( obj->fd, SOL_SOCKET, SO_ACCEPTCONN, (char*)&en, sizeof(en) ); 
+        return c;
+    }
+
+    int set_send_buff( uint en ) const noexcept { uint x = max( 1500U, en );
+    int c= setsockopt( obj->fd, SOL_SOCKET, SO_SNDBUF, (char*)&x, sizeof(x) ); 
+        return c;
+    }
+
+    int set_recv_buff( uint en ) const noexcept { uint x = max( 1500U, en );
+    int c= setsockopt( obj->fd, SOL_SOCKET, SO_RCVBUF, (char*)&x, sizeof(x) ); 
         return c;
     }
 
@@ -385,7 +398,7 @@ public:
 
     /*─······································································─*/
 
-    ulong set_timeout( ulong time ) const noexcept {
+    ulong    set_timeout( ulong time ) const noexcept {
         set_conn_timeout( time );
         set_recv_timeout( time );
         set_send_timeout( time ); return time;
@@ -393,15 +406,16 @@ public:
 
     /*─······································································─*/
 
-    void  resume() const noexcept { if(is_state(STATE::FS_STATE_OPEN )){ return; } onResume.emit(); set_state(STATE::FS_STATE_OPEN ); }
-    void    stop() const noexcept { if(is_state(STATE::FS_STATE_REUSE)){ return; } onDrain .emit(); set_state(STATE::FS_STATE_REUSE); }
-    void   reset() const noexcept { if(is_state(STATE::FS_STATE_KILL )){ return; } resume(); pos(0); }
+    void  resume() const noexcept { if(!is_state(STATE::FS_STATE_STOP )){ return; } onResume .emit(); obj->state &=~ STATE::FS_STATE_STOP; }
+    void    stop() const noexcept { if( is_state(STATE::FS_STATE_STOP )){ return; } onDrain  .emit(); obj->state |=  STATE::FS_STATE_STOP; }
+    void   reset() const noexcept { if( is_state(STATE::FS_STATE_KILL )){ return; } resume(); pos(0); }
     void   flush() const noexcept { obj->buffer.fill(0); }
 
     /*─······································································─*/
 
     bool    is_closed() const noexcept { return is_state(STATE::FS_STATE_DISABLE) || is_feof() || obj->fd==INVALID_SOCKET; }
-    bool    is_server() const noexcept { return obj->state & STATE::FS_STATE_SERVER; }
+    bool    is_server() const noexcept { return is_state(STATE::FS_STATE_SERVER ); }
+    bool  is_reusable() const noexcept { return is_state(STATE::FS_STATE_REUSE  ); }
     bool      is_feof() const noexcept { return obj->feof <= 0 && obj->feof != -2; }
     bool   is_waiting() const noexcept { return obj->feof == -2; }
     bool is_available() const noexcept { return !is_closed(); }
@@ -409,14 +423,29 @@ public:
     /*─······································································─*/
 
     void close() const noexcept {
-        if( is_state ( STATE::FS_STATE_DISABLE ) ) { return; }
-            onDrain.emit(); set_state( STATE::FS_STATE_CLOSE );
+        if( is_state ( STATE::FS_STATE_DISABLE )){ return; } onDrain.emit(); 
+        if( is_state ( STATE::FS_STATE_REUSE   )){ return; }
+            set_state( STATE::FS_STATE_CLOSE   );
     free(); }
 
     /*─······································································─*/
 
-    int       get_fd() const noexcept { return obj == nullptr ? INVALID_SOCKET : obj->fd;    }
-    ulong* get_range() const noexcept { return obj == nullptr ?        nullptr : obj->range; }
+    void   set_range( ulong x, ulong y ) const noexcept { obj->range[0] = x; obj->range[1] = y; }
+    ulong* get_range() /*-------------*/ const noexcept { return obj->range; }
+
+    /*─······································································─*/
+
+    void set_reusable( bool mode ) const noexcept { 
+    switch( (int) mode ){
+        case 1 : obj->state |=  STATE::FS_STATE_REUSE; break;
+        default: obj->state &=~ STATE::FS_STATE_REUSE; break;
+    }}
+
+    /*─······································································─*/
+
+    int       get_fd() const noexcept { return obj->fd ; }
+    uchar_64& get_pd() const noexcept { return obj->pd ; }
+    uchar_64&    tag() const noexcept { return obj->tag; }
 
     /*─······································································─*/
 
@@ -436,9 +465,9 @@ public:
 
     ulong pos( ulong /*unused*/ ) const noexcept { return 0; }
 
-    ulong size() const noexcept { return 0; }
+    ulong   size() const noexcept { return 0; }
 
-    ulong  pos() const noexcept { return 0; }
+    ulong    pos() const noexcept { return 0; }
 
     /*─······································································─*/
 
@@ -479,7 +508,7 @@ public:
         obj->fd = fd; set_nonbloking_mode(); set_buffer_size(_size);
     }
     
-    virtual ~socket_t() noexcept { if( obj.count()>1 && !is_closed() ){ return; } free(); }
+   ~socket_t() noexcept { if( obj.count()>1 && !is_closed() ){ return; } free(); }
 
     socket_t() noexcept : obj( new NODE() ) { _socket_::start_device(); }
 
@@ -487,9 +516,9 @@ public:
 
     void free() const noexcept {
 
-        if( is_state( STATE::FS_STATE_REUSE ) && !is_feof() && obj.count() >1 ){ return; }
+        if( is_state( STATE::FS_STATE_STOP  ) && !is_feof() && obj.count() >1 ){ return; }
         if( is_state( STATE::FS_STATE_KILL  ) ){ return; } /*-----------------*/ kill();
-        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) ){ onDrain.emit(); }
+        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_STOP ) ) { onDrain.emit(); }
 
         onClose.emit();
 
@@ -554,19 +583,38 @@ public:
 
     /*─······································································─*/
 
-    int _connect() const noexcept { int c=0;
+#if NODEPP_EVENT_SCHEDULER == NODEPP_SCHEDULER_IOURING
+
+    int _connect() const noexcept {
         if( process::millis() > get_conn_timeout() || is_server() ){ return -1; }
-        return is_blocked( c=::connect( obj->fd, (SOCKADDR*) &obj->server_addr, obj->addrlen ) ) ? -2 : c>=0 ? 1: -1;
+        int c=NODEPP_URING().connect( this, (SOCKADDR*) &obj->server_addr, obj->addrlen );
+        obj->feof = is_blocked( c ) ? -2 : c>=0 ? 1: -1; return obj->feof;
     }
 
-    int _accept() const noexcept { int c=0; if( !is_server() ){ return -1; }
-        return is_blocked( c=::accept( obj->fd, (SOCKADDR*) &obj->server_addr, &obj->addrlen ) ) ? -2 : c;
+    int _accept() const noexcept { if( !is_server() ){ return -1; }
+        int c=NODEPP_URING().accept( this, (SOCKADDR*) &obj->server_addr, &obj->addrlen );
+        obj->feof = is_blocked( c ) ? -2 : c; return obj->feof;
     }
+
+#else 
+
+    int _connect() const noexcept {
+        if( process::millis() > get_conn_timeout() || is_server() ){ return -1; }
+        int c=::connect( obj->fd, (SOCKADDR*) &obj->server_addr, obj->addrlen );
+        obj->feof = is_blocked( c ) ? -2 : c>=0 ? 1: -1; return obj->feof;
+    }
+
+    int _accept() const noexcept { if( !is_server() ){ return -1; }
+        int c=::accept( obj->fd, (SOCKADDR*) &obj->server_addr, &obj->addrlen );
+        obj->feof = is_blocked( c ) ? -2 : c; return obj->feof;
+    }
+
+#endif
 
     /*─······································································─*/
 
     int listen() const noexcept { if( !is_server() ){ return -1; }
-        return ::listen( obj->fd, NODEPP_MAX_SOCKET ) ?-1: 1;
+        return ::listen( obj->fd, NODEPP_MAX_SOCKET ) ? -1: 1;
     }
 
     int accept() const noexcept { int c=0;
@@ -624,6 +672,8 @@ public:
 
     /*─······································································─*/
 
+#if NODEPP_EVENT_SCHEDULER == NODEPP_SCHEDULER_IOURING
+   
     virtual int __read( char* bf, const ulong& sx ) const noexcept {
         if( process::millis() > get_recv_timeout() || is_closed() )
           { return -1; } if ( sx==0 ) { return 0; }
@@ -631,11 +681,10 @@ public:
         SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
 
         int res = SOCK != SOCK_DGRAM
-                ? ::recv    ( obj->fd, bf, sx, 0 )
-                : ::recvfrom( obj->fd, bf, sx, 0, (SOCKADDR*) &addr, &len );
-           
-             obj->feof = is_blocked( res )? -2 : res;
-    return ( obj->feof <= 0 && obj->feof != -2 ) ? -1 : obj->feof; }
+        ? NODEPP_URING().recv    ( this, bf, sx, 0 )
+        : NODEPP_URING().recvfrom( this, bf, sx, 0, (SOCKADDR*) &addr, &len );
+
+    obj->feof = is_blocked( res )? -2 : res; return is_feof() ? -1 : obj->feof; }
 
     virtual int __write( char* bf, const ulong& sx ) const noexcept {
         if( process::millis() > get_send_timeout() || is_closed() )
@@ -644,29 +693,54 @@ public:
         SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
 
         int res = SOCK != SOCK_DGRAM
-                ? ::send  ( obj->fd, bf, sx, 0 )
-                : ::sendto( obj->fd, bf, sx, 0, (SOCKADDR*) &addr, len );
+        ? NODEPP_URING().send  ( this, bf, sx, 0 )
+        : NODEPP_URING().sendto( this, bf, sx, 0, (SOCKADDR*) &addr, len );
 
-             obj->feof = is_blocked( res )? -2 : res;
-    return ( obj->feof <= 0 && obj->feof != -2 ) ? -1 : obj->feof; }
+    obj->feof = is_blocked( res )? -2 : res; return is_feof() ? -1 : obj->feof; }
+    
+#else
+
+    virtual int __read( char* bf, const ulong& sx ) const noexcept {
+        if( process::millis() > get_recv_timeout() || is_closed() )
+          { return -1; } if ( sx==0 ) { return 0; }
+
+        SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
+
+        int res = SOCK != SOCK_DGRAM
+        ? ::recv    ( obj->fd, bf, sx, 0 )
+        : ::recvfrom( obj->fd, bf, sx, 0, (SOCKADDR*) &addr, &len );
+
+    obj->feof = is_blocked( res )? -2 : res; return is_feof() ? -1 : obj->feof; }
+
+    virtual int __write( char* bf, const ulong& sx ) const noexcept {
+        if( process::millis() > get_send_timeout() || is_closed() )
+          { return -1; } if ( sx==0 ) { return 0; } 
+
+        SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
+
+        int res = SOCK != SOCK_DGRAM
+        ? ::send  ( obj->fd, bf, sx, 0 )
+        : ::sendto( obj->fd, bf, sx, 0, (SOCKADDR*) &addr, len );
+
+    obj->feof = is_blocked( res )? -2 : res; return is_feof() ? -1 : obj->feof; }
+
+#endif
 
     /*─······································································─*/
 
     int _write_( char* bf, const ulong& sx, ulong* sy ) const noexcept {
-        if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
-            int c = __write( bf + *sy, sx - *sy );
-            if( c <= 0 && c != -2 ) /*----*/ { return -2; }
-            if( c >  0 ){ *sy+= c; continue; } break/**/;
-        }   return sx;
-    }
+    if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
+        int c = __write( bf + *sy, sx - *sy );
+        if( c==-2 ) /*--*/ { return -2; }
+        if( c > 0 ){ *sy+= c; continue; } 
+    break; } return *sy; }
 
     int _read_( char* bf, const ulong& sx, ulong* sy ) const noexcept {
-        if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
-            int c = __read( bf + *sy, sx - *sy );
-            if( c <= 0 && c != -2 ) /*----*/ { return -2; }
-            if( c >  0 ){ *sy+= c; continue; } break/**/;
-        }   return sx;
-    }
+    if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
+        int c = __read( bf + *sy, sx - *sy );
+        if( c==-2 ) /*--*/ { return -2; }
+        if( c > 0 ){ *sy+= c; continue; } 
+    break; } return *sy; }
 
 };}
 

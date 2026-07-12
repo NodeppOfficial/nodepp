@@ -18,51 +18,96 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { template<class U, class V> class map_t {
+namespace nodepp { template< class U, class V, ulong SIZE=NODEPP_HASH_TABLE_SIZE > class map_t {
 protected:
 
-    using T    = type::pair< U, V >;
-    using LIST = queue_t<void*>;
+    using T = pair_t < U, V >; 
+
+    /*─······································································─*/
+
+    queue_t<queue_t<void*>> table;
+    queue_t<T> /*--------*/ queue;
+
+    /*─······································································─*/
 
     struct NODE {
-        ptr_t<LIST> table;
-        queue_t<T>  queue;
+    
+        NODE* left = nullptr;
+        NODE* right= nullptr;
+        void* value= nullptr;
+    
+       ~NODE(){
+        if( left  ){ delete left  ; left  =nullptr; }
+        if( right ){ delete right ; right =nullptr; }}
+
     };  ptr_t<NODE> obj;
 
-protected:
+    /*─······································································─*/
+
+    void* get_address( uchar_64 key ) const noexcept {
+        
+        NODE*  tmp = &obj;
+        while( key != 0 ){ switch( key & 0x1 ){
+
+        case 0: do { if( tmp->left==nullptr ){ 
+            tmp->left /*--*/ = new NODE;
+        }   tmp = tmp->left; } while(0); break;
+
+        case 1: do { if( tmp->right==nullptr ){ 
+            tmp->right /*--*/ = new NODE;
+        }   tmp = tmp->right; } while(0); break;
+
+        } key >>= 1; } 
+
+        if( tmp->value == nullptr ){
+            table.push( queue_t<void*>() );
+            tmp->value = table.last();
+        }
+
+        return tmp->value;
+
+    }
+
+    /*─······································································─*/
+
+    template< class T >
+    typename type::enable_if< type::is_integral< typename type::remove_const< typename type::remove_reference<T>::type >::type >::value, uchar_64 >::type
+    get_key( T& id ) const noexcept { return (uchar_64) id; }
+
+    template< class T >
+    typename type::enable_if< !type::is_integral< typename type::remove_const< typename type::remove_reference<T>::type >::type >::value, uchar_64 >::type
+    get_key( T& id ) const noexcept {
+        auto   key = string::to_string ( id );
+        return encoder::hash::get( key,SIZE );
+    }
+
+    /*─······································································─*/
 
     void append( const T& pair ) const noexcept {
 
-        auto  key = string::to_string(pair.first);
-        ulong idx = encoder::hash::get(key);
-        auto  n   = obj->table[idx].first();
+        auto idx = get_key( pair.first );
+        auto que = table.as( get_address(idx) )->data;
+        auto n   = que  .first();
 
-        while( n!=nullptr ){
-        auto itm = obj->queue.as(n->data); if( itm==nullptr ){ break; }
-        if ( itm->data.first == pair.first ){
-             itm->data.second = pair.second;
-        return; } n = n->next; }
+        while( n!=nullptr ){ auto itm = queue.as( n->data );
+        if   ( itm == nullptr ){ break; }
+        if   ( itm->data.first == pair.first ){
+        /*--*/ itm->data.second = pair.second;
+        break; } n = n->next; }
 
-        obj->queue.push( pair );
-        obj->table[idx].push( obj->queue.last() );
+        queue.push( pair ); que.push( queue.last() );
 
     }
 
 public:
 
     template< ulong N >
-    map_t( const T (&args) [N] ) noexcept : obj( new NODE() ) {
-        obj->table = ptr_t<LIST>( NODEPP_HASH_TABLE_SIZE );
-        for( auto &x: args ) { append(x); }
-    }
+    map_t( const T (&args) [N] ) noexcept : obj( 0UL ) {
+    for  ( auto &x: args ) { append(x); }}
 
-    map_t( null_t ) noexcept : obj( new NODE() ){
-        obj->table = ptr_t<LIST>( NODEPP_HASH_TABLE_SIZE );
-    }
+    map_t( null_t ) noexcept : obj( 0UL ){}
 
-    map_t() noexcept : obj( new NODE() ) {
-        obj->table = ptr_t<LIST>( NODEPP_HASH_TABLE_SIZE );
-    }
+    map_t() /*---*/ noexcept : obj( 0UL ){}
 
     /*─······································································─*/
     
@@ -70,39 +115,43 @@ public:
 
     V& operator[]( const U& id ) const noexcept {
 
-        auto key = string::to_string( id );
-        ulong idx= encoder::hash::get(key);
-        auto n   = obj->table[idx].first();
+        auto idx = get_key( id );
+        auto que = table.as( get_address(idx) )->data;
+        auto n   = que  .first();
 
-        while( n!=nullptr ){
-        auto itm = obj->queue.as(n->data); if( itm==nullptr ){ break; }
-        if ( itm->data.first==id ){ return itm->data.second; }
-        n = n->next; } append({ id, V() });
+        while( n!=nullptr ){ auto itm = queue.as( n->data );
+        if   ( itm == nullptr ){ break; }
+        if   ( itm->data.first == id )
+        /**/ { return itm->data.second; }
+        n = n->next; } 
 
-        return obj->queue.last()->data.second;
+        append({ id, V() });
+        return queue.last()->data.second;
 
     }
 
     /*─······································································─*/
 
-    bool      empty() const noexcept { return obj->queue.empty(); }
-    ulong      size() const noexcept { return obj->queue.size(); }
-    ptr_t<T>   data() const noexcept { return obj->queue.data(); }
-    ptr_t<T>    get() const noexcept { return obj->queue.data(); }
-    queue_t<T>& raw() const noexcept { return obj->queue; }
+    bool /*------*/ empty() const noexcept { return queue.empty(); }
+    ulong /*------*/ size() const noexcept { return queue.size (); }
+    ptr_t<T> /*---*/ data() const noexcept { return queue.data (); }
+    ptr_t<T> /*----*/ get() const noexcept { return queue.data (); }
+    const queue_t<T>& raw() const noexcept { return queue; }
 
     /*─······································································─*/
 
     bool has( const U& id ) const noexcept {
 
-        auto  key = string::to_string( id );
-        ulong idx = encoder::hash::get(key);
-        auto  n   = obj->table[idx].first();
+        auto idx = get_key( id );
+        auto que = table.as( get_address(idx) )->data;
+        auto n   = que  .first();
 
-        while( n!=nullptr ){
-        auto itm = obj->queue.as(n->data); if( itm==nullptr ){ break; }
-        if ( itm->data.first==id ){ return true; } n = n->next; }
-
+        while( n!=nullptr ){ auto itm = queue.as( n->data );
+        if   ( itm == nullptr ){ break; }
+        if   ( itm->data.first == id )
+        /**/ { return true; }
+        n = n->next; } 
+        
         return false;
 
     }
@@ -110,13 +159,13 @@ public:
     /*─······································································─*/
 
     void map( function_t<void,T&> callback ) const noexcept {
-         obj->queue.map( callback );
+         queue.map( callback );
     }
 
     /*─······································································─*/
 
     array_t<U> keys() const noexcept { queue_t<U> result;
-        auto x = obj->queue.first(); while( x!=nullptr ){
+        auto x = queue.first(); while( x!=nullptr ){
             result.push( x->data.first ); x=x->next;
         }   return result.data();
     }
@@ -125,22 +174,32 @@ public:
 
     void erase( const U& id ) const noexcept {
 
-        auto  key = string::to_string( id );
-        ulong idx = encoder::hash::get(key);
-        auto  n   = obj->table[idx].first();
+        auto  key = string::to_string ( id );
+        ulong idx = encoder::hash::get( key, SIZE );
 
-        while( n!=nullptr ){
-        auto itm = obj->queue.as(n->data); if( itm==nullptr ){ return; }
-        if ( itm->data.first==id ){ obj->queue.erase(itm); break; }
-        n = n->next; } if( n==nullptr ) { return; }
+        auto  que = table.as( get_address(idx) )->data;
+        auto  n   = que  .first();
 
-        obj->table[idx].erase( n );
+        while( n != nullptr ){ 
+        auto itm = queue.as ( n->data );
+        if   ( itm == nullptr ){ return; }
+        if   ( itm->data.first==id )
+             { queue.erase(itm); break ; } n = n->next; } 
+        
+        if( n==nullptr ){ return; } que.erase(n);
 
     }
 
+    void erase( void* node ) const noexcept {
+        auto x = queue.as( node );
+        if ( x== nullptr ){ return; }
+        erase( x->data.first );
+    }
+
     void erase() const noexcept {
-        for( auto x: obj->table ){ x.erase(); }
-        obj->queue.erase();
+        auto x = table.first(); while( x!=nullptr ){
+            x->data.erase();
+        x = x->next; } queue.erase();
     }
 
     void clear() const noexcept { erase(); }
@@ -150,3 +209,5 @@ public:
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

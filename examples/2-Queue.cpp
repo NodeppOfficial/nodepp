@@ -9,7 +9,7 @@ void onMain(){
     que.push( 50 ); 
     que.unshift( 60 );
     que.unshift( 70 );
-    que.insert( 2, 80 ); 
+    que.insert( que.get(2), 80 ); 
 
     auto item = que.first();
     while( item != nullptr ){

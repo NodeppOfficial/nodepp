@@ -22,10 +22,19 @@
 namespace nodepp { namespace process { using NODE_INTERVAL = struct timeval; } }
 namespace nodepp { namespace process { 
 
-    inline NODE_INTERVAL& get_time_interval(){ 
-        thread_local static NODE_INTERVAL interval; 
-        gettimeofday( &interval, NULL );
-        return interval;
+    inline NODE_INTERVAL get_time_interval(){ 
+    thread_local static NODE_INTERVAL borrow   = {0};
+    /*---------------*/ NODE_INTERVAL interval = {0};
+    /*---------------*/ NODE_INTERVAL out      = {0};
+
+        gettimeofday(&interval, NULL);
+        if( borrow.tv_usec==0 && borrow.tv_sec==0 ){ borrow = interval; }
+
+        out.tv_sec  = interval.tv_sec  - borrow.tv_sec ;
+        out.tv_usec = interval.tv_usec - borrow.tv_usec;
+
+        if( out.tv_usec < 0 ){ out.tv_sec--; out.tv_usec += 1000000; }
+        return out;
     }
     
     inline ulong micros(){ NODE_INTERVAL time = get_time_interval();

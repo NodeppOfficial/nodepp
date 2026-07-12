@@ -277,7 +277,7 @@ public:
     }
 
     string_t remove( function_t<bool,char> func ) noexcept {
-        ulong n=size(); while( n-->0 ){ 
+        ulong n=size(); while( n--!=0 ){ 
             if( func((*this)[n]) ){ erase(n); }
         } return (*this);
     }
@@ -705,6 +705,13 @@ namespace string {
         char buffer[64]; auto x = snprintf( buffer, 64, "%.4f", (double)num );
         return { buffer, (ulong)x };
     }
+
+    /*─······································································─*/
+
+    inline uchar_64 to_u64( const string_t& buffer ) { return type::cast<uchar_64>( to_ullong(buffer) ); }
+    inline uchar_32 to_u32( const string_t& buffer ) { return type::cast<uchar_32>( to_ulong (buffer) ); }
+    inline uchar_16 to_u16( const string_t& buffer ) { return type::cast<uchar_16>( to_ulong (buffer) ); }
+    inline uchar_8  to_u8 ( const string_t& buffer ) { return type::cast<uchar_8> ( to_char  (buffer) ); }
 
 }
 

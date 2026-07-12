@@ -18,7 +18,6 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include "initializer.h"
-#include "generator.h"
 #include "crypto.h"
 #include "fs.h"
 
@@ -43,11 +42,8 @@ protected:
 
         SSL_CTX*     ctx  = nullptr;
         SSL*         ssl  = nullptr;
-        BIO*         rbio = nullptr;
-        BIO*         wbio = nullptr;
-
-        generator::ssl::pipe _pipe ;
-        int          state=0;
+        BIO*         bio  = nullptr;
+        int          state= 0;
 
         ptr_t<X509_t>cert;
         ptr_t<onSNI>  sni;
@@ -75,7 +71,7 @@ protected:
     }
 
     SSL_CTX* create_server_context() const noexcept {
-        const SSL_METHOD *method; method = TLS_server_method();
+        const SSL_METHOD *method = TLS_server_method();
         SSL_CTX* ctx = SSL_CTX_new( method );
         SSL_CTX_set_read_ahead( ctx, 1 );
         SSL_CTX_set_timeout( ctx, 0 );
@@ -84,7 +80,7 @@ protected:
     }
     
     SSL_CTX* create_client_context() const noexcept {
-        const SSL_METHOD *method; method = TLS_client_method();
+        const SSL_METHOD *method = TLS_client_method();
         SSL_CTX* ctx = SSL_CTX_new( method ); 
         SSL_CTX_set_read_ahead( ctx, 1 );
         SSL_CTX_set_timeout( ctx, 0 );
@@ -95,7 +91,7 @@ protected:
     static int SNI_CLB ( char *buf, int size, int rwflag, void *args ) {
         if( args == nullptr || rwflag != 1 ){ return -1; }
         strncpy( buf, (char*)args, size ); buf[ size -1 ] = '\0';
-        return strlen(buf);
+        return strlen ( buf );
     }
     
     /*─······································································─*/
@@ -103,17 +99,20 @@ protected:
     int configure_context( SSL_CTX* ctx, const string_t& key, const string_t& crt, const string_t& cha ) const noexcept { 
     int x = 1; 
 
+        if( obj->cert == nullptr ){
+
         if( !cha.empty() && x==1 ){ x=SSL_CTX_use_certificate_chain_file( ctx, (char*)cha ); }
         if( !crt.empty() && x==1 ){ x=SSL_CTX_use_certificate_file      ( ctx, (char*)crt, SSL_FILETYPE_PEM ); }
         if( !key.empty() && x==1 ){ x=SSL_CTX_use_PrivateKey_file       ( ctx, (char*)key, SSL_FILETYPE_PEM ); }
 
-        if( obj->cert != nullptr && x==1 ){
-        if( !SSL_CTX_use_certificate  (ctx,obj->cert->get_cert()) || !ctx ){ x = 0; goto DONE; }
-        if( !SSL_CTX_use_PrivateKey   (ctx,obj->cert->get_pkey()) )        { x = 0; goto DONE; } 
-        if( !SSL_CTX_check_private_key(ctx) )                              { x = 0; goto DONE; }
-                                                                    } else { x = 0; /*------*/ }
-        
-        DONE:; return x==1 ? 1 : -1;
+        return x; } else { do {
+            
+        if( !SSL_CTX_use_certificate  (ctx,obj->cert->get_cert()) || !ctx ){ x = 0; break; }
+        if( !SSL_CTX_use_PrivateKey   (ctx,obj->cert->get_pkey()) )        { x = 0; break; } 
+        if( !SSL_CTX_check_private_key(ctx) )                              { x = 0; break; }
+
+        return 1; } while(0); return -1; }
+
     }
     
     /*─······································································─*/
@@ -170,8 +169,14 @@ protected:
     /*─······································································─*/
 
     template< class T >
-    bool is_blocked( T* stream, int& c ) const noexcept { 
-    return stream->is_closed() ? 0 : obj->_pipe( obj, stream, c )==-1 ? 0 : 1; }
+    int is_blocked( T* stream, int c ) const noexcept { 
+    if( c<=0 && !stream->is_closed() ){
+
+        int err =  SSL_get_error( obj->ssl, c ); ERR_clear_error();
+        if( err == SSL_ERROR_WANT_WRITE || err == SSL_ERROR_WANT_READ ){ return -2; }
+        if( err == SSL_ERROR_SSL        || err == SSL_ERROR_SYSCALL   ){ return -1; }
+
+    } return stream->is_closed() ? -1 : c; }
     
     /*─······································································─*/
 
@@ -186,19 +191,68 @@ protected:
     
     /*─······································································─*/
 
-    void set_nonbloking_mode() const noexcept { 
+    void set_nonblocking_mode() const noexcept { 
          SSL_set_quiet_shutdown( obj->ssl, 1 ); SSL_set_mode( obj->ssl, 
          SSL_MODE_ASYNC | SSL_MODE_AUTO_RETRY |
          SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER  |
          SSL_MODE_ENABLE_PARTIAL_WRITE        |
          SSL_MODE_RELEASE_BUFFERS            );
     }
+    
+protected:
+
+    static int bio_write( BIO *b, const char *buf, int len ) {
+    if( b==nullptr ){ return -1; }
+
+        auto stream = (socket_t*)BIO_get_data(b);
+    //  auto nbuf   = stream->get_buffer_data( );
+        auto nlen   = min( (ulong)len, stream->get_buffer_size() );
+
+        if( stream->is_closed() ){ return -1; }
+
+        int c = stream->socket_t::__write( (char*)buf, nlen );
+        if( c==-2 ){ BIO_set_retry_write(b); return -1; }
+
+    return c; }
+
+    static int bio_read ( BIO *b, char *buf, int len ) {
+    if( b==nullptr ){ return -1; }
+
+        auto stream = (socket_t*)BIO_get_data(b);
+        auto nbuf   = stream->get_buffer_data( );
+        auto nlen   = min( (ulong)len, stream->get_buffer_size() );
+
+        if( stream->is_closed() ){ return -1; }
+
+        int c = stream->socket_t::__read( nbuf, nlen );
+        if( c==-2 ){ BIO_set_retry_read(b); return -1; }
+        if( c>  0 ){ memcpy( buf, nbuf, c ); }
+
+    return c; }
+
+    static BIO_METHOD* bio_method() {
+    static BIO_METHOD* method = nullptr; do {
+    if( method != nullptr ){ break; }
+        method =  BIO_meth_new( BIO_TYPE_SOURCE_SINK, "ssl_method" );
+
+        BIO_meth_set_write( method, bio_write );
+        BIO_meth_set_read ( method, bio_read  );
+        BIO_meth_set_ctrl ( method, []( BIO *b, int cmd, long num, void *ptr ) -> long {
+        switch( cmd ){
+            case BIO_CTRL_FLUSH: return 1;
+        //  case BIO_CTRL_PUSH:  return 0;
+        //  case BIO_CTRL_EOF:   return 0;
+            default:             return 0;
+        } });
+
+    } while(0); return method; }
 
 public:
     
     /*─······································································─*/
 
     ssl_t( const string_t& _key, const string_t& _cert, const string_t& _chain ) : obj( new NODE() ) {
+    NODEPP_CRYPTO_INITIALIZATOR();
        if(!fs::exists_file(_key) || !fs::exists_file(_cert) || !fs::exists_file(_chain) )
          { NODEPP_THROW_ERROR("such key, cert or chain does not exist"); } 
            obj->key = _key;  obj->crt = _cert; obj->cha = _chain;
@@ -210,6 +264,7 @@ public:
     /*─······································································─*/
 
     ssl_t( const string_t& _key, const string_t& _cert ) : obj( new NODE() ) { 
+    NODEPP_CRYPTO_INITIALIZATOR();
        if(!fs::exists_file(_key) || !fs::exists_file(_cert) )
          { NODEPP_THROW_ERROR("such key or cert does not exist"); }
            obj->key = _key; obj->crt = _cert; 
@@ -219,7 +274,10 @@ public:
     /*─······································································─*/
 
     ssl_t( ssl_t xtc, int /*unused*/ ) : obj( new NODE() ) { 
-       if( xtc.obj->ctx == nullptr ){ NODEPP_THROW_ERROR("ctx has no context"); }
+    NODEPP_CRYPTO_INITIALIZATOR();
+
+       if( xtc.obj->ctx == nullptr )
+         { NODEPP_THROW_ERROR("ctx has no context"); }
            
         obj->state = STATE::SSL_STATE_USED;
         obj->ctx   = xtc.obj->ctx; 
@@ -229,28 +287,24 @@ public:
 
         SSL_CTX_up_ref( obj->ctx );
 
-        obj->rbio = BIO_new(BIO_s_mem());
-        obj->wbio = BIO_new(BIO_s_mem());
+        obj->bio = BIO_new( bio_method() );
+        /*------*/ BIO_set_init( obj->bio, 1 );
 
-        BIO_set_nbio( obj->rbio, 1 );
-        BIO_set_nbio( obj->wbio, 1 );
-        SSL_set_bio ( obj->ssl, obj->rbio, obj->wbio );
-
-        set_nonbloking_mode(); 
+        SSL_set_bio ( obj->ssl, obj->bio, obj->bio );
+        set_nonblocking_mode(); 
     }
 
     /*─······································································─*/
 
-    ssl_t() : obj( new NODE() ) {
-        thread_local static ptr_t< X509_t > cert; if( cert.null() ){
-            cert= type::bind/*-*/( X509_t() ); 
-            cert->generate("Node","Node","Node");
-        }   obj->state = STATE::SSL_STATE_USED; obj->cert = cert;
-    }
+    ssl_t() : obj( new NODE() ) { NODEPP_CRYPTO_INITIALIZATOR();
+    thread_local static ptr_t<X509_t> cert; if( cert.null() ) {
+        cert= type::bind( X509_t() ); 
+        cert->generate( "Node", "Node", "Node" );
+    }   obj->state = STATE::SSL_STATE_USED; obj->cert = cert; }
     
     /*─······································································─*/
 
-    void set_sni_callback ( onSNI  callback ) const noexcept { 
+    void set_sni_callback ( onSNI callback ) const noexcept { 
          obj->sni = type::bind( callback ); 
     }
 
@@ -320,14 +374,19 @@ public:
     /*─······································································─*/
 
     template< class T >
-    int _connect( T* stream ) const noexcept { if( is_connected() ){ return 1; }
-    int c =is_server() ? SSL_accept( obj->ssl ) : SSL_connect( obj->ssl );
-        c =is_blocked( stream, c ) ? -2 : c;
+    int _connect( T* stream ) const noexcept { do{ if( is_connected() ){ break; }
 
-        if( c==-1 ){ /*-------------------------------------*/ return -1; }
-        if( c== 1 ){ obj->state |= STATE::SSL_STATE_CONNECTED; return  1; }
+        BIO_set_data( obj->bio, (void*) stream );
 
-    return -2; }
+        int c=is_server () ? SSL_accept ( obj->ssl ) 
+                           : SSL_connect( obj->ssl );
+        int o=is_blocked( stream, c );
+        if( o<=0 ){ return o; }
+
+    obj->state|=STATE::SSL_STATE_CONNECTED;
+    return 1; } while(0); return 1; }
+
+    /*─······································································─*/
 
     template< class T >
     int _read ( T* stream, char* bf, ulong sx ) const noexcept { 
@@ -344,46 +403,44 @@ public:
     template< class T >
     int __read( T* stream, char* bf, ulong sx ) const noexcept { 
         if( !is_available() || !obj->ssl || stream->is_closed() ){ return -1; }
-        while( _connect(stream)==-2 ){ process::next(); }
-        if   ( !is_connected() )/*-*/{ return -1; }
-
-        int c=0; bool blk = false;
         
-        do { c=SSL_read( obj->ssl, bf, sx ); if( c > 0 ){ return c; }} 
-        while((blk=is_blocked(stream,c)) && SSL_pending(obj->ssl)>0 );
+        int conn = _connect( stream );
+        if( conn <= 0 ){ return conn; }
 
-        return stream->is_closed() ? -1 : blk ? -2 : c; 
+        BIO_set_data( obj->bio, (void*) stream );
+        int c = SSL_read ( obj->ssl, bf, sx );
+        return is_blocked( stream, c );
     }
     
     template< class T >
-    int __write( T* stream, char* bf, ulong sx ) const noexcept {
+    int __write( T* stream, char* bf, ulong sx ) const noexcept  {
         if( !is_available() || !obj->ssl || stream->is_closed() ){ return -1; }
-        while( _connect(stream)==-2 ){ process::next(); }
-        if   ( !is_connected() )/*-*/{ return -1; }
+        
+        int conn = _connect( stream );
+        if( conn <= 0 ){ return conn; }
 
-        int c =SSL_write( obj->ssl, bf, sx ); 
-        return is_blocked( stream, c )? -2:c;
+        BIO_set_data( obj->bio, (void*) stream );
+        int c = SSL_write( obj->ssl, bf, sx );
+        return is_blocked( stream, c );
     }
 
     /*─······································································─*/
 
     template< class T >
     int _write_( T* stream, char* bf, const ulong& sx, ulong* sy ) const noexcept {
-        if( sx==0 || stream->is_closed() ){ return -1; } while( *sy<sx ) {
-            int c = __write( stream, bf + *sy, sx - *sy );
-            if( c <= 0 && c != -2 ) /*----*/ { return -2; }
-            if( c >  0 ){ *sy+= c; continue; } break/**/;
-        }   return sx;
-    }
+    if( sx==0 || stream->is_closed() ){ return -1; } while( *sy<sx ) {
+        int c = __write( stream, bf + *sy, sx - *sy );
+        if( c==-2 ) /*--*/ { return -2; }
+        if( c > 0 ){ *sy+= c; continue; } 
+    break; } return *sy; }
 
     template< class T >
     int _read_( T* stream, char* bf, const ulong& sx, ulong* sy ) const noexcept {
-        if( sx==0 || stream->is_closed() ){ return -1; } while( *sy<sx ) {
-            int c = __read( stream, bf + *sy, sx - *sy );
-            if( c <= 0 && c != -2 ) /*----*/ { return -2; }
-            if( c >  0 ){ *sy+= c; continue; } break/**/;
-        }   return sx;
-    }
+    if( sx==0 || stream->is_closed() ){ return -1; } while( *sy<sx ) {
+        int c = __read( stream, bf + *sy, sx - *sy );
+        if( c==-2 ) /*--*/ { return -2; }
+        if( c > 0 ){ *sy+= c; continue; } 
+    break; } return *sy; }
 
     /*─······································································─*/
 

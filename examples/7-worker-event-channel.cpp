@@ -21,11 +21,10 @@ coStart
             console::log( "worker1 -> worker2", process::now() );
         return -1; }) );
 
-    if(!que.empty() ){ mut.lock([&](){
-        que.map([&]( coroutine_t clb ){
-            process::add( clb );
-        }); que.clear();
-    }); }
+    mut.lock([&](){ if(!que.empty() ){
+    que.map ([&]( coroutine_t clb ){
+        process::add( clb );
+    }); que.clear(); } });
 
     coDelay(1000); }
 
@@ -47,11 +46,10 @@ coStart
             console::log( "worker2 -> worker1", process::now() );
         return -1; }) );
 
-    if(!que.empty() ){ mut.lock([&](){
-        que.map([&]( coroutine_t clb ){
-            process::add( clb );
-        }); que.clear();
-    }); }
+    mut.lock([&](){ if(!que.empty() ){
+    que.map ([&]( coroutine_t clb ){
+        process::add( clb );
+    }); que.clear(); } }); 
 
     coDelay(1000); }
 

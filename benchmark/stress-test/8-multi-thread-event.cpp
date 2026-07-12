@@ -1,10 +1,15 @@
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #include <nodepp/nodepp.h>
 #include <nodepp/worker.h>
 #include <nodepp/event.h>
 
-using namespace nodepp;
+/*────────────────────────────────────────────────────────────────────────────*/
 
+using namespace nodepp;
 event_t<coroutine_t> ev1, ev2;
+
+/*────────────────────────────────────────────────────────────────────────────*/
 
 int worker_1(){
     static queue_t<coroutine_t> que;
@@ -31,6 +36,8 @@ coStart
 
 coStop
 }
+
+/*────────────────────────────────────────────────────────────────────────────*/
 
 int worker_2(){
     static queue_t<coroutine_t> que;
@@ -71,3 +78,6 @@ void onMain(){
     return -1; });
 
 }
+
+/*────────────────────────────────────────────────────────────────────────────*/
+// BUGFIXED

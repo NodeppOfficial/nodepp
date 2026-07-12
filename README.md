@@ -15,17 +15,17 @@ NODEPP UNIFIED ARCHITECTURE: Co-designed components MODEL
 
 [ APPLICATION LAYER ]   Logic: High-Level Async
           ||
-+---------||--------------------------------------------+
-|         ||   UNIFIED ptr_t DATA CARRIER               |
-|         || (Zero-Copy / Reference Counted)            |
-|         \/                                            |
-|  [ PROTOCOL LAYER ]   Protocol Layer: HTTP / WS / TLS |
-|         ||            Parser: ptr_t Slicing           |
-|         ||                                            |
-|         \/                                            |
-|  [ REACTOR LAYER ]    Reactor Layer: kernel_t         |
-|         ||            Engine: Epoll/KQUEUE/IOCP/NPOLL |
-+---------||--------------------------------------------+
++---------||----------------------------------------------+
+|         ||   UNIFIED ptr_t DATA CARRIER                 |
+|         || (Zero-Copy / Reference Counted)              |
+|         \/                                              |
+|  [ PROTOCOL LAYER ]   Protocol Layer: HTTP / WS / TLS   |
+|         ||            Parser: ptr_t Slicing             |
+|         ||                                              |
+|         \/                                              |
+|  [ REACTOR LAYER ]    Reactor Layer: kernel_t           |
+|         ||            Engine: Epoll/KQUEUE/IOCP/IOURING |
++---------||----------------------------------------------+
           ||
           \/            OS Layer: LINUX / WINDOWS / MAC
 [ HARDWARE / KERNEL ]   Source: Sockets / Registers
@@ -41,7 +41,7 @@ NODEPP UNIFIED ARCHITECTURE: Co-designed components MODEL
 
 - **📌: 2. Cooperative Multitasking (`coroutine_t`):** Stackless coroutines eliminate context-switching overhead. This allows for massive connection density on low-power hardware, from 8-bit industrial sensors to cloud-scale reactors.
 
-- **📌: 3. Platform-Agnostic Reactor (`kernel_t`):** A unified abstraction over native kernel I/O `(Epoll, Kqueue, IOCP, and Npoll)`. It provides a consistent non-blocking interface across Linux, Windows, Mac, and Bare-Metal, ensuring that I/O multiplexing is always native to the silicon.
+- **📌: 3. Platform-Agnostic Reactor (`kernel_t`):** A unified abstraction over native kernel I/O `(Epoll, Kqueue, IOCP, and IOuring)`. It provides a consistent non-blocking interface across Linux, Windows, Mac, and Bare-Metal, ensuring that I/O multiplexing is always native to the silicon.
 
 ## 🖕 Technical Reality Check: Data vs. Hype
 

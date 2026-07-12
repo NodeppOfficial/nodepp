@@ -14,16 +14,13 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#include "expected.h"
 #include "socket.h"
 #include "dns.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp {
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-class udp_t {
+namespace nodepp { class udp_t {
 private:
 
     using NODE_CLB = function_t<void,socket_t>;
@@ -36,18 +33,18 @@ private:
 protected:
 
     struct NODE {
-        int  state= 0; 
+        int state = 0; 
         agent_t agent;
         NODE_CLB func;
     };  ptr_t<NODE> obj;
 
 public:
 
-    event_t<socket_t> onConnect;
-    event_t<socket_t> onSocket;
-    event_t<>         onClose;
-    event_t<except_t> onError;
-    event_t<socket_t> onOpen;
+    event_t<ptr_t<udp_t>,socket_t> onSocket ;
+    event_t<socket_t>              onConnect;
+    event_t<>                      onClose  ;
+    event_t<except_t>              onError  ;
+    event_t<socket_t>              onOpen   ;
 
     /*─······································································─*/
 
@@ -65,12 +62,13 @@ public:
 
     /*─······································································─*/
 
-    void listen( const dns_t& addr, int port, NODE_CLB cb=nullptr ) const noexcept {
+    expected_t<udp_t,except_t>
+    listen( const dns_t& addr, int port, NODE_CLB clb=nullptr ) const noexcept {
 
         if( obj->state & STATE::UDP_STATE_CLOSED )
-          { onError.emit("udp listener is closed"); return; } 
+          { except_t err = "udp listener is closed"; onError.emit(err); return err; } 
         if( obj->state & STATE::UDP_STATE_USED )
-          { onError.emit("udp listener is used");   return; } 
+          { except_t err = "udp listener is used"  ; onError.emit(err); return err; } 
 
         socket_t sk; obj->state = STATE::UDP_STATE_USED;
         sk.AF      = addr.family;
@@ -78,17 +76,19 @@ public:
         sk.IPPROTO = IPPROTO_UDP;
 
         if( sk.socket( addr.address, port )==-1 ){
-            onError.emit( "Error while creating UDP" ); return; 
+            except_t err = "Error while creating UDP";
+            onError.emit(err); return err; 
         }   sk.set_sockopt( obj->agent );
 
         if( sk.bind() == -1 ){
-            onError.emit( "Error while binding UDP" ); return; 
+            except_t err = "Error while binding UDP";
+            onError.emit(err); return err; 
         }
 
         auto self = type::bind(this); process::add([=](){
 
-            cb(sk); self->onSocket.emit(sk);
-            /*---*/ self->obj->func(sk);
+            clb(sk); self->onSocket.emit( self, sk );
+            /*----*/ self->obj->func(sk);
                 
             if( sk.is_available() ){ 
                 sk.onOpen      .emit(  );
@@ -98,22 +98,26 @@ public:
 
         return -1; });
 
-    }
+    return *this; }
 
-    void listen( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
+    expected_t<udp_t,except_t>
+    listen( const string_t& host, int port, NODE_CLB clb=nullptr ) const noexcept {
     auto addr = dns::lookup( host, obj->agent.socket_family );
-         if( addr.empty() ){ onError.emit( "dns address not found" ); return; }
-         listen( addr[0], port, cb );
+        if( addr.empty() ){ 
+            except_t err = "dns address not found";
+            onError.emit(err); return err; 
+        }   return listen( addr[0], port, clb );
     }
 
     /*─······································································─*/
 
-    void connect( const dns_t& addr, int port, NODE_CLB cb=nullptr ) const noexcept {
+    expected_t<udp_t,except_t>
+    connect( const dns_t& addr, int port, NODE_CLB clb=nullptr ) const noexcept {
 
         if( obj->state & STATE::UDP_STATE_CLOSED )
-          { onError.emit( "udp listener is closed" ); return; } 
+          { except_t err = "udp connector is closed"; onError.emit(err); return err; } 
         if( obj->state & STATE::UDP_STATE_USED )
-          { onError.emit( "udp listener is used" );   return; } 
+          { except_t err = "udp connector is used"  ; onError.emit(err); return err; } 
 
         socket_t sk; obj->state = STATE::UDP_STATE_USED;
         sk.AF      = addr.family;
@@ -121,13 +125,14 @@ public:
         sk.IPPROTO = IPPROTO_UDP;
 
         if( sk.socket( addr.address, port )==-1 ){
-            onError.emit( "Error while creating UDP" ); return; 
+            except_t err = "Error while creating UDP";
+            onError.emit(err); return err; 
         }   sk.set_sockopt( obj->agent );
         
         auto self = type::bind(this); process::add([=](){
         
-            cb(sk); self->onSocket.emit(sk);
-            /*---*/ self->obj->func(sk);
+            clb(sk); self->onSocket.emit( self, sk );
+            /*----*/ self->obj->func(sk);
 
             if( sk.is_available() ){ 
                 sk.onOpen      .emit(  );
@@ -137,12 +142,15 @@ public:
 
         return -1; });
 
-    }
+    return *this; }
 
-    void connect( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
+    expected_t<udp_t,except_t>
+    connect( const string_t& host, int port, NODE_CLB clb=nullptr ) const noexcept {
     auto addr = dns::lookup( host, obj->agent.socket_family );
-         if( addr.empty() ){ onError.emit( "dns address not found" ); return; }
-         connect( addr[0], port, cb );
+        if( addr.empty() ){ 
+            except_t err = "dns address not found";
+            onError.emit(err); return err;
+        }   return connect( addr[0], port, clb );
     }
 
     /*─······································································─*/
@@ -155,11 +163,11 @@ public:
         onConnect.clear(); onClose .clear();
     }
 
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace udp {
+namespace nodepp { namespace udp {
 
     inline udp_t server( agent_t* opt=nullptr ){
         auto skt = udp_t( nullptr, opt ); return skt;
@@ -169,11 +177,7 @@ namespace udp {
         auto skt = udp_t( nullptr, opt ); return skt;
     }
 
-}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-}
+}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

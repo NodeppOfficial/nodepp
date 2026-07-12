@@ -4,12 +4,12 @@ using namespace nodepp;
 
 void onMain(){
 
-    string_t addr1 = process::invoke([=]( any_t raw ){
+    uchar_64 addr1 = process::invoke([=]( any_t raw ){
         auto data = raw.as<ptr_t<ulong>>();
         console::log( "<-->", data, *data, process::now() );
     return 1; });
 
-    string_t addr2 = process::invoke([=]( any_t raw ){
+    uchar_64 addr2 = process::invoke([=]( any_t raw ){
         static ulong x=1; static ulong y=1; ulong z=0;
         auto data = raw.as<ptr_t<ulong>>();
         z = x; x = z + y; y = z; *data = x;

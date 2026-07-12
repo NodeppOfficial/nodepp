@@ -3,21 +3,25 @@
 #include <nodepp/timer.h>
 #include <nodepp/http.h>
 #include <nodepp/date.h>
+#include <nodepp/os.h>
 
 using namespace nodepp;
+atomic_t<int> cpu_id=0;
 
-void server(){
+void onParallel(){
+
+    os::pin_worker_to_cpu( cpu_id.add(1) );
 
     auto server = http::server([=]( http_t cli ){ 
 
-        console::log( cli.path, cli.get_fd() );
+        string_t msg = "hello world!";
         
         cli.write_header( 200, header_t({
+            { "content-length", string::to_string(msg.size()) },
             { "content-type", "text/html" }
         }));
         
-        cli.write( date::fulltime() );
-        cli.close();
+        cli.write( regex::format( "${0}\r\n", msg ) );
 
     });
 
@@ -31,26 +35,4 @@ void server(){
 
 }
 
-void onMain(){
-
-    auto krn = process::kernel();
-
-    worker::add([=](){
-        
-        server();
-
-        krn.loop_add( coroutine::add( COROUTINE(){
-        coBegin
-
-            while( true ){
-                console::log( "hello world" );
-            coDelay(1000); }
-
-        coFinish
-        }) );
-
-        krn.wake();
-
-    process::wait(); return -1; });
-
-}
+void onMain(){ worker::parallel( &onParallel, os::cpus() ); }
