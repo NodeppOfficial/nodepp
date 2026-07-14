@@ -136,18 +136,17 @@ protected:
         return( err == ERROR_IO_INCOMPLETE || err == ERROR_IO_PENDING );
     }
 
-    bool is_blocked( bool mode, DWORD& c ) const noexcept {
-    auto ov = mode ? &obj->ovw : &obj->ovr;
+    bool is_blocked( uchar mode, DWORD& c ) const noexcept {
+    auto ov = (mode & STATE::FS_STATE_READING)==0 ? &obj->ovw : &obj->ovr; 
     
-        if( !HasOverlappedIoCompleted(ov) ) { return 1; }
+    //  if( is_blocked( c ) ) /*--------*/ { return 1; }
+        if( !HasOverlappedIoCompleted(ov) ){ return 1; }
 
-        if( obj->state & ( STATE::FS_STATE_READING | STATE::FS_STATE_WRITING ) ){
+        if( mode & ( STATE::FS_STATE_READING | STATE::FS_STATE_WRITING ) ){
         if( GetOverlappedResult((HANDLE)obj->fd, ov, &c, FALSE) )
-          { goto DONE; }} else { goto DONE; }
-
-        if( is_blocked( c ) )  { return 1 ; }
+          { /*obj->offset += c;*/ return 0; } else { return 1; }}
     
-    DONE:; return 0; }
+    return 0; }
 
     /*─······································································─*/
 
@@ -611,7 +610,7 @@ public:
         if( !is_server() || obj->lpfnAcceptEx==nullptr ){ return -1; } DWORD c=0;
 
         if( obj->state & STATE::FS_STATE_WRITING ){
-        if( is_blocked( true, c ) ){ obj->feof=-2; return -2; }
+        if( is_blocked( obj->state, c ) ){ obj->feof=-2; return -2; }
             int c=::setsockopt( obj->tmp, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&obj->fd, sizeof(SOCKET) );
             c = c==0 ? (int) obj->tmp : INVALID_SOCKET; obj->tmp = INVALID_SOCKET; 
             obj->state &=~ STATE::FS_STATE_WRITING; obj->feof=1; return c; 
@@ -695,12 +694,14 @@ public:
           { return -1; } if ( sx==0 ) { return 0; } DWORD c=0, f=0; 
 
         if( obj->state & STATE::FS_STATE_READING ){
-        if( is_blocked( false, c ) ){ return -2; }
+
+        if( is_blocked( obj->state, c ) ){ return -2; }
             obj->state&=~STATE::FS_STATE_READING;
             obj->feof  = c==0 ? -1 : (int) c; 
         return obj->feof; }
 
         SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
+
         memset( &obj->ovr, 0, sizeof(WSAOVERLAPPED) );
         obj->state|= STATE::FS_STATE_READING;
         WSABUF rbuf={ sx, bf }; 
@@ -721,12 +722,13 @@ public:
           { return -1; } if ( sx==0 ) { return 0; } DWORD c=0, f=0; 
 
         if( obj->state & STATE::FS_STATE_WRITING ){
-        if( is_blocked( true, c ) ){ return -2; }
+        if( is_blocked( obj->state, c ) ){ return -2; }
             obj->state&=~STATE::FS_STATE_WRITING;
             obj->feof  = c==0 ? -1 : (int) c; 
         return obj->feof; }
 
         SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
+
         memset( &obj->ovw, 0, sizeof(WSAOVERLAPPED) );
         obj->state |= STATE::FS_STATE_WRITING;
         WSABUF wbuf ={ sx, bf };

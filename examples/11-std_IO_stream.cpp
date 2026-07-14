@@ -17,6 +17,10 @@ void onMain() {
         output.write( "\n" );
     });
 
+    time::add([=](){
+        console::log( ">>", process::now() );
+    },1000);
+
     stream::pipe( input );
 
 }

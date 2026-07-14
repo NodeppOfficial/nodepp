@@ -57,8 +57,8 @@ private:
 
     struct kevent_t {
         int fd, flag; uchar_64 pd;
-        function_t<int> callback;
-        event_t<> event; 
+        function_t<int> callback ;
+        event_t   <   > event; 
     };
 
     bool is_std( int fd ) const noexcept { 
@@ -69,13 +69,12 @@ private:
 
 protected:
 
-    void* append( kevent_t kv ) const noexcept {
+    uchar_64 append( kevent_t kv ) const noexcept {
 
-        obj->kv_queue.push( kv );
-        auto id = obj->kv_queue.last();
+        obj->kv_queue.push( kv ); auto id = obj->kv_queue.last();
         obj->uring.append( kv.pd, id );
 
-    return (void*) id; }
+    return (uchar_64) id; }
 
     int remove( void* ptr ) const noexcept {
 
@@ -83,7 +82,7 @@ protected:
         if ( kv== nullptr ){ return -1; }
 
         obj->uring.remove(kv->data.pd);
-        obj->kv_queue.erase (kv); 
+        obj->kv_queue.erase( kv ); 
     
     return 1; }
 
@@ -298,9 +297,10 @@ private:
          KV_STATE_FALLBACK= 0b00000001
     };
 
-    struct kevent_t {
-        int fd, flag; event_t <> event;
+    struct kevent_t { 
+        int fd, /*-------*/ flag;
         function_t<int> callback;
+        event_t   <   > event   ;
     };
 
     bool is_std( int fd ) const noexcept { 
@@ -313,7 +313,7 @@ protected:
 
     uchar_64 append( kevent_t kv ) const noexcept {
 
-        if( kv.flag==0x00 || is_std( kv.fd ) ){ return KV_STATE_FALLBACK; }
+        if( kv.flag == 0x00 ){ return KV_STATE_FALLBACK; }
 
         obj->kv_queue.push( kv ); auto id = obj->kv_queue.last();
 
@@ -627,9 +627,10 @@ private:
          KV_STATE_FALLBACK= 0b00000001
     };
 
-    struct kevent_t {
-        int fd, flag; event_t <> event; 
+    struct kevent_t { 
+        int fd, /*-------*/ flag;
         function_t<int> callback;
+        event_t   <   > event   ; 
     };
 
     bool is_std( int fd ) const noexcept { 
@@ -642,7 +643,7 @@ protected:
 
     uchar_64 append( kevent_t kv ) const noexcept {
 
-        if( kv.flag==0x00 || is_std( kv.fd ) ){ return FLAG::KV_STATE_FALLBACK; }
+        if( kv.flag==0x00 ){ return FLAG::KV_STATE_FALLBACK; }
 
         obj->kv_queue.push( kv ); auto id = obj->kv_queue.last();
 

@@ -1,5 +1,6 @@
 #include <nodepp/nodepp.h>
 #include <nodepp/worker.h>
+#include <nodepp/timer.h>
 #include <nodepp/tcp.h>
 #include <nodepp/fs.h>
 
@@ -12,10 +13,9 @@ void server(){
     server.onConnect([=]( socket_t cli ){
 
         console::log("connected" );
-
+    
         cli.onData([=]( string_t data ){
-            cli.write( "<: received" );
-            console::log( data );
+            console::log( "server read>>", data );
         });
 
         cli.onClose([=](){
@@ -23,6 +23,11 @@ void server(){
         });
 
         stream::pipe( cli );
+        timer ::add ([=](){
+            auto msg = regex::format( "hello world! ${0}", process::now() );
+            return cli.write( msg ) <= 0 ? -1 : 1 ;
+        },1000);
+
 
     });
 
@@ -43,23 +48,20 @@ void client(){
     client.onOpen([=]( socket_t cli ){
 
         console::log("connected" );
-        auto cin = fs::std_input();
     
         cli.onData([=]( string_t data ){
-            console::log( data );
-        });
-
-        cin.onData([=]( string_t data ){
-            cli.write( data );
+            console::log( "client read>>", data );
         });
 
         cli.onClose([=](){
             console::log("closed");
-            cin.close();
         });
 
         stream::pipe( cli );
-        stream::pipe( cin );
+        timer ::add ([=](){
+            auto msg = regex::format( "hello world! ${0}", process::now() );
+            return cli.write( msg ) <= 0 ? -1 : 1 ;
+        },1000);
 
     });
 

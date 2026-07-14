@@ -55,23 +55,21 @@ void client() {
     
     client.onConnect([=]( wss_t cli ){ 
         
-        auto cin = fs::std_input();
         console::log("connected"); 
-
-        cli.onData([]( string_t data ){ 
-            console::log( data ); 
-        });
-        
-        cin.onData([=]( string_t data ){
-            cli.write( data );
+    
+        cli.onData([=]( string_t data ){
+            console::log( data );
         });
 
-        cli.onClose([=](){ 
-            console::log("closed"); 
-            cin.close();
+        cli.onClose([=](){
+            console::log("closed");
         });
 
-        stream::pipe( cin );
+        stream::pipe( cli );
+        timer ::add ([=](){
+            auto msg = regex::format( "hello world! ${0}", process::now() );
+            return cli.write( msg ) <= 0 ? -1 : 1 ;
+        },1000);
 
     });
 

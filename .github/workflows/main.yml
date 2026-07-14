@@ -8,33 +8,48 @@ on:
 
 jobs:
   build_and_test:
-    # 1. Define the runners for the matrix strategy
+
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            compiler: g++
+          - os: macos-latest
+            compiler: g++
+          - os: windows-latest
+            compiler: mingw
+          - os: windows-latest
+            compiler: msvc
 
-    # 2. Use the matrix variable to set the runner OS
     runs-on: ${{ matrix.os }}
 
     steps:
       - name: ⬇️ Checkout code
         uses: actions/checkout@v4
 
-      # --- 🧪 Unit Test Compilation and Run ---
-      
-      - name: 🧪 Unit Test (Linux/macOS)
+      - name: 🧪 Unit Test ( Linux/macOS )
         # Uses -lssl -lcrypto -lpthread flags
         if: runner.os != 'Windows'
         run: |
           echo "Running Unix-like Unit Test build..." ; cd ./test
           g++ -o main main.cpp -I../include -lpthread ; ./main
-          
-      - name: 🧪 Unit Test (Windows)
-        # Uses -lssl -lcrypto -lws2_32 flags
-        if: runner.os == 'Windows'
+
+      - name: 🧪 Unit Test ( Windows - Mingw )
+        if: runner.os == 'Windows' && ( matrix.compiler == 'g++' || matrix.compiler == 'mingw' )
         run: |
-          echo "Running Windows Unit Test build..." ; cd ./test
+          echo "Running Windows Unit Test (MingW) build..." ; cd ./test
           g++ -o main main.cpp -I../include -lws2_32; ./main.exe
+
+      - name: 🧪 Unit Test ( Windows - MSVC )
+        if: runner.os == 'Windows' && matrix.compiler == 'msvc'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+        run: |
+          echo "Running Windows Unit Test (MSVC) build..."
+          cd ./test
+          cl /EHsc /o main.exe main.cpp /I../include ws2_32.lib
+          ./main.exe
 
       # --- End of the workflow ---

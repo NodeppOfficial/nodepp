@@ -102,18 +102,17 @@ protected:
         return( err == ERROR_IO_INCOMPLETE || err == ERROR_IO_PENDING );
     }
 
-    bool is_blocked( bool mode, DWORD& c ) const noexcept {
-    auto ov = mode ? &obj->ovw : &obj->ovr;
+    bool is_blocked( uchar mode, DWORD& c ) const noexcept {
+    auto ov = (mode & STATE::FS_STATE_READING)==0 ? &obj->ovw : &obj->ovr;
     
-        if( !HasOverlappedIoCompleted(ov) ) { return 1; }
+    //  if( is_blocked( c ) ) /*--------*/ { return 1; }
+        if( !HasOverlappedIoCompleted(ov) ){ return 1; }
 
-        if( obj->state & ( STATE::FS_STATE_READING | STATE::FS_STATE_WRITING ) ){
+        if( mode & ( STATE::FS_STATE_READING | STATE::FS_STATE_WRITING ) ){
         if( GetOverlappedResult((HANDLE)obj->fd, ov, &c, FALSE) )
-          { goto DONE; }} else { goto DONE; }
+          { obj->offset += c; return 0; } else { return 1; } }
 
-        if( is_blocked( c ) )  { return 1 ; }
-
-    DONE:; obj->offset+= c; return 0; }
+    return 0; }
     
 public:
 
@@ -279,7 +278,7 @@ public:
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; } DWORD c=0;
 
         if( obj->state & STATE::FS_STATE_READING ){ 
-        if( is_blocked( false, c ) ){ return -2; }
+        if( is_blocked( obj->state, c ) ){ return -2; }
             obj->state&=~STATE::FS_STATE_READING; 
             obj->feof = (int)c; return obj->feof; 
         }
@@ -299,7 +298,7 @@ public:
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; } DWORD c=0;
 
         if( obj->state & STATE::FS_STATE_WRITING ){
-        if( is_blocked( true, c ) ){ return -2; }
+        if( is_blocked( obj->state, c ) ){ return -2; }
             obj->state&=~STATE::FS_STATE_WRITING; 
             obj->feof = (int)c; return obj->feof;  
         }

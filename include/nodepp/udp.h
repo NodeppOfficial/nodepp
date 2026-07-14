@@ -130,7 +130,7 @@ public:
         }   sk.set_sockopt( obj->agent );
         
         auto self = type::bind(this); process::add([=](){
-        
+
             clb(sk); self->onSocket.emit( self, sk );
             /*----*/ self->obj->func(sk);
 

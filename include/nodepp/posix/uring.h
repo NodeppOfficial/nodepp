@@ -16,6 +16,7 @@
 
 #include <sys/syscall.h>
 #include <sys/eventfd.h>
+#include <sys/socket.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/poll.h>
@@ -40,6 +41,11 @@ protected:
     
     /*─······································································─*/
 
+    using IOvec = struct iovec ;
+    using IOmsg = struct msghdr;
+    
+    /*─······································································─*/
+
     enum FLAG : int {
          URING_FLAG_NULL = 0b00000000,
          URING_FLAG_FREE = 0b00000001,
@@ -51,7 +57,7 @@ protected:
     
     /*─······································································─*/
 
-    struct DONE { void* sign; int mode; IOsqe sqe; IOcqe cqe; };
+    struct DONE { void* sign; int mode; IOsqe sqe; IOcqe cqe; string_t mem; };
     struct DENO { void* addr; DONE data[2]; };
     struct NODE {
  
@@ -411,19 +417,31 @@ public:
         
     if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){
         mem.mode      = FLAG::URING_FLAG_USED;
-        IOsqe &sqe    = mem.sqe;
+        
+        IOsqe    &sqe = mem.sqe;
+        string_t &raw = mem.mem; 
+        raw.resize( sizeof(IOmsg) + sizeof(IOvec), '\0' );
         
         memset( &sqe, 0, sizeof(IOsqe) );
+        
+        IOmsg* msg = (IOmsg*) raw.get() ;
+        IOvec* iov = (IOvec*)(raw.get() + sizeof(IOmsg));
 
-        sqe.opcode    = IORING_OP_SENDMSG;
-        sqe.msg_flags = flags;
-        sqe.len       = len  ;
-        sqe.addr      = (uchar_64)buf;
-        sqe.addr2     = (uchar_64)addr;
-        sqe.addr3     = (uchar_64)addrlen;
+        iov->iov_base = buf;
+        iov->iov_len  = len;
 
-        sqe.fd        = fd->get_fd();
-        sqe.user_data = fd->get_pd()| ((uchar_64)FLAG::URING_FLAG_WRTE) << 48; 
+        msg->msg_name    = (void*)addr;
+        msg->msg_namelen = addrlen;
+        msg->msg_flags   = flags;
+        msg->msg_iov     = iov;
+        msg->msg_iovlen  = 1;
+
+        sqe.opcode       = IORING_OP_SENDMSG;
+        sqe.fd           = fd->get_fd() ;
+        sqe.addr         = (uchar_64)msg;
+        sqe.len          = 1;
+        sqe.msg_flags    = 0;
+        sqe.user_data    = fd->get_pd() | ((uchar_64)FLAG::URING_FLAG_WRTE) << 48; 
 
         obj->sque.push( mem ); errno=EWOULDBLOCK; return -1;
 
@@ -465,19 +483,30 @@ public:
 
     if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){
         mem.mode      = FLAG::URING_FLAG_USED;
-        IOsqe &sqe    = mem.sqe;
+
+        IOsqe    &sqe = mem.sqe;
+        string_t &raw = mem.mem; 
+        raw.resize( sizeof(IOmsg) + sizeof(IOvec), '\0' );
         
         memset( &sqe, 0, sizeof(IOsqe) );
+        IOmsg* msg = (IOmsg*) raw.get() ;
+        IOvec* iov = (IOvec*)(raw.get() + sizeof(IOmsg));
 
-        sqe.opcode    = IORING_OP_RECVMSG;
-        sqe.msg_flags = flags;
-        sqe.len       = len  ;
-        sqe.addr      = (uchar_64)buf ;
-        sqe.addr2     = (uchar_64)addr;
-        sqe.addr3     = (uchar_64)addrlen;
+        iov->iov_base    = buf;
+        iov->iov_len     = len;
 
-        sqe.fd        = fd->get_fd();
-        sqe.user_data = fd->get_pd()| ((uchar_64)FLAG::URING_FLAG_READ) << 48; 
+        msg->msg_name    = (void*)addr;
+        msg->msg_namelen = *addrlen;
+        msg->msg_flags   = flags;
+        msg->msg_iov     = iov  ;
+        msg->msg_iovlen  = 1    ;
+
+        sqe.opcode       = IORING_OP_RECVMSG;
+        sqe.fd           = fd->get_fd() ;
+        sqe.addr         = (uchar_64)msg;
+        sqe.len          = 1;
+        sqe.msg_flags    = 0;
+        sqe.user_data    = fd->get_pd() | ((uchar_64)FLAG::URING_FLAG_READ) << 48; 
         
         obj->sque.push( mem ); errno=EWOULDBLOCK; return -1;
 

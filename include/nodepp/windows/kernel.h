@@ -47,10 +47,10 @@ private:
          KV_STATE_FALLBACK= 0b00000001
     };
 
-    struct kevent_t {
-        int flag; /**/ HANDLE fd; 
+    struct kevent_t { 
+        int flag; /**/ HANDLE fd;
         function_t<int> callback; 
-        event_t   <   > event;
+        event_t   <   > event   ;
     };
 
     bool is_std( HANDLE fd ) const noexcept { 
@@ -63,12 +63,10 @@ protected:
 
     uchar_64 append( kevent_t kv ) const noexcept {
 
-        if( kv.flag==0x00 || is_std( kv.fd ) ){ return 0x01; }
-
         obj->kv_queue.push( kv ); auto id = obj->kv_queue.last();
 
         if( !CreateIoCompletionPort( id->data.fd, obj->pd, (ULONG_PTR)id, 0 ) ) 
-          { obj->kv_queue.erase(id); return 0x01; }
+          { obj->kv_queue.erase(id); return FLAG::KV_STATE_FALLBACK; }
 
     return (uchar_64) id; }
 
@@ -102,7 +100,7 @@ protected:
         if(!obj->kv_queue.empty() && tasks==0 ){ 
         if( obj.count()==1 ) /*------*/ { return -1; }}
         if( obj.count()> 1 && tasks==0 ){ return -1; }
-    return tasks==0 ? 1 : get_timeout(); }
+    return tasks==0 ? 0 : get_timeout(); }
 
     void invoker( void* address ) const noexcept {
     if( address == nullptr ){ do {
@@ -122,7 +120,7 @@ protected:
 
         auto x = obj->kv_queue.as( address );
 
-        if( x == nullptr ) /*----*/ { /*-------*/ return; }
+        if( x == nullptr ) /*----------------*/ { return; }
         if( x->data.flag & FLAG::KV_STATE_USED ){ return; }
             x->data.flag|= FLAG::KV_STATE_USED;
 
@@ -138,7 +136,7 @@ protected:
                 case  1: /*-------------------------------*/ return  1; break; 
             }} while(0);
 
-        coGoto(0); coFinish
+        coFinish
         })); 
     
     } while(0); }}
@@ -198,8 +196,20 @@ public:
     template< class T, class U, class... W >
     ptr_t<task_t> poll_add( T& inp, int flag, U cb, ulong timeout=0, const W&... args ) const noexcept {
     function_t<int,W...> clb ( cb ); if( inp.is_closed() ){ return nullptr; }
-    
-        if( obj->kv_queue.as( (void*) inp.get_pd() )==nullptr ){
+
+        if( inp.get_pd()==FLAG::KV_STATE_FALLBACK ){ 
+        if( is_std( (HANDLE) inp.get_fd() ) ) /**/ {
+            return loop_add( coroutine::add( COROUTINE(){
+            coBegin; 
+
+                while( clb( args... )>=0 )
+                     { coDelay( 100 ); }
+
+            coFinish
+            }));
+        } else { return loop_add( cb, args... ); }}
+
+        if( obj->kv_queue.as( (void*) inp.get_pd() )==nullptr ) {
 
             kevent_t     kv  ;
             kv.flag    = flag; kv.fd = (HANDLE) inp.get_fd();
@@ -212,7 +222,10 @@ public:
                 if( inp.is_waiting() ){ return  0; }
             return 1; };
 
-            inp.get_pd() = append( kv );
+            inp.get_pd() = append(kv);
+
+            if( inp.get_pd()==KV_STATE_FALLBACK )
+              { return poll_add( inp, flag, cb, timeout, args... ); }
 
         }
 
@@ -220,7 +233,7 @@ public:
         task->addr  = (void*) inp.get_pd();
         task->flag  = TASK_STATE::OPEN; 
         task->sign  = &obj;
-
+        
         obj->kv_queue.as(task->addr)->data.event.add([=](){ 
             return clb( args... )>=0 ? 1 : -1; 
         }); invoker( task->addr );
@@ -256,7 +269,7 @@ public:
 
     /*─······································································─*/
 
-    int next() const { invoker( nullptr );
+    int next() const { // invoker( nullptr );
 
         if( obj->ev_queue.next()>=0 ){ return 1; } 
         set_timeout(obj->ev_queue.get_delay());
@@ -302,7 +315,7 @@ private:
          KV_STATE_FALLBACK= 0b00000001
     };
 
-    struct kevent_t { function_t<int> callback; int fd, flag; };
+    struct kevent_t { int fd, flag; function_t<int> callback;  };
 
     bool is_std( HANDLE fd ) const noexcept { 
         return fd == GetStdHandle( STD_INPUT_HANDLE ) ||

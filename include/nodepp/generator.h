@@ -411,12 +411,12 @@ namespace nodepp { namespace generator { namespace zlib {
 namespace nodepp { namespace generator { namespace ws {
 
     struct ws_frame_t {
-        bool  FIN;     //1b
-        uint  RSV;     //3b
-        uint  OPC;     //4b
-        bool  MSK;     //1b
-        char  KEY [4]; //4B
-        ulong LEN;     //64b
+        bool     FIN;     //1b
+        uint     RSV;     //3b
+        uint     OPC;     //4b
+        bool     MSK;     //1b
+        char     KEY [4]; //4B
+        uchar_64 LEN;     //64b
     };
 
     /*─······································································─*/
@@ -642,6 +642,27 @@ namespace nodepp { namespace generator { namespace ws {
     };
 
 }}}
+#undef NODEPP_GENERATOR
+#endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+#if !defined(GENERATOR_HTTP) && defined(NODEPP_HTTP) && defined(NODEPP_GENERATOR)
+    #define  GENERATOR_HTTP
+
+namespace nodepp { namespace generator { namespace http {
+    
+    GENERATOR( read ){
+
+    };
+
+    GENERATOR( write ){
+
+    }
+
+
+}}}
+
 #undef NODEPP_GENERATOR
 #endif
 
