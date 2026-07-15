@@ -765,7 +765,7 @@ namespace nodepp { namespace generator { namespace ws {
         
         coYield(1); len=0;
 
-        while ( frame.LEN > 0 ){ sz = min( sx, frame.LEN );
+        while ( frame.LEN > 0 ){ sz = min( sx, (ulong) frame.LEN );
         coWait( str->_read_( bf, sz, &len )==-2 );
 
         if( frame.MSK ){ for( ulong x=0; x<len; ++x ){
