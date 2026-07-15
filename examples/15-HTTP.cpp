@@ -9,20 +9,21 @@ void server() {
     auto server = http::server([=]( http_t cli ){ 
 
         console::log( cli.path, cli.get_fd() );
+        file_t file ( "LICENSE", "r" );
         
         cli.write_header( 200, header_t({
-            { "content-type", "text/html" }
+            { "Content-Type"   , "text/html" },
+            { "Transfer-Encoding", "chunked" },
+        //  { "Content-Length", string::to_string( file.size() ) }
         }));
         
-        cli.write( "hello world!" );
+        stream::pipe( file, cli );
 
     });
 
     server.listen( "localhost", 8000, [=]( socket_t server ){
         console::log("server started at http://localhost:8000");
     });
-
-    process::wait();
 
 }
 
@@ -39,7 +40,8 @@ void client() {
 
     .then([]( http_t cli ){
         console::log( cli.headers["Host"] );
-        cli.onData([]( string_t chunk ){
+        cli.onClose([](){ console::log("closed"); });
+        cli.onData ([]( string_t chunk ){
             console::log( chunk );
         }); stream::pipe( cli );
     })
@@ -48,13 +50,11 @@ void client() {
         console::error( err );
     });
 
-    process::wait();
-
 }
 
 void onMain() {
 
-    worker::add([=](){ server(); return -1; });
-    worker::add([=](){ client(); return -1; });
+    worker::add([=](){ server(); process::wait(); return -1; });
+    worker::add([=](){ client(); process::wait(); return -1; });
 
 }

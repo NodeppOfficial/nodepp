@@ -269,7 +269,7 @@ public:
 
     /*─······································································─*/
 
-    int next() const { // invoker( nullptr );
+    int next() const { invoker( nullptr );
 
         if( obj->ev_queue.next()>=0 ){ return 1; } 
         set_timeout(obj->ev_queue.get_delay());
@@ -282,13 +282,13 @@ public:
         );
 
         obj->state &=~ FLAG::KV_STATE_SLEEP; 
-          
+
         if( res ){ while( obj->idx > 0 ){ obj->idx--; auto &x = obj->ev[ obj->idx ];
 
             if( x.lpCompletionKey==(ULONG_PTR)NULL ){ continue; }
             invoker( (void*) x.lpCompletionKey );
 
-        } clear_timeout(); }  
+        } clear_timeout(); } 
         
     return 1; }
 

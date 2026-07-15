@@ -96,18 +96,20 @@ protected:
 
 protected:
 
+    struct DONE { WSAOVERLAPPED ov; WSABUF buf; DWORD flag, result; };
     struct NODE {
 
+        ulong conn_timeout=0; ulong range[2] = { 0, 0 };
         ulong recv_timeout=0; uchar_64 tag   = 0UL;
         ulong send_timeout=0; uchar_64 pd    = 0UL;
-        ulong conn_timeout=0; ulong range[2] = { 0, 0 };
 
-        WSAOVERLAPPED ovr, ovw ;
+        DONE ddl [2];
+
         SOCKET fd  = INVALID_SOCKET;
         SOCKET tmp = INVALID_SOCKET;
         SOCKADDR_ST server_addr, client_addr;
 
-        int feof = 1, addrlen;
+        int feof = 1 , addrlen;
         LPFN_ACCEPTEX  lpfnAcceptEx  = nullptr;
         LPFN_CONNECTEX lpfnConnectEx = nullptr;
         
@@ -123,8 +125,8 @@ protected:
        ~NODE(){ if( fd == INVALID_SOCKET ){ return; }
         //  ::shutdown   ( fd , SD_RECEIVE ); 
             ::closesocket( fd /*--------*/ );
-            CancelIoEx   ((HANDLE) fd, &ovr);
-            CancelIoEx   ((HANDLE) fd, &ovw);
+            CancelIoEx   ((HANDLE) fd, &ddl[0].ov);
+            CancelIoEx   ((HANDLE) fd, &ddl[1].ov);
         }
 
     };  ptr_t<NODE> obj;
@@ -133,17 +135,18 @@ protected:
 
     bool is_blocked( DWORD /*unused*/ ) const noexcept {
         DWORD err = GetLastError();
-        return( err == ERROR_IO_INCOMPLETE || err == ERROR_IO_PENDING );
+        return( err == ERROR_IO_INCOMPLETE || 
+                err == ERROR_IO_PENDING    || 
+                err == WAIT_TIMEOUT 
+        );
     }
 
-    bool is_blocked( uchar mode, DWORD& c ) const noexcept {
-    auto ov = (mode & STATE::FS_STATE_READING)==0 ? &obj->ovw : &obj->ovr; 
-    
-    //  if( is_blocked( c ) ) /*--------*/ { return 1; }
-        if( !HasOverlappedIoCompleted(ov) ){ return 1; }
+    bool is_blocked( OVERLAPPED& ov, DWORD& c ) const noexcept {
 
-        if( mode & ( STATE::FS_STATE_READING | STATE::FS_STATE_WRITING ) ){
-        if( GetOverlappedResult((HANDLE)obj->fd, ov, &c, FALSE) )
+        if( !HasOverlappedIoCompleted(&ov) ){ return is_blocked( c ); }
+
+        if( obj->state & ( STATE::FS_STATE_READING | STATE::FS_STATE_WRITING ) ){
+        if( GetOverlappedResult((HANDLE)obj->fd, &ov, &c, FALSE ) )
           { /*obj->offset += c;*/ return 0; } else { return 1; }}
     
     return 0; }
@@ -404,8 +407,8 @@ public:
     /*─······································································─*/
 
     bool    is_closed() const noexcept { return is_state(STATE::FS_STATE_DISABLE) || is_feof() || obj->fd==INVALID_SOCKET; }
-    bool  is_reusable() const noexcept { return is_state(STATE::FS_STATE_REUSE  ); }
     bool    is_server() const noexcept { return is_state(STATE::FS_STATE_SERVER ); }
+    bool  is_reusable() const noexcept { return is_state(STATE::FS_STATE_REUSE  ); }
     bool      is_feof() const noexcept { return obj->feof <= 0 && obj->feof != -2; }
     bool   is_waiting() const noexcept { return obj->feof == -2; }
     bool is_available() const noexcept { return !is_closed(); }
@@ -433,9 +436,9 @@ public:
 
     /*─······································································─*/
     
-    uchar_64&  get_pd() const noexcept { return obj->pd ; }
-    SOCKET     get_fd() const noexcept { return obj->fd ; }
-    uchar_64&     tag() const noexcept { return obj->tag; }
+    SOCKET    get_fd() const noexcept { return obj->fd ; }
+    uchar_64& get_pd() const noexcept { return obj->pd ; }
+    uchar_64&    tag() const noexcept { return obj->tag; }
 
     /*─······································································─*/
 
@@ -522,11 +525,13 @@ public:
     /*─······································································─*/
 
     virtual int socket( const string_t& host, int port ) const noexcept {
-        if( host.empty() ){ onError.emit("invalid IP address"); return -1; } DWORD c = 0;
+        if( host.empty() ){ onError.emit("invalid IP address"); return -1; }
 
         if((obj->fd=WSASocketW( AF, SOCK, IPPROTO, NULL, 0, WSA_FLAG_OVERLAPPED )) == INVALID_SOCKET )
           { onError.emit("can't initializate socket fd"); return -1; }
         
+        DWORD c = 0; if( SOCK != SOCK_DGRAM ){
+
         GUID GuidAcceptEx = WSAID_ACCEPTEX;
         WSAIoctl(obj->fd, SIO_GET_EXTENSION_FUNCTION_POINTER, &GuidAcceptEx, sizeof(GuidAcceptEx),
                 &obj->lpfnAcceptEx, sizeof(obj->lpfnAcceptEx), &c, NULL, NULL);
@@ -534,6 +539,8 @@ public:
         GUID GuidConnectEx = WSAID_CONNECTEX;
         WSAIoctl(obj->fd, SIO_GET_EXTENSION_FUNCTION_POINTER, &GuidConnectEx, sizeof(GuidConnectEx),
                 &obj->lpfnConnectEx, sizeof(obj->lpfnConnectEx), &c, NULL, NULL);
+
+        }
 
         set_buffer_size( NODEPP_CHUNK_SIZE );
         set_nonbloking_mode();
@@ -574,7 +581,7 @@ public:
 
         }
 
-        obj->server_addr = server_st; 
+        obj->server_addr = server_st;
         obj->client_addr = client_st;
 
     return 1; }
@@ -582,23 +589,26 @@ public:
     /*─······································································─*/
 
     int _connect() const noexcept { 
-
         if( process::millis() > get_conn_timeout() )/**/{ return -1; }
-        if( is_server() || obj->lpfnConnectEx==nullptr ){ return -1; } DWORD c=0;
+        if( is_server() || obj->lpfnConnectEx==nullptr ){ return -1; } 
+        
+        auto &c  = obj->ddl[0].result;
+        auto &ov = obj->ddl[0].ov    ;
 
         if( obj->state & STATE::FS_STATE_READING ){
-        if( is_blocked( false, c ) ){ obj->feof=-2; return -2; }
+        if( is_blocked( ov, c ) ){ obj->feof=-2; return -2; }
             int c=::setsockopt( obj->fd, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, NULL, 0 ); 
             obj->state &=~ STATE::FS_STATE_READING; obj->feof=1; return c==0 ? 1 : -1;
         }
 
-        memset( &obj->ovr, 0, sizeof(WSAOVERLAPPED) ); obj->state|= STATE::FS_STATE_READING;
+        obj->state|= STATE::FS_STATE_READING; ov = {0};
+
         SOCKADDR_IN any     = {0}; 
         any.sin_addr.s_addr = INADDR_ANY;
         any.sin_family      = AF; any.sin_port = 0;
         ::bind( obj->fd, (SOCKADDR*)&any, sizeof(any) );
         
-        if( obj->lpfnConnectEx( obj->fd, (SOCKADDR*) &obj->server_addr, obj->addrlen, NULL, 0, &c, &obj->ovr ) ){
+        if( obj->lpfnConnectEx( obj->fd, (SOCKADDR*) &obj->server_addr, obj->addrlen, NULL, 0, &c, &ov ) ){
             int c=::setsockopt( obj->fd, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, NULL, 0 ); 
             obj->state &=~ STATE::FS_STATE_READING; obj->feof=1; return c==0 ? 1 : -1;
         } elif( is_blocked(c) ) { obj->feof=-2; return -2; } 
@@ -607,20 +617,24 @@ public:
 
     int _accept() const noexcept { 
 
-        if( !is_server() || obj->lpfnAcceptEx==nullptr ){ return -1; } DWORD c=0;
+        if( !is_server() || obj->lpfnAcceptEx==nullptr ){ return -1; }
+        
+        auto &c  = obj->ddl[1].result;
+        auto &ov = obj->ddl[1].ov    ;
 
         if( obj->state & STATE::FS_STATE_WRITING ){
-        if( is_blocked( obj->state, c ) ){ obj->feof=-2; return -2; }
+        if( is_blocked( ov, c ) ){ obj->feof=-2; return -2; }
             int c=::setsockopt( obj->tmp, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&obj->fd, sizeof(SOCKET) );
             c = c==0 ? (int) obj->tmp : INVALID_SOCKET; obj->tmp = INVALID_SOCKET; 
             obj->state &=~ STATE::FS_STATE_WRITING; obj->feof=1; return c; 
         }
 
-        memset( &obj->ovw, 0, sizeof(WSAOVERLAPPED) ); obj->state|= STATE::FS_STATE_WRITING;
+        obj->state|= STATE::FS_STATE_WRITING; ov = {0};
+
         if( obj->tmp == INVALID_SOCKET )
           { obj->tmp = WSASocketW( AF, SOCK, IPPROTO, NULL, 0, WSA_FLAG_OVERLAPPED ); }
 
-        if( obj->lpfnAcceptEx( obj->fd, obj->tmp, obj->addr_buf, 0, sizeof(SOCKADDR_IN)+16, sizeof(SOCKADDR_IN)+16, &c, &obj->ovw ) ){
+        if( obj->lpfnAcceptEx( obj->fd, obj->tmp, obj->addr_buf, 0, sizeof(SOCKADDR_IN)+16, sizeof(SOCKADDR_IN)+16, &c, &ov ) ){
             int c=::setsockopt( obj->tmp, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&obj->fd, sizeof(SOCKET) );
             c = c==0 ? (int) obj->tmp : INVALID_SOCKET; obj->tmp = INVALID_SOCKET; 
             obj->state &=~ STATE::FS_STATE_WRITING; obj->feof=1; return c; 
@@ -648,7 +662,21 @@ public:
 
     /*─······································································─*/
 
+    string_t read( ulong size=NODEPP_CHUNK_SIZE ) const noexcept {
+        while( obj->_read( this, size ) == 1 )
+             { process::next(); }
+        return obj->_read.data;
+    }
+    
     char read_char() const noexcept { return read(1)[0]; }
+
+    ulong write( const string_t& msg ) const noexcept {
+        while( obj->_write( this, msg ) == 1 )
+             { process::next(); }
+        return obj->_write.data;
+    }
+
+    /*─······································································─*/
 
     string_t read_until( string_t ch ) const noexcept {
         while( obj->_until( this, ch ) == 1 )
@@ -670,20 +698,6 @@ public:
 
     /*─······································································─*/
 
-    string_t read( ulong size=NODEPP_CHUNK_SIZE ) const noexcept {
-        while( obj->_read( this, size ) == 1 )
-             { process::next(); }
-        return obj->_read.data;
-    }
-
-    ulong write( const string_t& msg ) const noexcept {
-        while( obj->_write( this, msg ) == 1 )
-             { process::next(); }
-        return obj->_write.data;
-    }
-
-    /*─······································································─*/
-
     virtual int _read ( char* bf, const ulong& sx ) const noexcept { return __read ( bf, sx ); }
     virtual int _write( char* bf, const ulong& sx ) const noexcept { return __write( bf, sx ); }
 
@@ -691,24 +705,28 @@ public:
 
     virtual int __read( char* bf, const ulong& sx ) const noexcept {
         if( process::millis() > get_recv_timeout() || is_closed() )
-          { return -1; } if ( sx==0 ) { return 0; } DWORD c=0, f=0; 
+          { return -1; } if ( sx==0 ) { return 0; }
+        
+        auto &c  = obj->ddl[0].result;
+        auto &ov = obj->ddl[0].ov    ;
+        auto &bu = obj->ddl[0].buf   ;
+        auto &f  = obj->ddl[0].flag  ;
 
         if( obj->state & STATE::FS_STATE_READING ){
 
-        if( is_blocked( obj->state, c ) ){ return -2; }
+        if( is_blocked( ov, c ) ){ return -2; }
             obj->state&=~STATE::FS_STATE_READING;
             obj->feof  = c==0 ? -1 : (int) c; 
         return obj->feof; }
 
         SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
 
-        memset( &obj->ovr, 0, sizeof(WSAOVERLAPPED) );
-        obj->state|= STATE::FS_STATE_READING;
-        WSABUF rbuf={ sx, bf }; 
+        obj->state|= STATE::FS_STATE_READING; 
+        ov = {0}; bu = { sx, bf }; f = 0;
 
         int res = SOCK != SOCK_DGRAM
-        ? WSARecv    ( obj->fd, &rbuf, 1, &c, &f, &obj->ovr , NULL )
-        : WSARecvFrom( obj->fd, &rbuf, 1, &c, &f, (SOCKADDR*) &addr, &len, &obj->ovr, NULL );
+        ? WSARecv    ( obj->fd, &bu, 1, &c, &f, /*--------------------*/ &ov, NULL )
+        : WSARecvFrom( obj->fd, &bu, 1, &c, &f, (SOCKADDR*) &addr, &len, &ov, NULL );
 
         if( res==0 ) {
             obj->state&=~ STATE::FS_STATE_READING;
@@ -719,23 +737,27 @@ public:
 
     virtual int __write( char* bf, const ulong& sx ) const noexcept {
         if( process::millis() > get_send_timeout() || is_closed() )
-          { return -1; } if ( sx==0 ) { return 0; } DWORD c=0, f=0; 
+          { return -1; } if ( sx==0 ) { return 0; }
+        
+        auto &c  = obj->ddl[1].result;
+        auto &ov = obj->ddl[1].ov    ;
+        auto &f  = obj->ddl[1].flag  ;
+        auto &bu = obj->ddl[1].buf   ;
 
         if( obj->state & STATE::FS_STATE_WRITING ){
-        if( is_blocked( obj->state, c ) ){ return -2; }
+        if( is_blocked( ov, c ) ){ return -2; }
             obj->state&=~STATE::FS_STATE_WRITING;
             obj->feof  = c==0 ? -1 : (int) c; 
         return obj->feof; }
 
         SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
 
-        memset( &obj->ovw, 0, sizeof(WSAOVERLAPPED) );
         obj->state |= STATE::FS_STATE_WRITING;
-        WSABUF wbuf ={ sx, bf };
+        ov = {0}; bu = { sx, bf }; f = 0;
 
         int res = SOCK != SOCK_DGRAM
-        ? WSASend  ( obj->fd, &wbuf, 1, &c, 0, &obj->ovw , NULL )
-        : WSASendTo( obj->fd, &wbuf, 1, &c, 0, (SOCKADDR*) &addr, len, &obj->ovw, NULL );
+        ? WSASend  ( obj->fd, &bu, 1, &c, f, /*-------------------*/ &ov, NULL )
+        : WSASendTo( obj->fd, &bu, 1, &c, f, (SOCKADDR*) &addr, len, &ov, NULL );
 
         if( res==0 ) {
             obj->state&=~ STATE::FS_STATE_WRITING;

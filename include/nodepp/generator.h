@@ -404,6 +404,208 @@ namespace nodepp { namespace generator { namespace zlib {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#if !defined(GENERATOR_HTTP) && defined(NODEPP_HTTP) && defined(NODEPP_GENERATOR)
+    #define  GENERATOR_HTTP
+
+namespace nodepp { namespace generator { namespace http {
+    
+    GENERATOR( read ){
+    private:
+
+        enum FLAG {
+            HTTP_FLAG_UNKNOWN = 0b00000000,
+            HTTP_FLAG_CHUNKED = 0b00000001,
+            HTTP_FLAG_STREAM  = 0b00000010,
+        };
+
+        string_t bff; ulong size;
+
+    public: 
+    
+        ulong data=0;
+
+    public: 
+
+        template< class T, class V >
+        int chunk_http_chunked( T* fd, char* bf, ulong sx, V& mode ){
+
+            if( mode.size==0 ){ 
+
+                int c = fd->__read( bf, sx );
+
+                if( c==-2 ){ data=0; return  1; }
+                if( c<= 0 ){ data=0; return -1; }
+
+                bff    = string_t( bf,c ); 
+                auto y = bff.find("\r\n");
+                if ( y.null() ){ bff.clear(); return -1; }
+
+                mode.size = encoder::hex::btoa<ulong>( bff.slice_view( 0, y[0] ) ) + 2;
+                fd->set_borrow( bff.slice( y[1], -2 ) ); bff.clear();
+
+            } else { if( mode.size > 0 && fd->get_borrow().empty() ){
+            
+                int c = fd->__read( bf, min( sx, mode.size ) );
+                if( c==-2 ){ data=0; return  1; }
+                if( c<= 0 ){ data=0; return -1; }
+
+            }
+
+                auto bff = fd->get_borrow().splice( 0, mode.size );
+                auto c   = bff.size(); 
+                
+                memcpy( bf, bff.get(), bff.size() );
+                mode.size -= min( mode.size, (ulong)c );
+
+                if( mode.size == 0 && c >= 2 ) {
+                if( memcmp( bf+c-2,"\r\n", 2 ) != 0 )
+                  { data = 0  ; return -1; }
+                    data = c-2; return -1; 
+                }
+                
+                data = c; return -1;
+            }   data = 0; return  1;
+
+        }
+
+        template< class T, class V >
+        int stream_http_stream( T* fd, char* bf, ulong sx, V& mode ){
+        coBegin
+            
+            if( mode.size > 0 ){
+
+                int c = fd->__read( bf, min( mode.size, sx ) );
+
+                if( c==-2 ){ data=0; return  1; }
+                if( c<= 0 ){ data=0; return -1; }
+
+                mode.size -= min( mode.size, (ulong)c );
+                data = c; return -1;
+            }   data = 0; return -1;
+
+        coFinish
+        }
+
+        template< class T, class V >
+        int default_http_stream( T* fd, char* bf, ulong sx, V& mode ){
+            
+            int c = fd->__read( bf, sx );
+
+            if( c==-2 ){ data=0; return  1; }
+            if( c<= 0 ){ data=0; return -1; }
+
+            data=c; return -1;
+
+        }
+
+        template< class T, class V >
+        coEmit( T* fd, char* bf, ulong sx, V& mode ){
+        switch( mode.state ){
+
+            case FLAG::HTTP_FLAG_STREAM: 
+            return stream_http_stream ( fd, bf, sx, mode ); break;
+
+            case FLAG::HTTP_FLAG_CHUNKED:
+            return chunk_http_chunked ( fd, bf, sx, mode ); break;
+
+            default: 
+            return default_http_stream( fd, bf, sx, mode ); break;
+
+        }}
+
+    };
+
+    GENERATOR( write ){
+    private:
+
+        enum FLAG {
+            HTTP_FLAG_UNKNOWN = 0b00000000,
+            HTTP_FLAG_CHUNKED = 0b00000001,
+            HTTP_FLAG_STREAM  = 0b00000010,
+        };
+
+        string_t bff; ulong size;
+
+    public: 
+    
+        ulong data=0;
+
+    public: 
+
+        template< class T, class V >
+        int chunk_http_chunked( T* fd, char* bf, ulong sx, V& mode ){
+
+            if( bff.empty() ){ 
+            
+                bff = encoder::hex::atob( sx ) + "\r\n" + string_t( bf, sx ) + "\r\n"; 
+                size= 0UL;
+            
+            } else {
+
+                int c = fd->_write_( bff.get(), bff.size(), &size );
+
+                if( c==-2 ){ data=0; return  1; }
+                if( c<= 0 ){ data=0; return -1; } 
+                
+                if( bff.size()==size ){ bff.clear(); size=0UL; }
+            
+                data = c; return -1;
+            }   data = 0; return  1;
+
+        }
+
+        template< class T, class V >
+        int stream_http_stream( T* fd, char* bf, ulong sx, V& mode ){
+            
+            if( mode.size > 0 ){
+
+                int c = fd->__write( bf, min( mode.size, sx ) );
+
+                if( c==-2 ){ data=0; return  1; }
+                if( c<= 0 ){ data=0; return -1; }
+
+                mode.size -= min( mode.size, (ulong)c );
+                data = c; return -1;
+            }   data = 0; return -1;
+
+        }
+
+        template< class T, class V >
+        int default_http_stream( T* fd, char* bf, ulong sx, V& mode ){
+
+            int c = fd->__write( bf, sx );
+
+            if( c==-2 ){ data=0; return  1; }
+            if( c<= 0 ){ data=0; return -1; }
+
+            data = c; return -1;
+
+        }
+
+        template< class T, class V >
+        coEmit( T* fd, char* bf, ulong sx, V& mode ){
+        switch( mode.state ){
+
+            case FLAG::HTTP_FLAG_STREAM: 
+            return stream_http_stream ( fd, bf, sx, mode ); break;
+
+            case FLAG::HTTP_FLAG_CHUNKED:
+            return chunk_http_chunked ( fd, bf, sx, mode ); break;
+
+            default: 
+            return default_http_stream( fd, bf, sx, mode ); break;
+
+        }}
+
+    };
+
+}}}
+
+#undef NODEPP_GENERATOR
+#endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #if !defined(GENERATOR_WS) && defined(NODEPP_GENERATOR) && ( defined(NODEPP_WS) || defined(NODEPP_WSS) )
 #define GENERATOR_WS
     #include "encoder.h"
@@ -437,8 +639,8 @@ namespace nodepp { namespace generator { namespace ws {
 
             cli.write_header( 101, header_t({
                 { "Sec-Websocket-Accept", enc },
-                { "Connection", "upgrade" },
-                { "Upgrade", "websocket" }
+                { "Connection", "upgrade"     },
+                { "Upgrade"   , "websocket"   }
             }) );
 
             cli.stop(); return true;
@@ -453,9 +655,9 @@ namespace nodepp { namespace generator { namespace ws {
         string_t key = string::format("%s==",hsh.data());
 
         header_t header ({
-            { "Upgrade", "websocket" },
-            { "Connection", "upgrade" },
-            { "Sec-Websocket-Key", key },
+            { "Upgrade"   , "websocket" },
+            { "Connection", "upgrade"   },
+            { "Sec-Websocket-Key", key  },
             { "Sec-Websocket-Version", "13" }
         });
 
@@ -642,27 +844,6 @@ namespace nodepp { namespace generator { namespace ws {
     };
 
 }}}
-#undef NODEPP_GENERATOR
-#endif
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-#if !defined(GENERATOR_HTTP) && defined(NODEPP_HTTP) && defined(NODEPP_GENERATOR)
-    #define  GENERATOR_HTTP
-
-namespace nodepp { namespace generator { namespace http {
-    
-    GENERATOR( read ){
-
-    };
-
-    GENERATOR( write ){
-
-    }
-
-
-}}}
-
 #undef NODEPP_GENERATOR
 #endif
 

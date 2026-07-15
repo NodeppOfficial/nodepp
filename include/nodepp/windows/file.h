@@ -48,16 +48,17 @@ protected:
 
 protected:
 
+    struct DONE { OVERLAPPED ov; DWORD result; };
     struct NODE {
 
-        OVERLAPPED  ovr, ovw ; 
-        uchar_64 tag = 0UL; 
-        uchar_64 pd  = 0UL;
+        HANDLE   fd       = INVALID_HANDLE_VALUE;
+        DWORD    offset   = 0; int feof = 1;
+        uchar_64 tag      = 0UL;
+        uchar_64 pd       = 0UL;
+        ulong    range[2] = { 0, 0 };
+        uchar    state    = STATE::FS_STATE_OPEN;
 
-        HANDLE fd       = INVALID_HANDLE_VALUE;
-        ulong  range[2] = { 0, 0 };
-        DWORD  offset   = 0; int feof = 1;
-        uchar  state    = STATE::FS_STATE_OPEN;
+        DONE ddl[2];
 
         ptr_t<char> buffer; string_t borrow;
         generator::file::until _until;
@@ -73,8 +74,8 @@ protected:
             fd == GetStdHandle( STD_ERROR_HANDLE ) 
         ) { break; } CloseHandle( fd ); } while(0);
 
-        CancelIoEx((HANDLE)fd, &ovr);
-        CancelIoEx((HANDLE)fd, &ovw); }
+        CancelIoEx((HANDLE)fd, &ddl[0].ov);
+        CancelIoEx((HANDLE)fd, &ddl[1].ov); }
         
     };  ptr_t<NODE> obj;
     
@@ -99,17 +100,18 @@ protected:
 
     bool is_blocked( DWORD /*unused*/ ) const noexcept {
         DWORD err = GetLastError();
-        return( err == ERROR_IO_INCOMPLETE || err == ERROR_IO_PENDING );
+        return( err == ERROR_IO_INCOMPLETE || 
+                err == ERROR_IO_PENDING    || 
+                err == WAIT_TIMEOUT 
+        );
     }
 
-    bool is_blocked( uchar mode, DWORD& c ) const noexcept {
-    auto ov = (mode & STATE::FS_STATE_READING)==0 ? &obj->ovw : &obj->ovr;
+    bool is_blocked( OVERLAPPED& ov, DWORD& c ) const noexcept {
     
-    //  if( is_blocked( c ) ) /*--------*/ { return 1; }
-        if( !HasOverlappedIoCompleted(ov) ){ return 1; }
+        if( !HasOverlappedIoCompleted(&ov) ){ return is_blocked( c ); }
 
-        if( mode & ( STATE::FS_STATE_READING | STATE::FS_STATE_WRITING ) ){
-        if( GetOverlappedResult((HANDLE)obj->fd, ov, &c, FALSE) )
+        if( obj->state & ( STATE::FS_STATE_READING | STATE::FS_STATE_WRITING ) ){
+        if( GetOverlappedResult((HANDLE)obj->fd, &ov, &c, FALSE) )
           { obj->offset += c; return 0; } else { return 1; } }
 
     return 0; }
@@ -275,39 +277,43 @@ public:
     /*─······································································─*/
 
     virtual int __read( char* bf, const ulong& sx ) const noexcept {
-        if( is_closed() ){ return -1; } if( sx==0 ){ return 0; } DWORD c=0;
+        if( is_closed() ){ return -1; } if( sx==0 ){ return 0; } 
+        
+        auto &c  = obj->ddl[0].result;
+        auto &ov = obj->ddl[0].ov    ;
 
         if( obj->state & STATE::FS_STATE_READING ){ 
-        if( is_blocked( obj->state, c ) ){ return -2; }
+        if( is_blocked( ov, c ) ){ return -2; }
             obj->state&=~STATE::FS_STATE_READING; 
             obj->feof = (int)c; return obj->feof; 
         }
 
-        memset( &obj->ovr, 0, sizeof(OVERLAPPED) );
         obj->state|= STATE::FS_STATE_READING;
-        obj->ovr.Offset = obj->offset;
+        ov = {0}; ov.Offset = obj->offset;
         
-        if( ReadFile( obj->fd, bf, sx, &c, &obj->ovr ) ){
-            obj->feof = c==0 ? -1 : (int) c; obj->offset+= c;
+        if( ReadFile( obj->fd, bf, sx, &c, &ov ) ){
+            obj->feof  =  c==0 ? -1 : (int) c; obj->offset+= c;
             obj->state&=~ STATE::FS_STATE_READING;
         } elif( is_blocked( c ) ) { obj->feof = -2; return -2; }
 
     return is_feof() ? -1 : obj->feof; }
 
     virtual int __write( char* bf, const ulong& sx ) const noexcept {
-        if( is_closed() ){ return -1; } if( sx==0 ){ return 0; } DWORD c=0;
+        if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
+        
+        auto &c  = obj->ddl[1].result;
+        auto &ov = obj->ddl[1].ov    ;
 
         if( obj->state & STATE::FS_STATE_WRITING ){
-        if( is_blocked( obj->state, c ) ){ return -2; }
+        if( is_blocked( ov, c ) ){ return -2; }
             obj->state&=~STATE::FS_STATE_WRITING; 
             obj->feof = (int)c; return obj->feof;  
         }
 
-        memset( &obj->ovw, 0, sizeof(OVERLAPPED) );
         obj->state|= STATE::FS_STATE_WRITING;
-        obj->ovw.Offset = obj->offset;
+        ov = {0}; ov.Offset = obj->offset;
         
-        if( WriteFile( obj->fd, bf, sx, &c, &obj->ovw ) ){
+        if( WriteFile( obj->fd, bf, sx, &c, &ov ) ){
             obj->feof = c==0 ? -1 : (int) c; obj->offset+= c;
             obj->state&=~ STATE::FS_STATE_WRITING;
         } elif( is_blocked( c ) ) { obj->feof = -2; return -2; }
