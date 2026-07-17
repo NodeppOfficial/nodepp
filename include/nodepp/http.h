@@ -122,7 +122,7 @@ namespace nodepp { struct fetch_t {
 namespace nodepp { class http_t : public socket_t, public generator_t {
 protected:
 
-    struct DONE { ulong size; int state; };
+    struct DONE { len_t size; int state; };
     struct NODE {
         generator::file::line  line ; DONE mode[2];
         generator::http::read  read ;
@@ -146,13 +146,18 @@ protected:
             } else { mode.state |= FLAG::HTTP_FLAG_CHUNKED; }
 
         }} else { 
-            mode.size  = string::to_ulong( header["Content-Length"] );
+            mode.size  = string::to_u64( header["Content-Length"] );
             mode.state|= FLAG::HTTP_FLAG_STREAM;
         }
     }
 
-    void set_recv_mode( header_t header ) const noexcept { set_http_mode( http->mode[0], header ); }
-    void set_send_mode( header_t header ) const noexcept { set_http_mode( http->mode[1], header ); }
+    void set_recv_mode( header_t header ) const noexcept { 
+         set_http_mode( http->mode[0], header ); 
+    }
+
+    void set_send_mode( header_t header ) const noexcept { 
+         set_http_mode( http->mode[1], header ); 
+    }
 
 public:
 
@@ -204,20 +209,23 @@ public:
         if( y.null() ){ b=0; break; }
             headers[ x.slice( 0, y[0] ).to_capital_case() ] = x.slice_view( y[1], -2 );
         } while(0); } while(b);
-        
-        set_recv_mode( headers ); coStay(0);
+
+        http->read.borrow = type::move( get_borrow( ) ); 
+        set_recv_mode( headers ); /*-----*/ coStay(0);
 
     coFinish }
     
     /*─······································································─*/
 
-    promise_t<http_t,except_t> read_body() const noexcept {
+    promise_t<http_t,except_t> read_body( ulong timeout=60000UL ) const noexcept {
 
-        auto self = type::bind( this );
+        auto self = type::bind( this ); set_recv_timeout( timeout );
 
     return promise_t<http_t,except_t> ([=](
         res_t<http_t> res, rej_t<except_t> rej
     ){
+
+        auto task = self->onDrain.once([&self,res](){ res( *self ); });
 
         process::poll( *self, POLL_STATE::READ | POLL_STATE::EDGE, coroutine::add( COROUTINE(){
         coBegin
@@ -242,7 +250,9 @@ public:
                     self->body += string_t( self->get_buffer().data(), self->http->read.data );
                 }
 
-            }   res( *self ); 
+            }
+            
+            self->onDrain.off(task); res( *self ); 
 
         coFinish
         }), 0UL );

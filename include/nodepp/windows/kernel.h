@@ -109,8 +109,8 @@ protected:
 
         if( x == nullptr ) /*----*/ { /*------*/ return; }
         if( x->data.event.empty()  ){ remove(x); return; }
-        if( x->data.callback()==-1 ){ remove(x); return; }
         if( x->data.flag & FLAG::KV_STATE_USED ){ break; }
+        if( x->data.callback()==-1 ){ remove(x); return; }
             
             x->data.flag|= FLAG::KV_STATE_USED;
             x->data.event.emit(); 

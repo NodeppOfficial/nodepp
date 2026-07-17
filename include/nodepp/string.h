@@ -708,6 +708,13 @@ namespace string {
 
     /*─······································································─*/
 
+    inline uchar_64 to_i64( const string_t& buffer ) { return type::cast<char_64>( to_llong(buffer) ); }
+    inline uchar_32 to_i32( const string_t& buffer ) { return type::cast<char_32>( to_long (buffer) ); }
+    inline uchar_16 to_i16( const string_t& buffer ) { return type::cast<char_16>( to_long (buffer) ); }
+    inline uchar_8  to_i8 ( const string_t& buffer ) { return type::cast<char_8> ( to_char (buffer) ); }
+
+    /*─······································································─*/
+
     inline uchar_64 to_u64( const string_t& buffer ) { return type::cast<uchar_64>( to_ullong(buffer) ); }
     inline uchar_32 to_u32( const string_t& buffer ) { return type::cast<uchar_32>( to_ulong (buffer) ); }
     inline uchar_16 to_u16( const string_t& buffer ) { return type::cast<uchar_16>( to_ulong (buffer) ); }

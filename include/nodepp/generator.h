@@ -420,45 +420,41 @@ namespace nodepp { namespace generator { namespace http {
 
     public: 
     
-        ulong data=0;
+        string_t borrow; ulong data=0;
 
     public: 
 
         template< class T, class V >
         int chunk_http_chunked( T* fd, char* bf, ulong sx, V& mode ){
-            
-            string_t &bff = fd->get_borrow();
 
-            do { if( mode.size==0 ){ 
+            auto &bff = borrow; do { if( mode.size==0 ){ 
 
-                if( bff.starts_with("\r\n") ){ fd->get_borrow().splice( 0, 2 ); }
+                if( bff.starts_with("\r\n") ){ bff.splice( 0, 2 ); }
 
                 auto x = bff.find("\r\n"); if( x.null() ){ break; }
                 auto y = bff.slice_view( 0, x[0] ).find(";");
 
                 if( y.null() ){
-                    mode.size = encoder::hex::btoa<ulong>( bff.slice_view( 0, x[0] ) );
+                    mode.size = encoder::hex::btoa<len_t>( bff.slice_view( 0, x[0] ) );
                 } else {
-                    mode.size = encoder::hex::btoa<ulong>( bff.slice_view( 0, y[0] ) );
+                    mode.size = encoder::hex::btoa<len_t>( bff.slice_view( 0, y[0] ) );
                 }
                 
-                if( mode.size==0 ){ data=0; return -1; } 
-                fd->get_borrow().splice( 0, x[1] );
+                if( mode.size==0 ){ data=0; return -1; } bff.splice( 0, x[1] );
 
-            } else { if( bff.empty() ){ break; }
+            } if( bff.empty() ) { break; }
 
-                auto sy  = min( mode.size, sx );
+                auto sy  = min( mode.size, (len_t)sx );
                 auto tmp = bff.slice_view( 0, sy );
                 auto c   = tmp.size();
 
+                mode.size -= min( (len_t)c, mode.size );
                 memcpy( bf, tmp.get(), c ); 
 
-                fd->get_borrow().splice( 0, c );
-                mode.size -= min( c,mode.size );
-                
+                bff.splice ( 0, c );
                 data = c; return -1;
 
-            }} while( 0 );
+            } while( 0 );
             
             int /*----*/ c = fd->__read ( bf, sx );
 
@@ -475,23 +471,23 @@ namespace nodepp { namespace generator { namespace http {
             
             if( mode.size == 0 ){ data=0; return -1; }
 
-            if( fd->get_borrow().empty() ){
+            if( borrow.empty() ){
 
-                int c = fd->__read( bf, min( mode.size, sx ) );
+                int c = fd->__read( bf, min( mode.size, (len_t)sx ) );
 
                 if( c==-2 ){ data=0; return  1; }
                 if( c<= 0 ){ data=0; return -1; }
 
-                mode.size -= min( mode.size, (ulong)c );
+                mode.size -= min( mode.size, (len_t)c );
                 data = c; return -1;
             
             } else {
 
-                string_t tmp = fd->get_borrow().splice( 0, mode.size ); 
+                string_t tmp = borrow.splice( 0, mode.size ); 
                 auto c = tmp.size();
 
                 memcpy( bf, tmp.get(), tmp.size() );
-                mode.size -= min( mode.size, c );
+                mode.size -= min( mode.size, (len_t)c );
 
                 data = c; return -1;
             }
@@ -501,7 +497,7 @@ namespace nodepp { namespace generator { namespace http {
         template< class T, class V >
         int default_http_stream( T* fd, char* bf, ulong sx, V& mode ){
             
-            if( fd->get_borrow().empty() ){
+            if( borrow.empty() ){
 
                 int c = fd->__read( bf, sx );
 
@@ -512,7 +508,7 @@ namespace nodepp { namespace generator { namespace http {
 
             } else {
 
-                string_t tmp = fd->get_borrow().splice( 0, sx );
+                string_t tmp = borrow.splice( 0, sx );
                 memcpy( bf, tmp.get(), tmp.size() );
                 data = tmp.size(); /*--*/ return -1;
 
@@ -581,12 +577,12 @@ namespace nodepp { namespace generator { namespace http {
             
             if( mode.size > 0 ){
 
-                int c = fd->__write( bf, min( mode.size, sx ) );
+                int c = fd->__write( bf, min( mode.size, (len_t)sx ) );
 
                 if( c==-2 ){ data=0; return  1; }
                 if( c<= 0 ){ data=0; return -1; }
 
-                mode.size -= min( mode.size, (ulong)c );
+                mode.size -= min( mode.size, (len_t)c );
                 data = c; return -1;
             }   data = 0; return -1;
 

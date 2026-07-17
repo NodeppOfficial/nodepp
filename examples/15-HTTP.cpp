@@ -41,7 +41,6 @@ void client() {
     http::fetch( args )
 
     .then([]( http_t cli ){
-        console::log( cli.headers["Host"] );
         cli.onClose([](){ console::log("closed"); });
         cli.onData ([]( string_t chunk ){
             console::log( chunk );

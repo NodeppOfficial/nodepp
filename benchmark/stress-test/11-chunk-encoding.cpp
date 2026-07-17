@@ -9,8 +9,10 @@ void server() {
     auto server = http::server([=]( socket_t cli ){ 
 
         cli.write( "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n9\r\nwikipedia\r\n9\r\nwikipedia\r\n9\r\nwikipedia\r\n9\r\nwikipedia\r\n9\r\nwikipedia\r\n" );
-        cli.write( "9\r\nwikipedia\r\n9"); cli.write( "\r\nwikipedia\r\n9\r\nwikip");
-        cli.write( "edia\r\n9\r\nwikipedia\r\n9\r\nwikipedia\r" ); cli.write( "\n" );
+        cli.write( "9\r\nwikipedia\r\n9"); 
+        cli.write( "\r\nwikipedia\r\n9\r\nwikip");
+        cli.write( "edia\r\n9\r\nwikipedia\r\n9\r\nwikipedia\r");
+        cli.write( "\n" );
 
         file_t file ( "LICENSE", "r" );
         stream::pipe( file );
