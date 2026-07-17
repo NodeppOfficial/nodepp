@@ -65,7 +65,7 @@ public:
 
     template< class... V >
     date_t( const V&... args ) noexcept : obj( 0UL, NODE() ) { set_date( args... ); }
-    
+
     date_t() noexcept : obj( 0UL, NODE() ) { set_date( false ); }
 
     /*─······································································─*/
@@ -144,7 +144,7 @@ public:
 
     string_t get_fulltime() const noexcept { time_t time = get_time();
         !obj->utc ? localtime( &time ) : gmtime( &time );
-        return (string_t)ctime( &time );
+        return string_t( ctime( &time ) );
     }
 
     uint get_year() const noexcept { time_t time = get_time();
@@ -177,7 +177,7 @@ public:
         return info->tm_sec;
     }
 
-    uint get_stamp() const noexcept { return get_time(); }
+    uchar_64 get_stamp() const noexcept { return get_time(); }
 
 };}
 
@@ -211,7 +211,7 @@ namespace nodepp {
 
 namespace nodepp { namespace date {
 
-    inline uint now(){ return date_t().get_stamp(); }
+    inline uchar_64 now(){ return date_t().get_stamp(); }
 
     inline string_t fulltime(){ return date_t().get_fulltime(); }
 
@@ -232,3 +232,5 @@ namespace nodepp { namespace date {
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

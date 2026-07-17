@@ -1,3 +1,5 @@
+#define NODEPP_REGEX_ENGINE NODEPP_REGEX_LITE
+
 #include <nodepp/nodepp.h>
 #include <nodepp/test.h>
 
@@ -12,22 +14,21 @@ using namespace nodepp;
 #include "task.cpp"
 #include "path.cpp"
 #include "loop.cpp"
-#include "wait.cpp"
 #include "file.cpp"
 #include "http.cpp"
 #include "tuple.cpp"
-#include "worker.cpp"
-#include "cookie.cpp"
 #include "event.cpp"
 #include "query.cpp"
 #include "array.cpp"
 #include "queue.cpp"
 #include "regex.cpp"
+#include "worker.cpp"
+#include "cookie.cpp"
 #include "atomic.cpp"
 #include "string.cpp"
 #include "promise.cpp"
+#include "listener.cpp"
 #include "function.cpp"
-#include "observer.cpp"
 #include "optional.cpp"
 #include "expected.cpp"
 
@@ -41,7 +42,7 @@ void onMain(){
     TEST::TASK    ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::PATH    ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::LOOP    ::TEST_RUNNER(); conio::log("\n---\n");
-    TEST::WAIT    ::TEST_RUNNER(); conio::log("\n---\n");
+    TEST::LISTENER::TEST_RUNNER(); conio::log("\n---\n");
     TEST::FILE    ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::HTTP    ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::TUPLE   ::TEST_RUNNER(); conio::log("\n---\n");
@@ -57,7 +58,6 @@ void onMain(){
     TEST::ATOMIC  ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::PROMISE ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::FUNCTION::TEST_RUNNER(); conio::log("\n---\n");
-    TEST::OBSERVER::TEST_RUNNER(); conio::log("\n---\n");
     TEST::EXPECTED::TEST_RUNNER(); conio::log("\n---\n");
     TEST::OPTION  ::TEST_RUNNER(); conio::log("\n---\n");
 

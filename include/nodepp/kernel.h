@@ -15,8 +15,10 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
+    #include "invoker.h"
     #include "windows/kernel.h"
 #elif _KERNEL_ == NODEPP_KERNEL_POSIX
+    #include "invoker.h"
     #include "posix/kernel.h"
 #else
     #error "This OS Does not support kernel.h"

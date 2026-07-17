@@ -14,220 +14,115 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#ifndef NODEPP_POLL_NPOLL
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
 namespace nodepp { class worker_t { 
 private:
+
+    mutex_t    & get_mutex  () const noexcept { static mutex_t     out; return out; }
+    invoker_t<>& get_invoker() const noexcept { static invoker_t<> out; return out; }
 
     enum STATE {
          WK_STATE_UNKNOWN = 0b00000000,
          WK_STATE_OPEN    = 0b00000001,
          WK_STATE_CLOSE   = 0b00000010,
-         WK_STATE_AWAIT   = 0b00000111,
+         WK_STATE_KILL    = 0b10000000
     };
 
 protected:
 
     struct NODE {
-        DWORD id; 
-        atomic_t<char> state;
-        ptr_t<kernel_t>  krn;
-        function_t<int>   cb;
-    };  ptr_t<NODE> obj;
+        int state; DWORD id; function_t<int> cb;
+        uchar_64 addr; void* krn= nullptr;
+        HANDLE fd;
+    };  atomic_ptr_t<NODE> obj;
 
     static DWORD WINAPI callback( LPVOID arg ){
         auto self = type::cast<worker_t>(arg);
-        self->obj->state=STATE::WK_STATE_OPEN;
+        self->obj->krn = &process::kernel();
 
-        while( !self->is_closed() && self->obj->cb()>=0 ){
-        auto info = coroutine::getno();
+        while( !self->is_closed( ) ){
+        if   ( self->obj->cb()==-1 ){ break; }
+            auto info = coroutine::getno();
+            auto time = info.delay;
+        process::delay( time==0 ? 1 :time ); }
+
+    self->free(); return 0; }
+
+    int emit() const noexcept { return get_mutex().emit([&](){
         
-        if( info.delay>0 ){ 
-            worker::delay( info.delay ); 
-        } else { 
-            worker::yield();
-        }}
+        auto krn = type::bind( process::NODEPP_EVLOOP() );
+        auto self= type::bind( this );
+    
+        obj->state=STATE::WK_STATE_OPEN;
+        obj->addr = get_invoker().add([=](){
+            self->obj->state = STATE::WK_STATE_CLOSE | STATE::WK_STATE_KILL;
+            self->obj->krn   = nullptr; CloseHandle( self->obj->fd );
+        krn->wake(); return -1; });
+    
+        obj->fd= CreateThread( NULL,0, &callback, (void*) &self, 0, &obj->id );
+        if ( obj->fd == NULL ){ return -1; } 
+        
+        WaitForSingleObject( obj->fd, 0 );
 
-    self->obj->state = STATE::WK_STATE_CLOSE; 
-    self->obj->krn->emit(); /**/ delete self; 
-    worker::exit(); return 0; }
+    return 1; }); }
 
 public:
 
     template< class T, class... V >
     worker_t( T cb, const V&... arg ) noexcept : obj( new NODE() ){
-        auto clb = type::bind(cb);
-        obj->cb  = function_t<int>([=](){ return (*clb)(arg...); });
-    }
+        auto clb = function_t<int,V...>(cb);
+        obj->cb  = function_t<int>([=](){ return clb(arg...); });
+    if( emit()==-1 ){ free(); }; }
     
     /*─······································································─*/
+
+   ~worker_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     worker_t() noexcept : obj( new NODE ) {}
 
-   ~worker_t() noexcept { if( obj.count()>1 ){ return; } free(); }
+    void free() const noexcept {
+        if( obj->state == 0x00 ) /*---------*/ { return; }
+        if( obj->state & STATE::WK_STATE_KILL ){ return; }
+    get_mutex().lock([&](){ get_invoker().emit (obj->addr); }); }
     
     /*─······································································─*/
 
-    void   free() const noexcept { obj->state = STATE::WK_STATE_AWAIT; }
-    void    off() const noexcept { obj->state = STATE::WK_STATE_AWAIT; }
-    void  close() const noexcept { obj->state = STATE::WK_STATE_AWAIT; }
-    
-    /*─······································································─*/
+    expected_t<kernel_t,except_t> kernel() const noexcept {
+        if( obj->krn==nullptr ){ return except_t( "kernel not found" ); }
+        return * ( type::cast<kernel_t>( obj->krn ) );
+    }
 
-    bool is_closed() const noexcept { 
-    char x = obj->state.get();
-        return ( x & STATE::WK_STATE_CLOSE ) || x==0x00 ;
+    bool is_sleeping() const noexcept {
+        if( obj->krn==nullptr ){ return false; }
+        return type::cast<kernel_t>( obj->krn )->is_sleeping();
+    }
+
+    void wake() const noexcept { 
+        if( obj->krn==nullptr ){ return; }
+        type::cast<kernel_t>( obj->krn )->wake();
     }
     
     /*─······································································─*/
 
-    int emit() const noexcept {
-        if( obj->state != 0x00 ){ return 0; }
-        
-        obj->krn = type::bind( process::NODEPP_EV_LOOP() );
-
-        HANDLE pid =  CreateThread( NULL,0, &callback, (void*) new worker_t(*this), 0, &obj->id );
-        if ( pid == NULL ){ return -1; } WaitForSingleObject( pid, 0 );  
-
-        while( obj->state == 0x00 ) { /*unused*/ }
-        
-    return 1; }
-
+    void   off() const noexcept { NODEPP_LOCAL_SHTDWN() = true; }
+    void close() const noexcept { NODEPP_LOCAL_SHTDWN() = true; }
+    
     /*─······································································─*/
 
-    int add() const noexcept { return emit(); }
-
+    HANDLE get_fd() const noexcept { return obj->fd; }
+    
     /*─······································································─*/
 
-    int await() const noexcept { if( obj->state != 0x00 ){ return 0; }
-        
-        obj->krn = type::bind( process::NODEPP_EV_LOOP() );
-
-        HANDLE pid =  CreateThread( NULL,0, &callback, (void*) new worker_t(*this), 0, &obj->id );
-        if( pid == NULL ){ return -1; } WaitForSingleObject( pid, 0 );  
-
-        while( obj->state.get() ==0x00 ) /*----------*/ { /*-- unused --*/ }
-        while( obj->state.get() & STATE::WK_STATE_OPEN ){ process::next(); }
-        
-    return 1; }
-
+    bool is_closed() const noexcept { auto &x = obj->state;
+        return ( x & STATE::WK_STATE_KILL  ) ||
+               ( x & STATE::WK_STATE_CLOSE ) ||
+                 x== STATE::WK_STATE_UNKNOWN ||
+        NODEPP_LOCAL_SHTDWN();
+    }
+    
 };}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#else 
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-namespace nodepp { class worker_t { 
-private:
-
-    enum STATE {
-         WK_STATE_UNKNOWN = 0b00000000,
-         WK_STATE_OPEN    = 0b00000001,
-         WK_STATE_CLOSE   = 0b00000010,
-         WK_STATE_AWAIT   = 0b00000111,
-    };
-
-protected:
-
-    struct NODE {
-        DWORD id; 
-        atomic_t<char> state;
-        ptr_t<kernel_t>  krn;
-        function_t<int>   cb;
-    };  ptr_t<NODE> obj;
-
-    static DWORD WINAPI callback( LPVOID arg ){
-        auto self = type::cast<worker_t>(arg);
-        self->obj->state=STATE::WK_STATE_OPEN;
-
-        while( !self->is_closed() && self->obj->cb()>=0 ){
-        auto info = coroutine::getno();
-        
-        if( info.delay>0 ){ 
-            worker::delay( info.delay ); 
-        } else { 
-            worker::yield();
-        }}
-
-    self->obj->state = STATE::WK_STATE_CLOSE;
-    worker::exit(); return 0; }
-
-public:
-
-    template< class T, class... V >
-    worker_t( T cb, const V&... arg ) noexcept : obj( new NODE() ){
-        auto clb = type::bind(cb);
-        obj->cb  = function_t<int>([=](){ return (*clb)(arg...); });
-    }
-    
-    /*─······································································─*/
-
-    worker_t() noexcept : obj( new NODE ) {}
-
-   ~worker_t() noexcept { if( obj.count()>1 ){ return; } free(); }
-    
-    /*─······································································─*/
-
-    void   free() const noexcept { obj->state = STATE::WK_STATE_AWAIT; }
-    void    off() const noexcept { obj->state = STATE::WK_STATE_AWAIT; }
-    void  close() const noexcept { obj->state = STATE::WK_STATE_AWAIT; }
-    
-    /*─······································································─*/
-
-    bool is_closed() const noexcept { 
-    char x = obj->state.get();
-        return ( x & STATE::WK_STATE_CLOSE ) || x==0x00 ;
-    }
-    
-    /*─······································································─*/
-
-    int emit() const noexcept { 
-        
-        if( obj->state != 0x00 ) { return 0; } auto self = type::bind( this );
-        HANDLE pid =  CreateThread( NULL,0, &callback, (void*) &self, 0, &obj->id );
-        if( pid == NULL ){ return -1; } WaitForSingleObject( pid ,0 );
-        
-        process::add( coroutine::add( COROUTINE(){
-        coBegin
-            while( self->obj->state.get() ==0x00 )/*-*/{ coNext; }
-            while( self->obj->state.get() & STATE::WK_STATE_OPEN )
-                 { coDelay( 1000 ); }
-        coFinish
-        })); 
-        
-    return 1; }
-
-    /*─······································································─*/
-
-    int add() const noexcept { return emit(); }
-
-    /*─······································································─*/
-
-    int await() const noexcept {
-
-        if( obj->state != 0x00 ) { return 0; } auto self = type::bind( this );
-        HANDLE pid =  CreateThread( NULL,0, &callback, (void*) &self, 0, &obj->id );
-        if( pid == NULL ){ return -1; } WaitForSingleObject( pid ,0 );
-        
-        process::await( coroutine::add( COROUTINE(){
-        coBegin
-            while( self->obj->state.get() ==0x00 )/*-*/{ coNext; }
-            while( self->obj->state.get() & STATE::WK_STATE_OPEN )
-                 { coDelay( 1000 ); }
-        coFinish
-        })); 
-        
-    return 1; }
-
-};}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-#endif
 #endif
 
 /*────────────────────────────────────────────────────────────────────────────*/

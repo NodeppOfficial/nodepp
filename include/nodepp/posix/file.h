@@ -24,8 +24,8 @@ namespace nodepp { class file_t {
 protected:
 
     void kill() const noexcept {
-        obj->state |= STATE::FS_STATE_KILL;
-    if( !is_std() ){ ::close( obj->fd ); }}
+        obj->state |= STATE::FS_STATE_KILL; 
+    }
 
     bool is_state( uchar value ) const noexcept {
         if( obj->state & value ){ return true; }
@@ -39,11 +39,12 @@ protected:
     enum STATE {
          FS_STATE_UNKNOWN = 0b00000000,
          FS_STATE_OPEN    = 0b00000001,
+         FS_STATE_REUSE   = 0b01000000,
          FS_STATE_CLOSE   = 0b00000010,
          FS_STATE_READING = 0b00010000,
          FS_STATE_WRITING = 0b00100000,
          FS_STATE_KILL    = 0b00000100,
-         FS_STATE_REUSE   = 0b00001000,
+         FS_STATE_STOP    = 0b00001000,
          FS_STATE_DISABLE = 0b00001110
     };
 
@@ -51,24 +52,39 @@ protected:
 
     struct NODE {
 
-        ulong range[2] = { 0, 0 };
-        int fd=-1, feof=1;
-        uchar state = STATE::FS_STATE_OPEN;
+        uchar  state   = STATE::FS_STATE_OPEN;
+        len_t range[2] = { 0, 0 };
+
+        int   fd=-1, feof=1; 
+        uchar_64 tag= 0UL; 
+        uchar_64 pd = 0UL;
 
         ptr_t<char> buffer; string_t borrow;
         generator::file::until _until;
         generator::file::line  _line ;
         generator::file::read  _read ;
         generator::file::write _write;
+
+    #if NODEPP_EVENT_SCHEDULER == NODEPP_SCHEDULER_IOURING 
+        
+       ~NODE(){ do {
+        if( fd == STDOUT_FILENO ||
+            fd == STDIN_FILENO  ||
+            fd == STDERR_FILENO 
+        ) { break; } ::close(fd); } while(0);
+        NODEPP_URING().free (pd); }
+
+    #else
+
+       ~NODE(){ 
+        if( fd == STDOUT_FILENO ||
+            fd == STDIN_FILENO  ||
+            fd == STDERR_FILENO 
+        ) { return; } ::close( fd ); }
+
+    #endif
+
     };  ptr_t<NODE> obj;
-
-    /*─······································································─*/
-
-    bool is_std() const noexcept { 
-        return obj->fd == STDOUT_FILENO ||
-               obj->fd == STDIN_FILENO  ||
-               obj->fd == STDERR_FILENO ;
-    }
 
     /*─······································································─*/
 
@@ -88,15 +104,14 @@ protected:
     /*─······································································─*/
 
     uint get_fd_flag( const string_t& flag ){ uint _flag = O_NONBLOCK;
-        if  ( flag == "r"  ){ _flag |= O_RDONLY ;                     }
+        if  ( flag == "r"  ){ _flag |= O_RDONLY ; /*---------------*/ }
         elif( flag == "w"  ){ _flag |= O_WRONLY | O_CREAT  | O_TRUNC; }
         elif( flag == "a"  ){ _flag |= O_WRONLY | O_APPEND | O_CREAT; }
         elif( flag == "r+" ){ _flag |= O_RDWR   | O_APPEND ;          }
         elif( flag == "w+" ){ _flag |= O_RDWR   | O_APPEND | O_CREAT; }
         elif( flag == "a+" ){ _flag |= O_RDWR   | O_APPEND ;          }
-        else                { _flag |= O_RDWR   ;                     }
-        return  _flag;
-    }
+        else /*----------*/ { _flag |= O_RDWR   ; /*---------------*/ }
+    return _flag; }
 
 public:
 
@@ -111,14 +126,14 @@ public:
 
     /*─······································································─*/
 
-    file_t( const string_t& path, const string_t& mode, const ulong& _size=CHUNK_SIZE ) : obj( new NODE() ) {
-            obj->fd = open( path.data(), get_fd_flag( mode ), 0644 ); /*-----------*/
-        if( obj->fd < 0 ){ throw except_t("such file or directory does not exist"); }
+    file_t( const string_t& path, const string_t& mode, const ulong& _size=NODEPP_CHUNK_SIZE ) : obj( new NODE() ) {
+            obj->fd = ::open( path.data(), get_fd_flag( mode ), 0644 ); /*-----------*/
+        if( obj->fd < 0 ){ NODEPP_THROW_ERROR("such file or directory does not exist"); }
         set_nonbloking_mode(); set_buffer_size( _size );
     }
 
-    file_t( const int& fd, const ulong& _size=CHUNK_SIZE ) : obj( new NODE() ) {
-        if( fd<0 ){ throw except_t("such file or directory does not exist"); }
+    file_t( const int& fd, const ulong& _size=NODEPP_CHUNK_SIZE ) : obj( new NODE() ) {
+        if( fd<0 ){ NODEPP_THROW_ERROR("such file or directory does not exist"); }
         obj->fd = fd; set_nonbloking_mode(); set_buffer_size( _size );
     }
 
@@ -128,30 +143,45 @@ public:
 
     /*─······································································─*/
 
-    void  resume() const noexcept { if(is_state(STATE::FS_STATE_OPEN )){ return; } set_state(STATE::FS_STATE_OPEN ); onResume.emit(); }
-    void    stop() const noexcept { if(is_state(STATE::FS_STATE_REUSE)){ return; } set_state(STATE::FS_STATE_REUSE); onDrain .emit(); }
-    void   reset() const noexcept { if(is_state(STATE::FS_STATE_KILL )){ return; } resume(); pos(0); }
+    void  resume() const noexcept { if(!is_state(STATE::FS_STATE_STOP )){ return; } onResume .emit(); obj->state &=~ STATE::FS_STATE_STOP; }
+    void    stop() const noexcept { if( is_state(STATE::FS_STATE_STOP )){ return; } onDrain  .emit(); obj->state |=  STATE::FS_STATE_STOP; }
+    void   reset() const noexcept { if( is_state(STATE::FS_STATE_KILL )){ return; } resume(); pos(0); }
     void   flush() const noexcept { obj->buffer.fill(0); }
 
     /*─······································································─*/
 
-    bool     is_closed() const noexcept { return is_state(STATE::FS_STATE_DISABLE) || is_feof() || obj->fd==-1; }
-    bool       is_feof() const noexcept { return obj->feof <= 0 && obj->feof != -2; }
-    bool    is_waiting() const noexcept { return obj->feof == -2; }
-    bool  is_available() const noexcept { return !is_closed(); }
+    bool    is_closed() const noexcept { return is_state(STATE::FS_STATE_DISABLE) || is_feof() || obj->fd==-1; }
+    bool  is_reusable() const noexcept { return is_state(STATE::FS_STATE_REUSE  ); }
+    bool      is_feof() const noexcept { return obj->feof <= 0 && obj->feof != -2; }
+    bool   is_waiting() const noexcept { return obj->feof == -2; }
+    bool is_available() const noexcept { return !is_closed(); }
 
     /*─······································································─*/
 
     void close() const noexcept {
-        if( is_state ( STATE::FS_STATE_DISABLE ) ){ return; }
+        if( is_state ( STATE::FS_STATE_DISABLE )){ return; } onDrain.emit(); 
+        if( is_state ( STATE::FS_STATE_REUSE   )){ return; }
             set_state( STATE::FS_STATE_CLOSE   );
-    onDrain.emit(); free(); }
+    free(); }
 
     /*─······································································─*/
 
-    void   set_range( ulong x, ulong y ) const noexcept { obj->range[0] = x; obj->range[1] = y; }
-    ulong* get_range() const noexcept { return obj == nullptr ? nullptr : obj->range; }
-    int       get_fd() const noexcept { return obj == nullptr ?      -1 : obj->fd; }
+    void    set_range( len_t x, len_t y ) const noexcept { obj->range[0] = x; obj->range[1] = y; }
+    len_t* get_range() /*--------------*/ const noexcept { return obj->range; }
+
+    /*─······································································─*/
+
+    void set_reusable( bool mode ) const noexcept { 
+    switch( (int) mode ){
+        case 1 : obj->state |=  STATE::FS_STATE_REUSE; break;
+        default: obj->state &=~ STATE::FS_STATE_REUSE; break;
+    }}
+
+    /*─······································································─*/
+
+    int       get_fd() const noexcept { return obj->fd ; }
+    uchar_64& get_pd() const noexcept { return obj->pd ; }
+    uchar_64&    tag() const noexcept { return obj->tag; }
 
     /*─······································································─*/
 
@@ -169,18 +199,17 @@ public:
 
     /*─······································································─*/
 
-    ulong pos( ulong _pos ) const noexcept {
+    len_t pos( len_t _pos ) const noexcept {
         auto   _npos = lseek( obj->fd, _pos, SEEK_SET );
         return _npos < 0 ? 0 : _npos;
     }
 
-    ulong size() const noexcept { auto curr = pos();
-        if( lseek( obj->fd, 0 , SEEK_END )<0 ){ return 0; }
-        ulong size = lseek( obj->fd, 0, SEEK_END );
-        pos( curr ); return size;
+    len_t size() const noexcept { 
+        auto x = pos(); auto y = lseek( obj->fd, 0 , SEEK_END );
+        if( y<0 ){ return 0; } pos( x ); return y;
     }
 
-    ulong pos() const noexcept {
+    len_t pos() const noexcept {
         auto   _npos = lseek( obj->fd, 0, SEEK_CUR );
         return _npos < 0 ? 0 : _npos;
     }
@@ -195,14 +224,16 @@ public:
 
     void free() const noexcept {
 
-        if( is_state( STATE::FS_STATE_REUSE ) && !is_feof() && obj.count()>1 ){ return; }
-        if( is_state( STATE::FS_STATE_KILL  ) ) /*-------*/ { return; } 
-        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) )
-          { kill(); onDrain.emit(); } else { kill(); }
-       
+        if( is_state( STATE::FS_STATE_STOP  ) && !is_feof() && obj.count() >1 ){ return; }
+        if( is_state( STATE::FS_STATE_KILL  ) ){ return; } /*-----------------*/ kill();
+        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_STOP ) ) { onDrain.emit(); }
+        
+        onClose.emit();
+
         onUnpipe.clear(); onResume.clear();
-        onError .clear(); onData  .clear(); 
-        onOpen  .clear(); onPipe  .clear(); onClose.emit();
+        onData  .clear(); /*-------------*/
+        onOpen  .clear(); onPipe  .clear();
+        onError .clear(); onClose .clear();
 
     }
 
@@ -230,7 +261,7 @@ public:
 
     /*─······································································─*/
 
-    string_t read( ulong size=CHUNK_SIZE ) const noexcept {
+    string_t read( ulong size=NODEPP_CHUNK_SIZE ) const noexcept {
         while( obj->_read( this, size ) == 1 )
              { process::next(); }
         return obj->_read.data;
@@ -249,37 +280,55 @@ public:
 
     /*─······································································─*/
 
+#if NODEPP_EVENT_SCHEDULER == NODEPP_SCHEDULER_IOURING
+
+    virtual int __read( char* bf, const ulong& sx ) const noexcept {
+        if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
+        obj->feof = NODEPP_URING().read( this, bf, sx );
+        obj->feof = is_blocked(obj->feof)?-2 : obj->feof;
+        return is_feof() ? -1 : obj->feof;
+    }
+
+    virtual int __write( char* bf, const ulong& sx ) const noexcept {
+        if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
+        obj->feof = NODEPP_URING().write( this, bf, sx );
+        obj->feof = is_blocked(obj->feof)?-2 : obj->feof;
+        return is_feof() ? -1 : obj->feof;
+    }
+
+#else
+
     virtual int __read( char* bf, const ulong& sx ) const noexcept {
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
         obj->feof = ::read( obj->fd, bf, sx );
         obj->feof = is_blocked(obj->feof)?-2 : obj->feof;
-        return ( obj->feof <= 0 && obj->feof != -2 ) ? -1 : obj->feof;
+        return is_feof() ? -1 : obj->feof;
     }
 
     virtual int __write( char* bf, const ulong& sx ) const noexcept {
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
         obj->feof = ::write( obj->fd, bf, sx );
         obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
-        return ( obj->feof <= 0 && obj->feof != -2 ) ? -1 : obj->feof;
+        return is_feof() ? -1 : obj->feof;
     }
+
+#endif
 
     /*─······································································─*/
 
     int _write_( char* bf, const ulong& sx, ulong* sy ) const noexcept {
-        if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
-            int c = __write( bf + *sy, sx - *sy );
-            if( c <= 0 && c != -2 ) /*----*/ { return -2; }
-            if( c >  0 ){ *sy+= c; continue; } break/**/;
-        }   return sx;
-    }
+    if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
+        int c = __write( bf + *sy, sx - *sy );
+        if( c==-2 ) /*--*/ { return -2; }
+        if( c > 0 ){ *sy+= c; continue; } 
+    break; } return *sy; }
 
     int _read_( char* bf, const ulong& sx, ulong* sy ) const noexcept {
-        if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
-            int c = __read( bf + *sy, sx - *sy );
-            if( c <= 0 && c != -2 ) /*----*/ { return -2; }
-            if( c >  0 ){ *sy+= c; continue; } break/**/;
-        }   return sx;
-    }
+    if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
+        int c = __read( bf + *sy, sx - *sy );
+        if( c==-2 ) /*--*/ { return -2; }
+        if( c > 0 ){ *sy+= c; continue; } 
+    break; } return *sy; }
 
 };}
 

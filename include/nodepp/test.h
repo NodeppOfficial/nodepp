@@ -46,14 +46,18 @@ public:
 
     /*─······································································─*/
 
-   ~test_t() noexcept {
-        if( obj.count()> 1 ) /*---------------*/ { return; }
-        if( obj->state & STATE::TS_STATE_CLOSED ){ return; }
-        obj->state = STATE::TS_STATE_CLOSED; onClose.emit(); 
-    }
+   ~test_t() noexcept { if( obj.count()> 1 ){ return; } free(); }
 
     test_t() noexcept : obj( new DONE() ) { 
         auto self = type::bind( this );
+    }
+
+    /*─······································································─*/
+
+    void free() const noexcept {
+        if( obj->state & STATE::TS_STATE_CLOSED ){ return; }
+            obj->state = STATE::TS_STATE_CLOSED; 
+        onClose.emit(); onClose.clear();
     }
 
     /*─······································································─*/
@@ -100,8 +104,8 @@ public:
 
             } while(0);
 
-            if( self->obj->queue.get()==nullptr )/*--*/{ self->onClose.emit(); coEnd; } 
-            if( self->obj->queue.get()->next==nullptr ){ self->onClose.emit(); coEnd; } 
+            if( self->obj->queue.get()==nullptr )/*--*/{ self->free(); coEnd; } 
+            if( self->obj->queue.get()->next==nullptr ){ self->free(); coEnd; } 
                 self->obj->queue.next();
               
         coGoto(1) ; coFinish
@@ -137,8 +141,8 @@ public:
 
             } while(0);
 
-            if( self->obj->queue.get()==nullptr )/*--*/{ self->onClose.emit(); coEnd; } 
-            if( self->obj->queue.get()->next==nullptr ){ self->onClose.emit(); coEnd; } 
+            if( self->obj->queue.get()==nullptr )/*--*/{ self->free(); coEnd; } 
+            if( self->obj->queue.get()->next==nullptr ){ self->free(); coEnd; } 
                 self->obj->queue.next();
               
         coGoto(1) ; coFinish

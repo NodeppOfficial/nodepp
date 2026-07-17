@@ -19,45 +19,37 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace process { using NODE_INTERVAL = struct timeval; } }
 namespace nodepp { namespace process { 
 
-    inline NODE_INTERVAL& get_time_interval(){ 
-        thread_local static NODE_INTERVAL interval; 
-        gettimeofday( &interval, NULL );
-        return interval;
-    }
-    
-    inline ulong micros(){ NODE_INTERVAL time = get_time_interval();
-        return time.tv_sec * 1000000 + time.tv_usec; 
-    }
-    
-    inline ulong seconds(){ NODE_INTERVAL time = get_time_interval();
-        return time.tv_sec + time.tv_usec / 1000000; 
-    }
-    
-    inline ulong millis(){ NODE_INTERVAL time = get_time_interval();
-        return time.tv_sec * 1000 + time.tv_usec / 1000; 
-    }
+    inline uchar_64 start_sleep_machine(){
+    struct timeval out={0};
+           gettimeofday( &out, NULL );
+    return out.tv_sec * 1000000 + out.tv_usec; }
 
-}}
+    inline uchar_64 get_time_interval(){ 
+    thread_local static uchar_64 borrow   = start_sleep_machine();
+    thread_local static uchar_64 stamp    = 0;
+    /*---------------*/ uchar_64 interval = start_sleep_machine();
 
-/*────────────────────────────────────────────────────────────────────────────*/
+        if( borrow > interval ){
 
-namespace nodepp { namespace process {
+            stamp += interval + ( (uchar_64)-1 ) - borrow;
+            borrow = interval ;
 
-    inline ulong& get_timeout( bool reset=false ) {
-    thread_local static ulong stamp=0; 
-        if( reset ) { stamp=(ulong)-1; }
+        } else {
+            
+            stamp += interval - borrow;
+            borrow = interval ;
+
+        }
+        
     return stamp; }
 
-    inline void clear_timeout() { get_timeout(true); }
+    inline uchar_64  micros(){ return get_time_interval(); }
 
-    inline ulong set_timeout( int time=0 ) { 
-        if( time < 0 ){ /*--------------*/ return 1; }
-        auto stamp=&get_timeout(); ulong out=*stamp;
-        if( *stamp>(ulong)time ){ *stamp=(ulong)time; }
-    return out; }
+    inline uchar_64  millis(){ return get_time_interval() / 1000; }
+
+    inline uchar_64 seconds(){ return get_time_interval() / 1000000; }
 
 }}
 
@@ -65,11 +57,11 @@ namespace nodepp { namespace process {
 
 namespace nodepp { namespace process {
 
-    inline void delay( ulong time ){ ::usleep(time*1000); }
+    inline void  delay( ulong time ){ ::usleep( time * 1000 ); }
 
-    inline void yield(){ delay(TIMEOUT); }
+    inline uchar_64 now (){ return millis(); }
 
-    inline ulong now(){ return millis(); }
+    inline void  yield(){ delay(1); }
 
 }}
 

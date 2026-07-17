@@ -44,7 +44,7 @@ namespace nodepp { namespace conio {
 
     template< class V, class... T >
     int scan( const V& argc, const T&... args ){ 
-        auto bff = string::buffer( UNBFF_SIZE );
+        auto bff = string::buffer( NODEPP_UNBFF_SIZE );
         auto len = ::read( STDIN_FILENO, bff.get(), bff.size() );
         auto data= string_t( &bff, len );
         return string::parse( data.get(), argc, args... );

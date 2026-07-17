@@ -14,54 +14,46 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { class coroutine_t { 
+namespace nodepp { template< class... A > class coroutine_arg_t { 
 private:
 
-    using T = function_t<int,int&,ulong&>;
+    using T = function_t<int,int&,ulong&,A...>;
 
 protected:
 
     struct NODE {
-        T   callback; 
-        ulong time=0;
-        int state =0;
-        bool alive=1;
+        T      callback; 
+        ulong    time=0;
+        int     state=0;
     };  ptr_t<NODE> obj;
 
 public:
 
-    coroutine_t( T callback ) noexcept : obj( 0UL, NODE() ) { obj->callback = callback; }
-
-    coroutine_t() noexcept : obj( 0UL, NODE() ) { obj->alive = 0; }
+    template< class V >
+    coroutine_arg_t( const V& callback ) noexcept : obj( new NODE() ) { obj->callback = callback; }
+    coroutine_arg_t() /*--------------*/ noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
-
-    void off() const noexcept { obj->alive = 0; obj->callback.free(); }
 
     void set_state( int value ) const noexcept { obj->state = value; }
 
     int get_state() const noexcept { return obj->state; }
 
-    void free() const noexcept { off(); }
-
     /*─······································································─*/
 
-    bool is_closed() const noexcept { return !is_available(); }
-
-    bool is_available() const noexcept { return obj->alive; }
+    int operator()( const A&... args ) const {
+        return obj->callback( obj->state, obj->time, args... );
+    }
     
-    /*─······································································─*/
-
-    coEmit() const { return next(); } int next() const {
-        if   ( !obj->alive ){ return -1; }
-        return  obj->callback( obj->state, obj->time );
+    int emit( const A&... args ) const {
+        return obj->callback( obj->state, obj->time, args... );
     }
 
-}; }
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp    { 
+namespace nodepp    { using coroutine_t = coroutine_arg_t</*----*/>; 
 struct co_state_t   { uint   flag =0; ulong delay=0; int state=0; };
 struct generator_t  { ulong _time_=0; int _state_=0; };
 namespace coroutine { enum STATE {
@@ -75,8 +67,16 @@ namespace coroutine { enum STATE {
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace coroutine {
-    inline coroutine_t add( function_t<int,int&,ulong&> callback ) {
-    return coroutine_t( callback ); }
+
+    inline coroutine_t add( function_t<int, int&, ulong&> callback ) {
+        return coroutine_t( callback );
+    }
+
+    template< class... T, class V >
+    inline coroutine_arg_t<T...> add( V callback ) {
+        return coroutine_arg_t<T...>( callback );
+    }
+
 }}
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -95,7 +95,7 @@ namespace nodepp { namespace coroutine {
         case  0: tmp.flag=STATE::CO_STATE_BLOCK; break;
         case  1: tmp.flag=STATE::CO_STATE_YIELD; break;
         default: tmp.flag=STATE::CO_STATE_START; break;
-    }   
+    }
     
     DONE:; return out; }
 }}

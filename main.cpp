@@ -1,40 +1,41 @@
 #include <nodepp/nodepp.h>
-#include <nodepp/tls.h>
-#include <nodepp/fs.h>
+#include <nodepp/worker.h>
+#include <nodepp/https.h>
 
 using namespace nodepp;
 
-void server(){
+void server() {
 
-    auto ssl    = ssl_t(); ssl.set_alpn_protocol_list({ "h2", "http/1.1" });
+    auto ssl = ssl_t();
+    auto server = https::server([=]( https_t cli ){ 
 
-    auto server = tls::server( &ssl );
+        if( cli.method != "POST" || !cli.headers.has( "Content-Length" ) ){ 
+            cli.write_header( 404, header_t({}) );
+            cli.write( "not allowed" ); return;
+        }
 
-    server.onConnect([=]( ssocket_t cli ){
+        cli.read_body()
 
-        console::log("connected", cli.ssl->get_alpn_protocol() );
-
-        cli.onData([=]( string_t data ){
-            cli.write( "<: received" );
-            console::log( data );
+        .then([=]( https_t cli ){
+            console::log( "->", cli.body );
+            cli.write_header( 200, header_t({}) );
+            cli.write( "received" );
+        })
+        
+        .fail([=]( except_t err ){
+            console::error( err );
         });
 
-        cli.onClose([=](){
-            console::log("closed");
-        });
+    }, &ssl );
 
-        stream::pipe( cli );
-
-    });
-
-    server.onError([=]( except_t err ){
-        console::log( err.what() );
-    });
-
-    server.listen( "localhost", 8000, []( ssocket_t ){
-        console::log("-> tls://localhost:8000");
+    server.listen( "localhost", 8000, [=]( socket_t server ){
+        console::log("server started at http://localhost:8000");
     });
 
 }
 
-void onMain() { server(); }
+void onMain() {
+
+    worker::add([=](){ server(); process::wait(); return -1; });
+
+}

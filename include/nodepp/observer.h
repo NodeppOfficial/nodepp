@@ -14,7 +14,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#include "wait.h" 
+#include "listener.h" 
 #include "type.h"
 #include "map.h"
 #include "any.h"
@@ -25,11 +25,12 @@ namespace nodepp { class observer_t {
 private:
 
     map_t <string_t,any_t> /*-*/ list ;
-    wait_t<string_t,any_t,any_t> event;
-    
     using P=type::pair<string_t,any_t>;
-    using G=function_t<int,any_t,any_t>;
-    using F=function_t<void,any_t,any_t>;
+
+    using G=function_t<int ,observer_t,any_t,any_t>;
+    using F=function_t<void,observer_t,any_t,any_t>;
+    
+    listener_t<string_t,observer_t,any_t,any_t> event;
 
 public: observer_t() noexcept {}
     
@@ -44,13 +45,13 @@ public: observer_t() noexcept {}
 
     template< class F >
     void set( string_t name, const F& value ) const {
-        if( !list.has( name ) ){ throw except_t("field not found:",name); }
-        auto n = list[ name ]; event.emit( name, n, value );
+        if( !list.has( name ) ){ NODEPP_THROW_ERROR("field not found:",name); }
+        auto n = list[ name ]; event.emit( name, *this, n, value );
         /*----*/ list[ name ]= value;        
     }
 
     const any_t get( string_t name ) const { if( !list.has( name ) ){
-        throw except_t( "field not found:", name ); 
+        NODEPP_THROW_ERROR( "field not found:", name ); 
     }   return list[ name ]; }
     
     /*─······································································─*/
@@ -59,7 +60,9 @@ public: observer_t() noexcept {}
     
     /*─······································································─*/
 
-    void off( ptr_t<task_t> addr ) const noexcept { event.off(addr); }
+    void off( string_t name, ptr_t<task_t> addr ) const noexcept { 
+         event.off( name, addr ); 
+    }
 
     ptr_t<task_t> once( string_t name, F func ) const noexcept {
         if( !list.has( name ) ){ return nullptr; }

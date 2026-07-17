@@ -15,64 +15,23 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #if _KERNEL_ == NODEPP_KERNEL_WINDOWS
+#define PWROUTINE( str, cb ) worker::add(cb)
+#define PWDELAY( time )      coDelay( time )
     
     #include "fs.h"
     #include "worker.h"
+    #include "promise.h"
     #include "initializer.h"
     #include "windows/cluster.h"
 
-    namespace nodepp { namespace cluster {
-
-        template< class... T > cluster_t async( const T&... args ){
-        auto pid = type::bind( cluster_t(args...) ); 
-        if( process::is_parent() ) { 
-            worker::add([=](){ return pid->next(); }); 
-        } return *pid; }
-
-        template< class... T > cluster_t add( const T&... args ){
-        return async( args... ); }
-
-        template< class... T > int await( const T&... args ){
-        auto pid = type::bind( cluster_t(args...) );
-        if( process::is_parent() ) { 
-          return worker::await([=](){ return pid->next(); }); 
-        } return -1; }
-
-        inline bool  is_child(){ return !process::env::get("CHILD").empty(); }
-
-        inline bool is_parent(){ return  process::env::get("CHILD").empty(); }
-
-    }}
-
-
 #elif _KERNEL_ == NODEPP_KERNEL_POSIX
+#define PWROUTINE( str, cb ) process::poll( str, POLL_STATE::READ | POLL_STATE::EDGE, cb )
+#define PWDELAY( time )      coNext
 
     #include "fs.h"
+    #include "promise.h"
     #include "initializer.h"
     #include "posix/cluster.h"
-
-    namespace nodepp { namespace cluster {
-
-        template< class... T > cluster_t async( const T&... args ){
-        auto pid = type::bind( cluster_t(args...) ); 
-        if( process::is_parent() ) { 
-            process::add([=](){ return pid->next(); }); 
-        } return *pid; }
-
-        template< class... T > cluster_t add( const T&... args ){
-        return async( args... ); }
-
-        template< class... T > int await( const T&... args ){
-        auto pid = type::bind( cluster_t(args...) );
-        if( process::is_parent() ) { 
-          return process::await([=](){ return pid->next(); }); 
-        } return -1; }
-
-        inline bool  is_child(){ return !process::env::get("CHILD").empty(); }
-
-        inline bool is_parent(){ return  process::env::get("CHILD").empty(); }
-
-    }}
 
 #else
     #error "This OS Does not support cluster.h"
@@ -80,4 +39,95 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+namespace nodepp { namespace cluster {
+
+    inline bool  is_child(){ return !process::env::get("CHILD").empty(); }
+
+    inline bool is_parent(){ return  process::env::get("CHILD").empty(); }
+
+/*─······································································─*/
+
+    template< class... T > 
+    expected_t<cluster_t,except_t> add( const T&... args ){ try {
+
+        auto rd1 = type::bind( generator::file::read() );
+        auto rd2 = type::bind( generator::file::read() );
+        auto pid = type::bind( cluster_t( args... ) );
+
+    PWROUTINE( pid->readable(), coroutine::add( COROUTINE(){
+    coBegin
+
+        while( pid->is_available  () ){
+        if( (*rd1)( &pid->readable() )==1 ){ PWDELAY(100); continue; }
+        if( rd1->state==0 ){ break; }
+        pid->onDout.emit( rd1->data );
+        pid->onData.emit( rd1->data ); coNext; }
+        
+        pid->free();
+
+    coFinish; }));
+
+        if( is_child() ){ return *pid; }
+    
+    PWROUTINE( pid->std_error(), coroutine::add( COROUTINE(){
+    coBegin
+
+        while( pid->is_available   () ){
+        if( (*rd2)( &pid->std_error() )==1 ){ PWDELAY(100); continue; }
+        if( rd2->state==0 ){ break; }
+        pid->onDerr.emit( rd2->data );
+        pid->onData.emit( rd2->data ); coNext; }
+        
+        pid->free();
+    
+    coFinish; }));
+
+        return *pid;
+    
+    } catch( except_t err ) { return err; } }
+
+/*─······································································─*/
+
+    template< class... T > 
+    void parallel( void(*cb)(), uint size, T... args ) {
+
+        if ( process::is_child() ){ cb(); } else {
+        for( auto x = os::cpus()-1; x--; ){ 
+             auto y = cluster::add( args... );
+            
+        if (!y.has_value() ){ NODEPP_THROW_ERROR( "something went wrong" ); }
+             y.value().onData([=]( string_t data ){ conio::log( data ); });
+
+        } cb(); process::wait(); }
+
+    }
+
+/*─······································································─*/
+    
+    template< class... T > 
+    promise_t<string_t,except_t> resolve( const T&... args ){
+    return promise_t<string_t,except_t>([=]( 
+           res_t<string_t> res, rej_t<except_t> rej 
+    ){
+
+        auto pid = cluster::add( args... );
+        auto bff = ptr_t<string_t>( 0UL );
+
+    if( !pid.has_value() ){ rej( pid.error() ); }
+
+        pid.value().onDrain([=](){ res( *bff ); });
+        pid.value().onData([=]( string_t chunk ){ 
+            *bff += chunk; 
+        });
+
+    }); }
+
+}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+#undef PWROUTINE
+#undef PWDELAY
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

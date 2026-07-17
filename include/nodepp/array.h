@@ -54,6 +54,36 @@ protected:
 
 public: 
 
+    #if NODEPP_ALLOW_STD_SUPPORT==1
+
+    template< std::size_t N >
+    array_t( const std::array<T,N>& arr ) noexcept {
+        if ( N == 0 ){ return; } buffer = ptr_t<T>( N );
+        type::copy( arr.data(), arr.data()+N, begin() );
+    }
+
+    template< std::size_t N >
+    array_t( std::array<T,N>&& arr ) noexcept {
+        if ( N == 0 ){ return; } buffer = ptr_t<T>( N );
+        type::move( arr.data(), arr.data()+N, begin() );
+    }
+
+    array_t( const std::vector<T>& arr ) noexcept {
+        ulong N = arr.size();
+        if ( N == 0 ){ return; } buffer = ptr_t<T>( N );
+        type::copy( arr.data(), arr.data()+N, begin() );
+    }
+
+    array_t( std::vector<T>&& arr ) noexcept {
+        ulong N = arr.size();
+        if ( N == 0 ){ return; } buffer = ptr_t<T>( N );
+        type::move( arr.data(), arr.data()+N, begin() );
+    }
+
+    #endif
+
+    /*─······································································─*/
+
     array_t( const ulong& n, const T& c ) noexcept {
         if ( n == 0 ){ return; } buffer = ptr_t<T>( n, c );
     }
@@ -162,11 +192,11 @@ public:
 
     /*─······································································─*/
 
-    ptr_t<int> find( const array_t& data, ulong offset=0 ) const noexcept {
+    ptr_t<ulong> find( const array_t& data, ulong offset=0 ) const noexcept {
         if( data.empty() || empty() ){ return nullptr; } /*------*/
 
         int pos = min( offset, size() ); auto addr = begin() + pos;
-        ptr_t<int> idx ({ pos, pos }); ulong x=0;
+        ptr_t<ulong> idx ({ pos, pos }); ulong x=0;
 
         while( addr != end() ){ ++pos;
            if( data.size()== x ){ break; }
@@ -174,10 +204,10 @@ public:
          else{ idx[0]=pos; idx[1]=pos; x=0; }
         ++addr; }
         
-        return idx[0]!=idx[1] ? idx : nullptr;
+        return ( idx[1]-idx[0] ) == (int) data.size() ? idx : nullptr ;
     }
 
-    ptr_t<int> find( const T& data, ulong offset=0 ) const noexcept {
+    ptr_t<ulong> find( const T& data, ulong offset=0 ) const noexcept {
         return find( array_t( 1UL, data ), offset );
     }
 
@@ -203,7 +233,7 @@ public:
     }
 
     array_t remove( function_t<bool,T> func ) noexcept {
-        ulong n=size(); while( n-->0 ){ 
+        ulong n=size(); while( n--!=0 ){ 
             if( func((*this)[n]) ){ erase(n); }
         } return (*this);
     }
@@ -439,7 +469,7 @@ namespace nodepp { namespace string {
 
     template< class T >
     array_t<string_t> split_view( string_t _str, const T& pattern ){
-        queue_t<string_t> out; ulong offset=0; ptr_t<int> idx;
+        queue_t<string_t> out; ulong offset=0; ptr_t<ulong> idx;
         
         while( (idx=_str.find( pattern, offset )) != nullptr ){
             out.push( _str.slice_view( offset, idx[0] ) ); offset=idx[1];
@@ -450,7 +480,7 @@ namespace nodepp { namespace string {
 
     template< class T >
     array_t<string_t> split( string_t _str, const T& pattern ){
-        queue_t<string_t> out; ulong offset=0; ptr_t<int> idx;
+        queue_t<string_t> out; ulong offset=0; ptr_t<ulong> idx;
         
         while( (idx=_str.find( pattern, offset )) != nullptr ){
             out.push( _str.slice( offset, idx[0] ) ); offset=idx[1];

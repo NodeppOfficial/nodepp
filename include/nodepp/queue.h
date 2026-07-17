@@ -66,6 +66,22 @@ protected:
 
 public:
 
+    #if NODEPP_ALLOW_STD_SUPPORT==1
+
+    queue_t( std::queue<V>&& que ) noexcept : obj( new DONE() ) { while( !que.empty() ){
+        push( type::move( que.front() ) ); que.pop();
+    }}
+
+    queue_t( const std::queue<V>& que ) noexcept : obj( new DONE() ) { 
+        std::queue<V> tmp = que; while( !tmp.empty() ){
+            push( tmp.front() ); tmp.pop();
+        }
+    }
+
+    #endif
+
+    /*─······································································─*/
+
    ~queue_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
     /*─······································································─*/
@@ -185,7 +201,8 @@ public:
 
     /*─······································································─*/
 
-    inline bool is_valid( NODE* item ) const noexcept {
+    bool is_valid( void* raw ) const noexcept { 
+    auto item = (NODE*) raw;
         if( empty() || item==nullptr ){ return false; }
         if( item->sign != &obj ) /**/ { return false; }
         /*---------------------------*/ return true ;
@@ -251,12 +268,15 @@ public:
 	    auto r = get_splice_range( start, end );
         if ( r.null() ){ return nullptr; }
 
-        auto n = get( r[0] ); 
+        auto n = get( r[0] ); auto t = n;
         
-        while( n!=nullptr && idx<=r[2] )
-             { n_buffer.push( n->data ); n=n->next; ++idx; }
+        while( n!=nullptr && idx<=r[2] ){ 
+            n_buffer.push( n->data ); 
+            n=n->next; ++idx; 
+        }
 
-        erase( r[0], r[0]+end ); insert( r[0], value ); return n_buffer;
+        erase( r[0], r[0] + end ); insert( t, value ); 
+        return n_buffer;
 
     }
 
@@ -269,44 +289,36 @@ public:
 
     /*─······································································─*/
 
-    inline NODE* next() const noexcept { if( empty() ){ return nullptr; }
+    NODE* next() const noexcept { if( empty() ){ return nullptr; }
            obj->act = obj->act      ==nullptr ? first():
                       obj->act->next==nullptr ? first(): obj->act->next;
     return obj->act; }
 
-    inline NODE* prev() const noexcept { if( empty() ){ return nullptr; }
+    NODE* prev() const noexcept { if( empty() ){ return nullptr; }
            obj->act = obj->act      ==nullptr ? last():
                       obj->act->prev==nullptr ? last(): obj->act->prev;
     return obj->act; }
 
     /*─······································································─*/
 
-    void clear() const noexcept { while( !empty() ){ shift(); } }
-    void erase() const noexcept { while( !empty() ){ shift(); } }
-    void  free() const noexcept { while( !empty() ){ shift(); } }
+    void clear() const noexcept { while( !empty() ){ pop(); } }
+    void erase() const noexcept { while( !empty() ){ pop(); } }
+    void  free() const noexcept { while( !empty() ){ pop(); } }
 
     /*─······································································─*/
 
     template< class T, ulong N >
-    inline void insert( ulong index, const T(&value)[N] ) const noexcept {
-	    index = min( index, size() );
-    	ulong i=index; for( ulong x=0; x<N; ++x )
-        { insert( i+x, value[x] ); }
+    void insert( NODE* node, const T(&value)[N] ) const noexcept {
+         for( ulong y=0; y<N; y++ ){ insert( node, value[y] ); }
     }
 
-    inline void insert( ulong index, ulong N, V* value ) const noexcept {
-	    index = min( index, size() );
-    	ulong i=index; for( ulong x=0; x<N; ++x )
-        { insert( i+x, value[x] ); }
+    void insert( NODE* node, ulong N, V* value ) const noexcept {
+         for( ulong y=0; y<N; y++ ){ insert( node, value[y] ); }
     }
 
-    inline void insert( ulong index, const V& value ) const noexcept {
-	    index = min( index, size() );
-        if( index>=size() ){ insert( nullptr   , value ); }
-        else /*---------*/ { insert( get(index), value ); }
-    }
+    /*─······································································─*/
 
-    inline void insert( NODE* n, const V& value ) const noexcept {
+    void insert( NODE* n, const V& value ) const noexcept {
         if( empty() ){
             obj->fst = new NODE( value ); 
             obj->fst->sign = &obj;
@@ -329,19 +341,53 @@ public:
 
     /*─······································································─*/
 
-    inline void erase( ulong begin, ulong end ) const noexcept {
-        auto r = get_slice_range( begin, end ); /*---------*/
-           if( r.null() ) { return; } auto x = r[2];
-        while( x-->0 ){ erase(r[0]);}
+    void swap( NODE* n, NODE* x ){
+        if( !is_valid(x) || n==x ){ return; }
+        if( !is_valid(n) ){ n = obj->lst; }
+        type::swap( x->data, n->data );
     }
 
-    inline void erase( ulong begin ) const noexcept {
+    void move( NODE* n, NODE* x ) const noexcept {
+        if( !is_valid(x) || n==x ){ return; }
+        if(  is_valid(n) ){
+
+        if( x->prev!= nullptr ){ x->prev->next = x->next; }
+        if( x->next!= nullptr ){ x->next->prev = x->prev; }
+        if( obj->fst==x ) /**/ { obj->fst /**/ = x->next; }
+        if( obj->lst==x ) /**/ { obj->lst /**/ = x->prev; }
+        
+        x->prev = n->prev; x->next = n;
+        if( n->prev != nullptr ){ n->prev->next = x; }
+        n->prev = x;
+        if( obj->fst == n )/*-*/{ obj->fst = x; }
+
+        } elif( obj->lst != x ) {
+
+        if( x->next!= nullptr ){ x->next->prev = x->prev; }
+        if( x->prev!= nullptr ){ x->prev->next = x->next; }
+        
+        if( obj->fst == x )/**/{ obj->fst = x->next; }
+        x->prev = obj->lst; x->next = nullptr;
+        x->prev->next = x ; obj->lst= x; 
+
+        }
+    }
+
+    /*─······································································─*/
+
+    void erase( ulong begin, ulong end ) const noexcept {
+        auto r = get_slice_range( begin, end ); /*---------*/
+           if( r.null() ) { return; } auto x = r[2];
+        while( x--!=0 ){ erase(r[0]);}
+    }
+
+    void erase( ulong begin ) const noexcept {
         auto r = get_slice_range( begin, size() );
            if( !r.has_value() ){ return; }
         erase( get( r[0] ) );
     }
 
-    inline void erase( NODE* n ) const noexcept {
+    void erase( NODE* n ) const noexcept {
         if( empty() ) /*----------*/ { return;   }
         if( n== nullptr ) /*------*/ { n=last(); }
         elif(!is_valid(n) ) /*----*/ { return;   }
@@ -358,32 +404,34 @@ public:
 
     /*─······································································─*/
 
-    inline void set( NODE* x ) const noexcept { if( is_valid(x) ){ obj->act = x; } }
+    void set( NODE* x ) const noexcept { if( is_valid(x) ){ obj->act = x; } }
 
-    inline NODE* get() const noexcept {
+    NODE* get() const noexcept {
         if( empty() )/*------*/{ return nullptr;   }
         if( obj->act==nullptr ){ obj->act=first(); } return obj->act;
     }
 
-    inline NODE* get( ulong x ) const noexcept {
+    NODE* get( ulong x ) const noexcept {
         if( empty() ){ return nullptr; }
-        auto y=x%size(); auto n=first();
-        while( n != nullptr && y-->0 ){ n=n->next; } return n;
+        ulong y = x % size(); auto n = first();
+        while( n != nullptr && y--!=0 ){ n=n->next; } return n;
     }
 
-    inline NODE* get( void* x ) const noexcept {
+    NODE* get( void* x ) const noexcept {
         if( empty() )/*----*/{ return nullptr; }
         auto n = first(); while( n != nullptr ){
         if ( n == x ) { break; } n  = n->next; } return n;
     }
 
-    inline NODE* as( void* x ) const noexcept {
-        if( x == nullptr ){ return nullptr; }
-        return type::cast<NODE>(x);
-    }
+    NODE* as( void* x ) const noexcept {
+        if ( x == nullptr ){ return nullptr; }
+        auto y = type::cast<NODE>(x);
+    return (is_valid(y)) ? y : nullptr; }
 
 };}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

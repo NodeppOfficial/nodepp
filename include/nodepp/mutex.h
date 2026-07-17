@@ -14,9 +14,17 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#if !defined( NODEPP_THREAD_SUPPORTED )
+    #error "This OS Does not support mutex.h"
+#endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
+    #include "atomic.h"
     #include "windows/mutex.h"
 #elif _KERNEL_ == NODEPP_KERNEL_POSIX
+    #include "atomic.h"
     #include "posix/mutex.h"
 #else
     #error "This OS Does not support mutex.h"

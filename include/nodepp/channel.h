@@ -20,57 +20,45 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { template< class T > class channel_t: public generator_t {
+namespace nodepp { template< class T > class channel_t {
 private:
 
     struct NODE { 
         /*--------*/ queue_t<T> queue; 
         ulong limit; mutex_t mut; 
-    };  ptr_t<NODE> obj;
+    };  atomic_ptr_t<NODE> obj;
 
 public:
 
-    channel_t( ulong limit=0 ) noexcept : obj( new NODE() ){ obj->limit=limit; }
+    channel_t( ulong limit=0 ) noexcept : obj( new NODE() ) { obj->limit=limit; }
 
     /*─······································································─*/
 
-    bool is_empty() const noexcept { 
-    bool empty = true; obj->mut.emit([&](){ 
-         empty = obj->queue.empty(); 
-    return -1; }); return empty; }
+    bool empty() const noexcept { return obj->queue.empty(); }
 
-    ulong size() const noexcept { 
-    ulong count = 0; obj->mut.emit([&](){ 
-          count = obj->queue.size(); 
-    return -1; }); return count; }
+    ulong size() const noexcept { return obj->queue.size (); }
 
     /*─······································································─*/
 
-    int _read( ptr_t<T>& out ) const noexcept { 
-    return obj->mut._emit([&](){ 
-        if( obj->queue.empty() ){ return -2; }
-        out=obj->queue.first()->data; obj->queue.shift();
-    return 1; }); }
+    void free () const noexcept { clear(); }
+    void clear() const noexcept { 
+    obj->mut.lock([&](){ obj->queue.clear(); }); }
 
-    int _write( const T& msg ) const noexcept { 
-    return obj->mut._emit([&](){ 
+    /*─······································································─*/
+
+    template< class... V >
+    int write( const V&... args ) const noexcept { 
+    int x=0; obj->mut.lock([&](){ iterator::map( [&]( T clb ){
         if( obj->limit>0 && obj->queue.size()>=obj->limit )
-          { return -2; } obj->queue.push( msg ); 
-    return 1; }); }
-
-    /*─······································································─*/
+          { return; } obj->queue.push( clb );
+    }, args... ); }); return x; }
 
     ptr_t<T> read() const noexcept { 
-    ptr_t<T> out; int c=0; while((c=obj->mut.emit([&](){
-        if( obj->queue.empty() ){ return -2; }
-        out=obj->queue.first()->data; obj->queue.shift();
-    return 1; }))==-2 ){ process::next(); } return c>0 ? out : nullptr ; }
-
-    int write( const T& msg ) const noexcept { 
-    int c=0; while((c=obj->mut.emit([&](){ 
-        if( obj->limit>0 && obj->queue.size()>=obj->limit )
-          { return -2; } obj->queue.push( msg ); 
-    return 1; }))==-2){ process::next(); } return c>0 ? 1 : -1; }
+    ptr_t<T> out( size() ); obj->mut.lock([&](){
+        if( obj->queue.empty() ){ return; } 
+        auto tmp = obj->queue.data();
+        type::move( tmp.begin(), tmp.end(), out.begin() );
+    obj->queue.clear(); }); return out; }
 
 };}
 

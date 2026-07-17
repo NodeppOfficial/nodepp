@@ -6,7 +6,7 @@
  * in the file LICENSE in the source distribution or at
  * https://github.com/NodeppOfficial/nodepp/blob/main/LICENSE
  */
-
+ 
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #ifndef NODEPP_POSIX_SOCKET
@@ -14,6 +14,11 @@
 #define INVALID_SOCKET -1
 
 /*────────────────────────────────────────────────────────────────────────────*/
+
+#if defined(NODEPP_OS_APPLE) || defined(NODEPP_OS_IOS)
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
 
 #include <netinet/tcp.h>
 #include <sys/socket.h>
@@ -23,6 +28,10 @@
 #include <fcntl.h>
 #include <netdb.h>
 
+#if defined(NODEPP_OS_APPLE) || defined(NODEPP_OS_IOS)
+    #pragma clang diagnostic pop
+#endif
+
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace _socket_ {
@@ -30,6 +39,7 @@ namespace nodepp { namespace _socket_ {
     inline void start_device(){ 
     thread_local static bool sockets=false;
         if( sockets == false ){ /*unused*/ }
+        /* RTOS Net Stack Initialization*/
         sockets = true;
     }
 
@@ -39,25 +49,38 @@ namespace nodepp { namespace _socket_ {
 
 namespace nodepp {
 
+struct ip_t    { string_t address; uint port; };
 struct agent_t {
-    ulong buffer_size   = CHUNK_SIZE;
-    ulong conn_timeout  = 1000;
-    ulong recv_timeout  = 0;
-    ulong send_timeout  = 0;
-    bool  reuse_address = 1;
-    bool  no_delay_mode = 0;
-    bool  reuse_port    = 1;
-    bool  keep_alive    = 0;
-    bool  broadcast     = 0;
+    ulong buffer_size    = NODEPP_CHUNK_SIZE;
+    ulong conn_timeout   = 60000;
+    ulong recv_timeout   = 0;
+    ulong send_timeout   = 0;
+    bool  reuse_address  = 1;
+    bool  no_delay_mode  = 0;
+    bool  reuse_port     = 1;
+    bool  keep_alive     = 0;
+    bool  broadcast      = 0;
+    int   socket_family  = AF_UNSPEC;
 };
 
 class socket_t {
 protected:
 
+    using TIMEVAL     = struct timeval;
+    using SOCKADDR    = struct sockaddr;
+    using SOCKADDR_IN = struct sockaddr_in;
+    using SOCKADDR_IN6= struct sockaddr_in6;
+    using SOCKADDR_ST = struct sockaddr_storage;
+
+protected:
+
     void kill() const noexcept {
         obj->state |= STATE::FS_STATE_KILL; 
-        ::shutdown( obj->fd, SHUT_WR ); 
-        ::close(obj->fd);
+    }
+
+    SOCKADDR_ST& get_addr() const noexcept { 
+        return is_server() ? obj->client_addr 
+        /*--------------*/ : obj->server_addr; 
     }
 
     bool is_state( uchar value ) const noexcept {
@@ -72,38 +95,53 @@ protected:
     enum STATE {
          FS_STATE_UNKNOWN = 0b00000000,
          FS_STATE_OPEN    = 0b00000001,
+         FS_STATE_REUSE   = 0b01000000,
          FS_STATE_CLOSE   = 0b00000010,
          FS_STATE_READING = 0b00010000,
          FS_STATE_WRITING = 0b00100000,
          FS_STATE_KILL    = 0b00000100,
-         FS_STATE_REUSE   = 0b00001000,
-         FS_STATE_DISABLE = 0b00001110
+         FS_STATE_STOP    = 0b00001000,
+         FS_STATE_DISABLE = 0b00001110,
+         FS_STATE_SERVER  = 0b10000000
     };
 
 protected:
 
-    using TIMEVAL     = struct timeval;
-    using SOCKADDR    = struct sockaddr;
-    using SOCKADDR_IN = struct sockaddr_in;
-    using SOCKADDR_ST = struct sockaddr_storage;
-
     struct NODE {
 
-        ulong recv_timeout=0; 
-        ulong send_timeout=0;
-        ulong conn_timeout=0;
-        ulong range[2]= { 0, 0 };
-
-        socklen_t addrlen, len;
-        int fd = -1, feof = 1; bool srv=0; 
-        uchar state = STATE::FS_STATE_OPEN;
+        ulong recv_timeout=0; uchar_64 tag   = 0UL;
+        ulong send_timeout=0; uchar_64 pd    = 0UL;
+        ulong conn_timeout=0; len_t range[2] = { 0, 0 };
+        
+        socklen_t addrlen; int fd=-1, feof=1; 
         SOCKADDR_ST server_addr, client_addr;
+        uchar state = STATE::FS_STATE_OPEN;
 
         ptr_t<char> buffer; string_t borrow;
         generator::file::until _until;
         generator::file::line  _line ;
         generator::file::read  _read ;
         generator::file::write _write;
+
+    #if NODEPP_EVENT_SCHEDULER == NODEPP_SCHEDULER_IOURING
+
+       ~NODE(){
+        if( fd == INVALID_SOCKET ){ return; }
+        //  ::shutdown( fd, SHUT_WR ); 
+            ::close   ( fd /*----*/ ); 
+            NODEPP_URING().free( pd );
+        }
+
+    #else
+
+       ~NODE(){
+        if( fd == INVALID_SOCKET ){ return; }
+        //  ::shutdown( fd, SHUT_WR ); 
+            ::close   ( fd /*----*/ );  
+        }
+
+    #endif
+
     };  ptr_t<NODE> obj;
 
     /*─······································································─*/
@@ -120,6 +158,7 @@ protected:
 
     int set_nonbloking_mode() const noexcept {
         int flags = fcntl( obj->fd, F_GETFL, 0 );
+        if( flags == -1 ){ return -1; }
         return fcntl( obj->fd, F_SETFL, flags | O_NONBLOCK );
     }
 
@@ -163,10 +202,11 @@ public:
     }
 
     ulong set_recv_timeout( ulong time ) const noexcept {
-        if( time == 0 ){ obj->recv_timeout = 0; return 0; }
-        TIMEVAL en; memset( &en, 0, sizeof(en) ); en.tv_sec = time / 1000; en.tv_usec = 0;
-    int c= setsockopt( obj->fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&en, sizeof(en) ); 
-        obj->recv_timeout = process::millis() + time; return c==0 ? time : 0;
+        if( time == 0 ){ obj->recv_timeout = 0; return 0; } TIMEVAL en; 
+        en.tv_sec  =  time / 1000; 
+        en.tv_usec = (time % 1000) * 1000;
+        int c = setsockopt( obj->fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&en, sizeof(en) ); 
+        obj->recv_timeout = process::millis() + time; return c == 0 ? time : 0;
     }
 
     ulong set_send_timeout( ulong time ) const noexcept {
@@ -183,18 +223,18 @@ public:
         return c;
     }
 
-    int set_recv_buff( uint en ) const noexcept {
-    int c= setsockopt( obj->fd, SOL_SOCKET, SO_RCVBUF, (char*)&en, sizeof(en) ); 
-        return c;
-    }
-
-    int set_send_buff( uint en ) const noexcept {
-    int c= setsockopt( obj->fd, SOL_SOCKET, SO_SNDBUF, (char*)&en, sizeof(en) );
-        return c;
-    }
-
     int set_accept_connection( uint en ) const noexcept {
     int c= setsockopt( obj->fd, SOL_SOCKET, SO_ACCEPTCONN, (char*)&en, sizeof(en) ); 
+        return c;
+    }
+
+    int set_send_buff( uint en ) const noexcept { uint x = max( 1500U, en );
+    int c= setsockopt( obj->fd, SOL_SOCKET, SO_SNDBUF, (char*)&x, sizeof(x) ); 
+        return c;
+    }
+
+    int set_recv_buff( uint en ) const noexcept { uint x = max( 1500U, en );
+    int c= setsockopt( obj->fd, SOL_SOCKET, SO_RCVBUF, (char*)&x, sizeof(x) ); 
         return c;
     }
 
@@ -289,25 +329,52 @@ public:
 
     /*─······································································─*/
 
-    string_t get_sockname() const noexcept { SOCKADDR* cli = get_addr();
-    int c= getsockname( obj->fd, cli, &obj->len ); string_t buff { INET_ADDRSTRLEN };
-        inet_ntop( AF, &(((SOCKADDR_IN*)cli)->sin_addr), (char*)buff, buff.size() );
-        return c < 0 ? "127.0.0.1" : buff;
+    expected_t<ip_t,except_t> get_sockname() const noexcept {
+        SOCKADDR_ST addr; socklen_t len = sizeof(addr);
+
+        if( is_closed() )
+          { return except_t( "invalid socket" ); }
+
+        if( getsockname( obj->fd, (SOCKADDR*)&addr, &len ) < 0 )
+          { return except_t( "address not found" ); }
+
+        char host[INET6_ADDRSTRLEN] = {0}; uint port;
+
+        if( addr.ss_family == AF_INET ) {
+            SOCKADDR_IN* s = (SOCKADDR_IN*)&addr;
+            port = ntohs( ((SOCKADDR_IN*) &addr)->sin_port );
+            inet_ntop( AF_INET, &s->sin_addr, host, sizeof(host) );
+        } else {
+            SOCKADDR_IN6* s = (SOCKADDR_IN6*)&addr;
+            port = ntohs( ((SOCKADDR_IN6*) &addr)->sin6_port );
+            inet_ntop( AF_INET6, &s->sin6_addr, host, sizeof(host) );
+        }
+
+        return ip_t({ host, port });
     }
 
-    string_t get_peername() const noexcept { SOCKADDR* cli = get_addr();
-    int c= getpeername( obj->fd, cli, &obj->len ); string_t buff { INET_ADDRSTRLEN };
-        inet_ntop( AF, &(((SOCKADDR_IN*)cli)->sin_addr), (char*)buff, buff.size() );
-        return c < 0 ? "127.0.0.1" : buff;
-    }
+    expected_t<ip_t,except_t> get_peername() const noexcept { 
+        SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
 
-    int get_sockport() const noexcept { SOCKADDR* cli = get_addr();
-        return ntohs( ((SOCKADDR_IN*)cli)->sin_port );
-    }
+        if( is_closed() )
+          { return except_t( "invalid socket" ); }
 
-    SOCKADDR* get_addr() const noexcept { 
-        return obj->srv==1 ? (SOCKADDR*)&obj->client_addr 
-        /*--------------*/ : (SOCKADDR*)&obj->server_addr; 
+        if( getpeername( obj->fd, (SOCKADDR*) &addr, &len ) < 0 )
+          { return except_t( "address not found" ); }
+
+        char host[INET6_ADDRSTRLEN] = {0}; uint port;
+
+        if( addr.ss_family == AF_INET ) {
+            SOCKADDR_IN* s = (SOCKADDR_IN*)&addr;
+            port = ntohs( ((SOCKADDR_IN*) &addr)->sin_port );
+            inet_ntop( AF_INET, &s->sin_addr, host, sizeof(host) );
+        } else {
+            SOCKADDR_IN6* s = (SOCKADDR_IN6*)&addr;
+            port = ntohs( ((SOCKADDR_IN6*) &addr)->sin6_port );
+            inet_ntop( AF_INET6, &s->sin6_addr, host, sizeof(host) );
+        }
+
+        return ip_t({ host, port });
     }
 
     /*─······································································─*/
@@ -319,37 +386,66 @@ public:
 
     /*─······································································─*/
 
-    ulong set_timeout( ulong time ) const noexcept {
+    void set_client_address( SOCKADDR_ST address ) const noexcept {
+         if( is_server() ){ obj->client_addr = address; }
+         else /*-------*/ { obj->server_addr = address; }
+    }
+
+    SOCKADDR_ST get_client_address() const noexcept { 
+        return is_server() ? obj->client_addr 
+        /*--------------*/ : obj->server_addr; 
+    }
+
+    /*─······································································─*/
+
+    ulong    set_timeout( ulong time ) const noexcept {
+        set_conn_timeout( time );
         set_recv_timeout( time );
         set_send_timeout( time ); return time;
     }
 
     /*─······································································─*/
 
-    void  resume() const noexcept { if(is_state(STATE::FS_STATE_OPEN )){ return; } set_state(STATE::FS_STATE_OPEN ); onResume.emit(); }
-    void    stop() const noexcept { if(is_state(STATE::FS_STATE_REUSE)){ return; } set_state(STATE::FS_STATE_REUSE); onDrain .emit(); }
-    void   reset() const noexcept { if(is_state(STATE::FS_STATE_KILL )){ return; } resume(); pos(0); }
+    void  resume() const noexcept { if(!is_state(STATE::FS_STATE_STOP )){ return; } onResume .emit(); obj->state &=~ STATE::FS_STATE_STOP; }
+    void    stop() const noexcept { if( is_state(STATE::FS_STATE_STOP )){ return; } onDrain  .emit(); obj->state |=  STATE::FS_STATE_STOP; }
+    void   reset() const noexcept { if( is_state(STATE::FS_STATE_KILL )){ return; } resume(); pos(0); }
     void   flush() const noexcept { obj->buffer.fill(0); }
 
     /*─······································································─*/
 
-    bool     is_closed() const noexcept { return is_state(STATE::FS_STATE_DISABLE) || is_feof() || obj->fd==INVALID_SOCKET; }
-    bool       is_feof() const noexcept { return obj->feof <= 0 && obj->feof != -2; }
-    bool    is_waiting() const noexcept { return obj->feof == -2; }
-    bool  is_available() const noexcept { return !is_closed(); }
-    bool     is_server() const noexcept { return obj->srv;  }
+    bool    is_closed() const noexcept { return is_state(STATE::FS_STATE_DISABLE) || is_feof() || obj->fd==INVALID_SOCKET; }
+    bool    is_server() const noexcept { return is_state(STATE::FS_STATE_SERVER ); }
+    bool  is_reusable() const noexcept { return is_state(STATE::FS_STATE_REUSE  ); }
+    bool      is_feof() const noexcept { return obj->feof <= 0 && obj->feof != -2; }
+    bool   is_waiting() const noexcept { return obj->feof == -2; }
+    bool is_available() const noexcept { return !is_closed(); }
 
     /*─······································································─*/
 
     void close() const noexcept {
-        if( is_state ( STATE::FS_STATE_DISABLE ) ){ return; }
+        if( is_state ( STATE::FS_STATE_DISABLE )){ return; } onDrain.emit(); 
+        if( is_state ( STATE::FS_STATE_REUSE   )){ return; }
             set_state( STATE::FS_STATE_CLOSE   );
-    onDrain.emit(); free(); }
+    free(); }
 
     /*─······································································─*/
 
-    int       get_fd() const noexcept { return obj == nullptr ? INVALID_SOCKET : obj->fd;    }
-    ulong* get_range() const noexcept { return obj == nullptr ?        nullptr : obj->range; }
+    void    set_range( len_t x, len_t y ) const noexcept { obj->range[0] = x; obj->range[1] = y; }
+    len_t* get_range() /*--------------*/ const noexcept { return obj->range; }
+
+    /*─······································································─*/
+
+    void set_reusable( bool mode ) const noexcept { 
+    switch( (int) mode ){
+        case 1 : obj->state |=  STATE::FS_STATE_REUSE; break;
+        default: obj->state &=~ STATE::FS_STATE_REUSE; break;
+    }}
+
+    /*─······································································─*/
+
+    int       get_fd() const noexcept { return obj->fd ; }
+    uchar_64& get_pd() const noexcept { return obj->pd ; }
+    uchar_64&    tag() const noexcept { return obj->tag; }
 
     /*─······································································─*/
 
@@ -367,11 +463,11 @@ public:
 
     /*─······································································─*/
 
-    ulong pos( ulong /*unused*/ ) const noexcept { return 0; }
+    len_t pos( ulong /*unused*/ ) const noexcept { return 0; }
 
-    ulong size() const noexcept { return 0; }
+    len_t size() const noexcept { return 0; }
 
-    ulong  pos() const noexcept { return 0; }
+    len_t  pos() const noexcept { return 0; }
 
     /*─······································································─*/
 
@@ -401,17 +497,18 @@ public:
     #endif
         opt.keep_alive    = get_keep_alive();
         opt.broadcast     = get_broadcast();
+        opt.socket_family = AF;
     return opt;
     }
 
     /*─······································································─*/
 
-    socket_t( int fd, ulong _size=CHUNK_SIZE ) : obj( new NODE() ) { _socket_::start_device();
-        if( fd == INVALID_SOCKET ){ throw except_t("Such Socket has an Invalid fd"); }
+    socket_t( int fd, ulong _size=NODEPP_CHUNK_SIZE ) : obj( new NODE() ) { _socket_::start_device();
+        if( fd == INVALID_SOCKET ){ NODEPP_THROW_ERROR("Such Socket has an Invalid fd"); }
         obj->fd = fd; set_nonbloking_mode(); set_buffer_size(_size);
     }
     
-    virtual ~socket_t() noexcept { if( obj.count()>1 && !is_closed() ){ return; } free(); }
+   ~socket_t() noexcept { if( obj.count()>1 && !is_closed() ){ return; } free(); }
 
     socket_t() noexcept : obj( new NODE() ) { _socket_::start_device(); }
 
@@ -419,67 +516,105 @@ public:
 
     void free() const noexcept {
 
-        if( is_state( STATE::FS_STATE_REUSE ) && !is_feof() && obj.count()>1 ){ return; }
-        if( is_state( STATE::FS_STATE_KILL  ) ) /*-------*/ { return; } 
-        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_REUSE ) )
-          { kill(); onDrain.emit(); } else { kill(); }
+        if( is_state( STATE::FS_STATE_STOP  ) && !is_feof() && obj.count() >1 ){ return; }
+        if( is_state( STATE::FS_STATE_KILL  ) ){ return; } /*-----------------*/ kill();
+        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_STOP ) ) { onDrain.emit(); }
+
+        onClose.emit();
 
         onUnpipe.clear(); onResume.clear();
         onError .clear(); onData  .clear();
-        onOpen  .clear(); onPipe  .clear(); onClose.emit();
+        onOpen  .clear(); /*-------------*/
+        onPipe  .clear(); onClose .clear();
 
     }
 
     /*─······································································─*/
 
     virtual int socket( const string_t& host, int port ) const noexcept {
-        if( host.empty() ){ onError.emit("dns coudn't found ip"); return -1; }
-            obj->addrlen = sizeof( obj->server_addr );
+        if( host.empty() ){ onError.emit("invalid IP address"); return -1; }
 
         if((obj->fd=::socket( AF, SOCK, IPPROTO )) == INVALID_SOCKET )
           { onError.emit("can't initializate socket fd"); return -1; }
 
-        set_buffer_size( CHUNK_SIZE );
+        set_buffer_size( NODEPP_CHUNK_SIZE );
         set_nonbloking_mode();
-        set_ipv6_only_mode(0);
-        set_reuse_address(1);
+        set_reuse_address (1);
 
     #ifdef SO_REUSEPORT
         set_reuse_port(1);
     #endif
 
-        SOCKADDR_IN server, client;
-        memset(&server, 0, sizeof(SOCKADDR_IN));
-        memset(&client, 0, sizeof(SOCKADDR_IN));
-        server.sin_family = AF; if( port>0 ) server.sin_port = htons(port);
+        SOCKADDR_ST server_st; memset(&server_st, 0, sizeof(SOCKADDR_ST));
+        SOCKADDR_ST client_st; memset(&client_st, 0, sizeof(SOCKADDR_ST));
 
-        if  ( host == "0.0.0.0"         || host == "global"    ){ server.sin_addr.s_addr = INADDR_ANY; }
-        elif( host == "1.1.1.1"         || host == "loopback"  ){ server.sin_addr.s_addr = INADDR_LOOPBACK; }
-        elif( host == "255.255.255.255" || host == "broadcast" ){ server.sin_addr.s_addr = INADDR_BROADCAST; }
-        elif( host == "127.0.0.1"       || host == "localhost" ){ inet_pton(AF, "127.0.0.1", &server.sin_addr); }
-        else                                                    { inet_pton(AF, host.c_str(),&server.sin_addr); }
+        if( AF == AF_INET6 ) { set_ipv6_only_mode(0);
 
-        obj->server_addr = *((SOCKADDR_ST*) &server); 
-        obj->client_addr = *((SOCKADDR_ST*) &client); 
-        obj->len = sizeof( server ); /*--*/ return 1;
+            obj->addrlen    = sizeof( SOCKADDR_IN6 );
+            SOCKADDR_IN6* s = (SOCKADDR_IN6*)&server_st;
+            memset( s,0,sizeof(SOCKADDR_IN6));
+            
+            s->sin6_family  = AF_INET6; if( port>0 ){ s->sin6_port = htons(port); }
 
-    }
+            if  ( host == "::0" || host == "global"    ){ s->sin6_addr = in6addr_any;      }
+            elif( host == "::2" || host == "loopback"  ){ s->sin6_addr = in6addr_loopback; }
+            elif( host == "::1" || host == "localhost" ){ inet_pton(AF, "::1", /*-*/ &s->sin6_addr); }
+            else                                        { inet_pton(AF, host.c_str(),&s->sin6_addr); }
+
+        } else {
+
+            obj->addrlen   = sizeof(SOCKADDR_IN);
+            SOCKADDR_IN* s = (SOCKADDR_IN*)&server_st;
+            memset(s,0,sizeof(SOCKADDR_IN));
+
+            s->sin_family  = AF_INET; if( port>0 ){ s->sin_port = htons(port); }
+
+            if  ( host == "0.0.0.0"   || host == "global"    ){ s->sin_addr.s_addr = INADDR_ANY;       }
+            elif( host == "1.1.1.1"   || host == "loopback"  ){ s->sin_addr.s_addr = INADDR_LOOPBACK;  }
+            elif( host == "127.0.0.1" || host == "localhost" ){ inet_pton(AF, "127.0.0.1", &s->sin_addr); }
+            else                                              { inet_pton(AF, host.c_str(),&s->sin_addr); }
+
+        }
+
+        obj->server_addr = server_st; 
+        obj->client_addr = client_st;
+
+    return 1; }
 
     /*─······································································─*/
 
-    int _connect() const noexcept { int c=0;
-        if( process::millis() > get_conn_timeout() || obj->srv==1 ){ return -1; }
-        return is_blocked( c=::connect( obj->fd, (SOCKADDR*) &obj->server_addr, obj->addrlen ) ) ? -2 : c>=0 ? 1: -1;
+#if NODEPP_EVENT_SCHEDULER == NODEPP_SCHEDULER_IOURING
+
+    int _connect() const noexcept {
+        if( process::millis() > get_conn_timeout() || is_server() ){ return -1; }
+        int c=NODEPP_URING().connect( this, (SOCKADDR*) &obj->server_addr, obj->addrlen );
+        obj->feof = is_blocked( c ) ? -2 : c>=0 ? 1: -1; return obj->feof;
     }
 
-    int _accept() const noexcept { int c=0; if( obj->srv == 0 ){ return -1; }
-        return is_blocked( c=::accept( obj->fd, (SOCKADDR*) &obj->server_addr, &obj->addrlen ) ) ? -2 : c;
+    int _accept() const noexcept { if( !is_server() ){ return -1; }
+        int c=NODEPP_URING().accept( this, (SOCKADDR*) &obj->server_addr, &obj->addrlen );
+        obj->feof = is_blocked( c ) ? -2 : c; return obj->feof;
     }
+
+#else 
+
+    int _connect() const noexcept {
+        if( process::millis() > get_conn_timeout() || is_server() ){ return -1; }
+        int c=::connect( obj->fd, (SOCKADDR*) &obj->server_addr, obj->addrlen );
+        obj->feof = is_blocked( c ) ? -2 : c>=0 ? 1: -1; return obj->feof;
+    }
+
+    int _accept() const noexcept { if( !is_server() ){ return -1; }
+        int c=::accept( obj->fd, (SOCKADDR*) &obj->server_addr, &obj->addrlen );
+        obj->feof = is_blocked( c ) ? -2 : c; return obj->feof;
+    }
+
+#endif
 
     /*─······································································─*/
 
-    int listen() const noexcept { if( obj->srv == 0 ){ return -1; }
-        return ::listen( obj->fd, limit::get_soft_fileno() );
+    int listen() const noexcept { if( !is_server() ){ return -1; }
+        return ::listen( obj->fd, NODEPP_MAX_SOCKET ) ? -1: 1;
     }
 
     int accept() const noexcept { int c=0;
@@ -490,38 +625,43 @@ public:
         while((c=_connect()) == -2 ){ process::next(); } return c;
     }
 
-    int bind() const noexcept { obj->srv = 1;
-        return ::bind( obj->fd, (SOCKADDR*) &obj->server_addr, obj->addrlen );
+    int bind() const noexcept { obj->state |= STATE::FS_STATE_SERVER;
+        return ::bind( obj->fd, (SOCKADDR*) &obj->server_addr, obj->addrlen ) ?-1: 1;
     }
 
     /*─······································································─*/
 
-    string_t read( ulong size=CHUNK_SIZE ) const noexcept {
-        while( obj->_read( this, size )==1 ){ process::next(); }
+    string_t read( ulong size=NODEPP_CHUNK_SIZE ) const noexcept {
+        while( obj->_read( this, size ) == 1 )
+             { process::next(); }
         return obj->_read.data;
     }
-
+    
     char read_char() const noexcept { return read(1)[0]; }
 
     ulong write( const string_t& msg ) const noexcept {
-        while( obj->_write( this, msg )==1 ){ process::next(); }
+        while( obj->_write( this, msg ) == 1 )
+             { process::next(); }
         return obj->_write.data;
     }
 
     /*─······································································─*/
 
     string_t read_until( string_t ch ) const noexcept {
-        while( obj->_until( this, ch )==1 ){ process::next(); }
+        while( obj->_until( this, ch ) == 1 )
+             { process::next(); }
         return obj->_until.data;
     }
 
     string_t read_until( char ch ) const noexcept {
-        while( obj->_until( this, ch )==1 ){ process::next(); }
+        while( obj->_until( this, ch ) == 1 )
+             { process::next(); }
         return obj->_until.data;
     }
 
     string_t read_line() const noexcept {
-        while( obj->_line( this )==1 ){ process::next(); }
+        while( obj->_line( this ) == 1 )
+             { process::next(); }
         return obj->_line.data;
     }
 
@@ -532,45 +672,75 @@ public:
 
     /*─······································································─*/
 
+#if NODEPP_EVENT_SCHEDULER == NODEPP_SCHEDULER_IOURING
+   
     virtual int __read( char* bf, const ulong& sx ) const noexcept {
-        if ( process::millis() > get_recv_timeout() || is_closed() )
-           { return -1; } if ( sx==0 ) { return 0; }
+        if( process::millis() > get_recv_timeout() || is_closed() )
+          { return -1; } if ( sx==0 ) { return 0; }
 
-        int res = ( SOCK != SOCK_DGRAM ) 
-                ? ::recv    ( obj->fd, bf, sx, 0 )
-                : ::recvfrom( obj->fd, bf, sx, 0, get_addr(), &obj->len );
-           
-             obj->feof = is_blocked( res )? -2 : res;
-    return ( obj->feof <= 0 && obj->feof != -2 ) ? -1 : obj->feof; }
+        SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
+
+        int res = SOCK != SOCK_DGRAM
+        ? NODEPP_URING().recv    ( this, bf, sx, 0 )
+        : NODEPP_URING().recvfrom( this, bf, sx, 0, (SOCKADDR*) &addr, &len );
+
+    obj->feof = is_blocked( res )? -2 : res; return is_feof() ? -1 : obj->feof; }
 
     virtual int __write( char* bf, const ulong& sx ) const noexcept {
-        if ( process::millis() > get_send_timeout() || is_closed() )
-           { return -1; } if ( sx==0 ) { return 0; } 
+        if( process::millis() > get_send_timeout() || is_closed() )
+          { return -1; } if ( sx==0 ) { return 0; } 
 
-        int res = ( SOCK != SOCK_DGRAM ) 
-                ? ::send  ( obj->fd, bf, sx, 0 )
-                : ::sendto( obj->fd, bf, sx, 0, get_addr(), obj->len );
+        SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
 
-             obj->feof = is_blocked( res )? -2 : res;
-    return ( obj->feof <= 0 && obj->feof != -2 ) ? -1 : obj->feof; }
+        int res = SOCK != SOCK_DGRAM
+        ? NODEPP_URING().send  ( this, bf, sx, 0 )
+        : NODEPP_URING().sendto( this, bf, sx, 0, (SOCKADDR*) &addr, len );
+
+    obj->feof = is_blocked( res )? -2 : res; return is_feof() ? -1 : obj->feof; }
+    
+#else
+
+    virtual int __read( char* bf, const ulong& sx ) const noexcept {
+        if( process::millis() > get_recv_timeout() || is_closed() )
+          { return -1; } if ( sx==0 ) { return 0; }
+
+        SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
+
+        int res = SOCK != SOCK_DGRAM
+        ? ::recv    ( obj->fd, bf, sx, 0 )
+        : ::recvfrom( obj->fd, bf, sx, 0, (SOCKADDR*) &addr, &len );
+
+    obj->feof = is_blocked( res )? -2 : res; return is_feof() ? -1 : obj->feof; }
+
+    virtual int __write( char* bf, const ulong& sx ) const noexcept {
+        if( process::millis() > get_send_timeout() || is_closed() )
+          { return -1; } if ( sx==0 ) { return 0; } 
+
+        SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
+
+        int res = SOCK != SOCK_DGRAM
+        ? ::send  ( obj->fd, bf, sx, 0 )
+        : ::sendto( obj->fd, bf, sx, 0, (SOCKADDR*) &addr, len );
+
+    obj->feof = is_blocked( res )? -2 : res; return is_feof() ? -1 : obj->feof; }
+
+#endif
 
     /*─······································································─*/
 
     int _write_( char* bf, const ulong& sx, ulong* sy ) const noexcept {
-        if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
-            int c = __write( bf + *sy, sx - *sy );
-            if( c <= 0 && c != -2 ) /*----*/ { return -2; }
-            if( c >  0 ){ *sy+= c; continue; } break/**/;
-        }   return sx;
-    }
+    if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
+        int c = __write( bf + *sy, sx - *sy );
+        if( c==-2 ) /*--*/ { return -2; }
+        if( c > 0 ){ *sy+= c; continue; } 
+    break; } return *sy; }
 
     int _read_( char* bf, const ulong& sx, ulong* sy ) const noexcept {
-        if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
-            int c = __read( bf + *sy, sx - *sy );
-            if( c <= 0 && c != -2 ) /*----*/ { return -2; }
-            if( c >  0 ){ *sy+= c; continue; } break/**/;
-        }   return sx;
-    }
+    if( sx==0 || is_closed() ){ return -1; } while( *sy<sx ) {
+        int c = __read( bf + *sy, sx - *sy );
+        if( c==-2 ) /*--*/ { return -2; }
+        if( c > 0 ){ *sy+= c; continue; } 
+    break; } return *sy; }
 
 };}
 

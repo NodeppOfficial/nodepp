@@ -1,5 +1,3 @@
-#define NODEPP_ATOMIC_SMART_POINTER_OFF
-
 #include <nodepp/nodepp.h>
 #include <nodepp/http.h>
 

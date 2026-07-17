@@ -18,8 +18,8 @@ namespace nodepp { class loop_t {
 private:
 
     using NODE_CLB = function_t<int>;
-    using NODE_TASK= type::pair<ulong,void*>;
-    using NODE_PAIR= type::pair<NODE_CLB,ref_t<task_t>>;
+    using NODE_TASK= pair_t<uchar_64,void*>;
+    using NODE_PAIR= pair_t<NODE_CLB,ptr_t<task_t>>;
 
 protected:
 
@@ -31,7 +31,7 @@ protected:
 
     /*─······································································─*/
 
-    void* get_nearest_timeout( ulong time ) const noexcept {
+    void* get_nearest_timeout( uchar_64 time ) const noexcept {
     
         auto x = obj->blocked.last(); while( x!=nullptr ){
         if( time>=x->data.first ){ return x->next; }
@@ -58,7 +58,7 @@ protected:
     /*─······································································─*/
 
     inline int normal_queue_next() const {
-    
+
         if( obj->normal.empty() ) /*-*/ { return -1; } do {
         if( obj->normal.get()==nullptr ){ return -1; }
 
@@ -78,7 +78,9 @@ protected:
 
         int c=0; ulong d=0; while( ([&](){
             
-            do{ c=y->data.first(); auto z=coroutine::getno();
+            do{ auto mem = &y->data.second;
+                c=y->data.first  (); auto z = coroutine::getno();
+            if( obj->normal.empty() || &y->data.second != mem  ){ return -1; }
             if( c==1 && z.flag&coroutine::STATE::CO_STATE_DELAY )
               { d=z.delay; goto GOT3; } switch(c) {
                 case  1 :  goto GOT1;   break;
@@ -101,11 +103,12 @@ protected:
             do {
 
                 y->data.second->flag &=~ TASK_STATE::USED;  
-                ulong wake_time = d + process::now();
 
+                uchar_64 wake_time = min( d, (ulong) -1 ) + process::now();
                 auto z = obj->blocked.as( get_nearest_timeout( wake_time ) );
+                
                 obj->blocked.insert( z, NODE_TASK( { wake_time, y } ));
-                obj->normal .erase(x); 
+                obj->normal .erase (x); 
 
             return -1; } while(0);
 
@@ -137,8 +140,13 @@ public: loop_t() noexcept : obj( new NODE() ) {}
 
         auto stm = obj->blocked.first()->data.first;
         auto now = process::now();
+        auto lmt = (uint) -1;
 
-        return ( stm>now ) ? ( stm-now ) : 0;
+        if( stm > now ){ 
+            auto out = type::cast<int>( stm - now );
+        if((uchar_64) lmt < out ){ return -1; } return out; }
+
+        return 0;
     }
 
     /*─······································································─*/
@@ -164,9 +172,11 @@ public: loop_t() noexcept : obj( new NODE() ) {}
 
     template< class T, class... V >
     ptr_t<task_t> add( T cb, const V&... args ) const noexcept {
-    ptr_t<task_t> tsk( 0UL, task_t() ); auto clb = type::bind( cb );
+    ptr_t<task_t> tsk( 0UL, task_t() ); 
 
-        obj->queue .push({[=](){ return (*clb)( args... );}, tsk });
+        function_t<int,V...> clb ( cb );
+
+        obj->queue .push({[=](){ return clb(args...); }, tsk });
         obj->normal.push( obj->queue.last() ); 
 
         tsk->addr = obj->queue.last();

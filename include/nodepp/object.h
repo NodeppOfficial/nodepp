@@ -107,14 +107,16 @@ public:
         elif( get_type_id()     == type::obj_type_id<U>  ::value ){ return true; } 
     return false; }
 
+    template< class U > 
+    U& as() const { return obj->mem.as<U>(); }
+
     template< class U >
     explicit operator    U() const { return obj->mem.as<U>(); }
     explicit operator bool() const { return has_value(); /**/ }
 
-    bool has_value()         const { return obj->type<0?false:obj->mem.has_value(); }
-    uint type_size()         const { return obj->type<0?false:obj->mem.type_size(); }
+    bool has_value() const { return obj->type<0?false:obj->mem.has_value(); }
+    uint type_size() const { return obj->type<0?false:obj->mem.type_size(); }
 
-    template< class U > U as() const { return obj->mem.as<U>(); }
 
     /*─······································································─*/
 
@@ -126,8 +128,8 @@ public:
     }
 
     object_t& operator[]( const ulong& idx ) const {
-        if( !has_value() ){ throw except_t("item is empty"); }
-        if( !is<ARRAY>() ){ throw except_t("item isn't an array"); }
+        if( !has_value() ){ NODEPP_THROW_ERROR("item is empty"); }
+        if( !is<ARRAY>() ){ NODEPP_THROW_ERROR("item isn't an array"); }
         return obj->mem.as<ARRAY>()[idx];
     }
 
@@ -189,3 +191,5 @@ public:
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

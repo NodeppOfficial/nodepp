@@ -14,35 +14,37 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#include "expected.h"
 #include "socket.h"
 #include "dns.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp {
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-class tcp_t {
+namespace nodepp { class tcp_t {
 private:
 
     using NODE_CLB = function_t<void,socket_t>;
+    enum STATE {
+         TCP_STATE_UNKNOWN   = 0b00000000,
+         TCP_STATE_USED      = 0b00000001,
+         TCP_STATE_CLOSED    = 0b00000010
+    };
 
 protected:
 
     struct NODE {
-        char state= 0; 
+        int state = 0; 
         agent_t agent;
         NODE_CLB func;
     };  ptr_t<NODE> obj;
 
 public:
 
-    event_t<socket_t> onConnect;
-    event_t<socket_t> onSocket;
-    event_t<>         onClose;
-    event_t<except_t> onError;
-    event_t<socket_t> onOpen;
+    event_t<socket_t>              onConnect;
+    event_t<ptr_t<tcp_t>,socket_t> onSocket ;
+    event_t<>                      onClose  ;
+    event_t<except_t>              onError  ;
+    event_t<socket_t>              onOpen   ;
 
     /*─······································································─*/
 
@@ -55,90 +57,101 @@ public:
 
     /*─······································································─*/
 
-    void     close() const noexcept { if(obj->state<=0){return;} obj->state=-1; onClose.emit(); }
-    bool is_closed() const noexcept { return obj == nullptr ? 1: obj->state<=0; }
+    bool is_closed() const noexcept { return obj->state & STATE::TCP_STATE_CLOSED; }
+    void     close() const noexcept { free(); }
 
     /*─······································································─*/
 
-    void listen( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
-        if( obj->state == 1 ){ return; } if( dns::lookup(host).empty() )
-          { onError.emit("dns couldn't get ip"); return; }
+    expected_t<tcp_t,except_t>
+    listen( const dns_t& addr, int port, NODE_CLB clb=nullptr ) const noexcept {
 
-        socket_t sk; obj->state=1;
-        sk.SOCK    = SOCK_STREAM ;
-        sk.IPPROTO = IPPROTO_TCP ;
+        if( obj->state & STATE::TCP_STATE_CLOSED )
+          { except_t err = "tcp listener is closed"; onError.emit(err); return err; } 
+        if( obj->state & STATE::TCP_STATE_USED )
+          { except_t err = "tcp listener is used"; onError.emit(err); return err; } 
 
-        if( sk.socket( dns::lookup(host), port )<0 ){
-            onError.emit("Error while creating TCP"); 
-            close(); sk.free(); return; 
+        socket_t sk; obj->state = STATE::TCP_STATE_USED;
+        sk.AF      = addr.family;
+        sk.SOCK    = SOCK_STREAM;
+        sk.IPPROTO = IPPROTO_TCP;
+
+        if( sk.socket( addr.address, port )==-1 ){
+            except_t err = "Error while creating TCP";
+            onError.emit(err); return err; 
         }   sk.set_sockopt( obj->agent );
 
-        if( sk.bind()<0 ){
-            onError.emit("Error while binding TCP"); 
-            close(); sk.free(); return; 
+        if( sk.bind() == -1 ){
+            except_t err = "Error while binding TCP";
+            onError.emit(err); return err; 
         }
 
-        if( sk.listen()<0 ){ 
-            onError.emit("Error while listening TCP"); 
-            close(); sk.free(); return; 
+        if( sk.listen() == -1 ){ 
+            except_t err = "Error while listening TCP";
+            onError.emit(err); return err; 
         }   
         
-        auto self=type::bind( this );
-        cb( sk );  onOpen.emit( sk );
-        sk.onDrain.once([=](){ self->close(); });
-        
+        clb(sk); onOpen.emit(sk); 
+        auto self= type::bind ( this ); 
+        auto enb = ptr_t<uint>( 0UL, 0u );
+
         process::poll( sk, POLL_STATE::READ | POLL_STATE::EDGE, [=](){
-        int c=-1; while( self.count() < MAX_BATCH ) {
 
-            while( (c=sk._accept())==-2 ){ return 0; } if(c<0) { 
-                self->onError.emit("Error while accepting TCP");
-            return -1; }
+            while( *enb > NODEPP_MAX_BATCH_SIZE ){ return 1; } int c=-1;
 
-            auto cli   = socket_t(c);
-            cli.set_sockopt( self->obj->agent );
-            auto _read = type::bind( generator::file::read() );
+            if((c= sk._accept())==-2 ){ /*-----------------------------*/ return  0; }
+            if( c==-1 ){ self->onError.emit("Error while accepting TCP"); return -1; }
+            
+            auto cli=socket_t(c); *enb += 1;
+            /**/ cli.set_sockopt( self->obj->agent );
+        
+        stream::readable( cli, 0UL ).then([=]( socket_t cli ){
 
-        process::poll( cli, POLL_STATE::READ | POLL_STATE::EDGE, [=](){
+            self->onSocket.emit( self, cli ); 
+            self->obj->func(cli);
 
-            if( (*_read)(&cli)==1  ){ return  0; }
-            if(!cli.is_available() ){ return -1; }
-                
-            cli.set_borrow(_read->data); self->onSocket.emit(cli);
-            /*------------------------*/ self->obj->func(cli);
             if( cli.is_available() ){ self->onConnect.emit(cli); }
 
-            return -1; }, self->obj->agent.conn_timeout );
-        }   return  1; }); 
+        }).finally([=](){ *enb -= 1; }); return 1; });
 
+    return *this; }
+
+    expected_t<tcp_t,except_t>
+    listen( const string_t& host, int port, NODE_CLB clb=nullptr ) const noexcept {
+    auto addr = dns::lookup( host, obj->agent.socket_family );
+        if( addr.empty() ){ 
+            except_t err = "dns address not found";
+            onError.emit(err); return err;
+        }   return listen( addr[0], port, clb );
     }
 
     /*─······································································─*/
 
-    void connect( const string_t& host, int port, NODE_CLB cb=nullptr ) const noexcept {
-        if( obj->state == 1 ){ return; } if( dns::lookup(host).empty() )
-          { onError.emit("dns couldn't get ip"); return; }
+    expected_t<tcp_t,except_t>
+    connect( const dns_t& addr, int port, NODE_CLB clb=nullptr ) const noexcept {
 
-        socket_t sk; obj->state=1;
-        sk.SOCK    = SOCK_STREAM ;
-        sk.IPPROTO = IPPROTO_TCP ;
+        if( obj->state & STATE::TCP_STATE_CLOSED )
+          { except_t err = "tcp connector is closed"; onError.emit(err); return err; } 
+        if( obj->state & STATE::TCP_STATE_USED )
+          { except_t err = "tcp connector is used"  ; onError.emit(err); return err; } 
 
-        if( sk.socket( dns::lookup(host), port )<0 ){
-            onError.emit("Error while creating TCP"); 
-            close(); sk.free(); return; 
-        }   
+        socket_t sk; obj->state = STATE::TCP_STATE_USED;
+        sk.AF      = addr.family;
+        sk.SOCK    = SOCK_STREAM;
+        sk.IPPROTO = IPPROTO_TCP;
+
+        if( sk.socket( addr.address, port )==-1 ){
+            except_t err = "Error while creating TCP";
+            onError.emit(err); return err; 
+        }   sk.set_sockopt( obj->agent );
         
-        sk.set_sockopt( obj->agent );
-        auto self = type::bind( this ); 
-        sk.onDrain.once([=](){ self->close(); }); 
-        
-        process::add([=](){ int c=0;
+        auto self = type::bind(this); process::add([=](){ int c=0;
 
-            while( (c=sk._connect())==-2 ){ return 1; } if(c<=0){
-                self->onError.emit("Error while connecting TCP");
+            while( (c=sk._connect())==-2 ){ return 1; } if(c==-1){
+                self->onError.emit( "Error while connecting TCP" );
             return -1; }
 
-            cb(sk); self->onSocket.emit(sk);
-            /*---*/ self->obj->func(sk);
+            clb(sk); self->onSocket.emit( self, sk );
+            /*----*/ self->obj->func(sk);
 
             if( sk.is_available() ){ 
                 sk.onOpen      .emit(  );
@@ -146,23 +159,34 @@ public:
                 self->onConnect.emit(sk); 
             }
 
-        return -1; });
+        return -1; }); 
 
+    return *this; }
+
+    expected_t<tcp_t,except_t>
+    connect( const string_t& host, int port, NODE_CLB clb=nullptr ) const noexcept {
+    auto addr = dns::lookup( host, obj->agent.socket_family );
+        if( addr.empty() ){ 
+            except_t err = "dns address not found";
+            onError.emit(err); return err; 
+        }   return connect( addr[0], port, clb );
     }
 
     /*─······································································─*/
 
     void free() const noexcept {
-        if( is_closed() ){ return; }close();
-        onConnect.clear(); onSocket.clear();
+        if( is_closed() ){ return; }
+        obj->state = STATE::TCP_STATE_CLOSED; 
+        onClose  .emit (); onSocket.clear();
         onError  .clear(); onOpen  .clear();
+        onConnect.clear(); onClose .clear();
     }
 
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace tcp {
+namespace nodepp { namespace tcp {
 
     inline tcp_t server( agent_t* opt=nullptr ){
     auto skt = tcp_t( nullptr, opt ); return skt; }
@@ -170,11 +194,7 @@ namespace tcp {
     inline tcp_t client( agent_t* opt=nullptr ){
     auto skt = tcp_t( nullptr, opt ); return skt; }
 
-}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-}
+}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

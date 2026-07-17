@@ -109,6 +109,22 @@ protected:
 
 public:
 
+    #if NODEPP_ALLOW_STD_SUPPORT==1
+
+    string_t( const std::string& str ) noexcept {
+        ulong N = str.length();
+        if ( N == 0 ){ return; } buffer = string::buffer(N);
+        type::copy( str.data(), str.data()+N, begin() );
+    }
+
+    string_t( std::string&& str ) noexcept {
+        ulong N = str.length();
+        if ( N == 0 ){ return; } buffer = string::buffer(N);
+        type::move( str.data(), str.data()+N, begin() );
+    }
+
+    #endif
+
     string_t() noexcept { buffer.clear(); }
 
     string_t( const char* argc ) noexcept {
@@ -220,22 +236,22 @@ public:
 
     /*─······································································─*/
 
-    ptr_t<int> find( const string_t& data, ulong offset=0 ) const noexcept {
-        if( data.empty() || empty() ){ return nullptr; } /*------*/
+    ptr_t<ulong> find( const string_t& data, ulong offset=0 ) const noexcept {
+        if( data.empty() || empty() ){ return nullptr; }
 
         int pos = min( offset, size() ); auto addr = begin() + pos;
-        ptr_t<int> idx ({ pos, pos }); ulong x=0;
+        ptr_t<ulong> idx ({ pos, pos }); ulong x=0;
 
         while( addr != end() ){ ++pos; 
-           if( data.size() == x ){ break; }
-         elif( *addr == data[x] ){ idx[1]=pos; ++x; }
-         else{ idx[0]=pos; idx[1]=pos; x=0; }
+            if  ( data.size()==x ){ break; }
+            elif( *addr==data[x] ){ idx[1]=pos; ++x; }
+            else{ idx[0]=pos; idx[1]=pos; x=0; }
         ++addr; }
         
-        return idx[0]!=idx[1] ? idx : nullptr;
+        return ( idx[1]-idx[0] ) == (int) data.size() ? idx : nullptr ;
     }
 
-    ptr_t<int> find( const char& data, ulong offset=0 ) const noexcept {
+    ptr_t<ulong> find( const char& data, ulong offset=0 ) const noexcept {
         return find( string_t( 1UL, data ), offset );
     }
 
@@ -261,7 +277,7 @@ public:
     }
 
     string_t remove( function_t<bool,char> func ) noexcept {
-        ulong n=size(); while( n-->0 ){ 
+        ulong n=size(); while( n--!=0 ){ 
             if( func((*this)[n]) ){ erase(n); }
         } return (*this);
     }
@@ -392,7 +408,7 @@ public:
 
     bool starts_with( string_t pattern ) const noexcept {
     auto data = begin(); 
-        if( size() < pattern.size() ){ return false; }
+         if( size() < pattern.size() ){ return false; }
          return memcmp( pattern.get(), data, pattern.size()-1 )==0;
     }
 
@@ -607,8 +623,8 @@ namespace string {
 
     template< class... T >
     string_t format( const string_t& str, const T&... args ){
-        char buffer[CHUNK_SIZE]; /*-----------------------*/
-        snprintf( buffer, CHUNK_SIZE, (char*)str, args... );
+        char buffer[NODEPP_CHUNK_SIZE]; /*-----------------------*/
+        snprintf( buffer, NODEPP_CHUNK_SIZE, (char*)str, args... );
         return buffer;
     }
 
@@ -686,9 +702,16 @@ namespace string {
     }
 
     inline string_t to_string( float num ){
-        char buffer[64]; auto x = snprintf( buffer, 64, "%lf", (double)num );
+        char buffer[64]; auto x = snprintf( buffer, 64, "%.4f", (double)num );
         return { buffer, (ulong)x };
     }
+
+    /*─······································································─*/
+
+    inline uchar_64 to_u64( const string_t& buffer ) { return type::cast<uchar_64>( to_ullong(buffer) ); }
+    inline uchar_32 to_u32( const string_t& buffer ) { return type::cast<uchar_32>( to_ulong (buffer) ); }
+    inline uchar_16 to_u16( const string_t& buffer ) { return type::cast<uchar_16>( to_ulong (buffer) ); }
+    inline uchar_8  to_u8 ( const string_t& buffer ) { return type::cast<uchar_8> ( to_char  (buffer) ); }
 
 }
 

@@ -77,7 +77,7 @@ namespace TEST { namespace QUEUE {
         TEST_ADD( test, "TEST 7 | queue concatenation 1", [](){
             try { queue_t<uint> arr1 ({ 10, 20, 30 }); 
                   queue_t<uint> arr2 ({ 40, 50, 60 }); 
-                  arr1.insert( -1, arr2.size(), &arr2.data() );
+                  arr1.insert( nullptr, arr2.size(), &arr2.data() );
              if ( arr1.size()!= 6 ){ throw 0; }
              if ( arr1[0]    !=10 ){ throw 0; }
              if ( arr1[5]    !=60 ){ throw 0; }
@@ -88,7 +88,7 @@ namespace TEST { namespace QUEUE {
         TEST_ADD( test, "TEST 8 | queue concatenation 2", [](){
             try { queue_t<uint> arr1 ({ 10, 20, 30 }); 
                   queue_t<uint> arr2 ({ 40, 50, 60 }); 
-                  arr1.insert( 0, arr2.size(), &arr2.data() );
+                  arr1.insert( arr1.first(), arr2.size(), &arr2.data() );
              if ( arr1.size()!= 6 ){ throw 0; }
              if ( arr1[0]    !=40 ){ throw 0; }
              if ( arr1[5]    !=30 ){ throw 0; }
