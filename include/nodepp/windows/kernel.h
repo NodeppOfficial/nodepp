@@ -215,9 +215,9 @@ public:
             kv.flag    = flag; kv.fd = (HANDLE) inp.get_fd();
             len_t time = timeout==0 ? 0 : process::now() + timeout;
             
-            kv.callback = [=](){
+            kv.callback = [=]() -> int {
                 if( time!=0 && time<process::now() )
-                  { inp.close(); /*--*/ return -1; }
+                  { inp.close     () ;  return -1; }
                 if( inp.is_closed () ){ return -1; } 
                 if( inp.is_waiting() ){ return  0; }
             return 1; };
@@ -288,7 +288,7 @@ public:
             if( x.lpCompletionKey==(ULONG_PTR)NULL ){ continue; }
             invoker( (void*) x.lpCompletionKey );
 
-        } clear_timeout(); } 
+        }}  clear_timeout(); 
         
     return 1; }
 

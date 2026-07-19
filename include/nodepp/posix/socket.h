@@ -544,8 +544,8 @@ public:
 
         if( AF == AF_INET6 ) { set_ipv6_only_mode(0);
 
+            SOCKADDR_IN6* s = (SOCKADDR_IN6*) &server_st;
             obj->addrlen    = sizeof( SOCKADDR_IN6 );
-            SOCKADDR_IN6* s = (SOCKADDR_IN6*)&server_st;
             memset( s,0,sizeof(SOCKADDR_IN6));
 
             s->sin6_family  = AF_INET6; if( port>0 ){ s->sin6_port = htons(port); }
@@ -557,8 +557,8 @@ public:
 
         } else {
 
+            SOCKADDR_IN* s = (SOCKADDR_IN*) &server_st;
             obj->addrlen   = sizeof(SOCKADDR_IN);
-            SOCKADDR_IN* s = (SOCKADDR_IN*)&server_st;
             memset(s,0,sizeof(SOCKADDR_IN));
 
             s->sin_family  = AF_INET; if( port>0 ){ s->sin_port = htons(port); }

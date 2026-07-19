@@ -286,10 +286,10 @@ public:
         auto &ov = obj->ddl[0].ov    ;
 
         if( obj->state & STATE::FS_STATE_READING ){ 
-        if( is_blocked( ov, c ) ){ return -2; }
+        if( is_blocked( ov, c ) ){ obj->feof=-2; return -2; } else {
             obj->state&=~STATE::FS_STATE_READING; 
-            obj->feof = (int)c; return obj->feof; 
-        }
+            obj->feof  = c==0 ? -1 : (int) c;
+        } return is_feof() ? -1 : obj->feof; }
 
         obj->state|= STATE::FS_STATE_READING;
         ov = {0}; ov.Offset = obj->offset;
@@ -298,7 +298,7 @@ public:
         if( is_blocked(c) ) { obj->feof = -2; return -2; } else {
         if( c>0 ) /*-----*/ { obj->offset += c; }
             obj->state&=~ STATE::FS_STATE_READING;
-            obj->feof  = c>0 ? (int) c : -1 ;
+            obj->feof  = c==0 ? -1 : (int) c;
         }
 
     return is_feof() ? -1 : obj->feof; }
@@ -310,10 +310,10 @@ public:
         auto &ov = obj->ddl[1].ov    ;
 
         if( obj->state & STATE::FS_STATE_WRITING ){
-        if( is_blocked( ov, c ) ){ return -2; }
+        if( is_blocked( ov, c ) ){ obj->feof=-2; return -2; } else {
             obj->state&=~STATE::FS_STATE_WRITING; 
-            obj->feof = (int)c; return obj->feof;  
-        }
+            obj->feof  = c==0 ? -1 : (int) c;
+        } return is_feof() ? -1 : obj->feof; }
 
         obj->state|= STATE::FS_STATE_WRITING;
         ov = {0}; ov.Offset = obj->offset;
@@ -322,7 +322,7 @@ public:
         if( is_blocked(c) ) { obj->feof = -2; return -2; } else {
         if( c>0 ) /*-----*/ { obj->offset += c; }
             obj->state&=~ STATE::FS_STATE_WRITING;
-            obj->feof  = c>0 ? (int) c : -1 ;
+            obj->feof  = c==0 ? -1 : (int) c;
         }
 
     return is_feof() ? -1 : obj->feof; }
