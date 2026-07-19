@@ -99,7 +99,7 @@ public:
             while( *enb > NODEPP_MAX_BATCH_SIZE ){ return 1; } int c=-1;
 
             if((c= sk._accept())==-2 ){ /*-----------------------------*/ return  0; }
-            if( c==-1 ){ self->onError.emit("Error while accepting TCP"); return -1; }
+            if( c==-1 ){ self->onError.emit("Error while accepting TCP"); return  0; }
             
             auto cli=socket_t(c); *enb += 1;
             /**/ cli.set_sockopt( self->obj->agent );
