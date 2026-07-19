@@ -75,7 +75,7 @@ protected:
 protected:
 
     void kill() const noexcept {
-        obj->state |= STATE::FS_STATE_KILL; 
+        obj->state |= STATE::FS_STATE_KILL;
     }
 
     SOCKADDR_ST& get_addr() const noexcept { 
@@ -109,9 +109,9 @@ protected:
 
     struct NODE {
 
+        ulong conn_timeout=0; len_t range[2] = { 0, 0 };
         ulong recv_timeout=0; uchar_64 tag   = 0UL;
         ulong send_timeout=0; uchar_64 pd    = 0UL;
-        ulong conn_timeout=0; len_t range[2] = { 0, 0 };
         
         socklen_t addrlen; int fd=-1, feof=1; 
         SOCKADDR_ST server_addr, client_addr;
@@ -386,15 +386,9 @@ public:
 
     /*─······································································─*/
 
-    void set_client_address( SOCKADDR_ST address ) const noexcept {
-         if( is_server() ){ obj->client_addr = address; }
-         else /*-------*/ { obj->server_addr = address; }
-    }
+    void set_client_address( SOCKADDR_ST address ) const noexcept { get_addr()=address; }
 
-    SOCKADDR_ST get_client_address() const noexcept { 
-        return is_server() ? obj->client_addr 
-        /*--------------*/ : obj->server_addr; 
-    }
+    SOCKADDR_ST get_client_address() /*---------*/ const noexcept { return get_addr (); }
 
     /*─······································································─*/
 
@@ -463,11 +457,11 @@ public:
 
     /*─······································································─*/
 
-    len_t pos( ulong /*unused*/ ) const noexcept { return 0; }
+    len_t pos( len_t /*unused*/ ) const noexcept { return 0ULL; }
 
-    len_t size() const noexcept { return 0; }
+    len_t size() const noexcept { return 0ULL; }
 
-    len_t  pos() const noexcept { return 0; }
+    len_t  pos() const noexcept { return 0ULL; }
 
     /*─······································································─*/
 
@@ -507,7 +501,7 @@ public:
         if( fd == INVALID_SOCKET ){ NODEPP_THROW_ERROR("Such Socket has an Invalid fd"); }
         obj->fd = fd; set_nonbloking_mode(); set_buffer_size(_size);
     }
-    
+
    ~socket_t() noexcept { if( obj.count()>1 && !is_closed() ){ return; } free(); }
 
     socket_t() noexcept : obj( new NODE() ) { _socket_::start_device(); }
@@ -553,7 +547,7 @@ public:
             obj->addrlen    = sizeof( SOCKADDR_IN6 );
             SOCKADDR_IN6* s = (SOCKADDR_IN6*)&server_st;
             memset( s,0,sizeof(SOCKADDR_IN6));
-            
+
             s->sin6_family  = AF_INET6; if( port>0 ){ s->sin6_port = htons(port); }
 
             if  ( host == "::0" || host == "global"    ){ s->sin6_addr = in6addr_any;      }
@@ -576,7 +570,7 @@ public:
 
         }
 
-        obj->server_addr = server_st; 
+        obj->server_addr = server_st;
         obj->client_addr = client_st;
 
     return 1; }
@@ -625,7 +619,7 @@ public:
         while((c=_connect()) == -2 ){ process::next(); } return c;
     }
 
-    int bind() const noexcept {
+    int bind() const noexcept { obj->state |= STATE::FS_STATE_SERVER;
         return ::bind( obj->fd, (SOCKADDR*) &obj->server_addr, obj->addrlen ) ?-1: 1;
     }
 
@@ -673,7 +667,7 @@ public:
     /*─······································································─*/
 
 #if NODEPP_EVENT_SCHEDULER == NODEPP_SCHEDULER_IOURING
-   
+
     virtual int __read( char* bf, const ulong& sx ) const noexcept {
         if( process::millis() > get_recv_timeout() || is_closed() )
           { return -1; } if ( sx==0 ) { return 0; }

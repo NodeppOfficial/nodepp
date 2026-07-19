@@ -108,13 +108,15 @@ protected:
 
     bool is_blocked( OVERLAPPED& ov, DWORD& c ) const noexcept {
     
-        if( !HasOverlappedIoCompleted(&ov) ){ return is_blocked( c ); }
+        if( !HasOverlappedIoCompleted(&ov) ) { return 1; }
 
-        if( obj->state & ( STATE::FS_STATE_READING | STATE::FS_STATE_WRITING ) 
-        &&  GetOverlappedResult( (HANDLE)obj->fd, &ov, &c, FALSE )
-        ) { obj->offset += c; }
+        if( obj->state & ( STATE::FS_STATE_READING | STATE::FS_STATE_WRITING ) ){
+        if( GetOverlappedResult((HANDLE)obj->fd, &ov, &c, FALSE) )
+          { goto DONE; }} else { goto DONE; }
 
-    return 0; }
+        if( is_blocked( c ) ){ return 1; }
+
+    DONE:; obj->offset+= c; return 0; }
     
 public:
 
@@ -291,12 +293,13 @@ public:
 
         obj->state|= STATE::FS_STATE_READING;
         ov = {0}; ov.Offset = obj->offset;
+        ReadFile( obj->fd, bf, sx, &c, &ov );
         
-        if( ReadFile( obj->fd, bf, sx, &c, &ov ) ){
-        if( c>0 ){ obj->offset += c; }
-            obj->feof  = c>0 ? (int) c : -1 ;
+        if( is_blocked(c) ) { obj->feof = -2; return -2; } else {
+        if( c>0 ) /*-----*/ { obj->offset += c; }
             obj->state&=~ STATE::FS_STATE_READING;
-        } elif( is_blocked( c ) ) { obj->feof = -2; return -2; }
+            obj->feof  = c>0 ? (int) c : -1 ;
+        }
 
     return is_feof() ? -1 : obj->feof; }
 
@@ -314,12 +317,13 @@ public:
 
         obj->state|= STATE::FS_STATE_WRITING;
         ov = {0}; ov.Offset = obj->offset;
+        WriteFile( obj->fd, bf, sx, &c, &ov );
         
-        if( WriteFile( obj->fd, bf, sx, &c, &ov ) ){
-        if( c>0 ){ obj->offset += c; }
-            obj->feof  = c>0 ? (int) c : -1 ;
+        if( is_blocked(c) ) { obj->feof = -2; return -2; } else {
+        if( c>0 ) /*-----*/ { obj->offset += c; }
             obj->state&=~ STATE::FS_STATE_WRITING;
-        } elif( is_blocked( c ) ) { obj->feof = -2; return -2; }
+            obj->feof  = c>0 ? (int) c : -1 ;
+        }
 
     return is_feof() ? -1 : obj->feof; }
 

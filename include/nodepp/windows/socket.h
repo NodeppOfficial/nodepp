@@ -142,14 +142,16 @@ protected:
     }
 
     bool is_blocked( OVERLAPPED& ov, DWORD& c ) const noexcept {
+
+        if( !HasOverlappedIoCompleted(&ov) ) { return 1; }
+
+        if( obj->state & ( STATE::FS_STATE_READING | STATE::FS_STATE_WRITING ) ){
+        if( GetOverlappedResult((HANDLE)obj->fd, &ov, &c, FALSE) )
+          { goto DONE; }} else { goto DONE; }
+
+        if( is_blocked( c ) )  { return 1 ; }
     
-        if( !HasOverlappedIoCompleted(&ov) ){ return is_blocked( c ); }
-
-        if( obj->state & ( STATE::FS_STATE_READING | STATE::FS_STATE_WRITING ) 
-        &&  GetOverlappedResult( (HANDLE)obj->fd, &ov, &c, FALSE )
-        ) { /*obj->offset += c;*/ }
-
-    return 0; }
+    DONE:; return 0; }
 
     /*─······································································─*/
 
@@ -379,15 +381,9 @@ public:
 
     /*─······································································─*/
 
-    void set_client_address( SOCKADDR_ST address ) const noexcept {
-         if( is_server() ){ obj->client_addr = address; }
-         else /*-------*/ { obj->server_addr = address; }
-    }
+    void set_client_address( SOCKADDR_ST address ) const noexcept { get_addr()=address; }
 
-    SOCKADDR_ST get_client_address() const noexcept { 
-        return is_server() ? obj->client_addr 
-        /*--------------*/ : obj->server_addr; 
-    }
+    SOCKADDR_ST get_client_address() /*---------*/ const noexcept { return get_addr (); }
 
     /*─······································································─*/
 
@@ -424,7 +420,7 @@ public:
     /*─······································································─*/
 
     void    set_range( len_t x, len_t y ) const noexcept { obj->range[0] = x; obj->range[1] = y; }
-    len_t* get_range() /*---------------*/ const noexcept { return obj->range; }
+    len_t* get_range() /*--------------*/ const noexcept { return obj->range; }
 
     /*─······································································─*/
 
@@ -435,7 +431,7 @@ public:
     }}
 
     /*─······································································─*/
-    
+
     SOCKET    get_fd() const noexcept { return obj->fd ; }
     uchar_64& get_pd() const noexcept { return obj->pd ; }
     uchar_64&    tag() const noexcept { return obj->tag; }
@@ -512,7 +508,7 @@ public:
         if( is_state( STATE::FS_STATE_STOP  ) && !is_feof() && obj.count() >1 ){ return; }
         if( is_state( STATE::FS_STATE_KILL  ) ){ return; } /*-----------------*/ kill();
         if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_STOP ) ) { onDrain.emit(); }
-        
+
         onClose.emit();
 
         onUnpipe.clear(); onResume.clear();
@@ -570,7 +566,7 @@ public:
 
             obj->addrlen   = sizeof(SOCKADDR_IN);
             SOCKADDR_IN* s = (SOCKADDR_IN*)&server_st;
-            memset(s,0,sizeof(SOCKADDR_IN));
+            memset( s,0,sizeof(SOCKADDR_IN) );
 
             s->sin_family  = AF_INET; if( port>0 ){ s->sin_port = htons(port); }
 
@@ -588,7 +584,7 @@ public:
 
     /*─······································································─*/
 
-    int _connect() const noexcept { 
+    int _connect() const noexcept {
         if( process::millis() > get_conn_timeout() )/**/{ return -1; }
         if( is_server() || obj->lpfnConnectEx==nullptr ){ return -1; } 
         
@@ -611,7 +607,12 @@ public:
         if( obj->lpfnConnectEx( obj->fd, (SOCKADDR*) &obj->server_addr, obj->addrlen, NULL, 0, &c, &ov ) ){
             int c=::setsockopt( obj->fd, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, NULL, 0 ); 
             obj->state &=~ STATE::FS_STATE_READING; obj->feof=1; return c==0 ? 1 : -1;
-        } elif( is_blocked(c) ) { obj->feof=-2; return -2; } 
+        } elif( is_blocked(c) ) { 
+            obj->feof=-2; return -2; 
+        } else {
+            obj->state &=~ STATE::FS_STATE_READING; 
+            obj->feof = 1; return (int) c; 
+        }
     
     return -1; }
 
@@ -638,7 +639,12 @@ public:
             int c=::setsockopt( obj->tmp, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&obj->fd, sizeof(SOCKET) );
             c = c==0 ? (int) obj->tmp : INVALID_SOCKET; obj->tmp = INVALID_SOCKET; 
             obj->state &=~ STATE::FS_STATE_WRITING; obj->feof=1; return c; 
-        } elif( is_blocked(c) ) { obj->feof=-2; return -2; } 
+        } elif( is_blocked(c) ) { 
+            obj->feof=-2; return -2; 
+        } else {
+            obj->state &=~ STATE::FS_STATE_WRITING; 
+            obj->feof = 1; return (int) c; 
+        } 
         
     return -1; }
 
@@ -656,7 +662,7 @@ public:
         while((c=_connect()) == -2 ){ process::next(); } return c;
     }
 
-    int bind() const noexcept { 
+    int bind() const noexcept { obj->state |= STATE::FS_STATE_SERVER;
         return ::bind( obj->fd, (SOCKADDR*) &obj->server_addr, obj->addrlen ) ?-1: 1;
     }
 
@@ -706,7 +712,7 @@ public:
     virtual int __read( char* bf, const ulong& sx ) const noexcept {
         if( process::millis() > get_recv_timeout() || is_closed() )
           { return -1; } if ( sx==0 ) { return 0; }
-        
+
         auto &c  = obj->ddl[0].result;
         auto &ov = obj->ddl[0].ov    ;
         auto &bu = obj->ddl[0].buf   ;
@@ -721,24 +727,24 @@ public:
 
         SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
 
-        obj->state|= STATE::FS_STATE_READING; 
-        ov = {0}; bu = { sx, bf }; f = 0;
+        obj->state |= STATE::FS_STATE_READING; 
+        ov = {0}; bu= { sx, bf }; f =0; c =0;
 
-        int res = SOCK != SOCK_DGRAM
+        SOCK != SOCK_DGRAM
         ? WSARecv    ( obj->fd, &bu, 1, &c, &f, /*--------------------*/ &ov, NULL )
         : WSARecvFrom( obj->fd, &bu, 1, &c, &f, (SOCKADDR*) &addr, &len, &ov, NULL );
 
-        if( res==0 ) {
+        if( is_blocked(c) ) { obj->feof = -2; return -2; } else {
             obj->state&=~ STATE::FS_STATE_READING;
             obj->feof  = c>0 ? (int) c : -1 ;
-        } elif( is_blocked( c ) ) { obj->feof = -2; return -2; } 
+        }
 
     return is_feof() ? -1 : obj->feof; }
 
     virtual int __write( char* bf, const ulong& sx ) const noexcept {
         if( process::millis() > get_send_timeout() || is_closed() )
           { return -1; } if ( sx==0 ) { return 0; }
-        
+
         auto &c  = obj->ddl[1].result;
         auto &ov = obj->ddl[1].ov    ;
         auto &f  = obj->ddl[1].flag  ;
@@ -753,16 +759,17 @@ public:
         SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
 
         obj->state |= STATE::FS_STATE_WRITING;
-        ov = {0}; bu = { sx, bf }; f = 0;
+        ov = {0}; bu= { sx, bf }; f =0; c =0;
 
-        int res = SOCK != SOCK_DGRAM
+        SOCK != SOCK_DGRAM
         ? WSASend  ( obj->fd, &bu, 1, &c, f, /*-------------------*/ &ov, NULL )
         : WSASendTo( obj->fd, &bu, 1, &c, f, (SOCKADDR*) &addr, len, &ov, NULL );
+        
 
-        if( res==0 ) {
+        if( is_blocked(c) ) { obj->feof = -2; return -2; } else {
             obj->state&=~ STATE::FS_STATE_WRITING;
-            obj->feof  = c==0 ? -1: (int) c;
-        } elif( is_blocked( c ) ) { obj->feof = -2; return -2; } 
+            obj->feof  = c>0 ? (int) c : -1 ;
+        }
 
     return is_feof() ? -1 : obj->feof; }
 
