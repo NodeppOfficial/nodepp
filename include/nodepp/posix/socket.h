@@ -613,7 +613,7 @@ public:
 
     /*─······································································─*/
 
-    int listen() const noexcept { if( !is_server() ){ return -1; }
+    int listen() const noexcept { obj->state |= STATE::FS_STATE_SERVER;
         return ::listen( obj->fd, NODEPP_MAX_SOCKET ) ? -1: 1;
     }
 
@@ -625,7 +625,7 @@ public:
         while((c=_connect()) == -2 ){ process::next(); } return c;
     }
 
-    int bind() const noexcept { obj->state |= STATE::FS_STATE_SERVER;
+    int bind() const noexcept {
         return ::bind( obj->fd, (SOCKADDR*) &obj->server_addr, obj->addrlen ) ?-1: 1;
     }
 

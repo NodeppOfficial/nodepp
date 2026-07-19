@@ -542,7 +542,7 @@ namespace nodepp { namespace generator { namespace http {
             HTTP_FLAG_STREAM  = 0b00000010,
         };
 
-        string_t bff; ulong size;
+        string_t borrow; ulong size;
 
     public: 
     
@@ -553,21 +553,24 @@ namespace nodepp { namespace generator { namespace http {
         template< class T, class V >
         int chunk_http_chunked( T* fd, char* bf, ulong sx, V& mode ){
 
-            if( bff.empty() ){ 
+            if( borrow.empty() ){ 
 
-                bff = encoder::hex::atob( sx ) + "\r\n" + string_t( bf, sx ) + "\r\n"; 
-                size= 0UL;
+                borrow = encoder::hex::atob( sx ) + "\r\n" + string_t( bf, sx ) + "\r\n"; 
+                size = 0UL; 
 
             } else {
 
-                int c = fd->_write_( bff.get(), bff.size(), &size );
+                int c = fd->_write_( borrow.get(), borrow.size(), &size );
 
                 if( c==-2 ){ data=0; return  1; }
                 if( c<= 0 ){ data=0; return -1; } 
                 
-                if( bff.size()==size ){ bff.clear(); size=0UL; }
+                if( borrow.size ()==size ){ 
+                    borrow.clear();
+                    data = sx; return -1;
+                }
             
-                data = c; return -1;
+                data = 0; return -1;
             }   data = 0; return  1;
 
         }

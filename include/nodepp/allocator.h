@@ -17,10 +17,10 @@
 namespace nodepp { template< ulong HEAP_SIZE=NODEPP_HEAP_SIZE > class allocator_t {
 private:
 
-    using u_8  = uchar;
-    using u_16 = unsigned /*-----*/ int;
-    using u_32 = unsigned long /**/ int;
-    using u_64 = size_t; // unsigned long long int;
+    using u_8  = unsigned char;
+    using u_16 = uint16_t ;
+    using u_32 = uint32_t ;
+    using u_64 = uint64_t ;
 
 protected:
 
@@ -41,8 +41,8 @@ protected:
     struct alignas(NODEPP_ARCH_SIZE) HEAD { u_64 size; u_8* offs; };
     struct alignas(NODEPP_ARCH_SIZE) BODY { u_64 size; u_8  mode; };
     struct alignas(NODEPP_ARCH_SIZE) NODE {
-        NODE* next= nullptr  ; NODE* prev= nullptr;
-        u_8 * addr= nullptr  ; HEAD  head;
+        NODE* next= nullptr  ; NODE* prev = nullptr;
+        u_8 * addr= nullptr  ; HEAD  head ;
         u_8   bffr[HEAP_SIZE];
     };
     
@@ -59,11 +59,9 @@ protected:
         NODE* prv = addr->prev;
         NODE* nxt = addr->next;
 
-        if( addr==obj ){ obj = obj->next; }
-        if( addr==act ){ act = act->next; }
-
-        if( prv )/*--*/{ prv->next = nxt; }
-        if( nxt )/*--*/{ nxt->prev = prv; }
+        if( addr==obj ){ return 1; }
+        if( prv ){ prv->next =nxt; }
+        if( nxt ){ nxt->prev =prv; }
 
     ::free( addr ); return 1; } while(0); return -1; }
 
@@ -92,10 +90,11 @@ protected:
 
     int _clr_page_() noexcept { do {
     if( obj==nullptr || NODEPP_SHTDWN() ){ break; } 
-        NODE* tmp = obj; while( tmp!=nullptr ){
-        NODE* nxt = tmp->next; _del_page_(tmp);
-        tmp = nxt ; }
-    return 1; } while(0); return -1; }
+        while( obj != nullptr ){ 
+            auto x= obj; obj= obj->next; 
+            /*--------*/ _del_page_ (x);
+        }   /**/ return  1; 
+    } while(0) ; return -1; }
 
     /*─······································································─*/
 
@@ -213,23 +212,20 @@ protected:
 
 protected:
 
-    /*─······································································─*/
-
     int _next_() noexcept { do { if( obj == nullptr ){ break; }
     int b = NODEPP_MAX_BATCH_SIZE; act = act ? act : obj;
 
-        NODE* x=act    ; while ( x != nullptr && b-->0 ){
-        NODE* y=x->next; switch( _nxt_mem_(x) ){
-        case 1: _del_page_(x); break; 
-        case 2: /*------------*/ do {
+        while ( b-->0 ){ auto x=act; act = act->next; 
+        switch( _nxt_mem_ (x) ){ 
+        case 1: _del_page_(x); break ; case 2: do {
 
-            if( x== obj ){ /*---*/ break ; }
-            if( x->prev ){ x->prev->next = x->next; }
-            if( x->next ){ x->next->prev = x->prev; }
+            if( x== obj ){ break; }
+            if( x->prev ){ x->prev->next=x->next; }
+            if( x->next ){ x->next->prev=x->prev; }
 
-            obj->prev = x; x->next = obj; obj = x;
+            obj->prev = x; x->next = obj ; obj = x;
     
-        } while(0); break; } x=y; } act=x;
+        } while(0); break; } if( !act ){ break; } }
 
     return 1; } while(0); return -1; }
 
@@ -267,13 +263,13 @@ public:
 
 struct allocator_fallback_t {
 
-    void* calloc( size_t num, size_t size ) noexcept {
+    void* calloc( uint64_t num, uint64_t size ) noexcept {
     void* mem = malloc( num * size );
           memset( mem, 0x00, num * size );
           return mem;
     }
 
-    void* realloc( void* ptr, size_t size ) noexcept {
+    void* realloc( void* ptr, uint64_t size ) noexcept {
         if( size== 0 ) /**/ { free(ptr); return nullptr; }
         if( ptr == nullptr ){ return malloc(size); }
         return ::realloc( ptr, size );
@@ -281,9 +277,9 @@ struct allocator_fallback_t {
 
     /*─······································································─*/
 
-    void* malloc( size_t size ) noexcept { return (void*)  ::malloc(size); }
-    int   free  ( void*  ptr  ) noexcept { ::free ( ptr ); return 1; }
-    int   next  ( /*-------*/ ) noexcept { /*-----------*/ return 1; }
+    void* malloc( uint64_t size ) noexcept { return (void*)  ::malloc(size); }
+    int   free  ( void* ptr )     noexcept { ::free ( ptr ); return 1; }
+    int   next  ( /*-----*/ )     noexcept { /*-----------*/ return 1; }
 
 };
 
@@ -306,7 +302,7 @@ thread_local static allocator_t<NODEPP_HEAP_SIZE> out; return out; }}
 inline void operator delete( void* ptr ) noexcept {
 nodepp::NODEPP_ALLOC().free( ptr ); }
 
-inline void* operator new( size_t size ) {
+inline void* operator new  ( size_t size ) {
 return nodepp::NODEPP_ALLOC().malloc( size ); }
 
 /*─······································································─*/
@@ -314,14 +310,14 @@ return nodepp::NODEPP_ALLOC().malloc( size ); }
 inline void operator delete[]( void* ptr ) noexcept {
 nodepp::NODEPP_ALLOC().free( ptr ); }
 
-inline void* operator new[]( size_t size ) {
+inline void* operator new[]  ( size_t size ) {
 return nodepp::NODEPP_ALLOC().malloc( size ); }
 
 /*─······································································─*/
 
 #if __cplusplus >= 201402L
 
-inline void operator delete( void* ptr, size_t ) noexcept {
+inline void operator delete  ( void* ptr, size_t ) noexcept {
 nodepp::NODEPP_ALLOC().free( ptr ); }
 
 inline void operator delete[]( void* ptr, size_t ) noexcept {
