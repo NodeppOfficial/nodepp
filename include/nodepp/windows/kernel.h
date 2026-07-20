@@ -83,19 +83,18 @@ protected:
 
     void clear_timeout() const noexcept { get_timeout(true); }
 
-    ulong set_timeout( int time=0 ) const noexcept { 
-        if( time < 0 ){ /*--------------*/ return 1; }
-        auto stamp=&get_timeout(); ulong out=*stamp;
-        if( *stamp>(ulong)time ){ *stamp=(ulong)time; }
+    uchar_32 set_timeout( uchar_32 time=0 ) const noexcept { 
+        auto stamp=&get_timeout(); auto out=*stamp;
+        if( *stamp > time ){ *stamp=time; }
     return out; }
 
-    ulong& get_timeout( bool reset=false ) const noexcept {
-        if( reset ) { obj->timeout=(ulong)-1; }
+    uchar_32& get_timeout( bool reset=false ) const noexcept {
+        if( reset ){ obj->timeout = (uchar_32)-1; }
     return obj->timeout; }
     
     /*─······································································─*/
     
-    int get_delay_ms() const noexcept { 
+    uchar_32 get_delay_ms() const noexcept {
         ulong tasks= obj->ev_queue.size() + obj->probe.get();
         if(!obj->kv_queue.empty() && tasks==0 ){ 
         if( obj.count()==1 ) /*------*/ { return -1; }}
@@ -147,10 +146,10 @@ protected:
 
         HANDLE pd; ULONG idx; int state;
 
-        loop_t /*------*/ ev_queue;
+        loop_t   /*----*/ ev_queue;
         queue_t<kevent_t> kv_queue;
-        probe_t /*-----*/ probe   ; 
-        ulong /*-------*/ timeout ; ptr_t<HPOLLFD> ev;
+        probe_t  /*----*/ probe   ; 
+        uchar_32 /*----*/ timeout ; ptr_t<HPOLLFD> ev;
 
        ~NODE(){ CloseHandle( pd ); }
     };  ptr_t<NODE> obj;
@@ -327,17 +326,16 @@ protected:
 
     void clear_timeout() const noexcept { get_timeout(true); }
 
-    ulong set_timeout( int time=0 ) const noexcept { 
-        if( time < 0 ){ /*--------------*/ return 1; }
-        auto stamp=&get_timeout(); ulong out=*stamp;
-        if( *stamp>(ulong)time ){ *stamp=(ulong)time; }
+    uchar_32 set_timeout( uchar_32 time=0 ) const noexcept { 
+        auto stamp=&get_timeout(); auto out=*stamp;
+        if( *stamp > time ){ *stamp=time; }
     return out; }
 
-    ulong& get_timeout( bool reset=false ) const noexcept {
-        if( reset ) { obj->timeout=(ulong)-1; }
+    uchar_32& get_timeout( bool reset=false ) const noexcept {
+        if( reset ){ obj->timeout = (uchar_32)-1; }
     return obj->timeout; }
 
-    int get_delay_ms() const noexcept {
+    uchar_32 get_delay_ms() const noexcept {
         ulong tasks= obj->ev_queue.size() + obj->probe.get();
         if(tasks==0 && obj.count()>1 ){ return 1000; }
     return tasks==0 ? 0 : get_timeout(); }
@@ -345,10 +343,10 @@ protected:
 protected:
 
     struct NODE {
-        int /*-*/ state;
-        ulong   timeout;
-        probe_t   probe;
-        loop_t ev_queue;
+        int /*--*/ state   ;
+        uchar_32   timeout ;
+        probe_t    probe   ;
+        loop_t     ev_queue;
     };  ptr_t<NODE> obj;
 
 public:

@@ -134,19 +134,18 @@ public: loop_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    int get_delay() const noexcept { 
-        if(!obj->normal .empty() ){ return  0; }
-        if( obj->blocked.empty() ){ return -1; }
+    uchar_32 get_delay() const noexcept { 
 
-        auto stm = obj->blocked.first()->data.first;
+        if(!obj->normal .empty() ){ return 0; }
+        if( obj->blocked.empty() ){ return 0; }
+
+        auto lmt = type::cast<uchar_64>( (uchar_32)-1 );
+        auto raw = obj->blocked.first()->data.first;
         auto now = process::now();
-        auto lmt = (uint) -1;
+        auto out = raw - now;
 
-        if( stm > now ){ 
-            auto out = type::cast<int>( stm - now );
-        if((uchar_64) lmt < out ){ return -1; } return out; }
-
-        return 0;
+        return raw>now ? out>lmt ? lmt : out : 0;
+        
     }
 
     /*─······································································─*/

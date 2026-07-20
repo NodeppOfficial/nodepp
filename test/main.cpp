@@ -1,5 +1,3 @@
-#define NODEPP_REGEX_ENGINE NODEPP_REGEX_LITE
-
 #include <nodepp/nodepp.h>
 #include <nodepp/test.h>
 

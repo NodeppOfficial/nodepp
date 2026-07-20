@@ -104,9 +104,10 @@ public:
 
             } while(0);
 
-            if( self->obj->queue.get()==nullptr )/*--*/{ self->free(); coEnd; } 
-            if( self->obj->queue.get()->next==nullptr ){ self->free(); coEnd; } 
-                self->obj->queue.next();
+            do { auto  x =  self->obj->queue.get ();
+            if ( /*-*/ x == nullptr ){ self->free(); coEnd; } 
+            if ( x->next == nullptr ){ self->free(); coEnd; } 
+            } while(0); self->obj->queue.next();
               
         coGoto(1) ; coFinish
         }));
@@ -141,9 +142,10 @@ public:
 
             } while(0);
 
-            if( self->obj->queue.get()==nullptr )/*--*/{ self->free(); coEnd; } 
-            if( self->obj->queue.get()->next==nullptr ){ self->free(); coEnd; } 
-                self->obj->queue.next();
+            do { auto  x =  self->obj->queue.get ();
+            if ( /*-*/ x == nullptr ){ self->free(); coEnd; } 
+            if ( x->next == nullptr ){ self->free(); coEnd; } 
+            } while(0); self->obj->queue.next();
               
         coGoto(1) ; coFinish
         }));

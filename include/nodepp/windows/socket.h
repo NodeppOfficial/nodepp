@@ -551,7 +551,7 @@ public:
 
         if( AF == AF_INET6 ) { set_ipv6_only_mode(0);
 
-            SOCKADDR_IN6* s = (SOCKADDR_IN6*) &server_st;
+            SOCKADDR_IN6* s = (SOCKADDR_IN6*)&server_st;
             obj->addrlen    = sizeof( SOCKADDR_IN6 );
             memset( s,0,sizeof(SOCKADDR_IN6));
 
@@ -564,7 +564,7 @@ public:
 
         } else {
 
-            SOCKADDR_IN* s = (SOCKADDR_IN*) &server_st;
+            SOCKADDR_IN* s = (SOCKADDR_IN*)&server_st;
             obj->addrlen   = sizeof(SOCKADDR_IN);
             memset( s,0,sizeof(SOCKADDR_IN) );
 
@@ -604,13 +604,13 @@ public:
         any.sin_family      = AF; any.sin_port = 0;
         ::bind( obj->fd, (SOCKADDR*)&any, sizeof(any) );
 
-        obj->lpfnConnectEx( obj->fd, (SOCKADDR*) &obj->server_addr, obj->addrlen, NULL, 0, &c, &ov );
-        
-        if( is_blocked(c) ){ obj->feof=-2; return -2; } else {
+        if( obj->lpfnConnectEx( obj->fd, (SOCKADDR*) &obj->server_addr, obj->addrlen, NULL, 0, &c, &ov ) ){
             int c=::setsockopt( obj->fd, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, NULL, 0 ); 
             obj->state &=~ STATE::FS_STATE_READING; obj->feof=1; return c==0 ? 1 : -1;
-        }
+        } elif( is_blocked(c) ) { obj->feof=-2; return -2; } 
     
+        obj->state &=~ STATE::FS_STATE_READING;
+
     return -1; }
 
     int _accept() const noexcept { 
@@ -632,14 +632,14 @@ public:
         if( obj->tmp == INVALID_SOCKET )
           { obj->tmp = WSASocketW( AF, SOCK, IPPROTO, NULL, 0, WSA_FLAG_OVERLAPPED ); }
 
-        obj->lpfnAcceptEx( obj->fd, obj->tmp, obj->addr_buf, 0, sizeof(SOCKADDR_IN)+16, sizeof(SOCKADDR_IN)+16, &c, &ov );
-
-        if( is_blocked(c) ){ obj->feof=-2; return -2; } else {
+        if( obj->lpfnAcceptEx( obj->fd, obj->tmp, obj->addr_buf, 0, sizeof(SOCKADDR_IN)+16, sizeof(SOCKADDR_IN)+16, &c, &ov ) ){
             int c=::setsockopt( obj->tmp, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&obj->fd, sizeof(SOCKET) );
             c = c==0 ? (int) obj->tmp : INVALID_SOCKET; obj->tmp = INVALID_SOCKET; 
             obj->state &=~ STATE::FS_STATE_WRITING; obj->feof=1; return c; 
-        } 
+        } elif( is_blocked(c) ) { obj->feof=-2; return -2; } 
         
+        obj->state &=~ STATE::FS_STATE_WRITING;
+
     return -1; }
 
     /*─······································································─*/
@@ -707,8 +707,6 @@ public:
         if( process::millis() > get_recv_timeout() || is_closed() )
           { return -1; } if ( sx==0 ) { return 0; }
 
-        SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
-
         auto &c  = obj->ddl[0].result;
         auto &ov = obj->ddl[0].ov    ;
         auto &bu = obj->ddl[0].buf   ;
@@ -721,10 +719,12 @@ public:
             obj->feof  = c==0 ? -1 : (int) c;
         } return is_feof() ? -1 : obj->feof; }
 
+        SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
+
         obj->state |= STATE::FS_STATE_READING; 
         ov = {0}; bu= { sx, bf }; f =0; c =0;
 
-        int x = SOCK != SOCK_DGRAM
+        SOCK != SOCK_DGRAM
         ? WSARecv    ( obj->fd, &bu, 1, &c, &f, /*--------------------*/ &ov, NULL )
         : WSARecvFrom( obj->fd, &bu, 1, &c, &f, (SOCKADDR*) &addr, &len, &ov, NULL );
 
@@ -739,8 +739,6 @@ public:
         if( process::millis() > get_send_timeout() || is_closed() )
           { return -1; } if ( sx==0 ) { return 0; }
 
-        SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
-
         auto &c  = obj->ddl[1].result;
         auto &ov = obj->ddl[1].ov    ;
         auto &f  = obj->ddl[1].flag  ;
@@ -751,6 +749,8 @@ public:
             obj->state&=~STATE::FS_STATE_WRITING;
             obj->feof  = c==0 ? -1 : (int) c;
         } return is_feof() ? -1 : obj->feof; }
+
+        SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
 
         obj->state |= STATE::FS_STATE_WRITING;
         ov = {0}; bu= { sx, bf }; f =0; c =0;
