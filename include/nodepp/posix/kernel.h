@@ -581,14 +581,20 @@ public:
 
         obj->state &=~ FLAG::KV_STATE_SLEEP;
 
-        while( obj->idx > 0 ){ obj->idx--; auto &x = obj->ev[ obj->idx ];
+        while( obj->idx > 0 ){ 
+            
+            obj->idx--; auto &x = obj->ev[ obj->idx ];
 
             if( x.data.ptr == nullptr ) { uchar_64 value = 0;
-            if( ::read( obj->ed, &value, sizeof(uchar_64)) ){ /*unused*/ } continue; }
+            if( ::read( obj->ed, &value, sizeof(uchar_64)) ){ /*unused*/ }
+                invoker( nullptr ); continue; 
+            }
 
+            /*
             if( x.events& ( EPOLLERR | EPOLLHUP ) &&
               ( x.events& ( EPOLLOUT | EPOLLIN ))==0
             ) { remove( x.data.ptr ); continue; }
+            */
             
             invoker( x.data.ptr );
 
@@ -905,14 +911,21 @@ public:
         obj->idx=kevent( obj->pd, NULL, 0, &obj->ev, obj->ev.size(), &get_delay_tm() );
         obj->state &=~ FLAG::KV_STATE_SLEEP;
 
-        while( obj->idx > 0 ){ obj->idx--; auto &x = obj->ev[ obj->idx ];
-        
-            if( x.filter==EVFILT_USER )/**/{ continue; }
+        while( obj->idx > 0 ){ 
+            
+            obj->idx--; auto &x = obj->ev[ obj->idx ];
+            if( x.filter==EVFILT_USER 
+            ) { invoker( nullptr ); continue; }
+
+            /*
             if( x.flags & ( EV_ERROR    | EV_EOF       ) &&
               ( x.filter& ( EVFILT_WRITE| EVFILT_READ ))==0
             ) { remove( x.udata ); continue; }
+            */
 
-        invoker( x.udata ); }
+            invoker( x.udata ); 
+        
+        }
         
     clear_timeout(); return 1; }
 

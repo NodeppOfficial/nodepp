@@ -104,11 +104,10 @@ public:
     EVP_MD_CTX* get_fd() const noexcept { return obj->ctx; }
 
     void update( string_t msg ) const noexcept { 
-        if( !obj->state ){ return; } ulong chunk=0, base=(ulong)( obj->bff.size() );
-        while( chunk < msg.size() ){ 
-            string_t tmp = msg.slice( chunk, chunk + base );
+        if( !obj->state ){ return; } ulong chunk = obj->bff.size();
+        while( !msg.empty() ){ auto tmp = msg.slice( 0, chunk );
             EVP_DigestUpdate( obj->ctx, (uchar*) tmp.data(), tmp.size() );
-        chunk += base; }
+        msg.ptr().slice( chunk, (ulong) -1 ); }
     }
 
     void free() const noexcept { 
@@ -164,11 +163,10 @@ public:
     HMAC_CTX* get_fd() const noexcept { return obj->ctx; }
 
     void update( string_t msg ) const noexcept { 
-        if( !obj->state ){ return; } ulong chunk=0, base=(ulong)( obj->bff.size() );
-        while( chunk < msg.size() ){ 
-            string_t tmp = msg.slice( chunk, chunk + base );
+        if( !obj->state ){ return; } ulong chunk = obj->bff.size();
+        while( !msg.empty() ){ auto tmp = msg.slice( 0, chunk );
             HMAC_Update( obj->ctx, (uchar*) tmp.data(), tmp.size() );
-        chunk += base; }
+        msg.ptr().slice( chunk, (ulong) -1 ); }
     }
 
     void free() const noexcept {
@@ -229,13 +227,13 @@ public:
    ~xor_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     void update( string_t msg ) const noexcept { 
-        if( !obj->state ){ return; } ulong chunk=0, /*-----*/ base=NODEPP_CHUNK_SIZE;
-        while( chunk < msg.size() ){ string_t tmp = msg.slice( chunk, chunk + base );
+        if( !obj->state ){ return; } ulong chunk = NODEPP_CHUNK_SIZE;
+        while( !msg.empty() ){ auto tmp = msg.slice( 0, chunk );
         forEach( x, tmp ){ CTX &y = obj->ctx[0];
-            x = x ^ y.key[ y.pos % y.key.size() ]; ++y.pos; 
-        }  if ( tmp   .empty() )  { return; }
-         elif ( onData.empty() )  { obj->bff +=tmp; }
-         else { onData.emit(tmp); } chunk += base ; }
+            x ^= y.key[ y.pos % y.key.size() ]; ++y.pos; 
+        } if ( tmp   .empty() )  { return; }
+        elif ( onData.empty() )  { obj->bff +=tmp; }
+        else { onData.emit(tmp); } msg.ptr().slice( chunk, (ulong)-1 ); }
     }
 
     bool is_available() const noexcept { return obj->state == 1; }
@@ -301,13 +299,13 @@ public:
     }
 
     void update( string_t msg ) const noexcept { 
-        if( !obj->state ){ return; } ulong chunk=0, base=(ulong)( obj->bff.size() );
-        while( chunk < msg.size() ){ auto tmp = msg.slice( chunk, chunk + base );
+        if( !obj->state ){ return; } ulong chunk = obj->bff.size();
+        while( !msg.empty() ){ auto tmp = msg.slice( 0, chunk );
             EVP_EncryptUpdate( obj->ctx, &obj->bff, &obj->len, (uchar*)tmp.get(), tmp.size() );
             if ( obj->len > 0 ) { if ( onData.empty() ) {
                      obj->buff += string_t( (char*)&obj->bff, (ulong) obj->len );
             } else { onData.emit( string_t( (char*)&obj->bff, (ulong) obj->len ) ); }}
-        chunk += base; }
+        msg.ptr().slice( chunk, (ulong) -1 ); }
     }
     
    ~encrypt_t() noexcept { if( obj.count()>1 ){ return; } free(); }
@@ -380,13 +378,13 @@ public:
     }
 
     void update( string_t msg ) const noexcept { 
-        if( !obj->state ){ return; } ulong chunk=0, base=(ulong)( obj->bff.size() );
-        while( chunk < msg.size() ){ auto tmp = msg.slice( chunk, chunk + base );
+        if( !obj->state ){ return; } ulong chunk = obj->bff.size();
+        while( !msg.empty() ){ auto tmp = msg.slice( 0, chunk );
             EVP_DecryptUpdate( obj->ctx, &obj->bff, &obj->len, (uchar*)tmp.get(), tmp.size());
             if ( obj->len > 0 ) { if ( onData.empty() ) {
                      obj->buff += string_t( (char*)&obj->bff, (ulong) obj->len );
             } else { onData.emit( string_t( (char*)&obj->bff, (ulong) obj->len ) ); }}
-        chunk += base; }
+        msg.ptr().slice( chunk, (ulong) -1 ); }
     }
     
    ~decrypt_t() noexcept { if( obj.count()>1 ){ return; } free(); }
@@ -592,12 +590,9 @@ public:
     void update( string_t msg ) const noexcept { 
         if( !obj->state ){ return; }
         
-        ulong chunk = 0; 
-        ulong base = obj->bff.size();
+        ulong chunk = obj->bff.size();
         
-        while( chunk < msg.size() ) { 
-            string_t tmp = msg.slice( chunk, chunk + base );
-            obj->ctx->len = 0; 
+        while( !msg.empty() ) { auto tmp = msg.slice( 0, chunk ); obj->ctx->len = 0; 
         for  ( auto &x: tmp ) {
                 
             obj->ctx->pos1 = ( obj->ctx->pos1 << 8 ) | (uint8_t)x; 
@@ -615,7 +610,7 @@ public:
             if   ( onData.empty() ) { obj->buff.push( out ); } 
             else { onData.emit( out ); }}
 
-        chunk += base; }
+        msg.ptr().slice( chunk, (ulong) -1 ); }
 
     }
 
@@ -683,9 +678,12 @@ public:
     }
 
     void update( string_t msg ) const noexcept { 
-        if( !obj->state ){ return; } ulong chunk=0, /*--------*/ base=obj->bff.size();
-        while( chunk < msg.size() ){ auto tmp = msg.slice( chunk, chunk + base );
-        for  ( int x=0; x<64; x++ ){ obj->ctx->T[type::cast<int>(CRYPTO_BASE64[x])] =x; }
+        if( !obj->state ){ return; } ulong chunk = obj->bff.size();
+
+        while( !msg.empty() ){ auto tmp = msg.slice( 0, chunk );
+        for  ( int x=0; x<64; x++ ){ 
+            
+            obj->ctx->T[type::cast<int>(CRYPTO_BASE64[x])] =x; }
 
             string_t out; obj->ctx->len = 0; forEach ( x, tmp ) {
                 uint   y = type::cast<uint>(x);
@@ -703,7 +701,8 @@ public:
 
             if ( obj->ctx->len == 0 ){ return; }
             if ( onData.empty()     ){ obj->buff.push(out); } else { onData.emit( out ); }
-        chunk += base; }
+
+        msg.ptr().slice( chunk, (ulong) -1 ); }
     }
 
     void free() const noexcept { 
@@ -929,47 +928,23 @@ public:
     string_t public_encrypt( string_t msg, int padding=RSA_PKCS1_PADDING ) const {
         if( msg.empty() || obj->state==0 || obj->rsa == nullptr ){ return nullptr; }
 
-        ulong chunk=0, base=(ulong)( obj->bff.size() ); string_t data;
+        ulong chunk = obj->bff.size(); string_t data;
         
-        while( chunk < msg.size() ){ auto tmp = msg.slice( chunk, chunk + base );
+        while( !msg.empty() ){ auto tmp = msg.slice( 0, chunk );
             int c = RSA_public_encrypt( tmp.size(), (uchar*)tmp.data(), &obj->bff, obj->rsa, padding );
             data += string_t( (char*) &obj->bff, (ulong)c );
-        chunk += base; } return data;
+        msg.ptr().slice( chunk, (ulong) -1 ); } return data;
     }
-
-    /*
-    string_t private_encrypt( string_t msg, int padding=RSA_PKCS1_PADDING ) const {
-        if( msg.empty() || obj->state==0 || obj->rsa == nullptr ){ return nullptr; }
-
-        ulong chunk=0, base=(ulong)( obj->bff.size() ); string_t data;
-        
-        while( chunk < msg.size() ){ auto tmp = msg.slice( chunk, chunk + base );
-            int c = RSA_private_encrypt( tmp.size(), (uchar*)tmp.data(), &obj->bff, obj->rsa, padding );
-            data += string_t( (char*) &obj->bff, (ulong)c );
-        chunk += base; } return data;
-    }
-
-    string_t public_decrypt( string_t msg, int padding=RSA_PKCS1_PADDING ) const {
-        if( msg.empty() || obj->state==0 || obj->rsa == nullptr ){ return nullptr; }
-
-        ulong chunk=0, base=(ulong)( obj->bff.size() ); string_t data;
-        
-        while( chunk < msg.size() ){ auto tmp = msg.slice( chunk, chunk + base );
-            int c = RSA_public_decrypt( tmp.size(), (uchar*)tmp.data(), &obj->bff, obj->rsa, padding );
-            data += string_t( (char*) &obj->bff, (ulong)c );
-        chunk += base; } return data;
-    }
-    */
 
     string_t private_decrypt( string_t msg, int padding=RSA_PKCS1_PADDING ) const {
         if( msg.empty() || obj->state==0 || obj->rsa == nullptr ){ return nullptr; }
 
-        ulong chunk=0, base=(ulong)( obj->bff.size() ); string_t data;
+        ulong chunk = obj->bff.size(); string_t data;
         
-        while( chunk < msg.size() ){ auto tmp = msg.slice( chunk, chunk + base );
+        while( !msg.empty() ){ auto tmp = msg.slice( 0, chunk );
             int c = RSA_private_decrypt( tmp.size(), (uchar*)tmp.data(), &obj->bff, obj->rsa, padding );
             data += string_t( (char*) &obj->bff, (ulong)c );
-        chunk += base; } return data;
+        msg.ptr().slice( chunk, (ulong) -1 ); } return data;
     }
 
     bool is_available() const noexcept { return obj->state == 1; }
@@ -1584,5 +1559,9 @@ namespace crypto { namespace certificate {
 
 }
 
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #undef CRYPTO_BASE64
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

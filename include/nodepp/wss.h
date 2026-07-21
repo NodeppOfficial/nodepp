@@ -25,8 +25,8 @@ namespace nodepp { class wss_t : public ssocket_t {
 protected:
 
     struct NODE {
-        generator::ws::read  read ; bool msk = false;
-        generator::ws::write write; char mask[4];
+        generator::ws::read  read ; uchar_32 mask;
+        generator::ws::write write;
     };  ptr_t<NODE> ws;
 
 public:
@@ -50,12 +50,7 @@ public:
 
     /*─······································································─*/
 
-    char* get_mask() const noexcept { 
-        if( ws->msk ){ uchar_32* tmp = (uchar_32*) ws->mask; *tmp = rand(); }
-        return ws->msk ? ws->mask : nullptr;
-    }
-
-    void  set_mask( bool mode ) const noexcept { ws->msk = mode; }
+    uchar_32& get_mask() const noexcept { return ws->mask; }
 
 };}
 
@@ -75,7 +70,7 @@ namespace nodepp { namespace wss {
 
         process::add([=](){ 
             cli.set_timeout(0); cli.resume();
-            cli.set_mask   (0);
+            cli.get_mask()=0UL;
             self->onConnect.resume( );
             self->onConnect.emit(cli);
             stream::pipe /*--*/ (cli);
@@ -99,13 +94,13 @@ namespace nodepp { namespace wss {
         https_t hrv = raw;
 
         if( !generator::ws::client( hrv, uri ) )
-          { self->onConnect.skip(); return; }  
+          { self->onConnect.skip(); return; }
 
         wss_t cli   = raw;
 
         process::add([=](){ 
             cli.set_timeout(0); cli.resume();
-            cli.set_mask   (1);
+            cli.get_mask() = (uchar_32) -1;
             self->onConnect.resume( );
             self->onConnect.emit(cli);
             stream::pipe /*--*/ (cli);

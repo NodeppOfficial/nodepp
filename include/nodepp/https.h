@@ -104,10 +104,10 @@ public:
         } else { version = base[0]; status = string::to_uint( base[1] ); }
         } while(0); 
 
-        do{ coWait( http->line( this )==1 ); if( http->line.state<=0 ){ coEnd; } do {
-            auto x= http->line.data; auto y = x.find( ": " ); 
+        do{ coWait( http->line( this )==1 ); if( http->line.state<=0 ){ coEnd; } 
+        do{ auto x= http->line.data; auto y = x.find( ": " ); 
         if( y.null() ){ b=0; break; }
-            headers[ x.slice( 0, y[0] ).to_capital_case() ] = x.slice_view( y[1], -2 );
+            headers[ x.slice( 0, y[0] ).to_capital_case() ] = x.slice( y[1], -2 );
         } while(0); } while(b);
 
         http->read.borrow = type::move( get_borrow( ) ); 

@@ -227,8 +227,9 @@ public:
         ++addr; } return (*this);
     }
 
-    array_t reverse() const noexcept { auto n_buffer = copy();
-        type::reverse( begin(), end(), n_buffer.begin() );
+    array_t reverse() const noexcept { 
+        auto n_buffer = ptr_t<T>( buffer.size() );
+        type::copy_reverse( begin(), end(), n_buffer.begin() );
         return n_buffer;
     }
 
@@ -471,7 +472,7 @@ namespace nodepp { namespace string {
     array_t<string_t> split_view( string_t _str, const T& pattern ){
         queue_t<string_t> out; ulong offset=0; ptr_t<ulong> idx;
         
-        while( (idx=_str.find( pattern, offset )) != nullptr ){
+        while((idx=_str.find( pattern, offset ) ) != nullptr ){
             out.push( _str.slice_view( offset, idx[0] ) ); offset=idx[1];
         }   out.push( _str.slice_view( offset ) );
 

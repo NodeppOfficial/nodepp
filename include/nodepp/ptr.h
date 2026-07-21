@@ -295,10 +295,11 @@ public:
     }
 
     ptr_t& slice( ulong _offset, ulong _limit ) noexcept {
-        if( _offset > _limit  ){ limit=0, offset=0; return *this; }
         if( _null_( address ) ){ /*--------------*/ return *this; }
-        limit =min( address->length, _limit  + offset );
-        offset=min( address->length, _offset + offset ); 
+        if( _limit  > address->length ){ _limit =address->length; }
+        if( _offset > _limit  ){ limit=0, offset=0; return *this; }
+    limit = _limit > address->length ? address->length : min( address->length, _limit  + offset );
+    offset= _offset> address->length ? address->length : min( address->length, _offset + offset ); 
     return *this; }
 
     /*─······································································─*/

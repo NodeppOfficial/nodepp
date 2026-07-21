@@ -282,9 +282,9 @@ public:
 
         obj->state &=~ FLAG::KV_STATE_SLEEP; 
 
-        if( res ){ while( obj->idx > 0 ){ obj->idx--; auto &x = obj->ev[ obj->idx ];
-
-            if( x.lpCompletionKey==(ULONG_PTR)NULL ){ continue; }
+        if( res ){ while( obj->idx > 0 ){ 
+            
+            obj->idx--; auto &x = obj->ev[ obj->idx ];
             invoker( (void*) x.lpCompletionKey );
 
         }}  clear_timeout(); 

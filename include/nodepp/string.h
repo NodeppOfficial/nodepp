@@ -271,8 +271,9 @@ public:
         ++addr; } return (*this);
     }
 
-    string_t reverse() const noexcept { auto n_buffer = copy();
-        type::reverse( begin(), end(), n_buffer.begin() );
+    string_t reverse() const noexcept { 
+        auto n_buffer = ptr_t<char>( buffer.size() );
+        type::copy_reverse( begin(), end(), n_buffer.begin() );
         return n_buffer;
     }
 

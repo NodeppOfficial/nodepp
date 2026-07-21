@@ -362,10 +362,19 @@ namespace nodepp { namespace type {
     }
 
     template < class A, class B >
-    void reverse( A src_first, A src_last, B dst_first ) {
+    void copy_reverse( A src_first, A src_last, B dst_first ) {
         while ( src_first != src_last ) {
           --src_last;
            *dst_first=*src_last;
+          ++dst_first;
+        }
+    }
+
+    template < class A, class B >
+    void move_reverse( A src_first, A src_last, B dst_first ) {
+        while ( src_first != src_last ) {
+          --src_last;
+           *dst_first= move( *src_last );
           ++dst_first;
         }
     }

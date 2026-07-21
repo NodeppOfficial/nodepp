@@ -25,8 +25,8 @@ namespace nodepp { class ws_t : public socket_t {
 protected:
 
     struct NODE {
-        generator::ws::read  read ; bool msk = false;
-        generator::ws::write write; char mask[4];
+        generator::ws::read  read ; uchar_32 mask;
+        generator::ws::write write;
     };  ptr_t<NODE> ws;
 
 public:
@@ -34,7 +34,7 @@ public:
     template< class... T >
     ws_t( const T&... args ) noexcept : socket_t( args... ), ws( new NODE() ){}
 
-    /*.........................................................................*/
+    /*─······································································─*/
 
     virtual int _write( char* bf, const ulong& sx ) const noexcept override {
         if( is_closed() ){ return -1; } if( sx==0 ){ return  0; }
@@ -48,14 +48,9 @@ public:
         return ws->read.data==0 ? -1 : ws->read.data;
     }
 
-    /*.........................................................................*/
+    /*─······································································─*/
 
-    char* get_mask() const noexcept { 
-        if( ws->msk ){ uchar_32* tmp = (uchar_32*) ws->mask; *tmp = rand(); }
-        return ws->msk ? ws->mask : nullptr;
-    }
-
-    void  set_mask( bool mode ) const noexcept { ws->msk = mode; }
+    uchar_32& get_mask() const noexcept { return ws->mask; }
 
 };}
 
@@ -75,7 +70,7 @@ namespace nodepp { namespace ws {
 
         process::add([=](){ 
             cli.set_timeout(0); cli.resume();
-            cli.set_mask   (0);
+            cli.get_mask()=0UL;
             self->onConnect.resume( );
             self->onConnect.emit(cli);
             stream::pipe /*--*/ (cli);
@@ -105,9 +100,9 @@ namespace nodepp { namespace ws {
 
         process::add([=](){ 
             cli.set_timeout(0); cli.resume();
-            cli.set_mask   (1);
+            cli.get_mask() = (uchar_32) -1;
             self->onConnect.resume( );
-            self->onConnect.emit(cli);  
+            self->onConnect.emit(cli);
             stream::pipe /*--*/ (cli);
         return -1; });
 

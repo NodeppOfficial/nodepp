@@ -16,9 +16,15 @@ void server() {
         cli.read_body()
 
         .then([=]( http_t cli ){
-            console::log( "->", cli.body );
-            cli.write_header( 200, header_t({}) );
-            cli.write( "received" );
+
+            file_t file ( "LICENSE", "r" );
+
+            cli.write_header( 200, header_t({
+                { "Content-Length", string::to_string( file.size() ) }
+            }) );
+
+            stream::pipe( file, cli );
+            
         })
         
         .fail([=]( except_t err ){

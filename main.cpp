@@ -1,14 +1,88 @@
 #include <nodepp/nodepp.h>
 #include <nodepp/worker.h>
 #include <nodepp/timer.h>
-#include <nodepp/tcp.h>
+#include <nodepp/http.h>
+#include <nodepp/path.h>
+#include <nodepp/ws.h>
 #include <nodepp/fs.h>
 
 using namespace nodepp;
 
+void server(){
+
+    auto server = http::server([=]( http_t cli ){ 
+
+        cli.write_header( 200, header_t({
+            { "Content-Security-Policy", "*" }
+        }) );
+
+        cli.write("Hello World!");
+
+    }); ws::server( server );
+
+    server.onConnect([=]( ws_t cli ){
+
+        console::log("connected");
+        
+        cli.onData([=]( string_t data ){
+            cli.write( "<: received" );
+            console::log( data );
+        });
+
+        cli.onClose([=](){ 
+            console::log("closed"); 
+        });
+
+    });
+
+    server.onError([=]( except_t err ){
+        console::log( ">>", err.what() );
+    });
+
+    server.listen( "localhost", 8000, [=]( socket_t server ){
+        console::log("server started at http://localhost:8000");
+    });
+
+}
+
+void client() {
+
+    auto client = ws::client( "ws://localhost:8000/" );
+    
+    client.onConnect([=]( ws_t cli ){ 
+
+        console::log("connected");
+    
+        cli.onData([=]( string_t data ){
+            console::log( "client read>>", data );
+        });
+
+        cli.onClose([=](){
+            console::log("closed");
+        });
+
+        stream::pipe( cli );
+        timer ::add ([=](){
+            auto msg = regex::format( "hello world! ${0}", process::now() );
+            return cli.write( msg ) <= 0 ? -1 : 1 ;
+        },1000);
+
+    });
+
+    client.onError([=]( except_t err ){
+        console::log( "<>", err.data() );
+    });
+
+}
+
 void onMain() {
 
-    uchar_64 x = 0xf000000000000000;
-    console::log( (int) x );
+    worker::add( coroutine::add( COROUTINE(){
+    coBegin /*--*/ ; server();
+    process::wait(); coFinish }));
+
+    worker::add( coroutine::add( COROUTINE(){
+    coBegin /*--*/ ; client();
+    process::wait(); coFinish }));
 
 }
