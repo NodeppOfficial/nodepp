@@ -204,7 +204,7 @@ public:
          else{ idx[0]=pos; idx[1]=pos; x=0; }
         ++addr; }
         
-        return ( idx[1]-idx[0] ) == (int) data.size() ? idx : nullptr ;
+        return ( idx[1]-idx[0] ) == data.size() ? idx : nullptr ;
     }
 
     ptr_t<ulong> find( const T& data, ulong offset=0 ) const noexcept {

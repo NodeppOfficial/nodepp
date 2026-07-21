@@ -96,7 +96,6 @@ protected:
     if( mem.mode==FLAG::URING_FLAG_DONE ){
         mem.mode =FLAG::URING_FLAG_FREE ;
         
-        IOsqe sqe = mem.sqe;
         IOcqe cqe = mem.cqe;
 
         if  ( cqe.res  < 0  )
