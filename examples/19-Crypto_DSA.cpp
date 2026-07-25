@@ -14,8 +14,7 @@ void onMain(){
     
     memcpy( &data, sign.get(), data.size() );
 
-    console::log( "sign:", encoder::hex::get( data ) );
-
+    console::log( "sign:", encoder::hex::atob( data ) );
     console::log( "verf:", ppt.verify( msg, sign ) );
     console::log( "verf:", ppt.verify( msg, "Hello World!" ) );
 

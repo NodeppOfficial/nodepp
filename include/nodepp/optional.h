@@ -16,13 +16,15 @@
 
 namespace nodepp { 
 template< class T > class optional_t {
-protected: ptr_t<T> val;
+protected: 
+
+    ptr_t<T> val;
 
 public:
 
-    optional_t( const T& value ) noexcept { val=ptr_t<T>( 0UL, value ); }
+    optional_t( const T& value ) noexcept { val=type::bind( value ); }
 
-    optional_t()  /*----------*/ noexcept {}
+    optional_t(        ) /*---*/ noexcept {}
 
     optional_t( null_t ) /*---*/ noexcept {}
 
@@ -34,9 +36,9 @@ public:
 
     /*─······································································─*/
 
-    T& value() const { 
-    if( val.null() ){ NODEPP_THROW_ERROR("expected does not have a value"); }
-    return *val; }
+    T value() const { if( val.null() ){ 
+        NODEPP_THROW_ERROR("expected does not have a value"); 
+    } return *val; }
     
 };}
 

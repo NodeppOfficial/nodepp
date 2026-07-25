@@ -135,7 +135,6 @@ private:
             if( N==0 ){ address->value = new T( ); }
             else      { address->value = new T[N]; }
         }
-
     return 1; }
 
     inline int _set_( NODE*& address, ulong N ) noexcept {
@@ -146,6 +145,18 @@ private:
           { address = nullptr; return -1;}
         if( _new_( address, N )    == -1 )
           { address = nullptr; return -1;}
+        
+    return 1; }
+
+    /*─······································································─*/
+
+    inline int _uno_( NODE*& address, const T& c ) noexcept {
+        if( _set_( address, 0UL )==-1 ){ return -1; }
+
+        if( address->flag & FLAG::PTR_FLAG_STACK ){
+            address->value= (T*)( address->stack );
+            memcpy( (void*) address->value, (void*)&c, sizeof(T) );
+        } else { address->value = new T(c); }
         
     return 1; }
 
@@ -304,13 +315,13 @@ public:
 
     /*─······································································─*/
 
+    void resize( ulong N, const T& c ) noexcept {
+         if( N==0UL ){ _uno_( address, c ); } else { resize(N); fill(c); }
+    }
+
     template < class V, ulong N >
     void resize( const V (&value)[N] ) noexcept {
          resize(N); type::copy( value, value+N, begin() );
-    }
-
-    void resize( ulong N, const T& c ) noexcept {
-         resize(N); fill(c);
     }
 
     void resize( ulong N ) noexcept {

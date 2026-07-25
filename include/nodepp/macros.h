@@ -60,7 +60,7 @@
 #if NODEPP_ALLOW_THROW_EXCEPTION==1
 #define NODEPP_THROW_ERROR(...) do { throw nodepp::except_t(__VA_ARGS__); } while(0)
 #else
-#define NODEPP_THROW_ERROR(...) do { nodepp::console::error(__VA_ARGS__); nodepp::process::exit(); } while(0)
+#define NODEPP_THROW_ERROR(...) do { nodepp::console::error(__VA_ARGS__); ::exit(1); } while(0)
 #endif
 
 /*────────────────────────────────────────────────────────────────────────────*/

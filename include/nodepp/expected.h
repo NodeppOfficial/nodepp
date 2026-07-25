@@ -22,9 +22,9 @@ protected:
     
 public:
 
-    expected_t( const T& value ) noexcept { val.first =ptr_t<T>( 0UL, value ); }
+    expected_t( const T& value ) noexcept { val.first =type::bind( value ); }
 
-    expected_t( const E& error ) noexcept { val.second=ptr_t<E>( 0UL, error ); }
+    expected_t( const E& error ) noexcept { val.second=type::bind( error ); }
 
     expected_t( null_t ) /*---*/ noexcept {}
 
@@ -36,15 +36,15 @@ public:
 
     /*─······································································─*/
 
-    T& value() const { if( val.first.null() ){ 
+    T value() const { if( val.first.null() ){ 
         NODEPP_THROW_ERROR("expected does not have a value"); 
-    }   return *val.first; }
+    } return *val.first; }
 
     /*─······································································─*/
 
-    E& error() const { if( val.second.null() ){ 
-        NODEPP_THROW_ERROR("expected does not have a value"); 
-    }   return *val.second; }
+    E error() const { if( val.second.null() ){ 
+        NODEPP_THROW_ERROR("expected does not have an error"); 
+    } return *val.second; }
 
 };}
 

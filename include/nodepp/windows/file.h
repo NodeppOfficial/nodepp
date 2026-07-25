@@ -25,25 +25,27 @@ protected:
         obj->state |= STATE::FS_STATE_KILL; 
     }
 
-    bool is_state( uchar value ) const noexcept {
+    bool is_state( uchar_16 value ) const noexcept {
         if( obj->state & value ){ return true; }
     return false; }
 
-    void set_state( uchar value ) const noexcept {
+    void set_state( uchar_16 value ) const noexcept {
     if( obj->state & STATE::FS_STATE_KILL ){ return; }
         obj->state = value;
     }
 
-    enum STATE {
-         FS_STATE_UNKNOWN = 0b00000000,
-         FS_STATE_OPEN    = 0b00000001,
-         FS_STATE_REUSE   = 0b01000000,
-         FS_STATE_CLOSE   = 0b00000010,
-         FS_STATE_READING = 0b00010000,
-         FS_STATE_WRITING = 0b00100000,
-         FS_STATE_KILL    = 0b00000100,
-         FS_STATE_STOP    = 0b00001000,
-         FS_STATE_DISABLE = 0b00001110
+    enum STATE : uchar_16 {
+         FS_STATE_UNKNOWN = 0b000000000,
+         FS_STATE_OPEN    = 0b000000001,
+         FS_STATE_REUSE   = 0b001000000,
+         FS_STATE_CLOSE   = 0b000000010,
+         FS_STATE_READING = 0b000010000,
+         FS_STATE_WRITING = 0b000100000,
+         FS_STATE_WAITING = 0b010000000,
+         FS_STATE_KILL    = 0b000000100,
+         FS_STATE_STOP    = 0b000001000,
+         FS_STATE_DISABLE = 0b000001110,
+         FS_STATE_SERVER  = 0b100000000
     };
 
 protected:
@@ -52,13 +54,11 @@ protected:
     struct NODE {
 
         HANDLE   fd      = INVALID_HANDLE_VALUE;
-        DWORD    offset  = 0; int feof = 1;
+        DWORD    offset  = 0UL; DONE ddl[2];
         uchar_64 tag     = 0UL;
         uchar_64 pd      = 0UL;
-        len_t   range[2] = { 0, 0 };
-        uchar    state   = STATE::FS_STATE_OPEN;
-
-        DONE ddl[2];
+        len_t    range[2]= { 0, 0 };
+        uchar_16 state   = STATE::FS_STATE_OPEN;
 
         ptr_t<char> buffer; string_t borrow;
         generator::file::until _until;
@@ -155,10 +155,10 @@ public:
     
     /*─······································································─*/
 
-    bool    is_closed() const noexcept { return is_state(STATE::FS_STATE_DISABLE) || is_feof() || obj->fd==INVALID_HANDLE_VALUE; }
+    bool    is_closed() const noexcept { return is_state(STATE::FS_STATE_DISABLE) || obj->fd==INVALID_HANDLE_VALUE; }
     bool  is_reusable() const noexcept { return is_state(STATE::FS_STATE_REUSE  ); }
-    bool      is_feof() const noexcept { return obj->feof <= 0 && obj->feof != -2; }
-    bool   is_waiting() const noexcept { return obj->feof == -2; }
+    bool   is_stopped() const noexcept { return is_state(STATE::FS_STATE_STOP   ); }
+    bool   is_waiting() const noexcept { return is_state(STATE::FS_STATE_WAITING); }
     bool is_available() const noexcept { return !is_closed(); }
 
     /*─······································································─*/
@@ -223,9 +223,10 @@ public:
 
     void free() const noexcept {
 
-        if( is_state( STATE::FS_STATE_STOP  ) && !is_feof() && obj.count() >1 ){ return; }
-        if( is_state( STATE::FS_STATE_KILL  ) ){ return; } /*-----------------*/ kill();
-        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_STOP ) ) { onDrain.emit(); }
+        if( is_state( STATE::FS_STATE_STOP  ) && obj.count()>1 ){ return; }
+        if( is_state( STATE::FS_STATE_KILL  ) ){ return; } kill();
+        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_STOP ) )
+          { onDrain.emit(); }
         
         onClose.emit();
 
@@ -286,22 +287,28 @@ public:
         auto &ov = obj->ddl[0].ov    ;
 
         if( obj->state & STATE::FS_STATE_READING ){ 
-        if( is_blocked( ov, c ) ){ obj->feof=-2; return -2; } else {
-            obj->state&=~STATE::FS_STATE_READING; 
-            obj->feof  = c==0 ? -1 : (int) c;
-        } return is_feof() ? -1 : obj->feof; }
+        if( is_blocked( ov, c ) ){ 
+            obj->state |= STATE::FS_STATE_WAITING;
+            return -2;
+        } else {
+            obj->state&=~STATE::FS_STATE_READING;
+            obj->state&=~STATE::FS_STATE_WAITING;
+            return c==0 ? -1 : (int) c;
+        }}
 
         obj->state|= STATE::FS_STATE_READING;
         ov = {0}; ov.Offset = obj->offset;
         ReadFile( obj->fd, bf, sx, &c, &ov );
         
-        if( is_blocked(c) ) { obj->feof = -2; return -2; } else {
-        if( c>0 ) /*-----*/ { obj->offset += c; }
-            obj->state&=~ STATE::FS_STATE_READING;
-            obj->feof  = c==0 ? -1 : (int) c;
+        if( is_blocked(c) ){
+            obj->state |= STATE::FS_STATE_WAITING;
+            return -2; 
+        } else { if( c >0 ){ obj->offset += c; }
+            obj->state&=~STATE::FS_STATE_READING;
+            obj->state&=~STATE::FS_STATE_WAITING;
         }
 
-    return is_feof() ? -1 : obj->feof; }
+    return c==0 ? -1 : (int) c; }
 
     virtual int __write( char* bf, const ulong& sx ) const noexcept {
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
@@ -310,22 +317,27 @@ public:
         auto &ov = obj->ddl[1].ov    ;
 
         if( obj->state & STATE::FS_STATE_WRITING ){
-        if( is_blocked( ov, c ) ){ obj->feof=-2; return -2; } else {
+        if( is_blocked( ov, c ) ){ 
+            obj->state |= STATE::FS_STATE_WAITING;
+            return -2; 
+        } else {
             obj->state&=~STATE::FS_STATE_WRITING; 
-            obj->feof  = c==0 ? -1 : (int) c;
-        } return is_feof() ? -1 : obj->feof; }
+            obj->state&=~STATE::FS_STATE_WAITING;
+            return c==0 ? -1 : (int) c;
+        }}
 
         obj->state|= STATE::FS_STATE_WRITING;
         ov = {0}; ov.Offset = obj->offset;
         WriteFile( obj->fd, bf, sx, &c, &ov );
         
-        if( is_blocked(c) ) { obj->feof = -2; return -2; } else {
-        if( c>0 ) /*-----*/ { obj->offset += c; }
+        if( is_blocked(c) ){ 
+            obj->state&=~STATE::FS_STATE_WAITING;
+            return -2; 
+        } else { if( c >0 ){ obj->offset += c; }
             obj->state&=~ STATE::FS_STATE_WRITING;
-            obj->feof  = c==0 ? -1 : (int) c;
         }
 
-    return is_feof() ? -1 : obj->feof; }
+    return c==0 ? -1 : (int) c; }
 
     /*─······································································─*/
 

@@ -20,11 +20,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp {
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-struct url_t {
+namespace nodepp { struct url_t {
     string_t hostname;
     string_t protocol;
     string_t pathname;
@@ -40,13 +36,11 @@ struct url_t {
     string_t pass;
     string_t path;
     int port;
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace url {
-
-/*────────────────────────────────────────────────────────────────────────────*/
+namespace nodepp { namespace url {
     
     inline /*--------*/ map_t<string_t,uint>& protocols() {
     thread_local static map_t<string_t,uint>  out ({
@@ -56,6 +50,8 @@ namespace url {
          { "tcp"  ,  80 }, { "udp" ,  80 },
          { "ftp"  ,  21 }, { "ssh" ,  22 } 
     }); return out; }
+
+    /*.........................................................................*/
 
     inline bool is_valid( const string_t& URL ){
     thread_local static regex_t reg( "^\\w+://[^.]+", true );
@@ -67,7 +63,7 @@ namespace url {
     thread_local static regex_t reg( "%[a-z0-9]{2}", true );
         string_t res = msg; while( reg.test( res ) ){
             auto data = reg.match( res );
-            auto hex  = encoder::hex::set( data.slice(1) );
+            auto hex  = encoder::hex::btoa( data.slice(1) );
             auto y    = string_t( (char*)&hex,hex.size() );
             res = regex::replace_all( res, data, y );
         }   return res;
@@ -79,7 +75,7 @@ namespace url {
     thread_local static regex_t reg( "[^a-z0-9%]", true );
         string_t res = msg; while( reg.test( res ) ){
             auto data = reg.match( res );
-            auto hex  = encoder::hex::get( data[0] );
+            auto hex  = encoder::hex::atob( data[0] );
             res = regex::replace_all( res, data, "%"+hex );
         }   return res;
     }
@@ -239,10 +235,10 @@ namespace url {
         return is_valid(_url) ? _url : nullptr;
     }
 
-}
+}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-}
-
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

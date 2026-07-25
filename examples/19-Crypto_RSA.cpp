@@ -9,7 +9,7 @@ void onMain(){
     string_t msg = "Hello World!";
 
     auto data = ppt.public_encrypt( msg );
-    console::log( data.size(), encoder::buffer::atob(data) );
+    console::log( data.size(), encoder::base16::atob(data) );
 
     auto decp = ppt.private_decrypt( data );
     console::log( decp.size(), decp );

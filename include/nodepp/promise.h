@@ -66,17 +66,13 @@ public:
         self->obj->state = PROMISE_STATE::FINISHED;
         self->obj->state|= PROMISE_STATE::RESOLVED;
         self->obj->state|= PROMISE_STATE::CLOSED  ;
-        self->obj->value = /**/ value ;
-        self->obj->res_clb.emit(value);
-        self->obj->fin_clb.emit(/*-*/);
+        self->obj->value = value; self->emit();
     },[=]( V value ){
     if( self->obj->state & PROMISE_STATE::CLOSED ){ return; }
         self->obj->state = PROMISE_STATE::FINISHED;
         self->obj->state|= PROMISE_STATE::REJECTED;
         self->obj->state|= PROMISE_STATE::CLOSED  ;
-        self->obj->value = /**/ value ;
-        self->obj->rej_clb.emit(value);
-        self->obj->fin_clb.emit(/*-*/);
+        self->obj->value = value; self->emit();
     }); return -1; }); }
 
     promise_t() noexcept : obj( new NODE() ) {}
@@ -95,12 +91,13 @@ public:
 
     /*─······································································─*/
 
-    expected_t<T,V> get_value() const {
-
+    expected_t<T,V> get_value() const { 
+        
+        if  ( emit() == 1 ){
         if  ( obj->state & PROMISE_STATE::RESOLVED )
-            { return obj->value.template as<T>();  }
+            { return obj->value.template as<T>() ; }
         if  ( obj->state & PROMISE_STATE::REJECTED )
-            { return obj->value.template as<V>();  }
+            { return obj->value.template as<V>() ; }}
             
         if  ( obj->state & PROMISE_STATE::FINISHED )
             { NODEPP_THROW_ERROR( "invalid value" ); }
@@ -110,7 +107,7 @@ public:
             { NODEPP_THROW_ERROR( "promise still pending" ); } 
         else{ NODEPP_THROW_ERROR( "something went wrong"  ); }
 
-    }
+    return nullptr; }
 
     void   off() const noexcept { obj->state |= PROMISE_STATE::CLOSED; }
     void close() const noexcept { off(); }
@@ -200,11 +197,10 @@ namespace nodepp { namespace promise {
         process::add( coroutine::add( COROUTINE(){
         coBegin
 
-            while( idx[0]!=prom.size() ){ coNext; do {
-            auto x = prom[idx[1]]; idx[1]=idx[1] ++ % prom.size(); 
+            while( idx[0]<prom.size() ){ coNext; do {
+            auto x = prom[idx[1]]; idx[1] = (idx[1]+1) % prom.size(); 
             if   ( x.is_resolved() ){ idx[0] ++; continue; }
-            if   ( x.is_rejected() ){ coGoto(2); } *idx=0; } while(0); }
-
+            if   ( x.is_rejected() ){ coGoto(2); } idx[0]=0; } while(0); }
             
             coYield(1); res( prom ); /*--------------------------------*/ coEnd;
             coYield(2); rej( except_t( "there are rejected promises" ) ); coEnd;
@@ -217,16 +213,16 @@ namespace nodepp { namespace promise {
     /*─······································································─*/
 
     template< class T, class... V >
-    promise_t<null_t,except_t> resolve( T cb, const V&... args ) {
-    return promise_t<null_t,except_t>([=]( 
-           res_t<null_t> res, rej_t<except_t> rej 
+    promise_t<any_t,except_t> resolve( T cb, const V&... args ) {
+    return promise_t<any_t,except_t>([=]( 
+           res_t<any_t> res, rej_t<except_t> rej 
     ){  function_t<int,V...> clb ( cb );
 
         process::add( coroutine::add( COROUTINE(){
         coBegin
 
             coWait( clb( args... )>=0 );
-            res   ( nullptr );
+            res   ( process::now() );
 
         coFinish } ));
 
@@ -247,7 +243,7 @@ namespace nodepp { namespace promise {
             do{ coNext; do { auto x=prom[idx[0]];
             if( x.is_resolved() ){ coGoto(1); }
             if( x.is_rejected() ){ coGoto(2); } 
-            idx[0] = idx[0] ++ % prom.size(); } while(0); } while(1);
+            idx[0] = (idx[0]+1) %prom.size(); } while(0); } while(1);
             
             coYield(1); res( prom[idx[0]] ); /*------------------*/ coEnd;
             coYield(2); rej( except_t( "no fullfiled promises" ) ); coEnd;

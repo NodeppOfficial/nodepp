@@ -120,7 +120,7 @@ public:
     bool is_closed() const noexcept { return obj->state == 0; }
 
     string_t get() const noexcept { 
-        return encoder::buffer::buff2hex( this->hex() );
+        return encoder::base16::atob( this->hex() );
     }
 
     void close() const noexcept { free(); } 
@@ -176,7 +176,7 @@ public:
     }
 
     string_t get() const noexcept { 
-        return encoder::buffer::buff2hex( this->hex() );
+        return encoder::base16::atob( this->hex() );
     }
 
     bool is_available() const noexcept { return obj->state == 1; }
@@ -1113,7 +1113,7 @@ public:
         ptr_t<uchar> shared( DH_size( obj->dh ));
         if( !BN_hex2bn( &obj->k,hex.data() )  ){ return nullptr; }
         int len = DH_compute_key( &shared, obj->k, obj->dh );
-        return encoder::buffer::buff2hex( string_t( (char*) &shared, (ulong) len ) );
+        return encoder::base16::atob( string_t( (char*) &shared, (ulong) len ) );
     }
 
 };
@@ -1151,7 +1151,7 @@ public:
     }
 
     bool verify( const string_t& msg, const string_t& sgn ) const noexcept { 
-         if( !obj->state || obj->dsa == nullptr ){ return false; } auto ngs = encoder::buffer::hex2buff( sgn ); 
+         if( !obj->state || obj->dsa == nullptr ){ return false; } auto ngs = encoder::base16::btoa( sgn ); 
          return DSA_verify( 0, (uchar*)msg.data(), msg.size(), (uchar*)ngs.data(), ngs.size(), obj->dsa )>0;
     }
 
@@ -1159,7 +1159,7 @@ public:
         if( !obj->state || obj->dsa == nullptr ){ return nullptr; }
         ptr_t<uchar> sgn( DSA_size(obj->dsa) ); uint len;
         DSA_sign( 0,(uchar*)msg.data(), msg.size(),&sgn, &len, obj->dsa );
-        return encoder::buffer::buff2hex( string_t( (char*) &sgn, (ulong) len ) );
+        return encoder::base16::atob( string_t( (char*) &sgn, (ulong) len ) );
     }
 
     int read_private_key_from_memory( const string_t& key, const char* pass=NULL ) const {

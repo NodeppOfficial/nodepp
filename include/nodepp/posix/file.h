@@ -11,6 +11,7 @@
 
 #ifndef NODEPP_POSIX_FILE
 #define NODEPP_POSIX_FILE
+#define NODEPP_INVALID_FILE -1
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -23,43 +24,44 @@
 namespace nodepp { class file_t {
 protected:
 
-    void kill() const noexcept {
+    void kill() const noexcept { 
         obj->state |= STATE::FS_STATE_KILL; 
     }
 
-    bool is_state( uchar value ) const noexcept {
+    bool is_state( uchar_16 value ) const noexcept {
         if( obj->state & value ){ return true; }
     return false; }
 
-    void set_state( uchar value ) const noexcept {
+    void set_state( uchar_16 value ) const noexcept {
     if( obj->state & STATE::FS_STATE_KILL ){ return; }
         obj->state = value;
     }
 
-    enum STATE {
-         FS_STATE_UNKNOWN = 0b00000000,
-         FS_STATE_OPEN    = 0b00000001,
-         FS_STATE_REUSE   = 0b01000000,
-         FS_STATE_CLOSE   = 0b00000010,
-         FS_STATE_READING = 0b00010000,
-         FS_STATE_WRITING = 0b00100000,
-         FS_STATE_KILL    = 0b00000100,
-         FS_STATE_STOP    = 0b00001000,
-         FS_STATE_DISABLE = 0b00001110
+    enum STATE : uchar_16 {
+         FS_STATE_UNKNOWN = 0b000000000,
+         FS_STATE_OPEN    = 0b000000001,
+         FS_STATE_REUSE   = 0b001000000,
+         FS_STATE_CLOSE   = 0b000000010,
+         FS_STATE_READING = 0b000010000,
+         FS_STATE_WRITING = 0b000100000,
+         FS_STATE_WAITING = 0b010000000,
+         FS_STATE_KILL    = 0b000000100,
+         FS_STATE_STOP    = 0b000001000,
+         FS_STATE_DISABLE = 0b000001110,
+         FS_STATE_SERVER  = 0b100000000
     };
 
 protected:
 
     struct NODE {
 
-        uchar  state   = STATE::FS_STATE_OPEN;
-        len_t range[2] = { 0, 0 };
+        uchar_16    state    = STATE::FS_STATE_OPEN;
+        len_t       range[2] = { 0, 0 };
+        ptr_t<char> buffer   ; string_t borrow;
 
-        int   fd=-1, feof=1; 
-        uchar_64 tag= 0UL; 
+        uchar_64 tag= 0UL; int fd=NODEPP_INVALID_FILE;
         uchar_64 pd = 0UL;
 
-        ptr_t<char> buffer; string_t borrow;
         generator::file::until _until;
         generator::file::line  _line ;
         generator::file::read  _read ;
@@ -150,10 +152,10 @@ public:
 
     /*─······································································─*/
 
-    bool    is_closed() const noexcept { return is_state(STATE::FS_STATE_DISABLE) || is_feof() || obj->fd==-1; }
+    bool    is_closed() const noexcept { return is_state(STATE::FS_STATE_DISABLE) || obj->fd==NODEPP_INVALID_FILE; }
     bool  is_reusable() const noexcept { return is_state(STATE::FS_STATE_REUSE  ); }
-    bool      is_feof() const noexcept { return obj->feof <= 0 && obj->feof != -2; }
-    bool   is_waiting() const noexcept { return obj->feof == -2; }
+    bool   is_stopped() const noexcept { return is_state(STATE::FS_STATE_STOP   ); }
+    bool   is_waiting() const noexcept { return is_state(STATE::FS_STATE_WAITING); }
     bool is_available() const noexcept { return !is_closed(); }
 
     /*─······································································─*/
@@ -224,9 +226,10 @@ public:
 
     void free() const noexcept {
 
-        if( is_state( STATE::FS_STATE_STOP  ) && !is_feof() && obj.count() >1 ){ return; }
-        if( is_state( STATE::FS_STATE_KILL  ) ){ return; } /*-----------------*/ kill();
-        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_STOP ) ) { onDrain.emit(); }
+        if( is_state( STATE::FS_STATE_STOP  ) && obj.count()>1 ){ return; }
+        if( is_state( STATE::FS_STATE_KILL  ) ){ return; } kill();
+        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_STOP ) )
+          { onDrain.emit(); }
         
         onClose.emit();
 
@@ -284,32 +287,48 @@ public:
 
     virtual int __read( char* bf, const ulong& sx ) const noexcept {
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
-        obj->feof = NODEPP_URING().read( this, bf, sx );
-        obj->feof = is_blocked(obj->feof)?-2 : obj->feof;
-        return is_feof() ? -1 : obj->feof;
+        auto c = NODEPP_URING().read( this, bf, sx );
+        auto b = is_blocked( c );
+
+        obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
+                         obj->state &~STATE::FS_STATE_WAITING;
+
+        return b ? -2 : c;
     }
 
     virtual int __write( char* bf, const ulong& sx ) const noexcept {
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
-        obj->feof = NODEPP_URING().write( this, bf, sx );
-        obj->feof = is_blocked(obj->feof)?-2 : obj->feof;
-        return is_feof() ? -1 : obj->feof;
+        auto c = NODEPP_URING().write( this, bf, sx );
+        auto b = is_blocked( c );
+
+        obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
+                         obj->state &~STATE::FS_STATE_WAITING;
+
+        return b ? -2 : c;
     }
 
 #else
 
     virtual int __read( char* bf, const ulong& sx ) const noexcept {
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
-        obj->feof = ::read( obj->fd, bf, sx );
-        obj->feof = is_blocked(obj->feof)?-2 : obj->feof;
-        return is_feof() ? -1 : obj->feof;
+        int  c = ::read( obj->fd, bf, sx );
+        auto b = is_blocked( c );
+
+        obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
+                         obj->state &~STATE::FS_STATE_WAITING;
+
+        return b ? -2 : c;
     }
 
     virtual int __write( char* bf, const ulong& sx ) const noexcept {
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
-        obj->feof = ::write( obj->fd, bf, sx );
-        obj->feof = is_blocked(obj->feof)? -2 : obj->feof;
-        return is_feof() ? -1 : obj->feof;
+        int  c = ::write( obj->fd, bf, sx );
+        auto b = is_blocked( c );
+
+        obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
+                         obj->state &~STATE::FS_STATE_WAITING;
+
+        return b ? -2 : c;
     }
 
 #endif
@@ -334,6 +353,7 @@ public:
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#undef NODEPP_INVALID_FILE
 #endif
 
 /*────────────────────────────────────────────────────────────────────────────*/

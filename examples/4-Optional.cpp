@@ -5,7 +5,7 @@ using namespace nodepp;
 
 void onMain(){
 
-    optional_t<string_t> x;
+    optional_t<string_t> x ;
     if( x.has_value() ) console::done( x.value() );
     else                console::error( "x is empty" );
 

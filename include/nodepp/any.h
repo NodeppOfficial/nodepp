@@ -36,26 +36,42 @@ public:
 
     /*─······································································─*/
 
-    template< class T > explicit operator T(void) const noexcept { return get<T>(); }
-
-    template< class T >
-    void set( const T& f ) noexcept { any_ptr = new any_impl<T>(f); }
-
-    template< class T >
-    bool is() const noexcept { return type_size()==sizeof(T); }
-
-    template< class T >
-    T& as() const { return get<T>(); }
-
-    template< class T >
-    T& get() const { void* ptr = nullptr; any_ptr->ptr( ptr ); 
-
-        if( ptr==nullptr ){ NODEPP_THROW_ERROR("any_t is null"); }
-        if( !is<T>() )/**/{ NODEPP_THROW_ERROR("any_t incompatible sizetype"); }
-
-    return * type::cast<T>(ptr); }
+    template< class T > 
+    explicit operator T(void) const noexcept { return as<T>(); }
 
     /*─······································································─*/
+
+    template< typename T >
+    typename type::enable_if< type::is_same<T,any_t>::value, void >::type
+    set( const any_t& value ) noexcept { any_ptr = value.any_ptr; }
+
+    template< typename T >
+    typename type::enable_if< type::is_same<T,any_t>::value, bool >::type
+    is() const noexcept { return true; }
+
+    template< typename T >
+    typename type::enable_if< type::is_same<T,any_t>::value, any_t >::type
+    as() const { return *this; }
+
+    /*─······································································─*/
+
+    template< typename T >
+    typename type::enable_if< !type::is_same<T,any_t>::value, void >::type
+    set( const T& value ) noexcept { any_ptr = new any_impl<T>( value ); }
+
+    template< typename T >
+    typename type::enable_if< !type::is_same<T,any_t>::value, bool >::type
+    is() const noexcept { return type_size()==sizeof(T); }
+
+    
+    template< typename T >
+    typename type::enable_if< !type::is_same<T,any_t>::value, T >::type
+    as() const { void* ptr = nullptr; any_ptr->ptr( ptr ); 
+
+        if( ptr==nullptr ){ NODEPP_THROW_ERROR("any_t has no value"); }
+        if( !is<T>() )/**/{ NODEPP_THROW_ERROR("any_t size isn't aligned"); }
+
+    return * type::cast<T>(ptr); }
 
 private:
 

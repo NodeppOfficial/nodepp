@@ -11,7 +11,7 @@ void onMain(){
 
     XOR.update( msg );
     auto enc = XOR.get();
-    console::log( "->", encoder::buffer::atob(enc) );
+    console::log( "->", encoder::base16::atob(enc) );
 
     ROX.update( enc );
     auto dec = ROX.get();

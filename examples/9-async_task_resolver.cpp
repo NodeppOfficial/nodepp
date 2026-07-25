@@ -16,7 +16,7 @@ void onMain() {
     coFinish
     }))
 
-    .then([=]( null_t ){
+    .then([=]( any_t ){
         console::log( *value );
     })
 

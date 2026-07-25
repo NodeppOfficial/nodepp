@@ -78,18 +78,15 @@ namespace nodepp { namespace stream {
     }); }
 
     template< class T, class V >
-    promise_t< string_t, except_t > resolve( const T& fa, const V& fb ){
-    return promise_t< string_t, except_t > ([=](
-        res_t<string_t> res, rej_t<except_t> rej
+    promise_t< any_t, except_t > resolve( const T& fa, const V& fb ){
+    return promise_t< any_t, except_t > ([=](
+        res_t<any_t> res, rej_t<except_t> rej
     ){
 
         if( fa.is_closed() ){ rej( except_t( "closed stream" ) ); return; }
         if( fb.is_closed() ){ rej( except_t( "closed stream" ) ); return; }
 
-        ptr_t<string_t> bff ( 0UL );
-
-        fa.onData ([=]( string_t chunk ){ *bff += chunk; });
-        fa.onDrain([=](){ res( *bff ); });
+        fa.onDrain([=](){ res( process::now() ); });
         stream::pipe( fa, fb );
 
     }); }
@@ -142,15 +139,13 @@ namespace nodepp { namespace stream {
     /*─······································································─*/
     
     template< class T, class V >
-    expected_t<string_t,except_t> await( const T& fa, const V& fb ){ 
+    expected_t<any_t,except_t> await( const T& fa, const V& fb ){ 
         
         if( fa.is_closed() || fb.is_closed() ){ return except_t( "closed stream" ); }
-        string_t bff; generator::stream::line task;
+        generator::stream::pipe task;
 
-        fa.onData ([&]( string_t chunk ){ bff += chunk; });
         while( task( fa, fb )==1 ){ process::next(); }
-
-        return bff;
+        return any_t( process::now() );
 
     }
     
@@ -158,7 +153,7 @@ namespace nodepp { namespace stream {
     expected_t<string_t,except_t> await( const T& fa ){ 
         
         if( fa.is_closed() ){ return except_t( "closed stream" ); }
-        string_t bff; generator::stream::line task;
+        string_t bff; generator::stream::pipe task;
 
         fa.onData ([&]( string_t chunk ){ bff += chunk; });
         while( task( fa )==1 ){ process::next(); }
@@ -177,3 +172,5 @@ namespace nodepp { namespace stream {
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

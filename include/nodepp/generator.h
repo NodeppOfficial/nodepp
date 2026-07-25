@@ -669,7 +669,7 @@ namespace nodepp { namespace generator { namespace ws {
 
             string_t sec = cli.headers["Sec-Websocket-Key"];
                 auto sha = crypto::hash::SHA1(); sha.update( sec + NODEPP_WS_SECRET );
-            string_t enc = encoder::base64::get( encoder::buffer::hex2buff(sha.get()) );
+            string_t enc = encoder::base64::atob( encoder::base16::btoa(sha.get()) );
 
             cli.write_header( 101, header_t({
                 { "Sec-Websocket-Accept", enc },
@@ -715,7 +715,7 @@ namespace nodepp { namespace generator { namespace ws {
 
             string_t dta = cli.headers["Sec-Websocket-Accept"];
                 auto sha = crypto::hash::SHA1(); sha.update( key + NODEPP_WS_SECRET );
-            string_t enc = encoder::base64::get( encoder::buffer::hex2buff(sha.get()) );
+            string_t enc = encoder::base64::atob( encoder::base16::btoa(sha.get()) );
 
             if( dta != enc ){
                 cli.onError.emit("secret key does not match"); 
@@ -746,7 +746,7 @@ namespace nodepp { namespace generator { namespace ws {
 
             if ( borrow.size() < 2 ){ return false; } do { 
 
-                auto y = array_t<bool>(encoder::bin::get( borrow[size] )); size++;
+                auto y = array_t<bool>(encoder::bin::atob( borrow[size] )); size++;
 
                 frame.FIN   = y.slice_view(0,1)[0] == 1;
                 for( auto x : y.slice_view(1,4) ){ frame.RSV = frame.RSV<<1 | x; }
@@ -754,24 +754,32 @@ namespace nodepp { namespace generator { namespace ws {
 
             } while(0); do {
 
-                auto y = array_t<bool>(encoder::bin::get( borrow[size] )); size++;
+                auto y = array_t<bool>(encoder::bin::atob( borrow[size] )); size++;
 
                 frame.MSK   = y.slice_view(0,1)[0] == 1;
                 for( auto x : y.slice_view(1,8) ){ frame.LEN = frame.LEN<<1 | x; }
 
             } while(0);
 
-            if( frame.LEN  > 125 ){ do {
-            if( frame.LEN == 126 ){ auto mem = (char*) &frame.LEN; auto len = sizeof(uchar_16);
-            if( borrow.size() < size + sizeof(uchar_16) ){ frame = {0}; return false; }
-                type::copy_reverse( borrow.get() + size, borrow.get() + size + len, mem );
-                size += len; break;
-            } 
-            if( frame.LEN == 127 ){ auto mem = (char*) &frame.LEN; auto len = sizeof(uchar_64);
-            if( borrow.size() < size + sizeof(uchar_64) ){ frame = {0}; return false; }
-                type::copy_reverse( borrow.get() + size, borrow.get() + size + len, mem );
-                size += len; break;
-            }} while(0); }
+            if( frame.LEN  > 125 ){
+            if( frame.LEN == 126 ){ frame.LEN = 0;
+
+                auto len = sizeof(uchar_16);
+                if ( borrow.size() < size + sizeof(uchar_16) ){ frame = {0}; return false; }
+
+                for( ulong x=0; x<len; x++ ){ 
+                     frame.LEN = ( frame.LEN<<8 ) | (uchar) borrow[x+size]; 
+                }    size += len;
+
+            } elif( frame.LEN == 127 ) { frame.LEN = 0;
+
+                auto len = sizeof(uchar_64);
+                if ( borrow.size() < size + sizeof(uchar_64) ){ frame = {0}; return false; }
+                for( ulong x=0; x<len; x++ ){ 
+                     frame.LEN = ( frame.LEN<<8 ) | (uchar) borrow[x+size]; 
+                }    size += len;
+
+            }}
 
             if( frame.MSK == 1 ){
             if( borrow.size() < size + sizeof(uchar_32) ){ frame = {0}; return false; }
@@ -855,12 +863,12 @@ namespace nodepp { namespace generator { namespace ws {
             if ( sx < 126 ){
                 bfx[idx]|= type::cast<uchar>( sx ); ++idx;
             } elif ( sx < 65536 ){
-                bfx[idx]|= (uchar)( 126 ); ++idx; 
-                auto mem = (char*) &sx; auto len = sizeof(uchar_16);
+                bfx[idx]|= (uchar)(126); ++idx; auto tmp = type::cast<uchar_16>(sx);
+                auto mem = (char*) &tmp; auto len = sizeof(uchar_16);
                 type::copy_reverse( mem, mem + len, bfx.get() + idx ); idx += len;
             } else {
-                bfx[idx]|= (uchar)( 127 ); ++idx; 
-                auto mem = (char*) &sx; auto len = sizeof(uchar_64);
+                bfx[idx]|= (uchar)(127); ++idx; auto tmp = type::cast<uchar_64>(sx);
+                auto mem = (char*) &tmp; auto len = sizeof(uchar_64);
                 type::copy_reverse( mem, mem + len, bfx.get() + idx ); idx += len;
             } 
             
@@ -878,15 +886,15 @@ namespace nodepp { namespace generator { namespace ws {
 
             do { if( borrow.empty() ){
 
-                mask= &fd->get_mask(); ulong sy=write_ws_frame( bf, sx, 0, mask );
-
-                if ( *mask != 0UL ){ ulong sy=0; char* key = (char*) mask;
-                for( char *y = bf ; y<bf + sx ; y++ ){ 
-                     /**/ *y^= key[ sy++ % sizeof (uchar_32) ];
-                }  } if ( *mask != 0UL ){ *mask = rand(); }
-
+                mask= &fd->get_mask() ; ulong sy = write_ws_frame( bf, sx, 0, mask );
                 borrow = string_t( bfx.get(), sy ) + string_t( bf, sx );
-                size   = 0UL; 
+
+                if ( *mask != 0UL ){ ulong sz=0; char* key = (char*) mask;
+                for( auto &y: borrow.slice_view( sy, (ulong) -1 ) ){
+                     /**/ y^= key[ sz++ % sizeof (uchar_32) ];
+                }  } 
+                
+                if ( *mask != 0UL ){ *mask = rand(); } size = 0UL; 
 
             }   int c = fd->_write_( borrow.get(), borrow.size(), &size );
 

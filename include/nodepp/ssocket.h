@@ -40,14 +40,14 @@ public: ptr_t<ssl_t> ssl;
         if ( process::millis() > get_recv_timeout() || is_closed() )
            { return -1; } if ( sx==0 ) { return  0; }
         if ( ssl.null() ) /*--------*/ { return -1; }
-        obj->feof = ssl->_read( this, bf, sx ); return obj->feof;
+        return ssl->_read( this, bf, sx ); 
     }
 
     virtual int __write( char* bf, const ulong& sx ) const noexcept override {
         if ( process::millis() > get_send_timeout() || is_closed() )
            { return -1; } if ( sx==0 ) { return  0; } 
         if ( ssl.null() ) /*--------*/ { return -1; }
-        obj->feof =ssl->_write( this, bf, sx ); return obj->feof;
+        return ssl->_write( this, bf, sx ); 
     }
     
 };}
@@ -55,3 +55,5 @@ public: ptr_t<ssl_t> ssl;
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

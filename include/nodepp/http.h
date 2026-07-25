@@ -237,7 +237,7 @@ public:
                         self->get_buffer().data   (), 
                         self->get_buffer().size   (), self->http->mode[0]
                 )==1 );
-                    self->body += string_t( self->get_buffer().data(), self->http->read.data );
+                    self->body += string_t( self->get_buffer_data(), self->http->read.data );
                 }
 
             } else { 
@@ -247,7 +247,7 @@ public:
                         self->get_buffer().data   (), 
                         self->get_buffer().size   (), self->http->mode[0]
                 )==1 );
-                    self->body += string_t( self->get_buffer().data(), self->http->read.data );
+                    self->body += string_t( self->get_buffer_data(), self->http->read.data );
                 }
 
             }

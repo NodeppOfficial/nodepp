@@ -107,8 +107,7 @@ public:
         elif( get_type_id()     == type::obj_type_id<U>  ::value ){ return true; } 
     return false; }
 
-    template< class U > 
-    U& as() const { return obj->mem.as<U>(); }
+    template< class U > U as() const { return obj->mem.as<U>(); }
 
     template< class U >
     explicit operator    U() const { return obj->mem.as<U>(); }

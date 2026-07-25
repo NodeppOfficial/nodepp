@@ -11,7 +11,7 @@ void onMain(){
     atob.update( "workd" );
 
     string_t enc = atob.get();
-    console::log( "->", encoder::buffer::atob(enc) );
+    console::log( "->", encoder::base16::atob(enc) );
 
     crypto::decrypt::AES_256_ECB btoa ( "SECRET" );
     btoa.update( enc );

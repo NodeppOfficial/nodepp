@@ -11,7 +11,7 @@
 
 #ifndef NODEPP_POSIX_SOCKET
 #define NODEPP_POSIX_SOCKET
-#define INVALID_SOCKET -1
+#define NODEPP_INVALID_SOCKET -1
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -74,8 +74,8 @@ protected:
 
 protected:
 
-    void kill() const noexcept {
-        obj->state |= STATE::FS_STATE_KILL;
+    void kill() const noexcept { 
+        obj->state |= STATE::FS_STATE_KILL; 
     }
 
     SOCKADDR_ST& get_addr() const noexcept { 
@@ -83,26 +83,27 @@ protected:
         /*--------------*/ : obj->server_addr; 
     }
 
-    bool is_state( uchar value ) const noexcept {
+    bool is_state( uchar_16 value ) const noexcept {
         if( obj->state & value ){ return true; }
     return false; }
 
-    void set_state( uchar value ) const noexcept {
+    void set_state( uchar_16 value ) const noexcept {
     if( obj->state & STATE::FS_STATE_KILL ){ return; }
         obj->state = value;
     }
 
-    enum STATE {
-         FS_STATE_UNKNOWN = 0b00000000,
-         FS_STATE_OPEN    = 0b00000001,
-         FS_STATE_REUSE   = 0b01000000,
-         FS_STATE_CLOSE   = 0b00000010,
-         FS_STATE_READING = 0b00010000,
-         FS_STATE_WRITING = 0b00100000,
-         FS_STATE_KILL    = 0b00000100,
-         FS_STATE_STOP    = 0b00001000,
-         FS_STATE_DISABLE = 0b00001110,
-         FS_STATE_SERVER  = 0b10000000
+    enum STATE : uchar_16 {
+         FS_STATE_UNKNOWN = 0b000000000,
+         FS_STATE_OPEN    = 0b000000001,
+         FS_STATE_REUSE   = 0b001000000,
+         FS_STATE_CLOSE   = 0b000000010,
+         FS_STATE_READING = 0b000010000,
+         FS_STATE_WRITING = 0b000100000,
+         FS_STATE_WAITING = 0b010000000,
+         FS_STATE_KILL    = 0b000000100,
+         FS_STATE_STOP    = 0b000001000,
+         FS_STATE_DISABLE = 0b000001110,
+         FS_STATE_SERVER  = 0b100000000
     };
 
 protected:
@@ -113,11 +114,12 @@ protected:
         ulong recv_timeout=0; uchar_64 tag   = 0UL;
         ulong send_timeout=0; uchar_64 pd    = 0UL;
         
-        socklen_t addrlen; int fd=-1, feof=1; 
         SOCKADDR_ST server_addr, client_addr;
-        uchar state = STATE::FS_STATE_OPEN;
+        ptr_t<char> buffer ; string_t borrow;
 
-        ptr_t<char> buffer; string_t borrow;
+        socklen_t addrlen ; int fd = NODEPP_INVALID_SOCKET;
+        uchar_16 state = STATE::FS_STATE_OPEN;
+
         generator::file::until _until;
         generator::file::line  _line ;
         generator::file::read  _read ;
@@ -126,7 +128,7 @@ protected:
     #if NODEPP_EVENT_SCHEDULER == NODEPP_SCHEDULER_IOURING
 
        ~NODE(){
-        if( fd == INVALID_SOCKET ){ return; }
+        if( fd == NODEPP_INVALID_SOCKET ){ return; }
         //  ::shutdown( fd, SHUT_WR ); 
             ::close   ( fd /*----*/ ); 
             NODEPP_URING().free( pd );
@@ -135,7 +137,7 @@ protected:
     #else
 
        ~NODE(){
-        if( fd == INVALID_SOCKET ){ return; }
+        if( fd == NODEPP_INVALID_SOCKET ){ return; }
         //  ::shutdown( fd, SHUT_WR ); 
             ::close   ( fd /*----*/ );  
         }
@@ -407,11 +409,11 @@ public:
 
     /*─······································································─*/
 
-    bool    is_closed() const noexcept { return is_state(STATE::FS_STATE_DISABLE) || is_feof() || obj->fd==INVALID_SOCKET; }
+    bool    is_closed() const noexcept { return is_state(STATE::FS_STATE_DISABLE) || obj->fd==NODEPP_INVALID_SOCKET; }
     bool    is_server() const noexcept { return is_state(STATE::FS_STATE_SERVER ); }
     bool  is_reusable() const noexcept { return is_state(STATE::FS_STATE_REUSE  ); }
-    bool      is_feof() const noexcept { return obj->feof <= 0 && obj->feof != -2; }
-    bool   is_waiting() const noexcept { return obj->feof == -2; }
+    bool   is_stopped() const noexcept { return is_state(STATE::FS_STATE_STOP   ); }
+    bool   is_waiting() const noexcept { return is_state(STATE::FS_STATE_WAITING); }
     bool is_available() const noexcept { return !is_closed(); }
 
     /*─······································································─*/
@@ -498,7 +500,7 @@ public:
     /*─······································································─*/
 
     socket_t( int fd, ulong _size=NODEPP_CHUNK_SIZE ) : obj( new NODE() ) { _socket_::start_device();
-        if( fd == INVALID_SOCKET ){ NODEPP_THROW_ERROR("Such Socket has an Invalid fd"); }
+        if( fd == NODEPP_INVALID_SOCKET ){ NODEPP_THROW_ERROR("Such Socket has an Invalid fd"); }
         obj->fd = fd; set_nonbloking_mode(); set_buffer_size(_size);
     }
 
@@ -510,9 +512,10 @@ public:
 
     void free() const noexcept {
 
-        if( is_state( STATE::FS_STATE_STOP  ) && !is_feof() && obj.count() >1 ){ return; }
-        if( is_state( STATE::FS_STATE_KILL  ) ){ return; } /*-----------------*/ kill();
-        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_STOP ) ) { onDrain.emit(); }
+        if( is_state( STATE::FS_STATE_STOP  ) && obj.count()>1 ){ return; }
+        if( is_state( STATE::FS_STATE_KILL  ) ){ return; } kill();
+        if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_STOP ) )
+          { onDrain.emit(); }
 
         onClose.emit();
 
@@ -528,7 +531,7 @@ public:
     virtual int socket( const string_t& host, int port ) const noexcept {
         if( host.empty() ){ onError.emit("invalid IP address"); return -1; }
 
-        if((obj->fd=::socket( AF, SOCK, IPPROTO )) == INVALID_SOCKET )
+        if((obj->fd=::socket( AF, SOCK, IPPROTO )) == NODEPP_INVALID_SOCKET )
           { onError.emit("can't initializate socket fd"); return -1; }
 
         set_buffer_size( NODEPP_CHUNK_SIZE );
@@ -581,26 +584,46 @@ public:
 
     int _connect() const noexcept {
         if( process::millis() > get_conn_timeout() || is_server() ){ return -1; }
-        int c=NODEPP_URING().connect( this, (SOCKADDR*) &obj->server_addr, obj->addrlen );
-        obj->feof = is_blocked( c ) ? -2 : c>=0 ? 1: -1; return obj->feof;
+        auto c=NODEPP_URING().connect( this, (SOCKADDR*) &obj->server_addr, obj->addrlen );
+        auto b=is_blocked( c ); 
+
+        obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
+                         obj->state &~STATE::FS_STATE_WAITING;
+
+        return b ? -2 : c>=0 ? 1 : -1;
     }
 
     int _accept() const noexcept { if( !is_server() ){ return -1; }
-        int c=NODEPP_URING().accept( this, (SOCKADDR*) &obj->server_addr, &obj->addrlen );
-        obj->feof = is_blocked( c ) ? -2 : c; return obj->feof;
+        auto c=NODEPP_URING().accept( this, (SOCKADDR*) &obj->server_addr, &obj->addrlen );
+        auto b=is_blocked( c ); 
+
+        obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
+                         obj->state &~STATE::FS_STATE_WAITING;
+
+        return b ? -2 : c;
     }
 
 #else 
 
     int _connect() const noexcept {
         if( process::millis() > get_conn_timeout() || is_server() ){ return -1; }
-        int c=::connect( obj->fd, (SOCKADDR*) &obj->server_addr, obj->addrlen );
-        obj->feof = is_blocked( c ) ? -2 : c>=0 ? 1: -1; return obj->feof;
+        auto c=::connect( obj->fd, (SOCKADDR*) &obj->server_addr, obj->addrlen );
+        auto b=is_blocked( c ); 
+
+        obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
+                         obj->state &~STATE::FS_STATE_WAITING;
+
+        return b ? -2 : c>=0 ? 1 : -1;
     }
 
     int _accept() const noexcept { if( !is_server() ){ return -1; }
-        int c=::accept( obj->fd, (SOCKADDR*) &obj->server_addr, &obj->addrlen );
-        obj->feof = is_blocked( c ) ? -2 : c; return obj->feof;
+        auto c=::accept( obj->fd, (SOCKADDR*) &obj->server_addr, &obj->addrlen );
+        auto b=is_blocked( c ); 
+
+        obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
+                         obj->state &~STATE::FS_STATE_WAITING;
+
+        return b ? -2 : c;
     }
 
 #endif
@@ -674,11 +697,17 @@ public:
 
         SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
 
-        int res = SOCK != SOCK_DGRAM
+        auto c = SOCK != SOCK_DGRAM
         ? NODEPP_URING().recv    ( this, bf, sx, 0 )
         : NODEPP_URING().recvfrom( this, bf, sx, 0, (SOCKADDR*) &addr, &len );
 
-    obj->feof = is_blocked( res )? -2 : res; return is_feof() ? -1 : obj->feof; }
+        auto b = is_blocked( c );
+
+        obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
+                         obj->state &~STATE::FS_STATE_WAITING;
+
+        return b ? -2 : c;
+    }
 
     virtual int __write( char* bf, const ulong& sx ) const noexcept {
         if( process::millis() > get_send_timeout() || is_closed() )
@@ -686,11 +715,17 @@ public:
 
         SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
 
-        int res = SOCK != SOCK_DGRAM
+        auto c = SOCK != SOCK_DGRAM
         ? NODEPP_URING().send  ( this, bf, sx, 0 )
         : NODEPP_URING().sendto( this, bf, sx, 0, (SOCKADDR*) &addr, len );
 
-    obj->feof = is_blocked( res )? -2 : res; return is_feof() ? -1 : obj->feof; }
+        auto b = is_blocked( c );
+
+        obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
+                         obj->state &~STATE::FS_STATE_WAITING;
+
+        return b ? -2 : c;
+    }
     
 #else
 
@@ -700,11 +735,17 @@ public:
 
         SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
 
-        int res = SOCK != SOCK_DGRAM
+        int c = SOCK != SOCK_DGRAM
         ? ::recv    ( obj->fd, bf, sx, 0 )
         : ::recvfrom( obj->fd, bf, sx, 0, (SOCKADDR*) &addr, &len );
 
-    obj->feof = is_blocked( res )? -2 : res; return is_feof() ? -1 : obj->feof; }
+        auto b = is_blocked( c );
+
+        obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
+                         obj->state &~STATE::FS_STATE_WAITING;
+
+        return b ? -2 : c;
+    }
 
     virtual int __write( char* bf, const ulong& sx ) const noexcept {
         if( process::millis() > get_send_timeout() || is_closed() )
@@ -712,11 +753,17 @@ public:
 
         SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
 
-        int res = SOCK != SOCK_DGRAM
+        int c = SOCK != SOCK_DGRAM
         ? ::send  ( obj->fd, bf, sx, 0 )
         : ::sendto( obj->fd, bf, sx, 0, (SOCKADDR*) &addr, len );
 
-    obj->feof = is_blocked( res )? -2 : res; return is_feof() ? -1 : obj->feof; }
+        auto b = is_blocked( c );
+
+        obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
+                         obj->state &~STATE::FS_STATE_WAITING;
+
+        return b ? -2 : c;
+    }
 
 #endif
 
@@ -740,6 +787,7 @@ public:
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#undef NODEPP_INVALID_SOCKET
 #endif
 
 /*────────────────────────────────────────────────────────────────────────────*/

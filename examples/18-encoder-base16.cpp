@@ -6,9 +6,9 @@ using namespace nodepp;
 void onMain() {
 
     string_t data = "hello world";
-    string_t out  = encoder::buffer::atob( data );
+    string_t out  = encoder::base16::atob( data );
 
     console::log( ">>", out );
-    console::log( "<<", encoder::buffer::btoa( out ) );
+    console::log( "<<", encoder::base16::btoa( out ) );
 
 }

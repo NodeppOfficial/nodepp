@@ -106,7 +106,7 @@ protected:
         if(!obj->kv_queue.empty() && tasks==0 ){ 
         if( obj.count()==1 ) /*------*/ { return -1; }}
         if( obj.count()> 1 && tasks==0 ){ return -1; }
-    return tasks==0 ? 0 : get_timeout(); }
+    return tasks==0 ? (uchar_32) -1 : get_timeout(); }
 
     void invoker( void* address ) const noexcept {
     if( address == nullptr ){ do {
@@ -255,7 +255,7 @@ public:
 
     int next() const { invoker( nullptr );
 
-        if( obj->ev_queue.next()>=0 ){ return 1; } 
+        if( obj->ev_queue.next()==1 ){ return 1; } 
         set_timeout(obj->ev_queue.get_delay());
 
         obj->state |=  FLAG::KV_STATE_SLEEP;
@@ -358,8 +358,8 @@ protected:
 
     ptr_t<ETIMER> get_delay_tm() const noexcept {
 
-        ulong tasks= obj->ev_queue.size() + obj->probe.get();
-        ulong TIME = tasks==0 ? 0 : get_timeout();
+        uchar_32 tasks= obj->ev_queue.size() + obj->probe.get();
+        uchar_32 TIME = tasks==0 ? (uchar_32)-1 : get_timeout();
 
         if(!obj->kv_queue.empty() && tasks==0 ){ 
         if( obj.count()==1 ) /*------*/ { return nullptr; }}
@@ -562,7 +562,7 @@ public:
 
     int next() const { invoker( nullptr );
 
-        if( obj->ev_queue.next()>=0 ){ return 1; } 
+        if( obj->ev_queue.next()==1 ){ return 1; } 
         set_timeout(obj->ev_queue.get_delay());
 
         obj->state |=  FLAG::KV_STATE_SLEEP;
@@ -699,8 +699,8 @@ protected:
 
     ptr_t<KTIMER> get_delay_tm() const noexcept {
 
-        ulong tasks= obj->ev_queue.size() + obj->probe.get();
-        ulong TIME = tasks==0 ? 0 : get_timeout();
+        uchar_32 tasks= obj->ev_queue.size() + obj->probe.get();
+        uchar_32 TIME = tasks==0 ? (uchar_32)-1 : get_timeout();
 
         if(!obj->kv_queue.empty() && tasks==0 ){ 
         if( obj.count()==1 ) /*------*/ { return nullptr; }}
@@ -718,7 +718,7 @@ protected:
         if(!obj->kv_queue.empty() && tasks==0 ){ 
         if( obj.count()==1 ) /*------*/ { return -1; }}
         if( obj.count()> 1 && tasks==0 ){ return -1; }
-    return tasks==0 ? 0 : get_timeout(); }
+    return tasks==0 ? (uchar_32) -1 : get_timeout(); }
 
     /*─······································································─*/
 
@@ -904,7 +904,7 @@ public:
 
     int next() const { invoker( nullptr );
 
-        if( obj->ev_queue.next()>=0 ){ return 1; } 
+        if( obj->ev_queue.next()==1 ){ return 1; }
         set_timeout(obj->ev_queue.get_delay());
 
         obj->state |=  FLAG::KV_STATE_SLEEP;
@@ -976,7 +976,7 @@ protected:
     uchar_32 get_delay_ms() const noexcept {
         ulong tasks= obj->ev_queue.size() + obj->probe.get();
         if(tasks==0 && obj.count()>1 ){ return 1000; }
-    return tasks==0 ? 0 : get_timeout(); }
+    return tasks==0 ? (uchar_32) -1 : get_timeout(); }
 
 protected:
 
@@ -1025,16 +1025,13 @@ public:
     ptr_t<task_t> poll_add( T& inp, int flag, U cb, ulong timeout=0, const W&... args ) const noexcept {
 
         function_t<int,W...> clb ( cb ); if ( inp.is_closed() ) { return nullptr; }
-        auto time = type::bind( timeout>0 ? timeout + process::now() : timeout );
+        function_t<int,W...> clb ( cb ); if ( inp.is_closed() ) { return nullptr; }
+        auto time = timeout>0 ? timeout + process::now() : timeout;
 
-        if( clb( args... )==-1 ){ return nullptr; }
-        
         return loop_add( coroutine::add( COROUTINE(){
         coBegin 
 
-            if( *time > 0 && *time < process::now() ){ coEnd; }
-            if( is_std( inp.get_fd() ) ) /**/ { coDelay(100); }
-
+            if( time > 0 && time < process::now() ){ coEnd; }
             coSet(0); return clb( args... ) >= 0 ? 1 : -1; 
 
         coFinish
@@ -1051,7 +1048,7 @@ public:
 
     int next() const {
 
-        if( obj->ev_queue.next()>=0 ){ return 1; } 
+        if( obj->ev_queue.next()==1 ){ return 1; } 
 
         obj->state |=  FLAG::KV_STATE_SLEEP;
 
