@@ -27,10 +27,10 @@ private:
     map_t <string_t,any_t> /*-*/ list ;
     using P=type::pair<string_t,any_t>;
 
-    using G=function_t<int ,observer_t,any_t,any_t>;
-    using F=function_t<void,observer_t,any_t,any_t>;
+    using G=function_t<int ,ptr_t<observer_t>,any_t,any_t>;
+    using F=function_t<void,ptr_t<observer_t>,any_t,any_t>;
     
-    listener_t<string_t,observer_t,any_t,any_t> event;
+    listener_t<string_t,ptr_t<observer_t>,any_t,any_t> event;
 
 public: observer_t() noexcept {}
     
@@ -46,7 +46,7 @@ public: observer_t() noexcept {}
     template< class F >
     void set( string_t name, const F& value ) const {
         if( !list.has( name ) ){ NODEPP_THROW_ERROR("field not found:",name); }
-        auto n = list[ name ]; event.emit( name, *this, n, value );
+        auto n = list[ name ]; event.emit( name, type::bind(this), n, value );
         /*----*/ list[ name ]= value;        
     }
 

@@ -51,12 +51,12 @@ private:
     struct NODE_HEAP {
         ulong /*------*/ count; 
         ulong length; T* value; 
-        void* stack; int  flag; 
+        void* stack ; uchar flag; 
     };
 
 #endif
 
-    enum FLAG {
+    enum FLAG : uchar {
          PTR_FLAG_UNKNOWN = 0b00000000,
          PTR_FLAG_HEAP    = 0b00000001,
          PTR_FLAG_STACK   = 0b00000010,

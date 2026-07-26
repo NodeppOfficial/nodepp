@@ -91,7 +91,7 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 #define coEnd          do { _time_=0; _state_=_time_; /**/ nodepp::coroutine::getno(-1); } while(0); return -1;
 #define coStop            } _time_=0; _state_=_time_; /**/ nodepp::coroutine::getno(-1); } while(0); return -1;
 
-#define coStart thread_local static int _state_=0; thread_local static ulong _time_=0; coBegin
+#define coStart thread_local static uchar_64 _state_=0; thread_local static ulong _time_=0; coBegin
 #define coBegin do { switch(_state_) { case 0:; nodepp::coroutine::getno(-2);
 #define coEmit  int operator()
 
@@ -101,16 +101,16 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#define COROUTINE_ARG(... ) [=]( uchar_64& _state_, ulong& _time_, __VA_ARGS__ ) -> int
+#define COROUTINE()         [=]( uchar_64& _state_, ulong& _time_ ) /*--------*/ -> int
+#define GENERATOR( NAME )   struct NAME : public nodepp::generator_t
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #define onMain NODEPP_BEGIN(); int main( int argc, char** args ) { \
    nodepp::process::start(argc,args); NODEPP_BEGIN ();   \
    nodepp::process::wait (); /*----*/ NODEPP_SHTDWN()=1; \
 return 0; } void NODEPP_BEGIN
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-#define COROUTINE_ARG(... ) [=]( int& _state_, ulong& _time_, __VA_ARGS__ ) -> int
-#define COROUTINE()         [=]( int& _state_, ulong& _time_ ) /*--------*/ -> int
-#define GENERATOR( NAME )   struct NAME : public nodepp::generator_t
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

@@ -18,7 +18,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace conio { enum color {
+namespace nodepp { namespace conio { enum color : uchar {
     black = 0x00, white  = 0x01,
     green = 0x02, red    = 0x03,
     blue  = 0x04, cyan   = 0x05,

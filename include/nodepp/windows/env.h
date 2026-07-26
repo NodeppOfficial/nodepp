@@ -29,23 +29,24 @@ namespace nodepp { namespace process { namespace env {
         return string_t( &buffer, (ulong) x );
     }
 
-    inline int init( const string_t& path ){ try {
+    inline int init( const string_t& path ){ do {
 
         thread_local static regex_t reg( "^([^ =]+)[= \"]+([^\n#\"]+)" );
-        auto file = file_t( path, "r" );
+        if( !fs::exists_file( path ) ){ break; }
+        auto file = fs::readable( path );
 
         while( !file.is_closed() ){
-
+            
             /*--------*/ reg.match_all( file.read_line() );
             auto match = reg.get_memory  ();
             /*--------*/ reg.clear_memory();
 
             if ( match.size() != 2 ){ continue; } 
             set( match[0], match[1] );
-            
+
         }
         
-    } catch(...) { return -1; } return 1; }
+    return 1; } while(0); return -1; }
 
 }}}
 

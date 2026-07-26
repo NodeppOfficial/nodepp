@@ -5,7 +5,7 @@ using namespace nodepp;
 
 void onMain(){
 
-    map_t<uchar_8,string_t> map;
+    map_t<uchar_8,string_t> map; // <- direct binary tier address (FASTEST)
 
     console::log( ">>", type::is_integral<uchar_8 >::value );
     console::log( ">>", type::is_integral<uchar_16>::value );

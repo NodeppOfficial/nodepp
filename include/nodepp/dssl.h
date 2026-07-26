@@ -28,7 +28,7 @@ protected:
     
     using onSNI = function_t<dssl_t*,string_t>;
 
-    enum STATE { 
+    enum STATE : uchar { 
          DSSL_STATE_UNKNOWN   = 0b00000000,
          DSSL_STATE_USED      = 0b00000010,
          DSSL_STATE_CONNECTED = 0b00000001,
@@ -38,10 +38,10 @@ protected:
     struct NODE {
         string_t key, crt, cha, tmp_list;
 
-        SSL_CTX*     ctx  = nullptr;
-        SSL*         ssl  = nullptr;
-        BIO*         bio  = nullptr;
-        int          state= 0;
+        SSL_CTX* ctx  = nullptr;
+        SSL*     ssl  = nullptr;
+        BIO*     bio  = nullptr;
+        uchar    state= 0;
 
         ptr_t<X509_t>cert;
         ptr_t<onSNI>  sni;

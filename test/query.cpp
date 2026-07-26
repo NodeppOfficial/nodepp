@@ -7,43 +7,43 @@ using namespace nodepp;
 namespace TEST { namespace QUERY {
 
     void TEST_RUNNER(){
-        ptr_t<uint> totl = new uint(0);
-        ptr_t<uint> done = new uint(0);
-        ptr_t<uint> err  = new uint(0);
-        ptr_t<uint> skp  = new uint(0);
+        ptr_t<uint> totl ( 0UL );
+        ptr_t<uint> done ( 0UL );
+        ptr_t<uint> err  ( 0UL );
+        ptr_t<uint> skp  ( 0UL );
 
         auto test = TEST_CREATE();
 
         TEST_ADD( test, "TEST 1 | query initialization", [](){
-            try { query_t query = nodepp::query::parse( "?var1=10&var2=20&var3=30" );
-            if  ( query.size() != 3 )   { throw 0; }
-            if  ( query["var1"]!= "10" ){ throw 0; }
-                              TEST_DONE();
-            } catch ( ... ) { TEST_FAIL(); }
+            do { query_t query = nodepp::query::parse( "?var1=10&var2=20&var3=30" );
+            if ( query.size() != 3 )   { break; }
+            if ( query["var1"]!= "10" ){ break; }
+                        TEST_DONE();
+            } while(0); TEST_FAIL();
         });
 
         TEST_ADD( test, "TEST 2 | query searching", [](){
-            try {
+            do {
                 query_t query ({
                     { "var1", "10" },
                     { "var2", "20" },
                     { "var3", "30" }
                 });
-             if ( !query.has("var1") ){ throw 0; }
-                              TEST_DONE();
-            } catch ( ... ) { TEST_FAIL(); }
+            if ( !query.has("var1") ){ break; }
+                        TEST_DONE();
+            } while(0); TEST_FAIL();
         });
 
         TEST_ADD( test, "TEST 3 | query parsing", [](){
-            try {
+            do {
                 string_t out = query::format( query_t({
                     { "var1", "10" },
                     { "var2", "20" },
                     { "var3", "30" }
                 }) );
-            if( out!="?var1=10&var2=20&var3=30" ){ throw 0; }
-                              TEST_DONE();
-            } catch ( ... ) { TEST_FAIL(); }
+            if( out!="?var1=10&var2=20&var3=30" ){ break; }
+                        TEST_DONE();
+            } while(0); TEST_FAIL();
         });
 
         test.onClose.once([=](){
@@ -51,8 +51,8 @@ namespace TEST { namespace QUERY {
         });
 
         test.onDone([=](){ (*done)++; (*totl)++; });
-        test.onFail([=](){ (*err)++;  (*totl)++; });
-        test.onSkip([=](){ (*skp)++;  (*totl)++; });
+        test.onFail([=](){ (*err) ++; (*totl)++; });
+        test.onSkip([=](){ (*skp) ++; (*totl)++; });
 
         TEST_AWAIT( test );
 

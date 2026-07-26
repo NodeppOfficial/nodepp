@@ -20,7 +20,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace conio { enum color {
+namespace nodepp { namespace conio { enum color : uchar {
     black = 0x00, white  = 0x01,
     green = 0x02, red    = 0x03,
     blue  = 0x04, cyan   = 0x05,
@@ -78,7 +78,7 @@ namespace nodepp { namespace conio {
 
     /*─······································································─*/
 
-    inline int background( int state ){ 
+    inline int background( uchar state ){ 
         if( state & 0x10 ){ pout("\033[1m"); state &= 0x0f; }
         switch( state )   {
             case color::black:   return pout("\033[40m"); break;
@@ -92,7 +92,7 @@ namespace nodepp { namespace conio {
         }   return -1;
     }
 
-    inline int foreground( int state ){
+    inline int foreground( uchar state ){
         if( state & 0x10 ){ pout("\033[1m"); state &= 0x0f; }
         switch( state )   {
             case color::black:   return pout("\033[30m"); break;

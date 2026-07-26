@@ -46,7 +46,7 @@ namespace query  {
     inline string_t format( const query_t& data ){ 
         if ( data.empty() ){ return nullptr; } queue_t<string_t> out; 
         for( auto x:data.data() ) { out.push( x.first + "=" + x.second ); }
-        return string::format("?%s",array_t<string_t>(out.data()).join("&").c_str());
+        return regex::format("?${0}",array_t<string_t>(out.data()).join("&"));
     }
 
 }}

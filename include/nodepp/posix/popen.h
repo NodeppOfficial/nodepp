@@ -11,6 +11,7 @@
 
 #ifndef NODEPP_POSIX_POPEN
 #define NODEPP_POSIX_POPEN
+#define NODEPP_INVALID_FILE -1
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -35,7 +36,7 @@ protected:
         obj->state = value;
     }
 
-    enum STATE {
+    enum STATE : uchar {
          FS_STATE_UNKNOWN = 0b00000000,
          FS_STATE_OPEN    = 0b00000001,
          FS_STATE_CLOSE   = 0b00000010,
@@ -48,14 +49,12 @@ protected:
 
     struct NODE {
 
-        uchar   state = STATE::FS_STATE_CLOSE;
-        int     fd    = -1;
-        file_t  std_input ;
-        file_t  std_error ;
-        file_t  std_output;
+        uchar  state = STATE::FS_STATE_CLOSE;
+        int    fd    = NODEPP_INVALID_FILE;
+        file_t std_input, std_error, std_output;
 
        ~NODE(){ 
-        if( fd == -1 ) /*------*/ { return; }
+        if( fd==NODEPP_INVALID_FILE ){ return; }
             ::kill( fd, SIGKILL ); int c=0;
         do{ /*unused*/ } while( ::waitpid( fd, &c, WNOHANG )<0 ); }
 
@@ -171,6 +170,7 @@ public:
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#undef NODEPP_INVALID_FILE
 #endif
 
 /*────────────────────────────────────────────────────────────────────────────*/

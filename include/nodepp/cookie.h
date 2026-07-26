@@ -25,8 +25,7 @@ namespace cookie {
     inline query_t parse( string_t data ){
     thread_local static regex_t reg("([^= ;]+)=([^;]+)");
 
-        if( data.empty() /*-----------*/ )
-          { return nullptr; } query_t out;
+        if( data.empty() ){ return nullptr; } query_t out;
         
         reg.search_all( data ); auto mem = reg.get_memory();
         reg.clear_memory();
@@ -44,8 +43,8 @@ namespace cookie {
     
     inline string_t format( const cookie_t& data ){
         if ( data.empty() ){ return nullptr; } queue_t<string_t> out; 
-        for( auto x:data.data() ){ out.push( x.first + "=" + x.second ); }   
-        return string::format("%s",array_t<string_t>(out.data()).join("; ").c_str());
+        for( auto x:data.data() ){ out.push( x.first + "=" + x.second ); }
+        return array_t<string_t>(out.data()).join("; "); 
     }
 
 }}
@@ -53,3 +52,5 @@ namespace cookie {
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

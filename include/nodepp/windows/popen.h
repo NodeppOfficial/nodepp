@@ -30,7 +30,7 @@ protected:
         obj->state = value;
     }
 
-    enum STATE {
+    enum STATE : uchar {
          FS_STATE_UNKNOWN = 0b00000000,
          FS_STATE_OPEN    = 0b00000001,
          FS_STATE_CLOSE   = 0b00000010,
@@ -43,13 +43,9 @@ protected:
 
     struct NODE {
 
-        uchar /*------*/ state=STATE::FS_STATE_CLOSE;
-        PROCESS_INFORMATION pi;
-        file_t std_output;
-        file_t std_input;
-        file_t std_error;
-        STARTUPINFO   si;
-        int           fd;
+        uchar state = STATE::FS_STATE_CLOSE; int fd;
+        PROCESS_INFORMATION pi; STARTUPINFO si ;
+        file_t std_output, std_input, std_error;
 
        ~NODE(){
             ::CloseHandle( pi.hProcess ); 

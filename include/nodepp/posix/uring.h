@@ -11,6 +11,7 @@
 
 #ifndef NODEPP_POSIX_IOURING
 #define NODEPP_POSIX_IOURING
+#define NODEPP_INVALID_FILE -1
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -46,7 +47,7 @@ protected:
     
     /*─······································································─*/
 
-    enum FLAG : int {
+    enum FLAG : uchar {
          URING_FLAG_NULL = 0b00000000,
          URING_FLAG_FREE = 0b00000001,
          URING_FLAG_USED = 0b00000010,
@@ -77,7 +78,9 @@ protected:
         size_t sq_ring_size, cq_ring_size;
 
        ~NODE(){
-        if( ed == -1 && fd == -1 ) { return; }
+        if( ed == NODEPP_INVALID_FILE && 
+            fd == NODEPP_INVALID_FILE
+        ) { return; }
             munmap( sqes  , entries * sizeof( IOsqe ) ); 
             munmap( sq_ptr, sq_ring_size ); ::close(ed);
             munmap( cq_ptr, cq_ring_size ); ::close(fd);
@@ -198,7 +201,11 @@ public:
 
     /*─······································································─*/
 
-    int start_device() const noexcept { if( obj->ed == -1 && obj->fd == -1 ) {
+    int start_device() const noexcept { 
+        
+    if( obj->ed == NODEPP_INVALID_FILE && 
+        obj->fd == NODEPP_INVALID_FILE 
+    ) {
 
         obj->entries = NODEPP_MAX_BATCH_SIZE ; IOprm &p = obj->prm;
         obj->fd = syscall(__NR_io_uring_setup, obj->entries, &obj->prm);
@@ -521,6 +528,7 @@ thread_local static uring_t out; return out; }}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#undef NODEPP_INVALID_FILE
 #undef NODEPP_URING_ATOMIC_LOAD
 #undef NODEPP_URING_ATOMIC_SAVE
 #undef NODEPP_URING_ATOMIC_ADD_

@@ -25,7 +25,7 @@ namespace nodepp { class tls_t {
 private:
 
     using NODE_CLB = function_t<void,ssocket_t>;
-    enum STATE {
+    enum STATE : uchar {
          TLS_STATE_UNKNOWN   = 0b00000000,
          TLS_STATE_USED      = 0b00000001,
          TLS_STATE_CLOSED    = 0b00000010
@@ -34,7 +34,7 @@ private:
 protected:
 
     struct NODE {
-        int state = 0;
+        uchar state=0;
         ssl_t     ctx;
         agent_t agent;
         NODE_CLB func;

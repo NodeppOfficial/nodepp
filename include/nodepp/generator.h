@@ -426,7 +426,7 @@ namespace nodepp { namespace generator { namespace http {
     GENERATOR( read ){
     private:
 
-        enum FLAG {
+        enum FLAG : uchar {
             HTTP_FLAG_UNKNOWN = 0b00000000,
             HTTP_FLAG_CHUNKED = 0b00000001,
             HTTP_FLAG_STREAM  = 0b00000010,
@@ -552,7 +552,7 @@ namespace nodepp { namespace generator { namespace http {
     GENERATOR( write ){
     private:
 
-        enum FLAG {
+        enum FLAG : uchar {
             HTTP_FLAG_UNKNOWN = 0b00000000,
             HTTP_FLAG_CHUNKED = 0b00000001,
             HTTP_FLAG_STREAM  = 0b00000010,

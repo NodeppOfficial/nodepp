@@ -17,14 +17,14 @@
 namespace nodepp { template< class... A > class coroutine_arg_t { 
 private:
 
-    using T = function_t<int,int&,ulong&,A...>;
+    using T = function_t<int,uchar_64&,ulong&,A...>;
 
 protected:
 
     struct NODE {
-        T      callback; 
-        ulong    time=0;
-        int     state=0;
+        T        callback; 
+        ulong    time =0 ;
+        uchar_64 state=0 ;
     };  ptr_t<NODE> obj;
 
 public:
@@ -35,9 +35,9 @@ public:
 
     /*─······································································─*/
 
-    void set_state( int value ) const noexcept { obj->state = value; }
+    void set_state( uchar_64 value ) const noexcept { obj->state = value; }
 
-    int get_state() const noexcept { return obj->state; }
+    uchar_64 get_state() const noexcept { return obj->state; }
 
     /*─······································································─*/
 
@@ -54,9 +54,9 @@ public:
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp    { using coroutine_t = coroutine_arg_t</*----*/>; 
-struct co_state_t   { uint   flag =0; ulong delay=0; int state=0; };
-struct generator_t  { ulong _time_=0; int _state_=0; };
-namespace coroutine { enum STATE {
+struct co_state_t   { uchar flag  =0; ulong delay=0; int state=0; };
+struct generator_t  { ulong _time_=0; uchar_64 _state_=0; };
+namespace coroutine { enum STATE : uchar {
      CO_STATE_START = 0b00000001,
      CO_STATE_YIELD = 0b00000010,
      CO_STATE_BLOCK = 0b00000000,
@@ -68,7 +68,7 @@ namespace coroutine { enum STATE {
 
 namespace nodepp { namespace coroutine {
 
-    inline coroutine_t add( function_t<int, int&, ulong&> callback ) {
+    inline coroutine_t add( function_t<int, uchar_64&, ulong&> callback ) {
         return coroutine_t( callback );
     }
 
@@ -82,7 +82,7 @@ namespace nodepp { namespace coroutine {
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace coroutine {
-    inline co_state_t getno( int state=0, int _state_=0, ulong time=0 ){
+    inline co_state_t getno( int state=0, uchar_64 _state_=0, ulong time=0 ){
     thread_local static co_state_t tmp; co_state_t out; 
     
     memcpy( &out, &tmp, sizeof(co_state_t) ); tmp = co_state_t {};

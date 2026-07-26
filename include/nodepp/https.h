@@ -22,14 +22,14 @@
 namespace nodepp { class https_t : public ssocket_t, public generator_t {
 protected:
 
-    struct DONE { len_t size; int state; };
+    struct DONE { len_t size; uchar state; };
     struct NODE {
         generator::file::line  line ; DONE mode[2];
         generator::http::read  read ;
         generator::http::write write;
     };  ptr_t<NODE> http;
 
-    enum FLAG {
+    enum FLAG : uchar {
          HTTP_FLAG_UNKNOWN = 0b00000000,
          HTTP_FLAG_CHUNKED = 0b00000001,
          HTTP_FLAG_STREAM  = 0b00000010,

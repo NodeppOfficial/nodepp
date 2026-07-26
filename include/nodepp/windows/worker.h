@@ -20,7 +20,7 @@ private:
     mutex_t    & get_mutex  () const noexcept { static mutex_t     out; return out; }
     invoker_t<>& get_invoker() const noexcept { static invoker_t<> out; return out; }
 
-    enum STATE {
+    enum STATE : uchar {
          WK_STATE_UNKNOWN = 0b00000000,
          WK_STATE_OPEN    = 0b00000001,
          WK_STATE_CLOSE   = 0b00000010,
@@ -30,7 +30,7 @@ private:
 protected:
 
     struct NODE {
-        int state; DWORD id; function_t<int> cb;
+        DWORD id; uchar state; function_t<int> cb;
         uchar_64 addr; void* krn= nullptr;
         HANDLE fd;
     };  atomic_ptr_t<NODE> obj;

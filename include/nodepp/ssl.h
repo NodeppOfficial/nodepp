@@ -29,7 +29,7 @@ protected:
     using onSNI = function_t<ssl_t*,string_t>;
     using onALP = function_t<bool  ,string_t>;
 
-    enum STATE { 
+    enum STATE : uchar { 
          SSL_STATE_UNKNOWN   = 0b00000000,
          SSL_STATE_USED      = 0b00000010,
          SSL_STATE_CONNECTED = 0b00000001,
@@ -40,10 +40,10 @@ protected:
         string_t     key, crt, cha, alpn, tmp_list;
         ptr_t<string_t> protocol_list;
 
-        SSL_CTX*     ctx  = nullptr;
-        SSL*         ssl  = nullptr;
-        BIO*         bio  = nullptr;
-        int          state= 0;
+        SSL_CTX* ctx  = nullptr;
+        SSL*     ssl  = nullptr;
+        BIO*     bio  = nullptr;
+        uchar    state= 0;
 
         ptr_t<X509_t>cert;
         ptr_t<onSNI>  sni;

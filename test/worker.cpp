@@ -7,16 +7,16 @@ using namespace nodepp;
 namespace TEST { namespace WORKER {
 
     void TEST_RUNNER(){
-        ptr_t<uint> totl = new uint(0);
-        ptr_t<uint> done = new uint(0);
-        ptr_t<uint> err  = new uint(0);
-        ptr_t<uint> skp  = new uint(0);
+        ptr_t<uint> totl ( 0UL );
+        ptr_t<uint> done ( 0UL );
+        ptr_t<uint> err  ( 0UL );
+        ptr_t<uint> skp  ( 0UL );
 
         auto test = TEST_CREATE();
 
         TEST_ADD( test, "TEST 1 | async worker testing", [](){
-            try { ptr_t<int> x = new int(0); 
-                  ptr_t<int> y = new int(3);
+            do{ ptr_t<int> x ( 0UL ); 
+                ptr_t<int> y = new int(3);
 
                 worker::add( coroutine::add( COROUTINE(){
                 coBegin
@@ -26,15 +26,16 @@ namespace TEST { namespace WORKER {
                 coFinish
                 }));
 
-             while( *y!=0 ){ process::next(); }
-                if( *x != 30 ){ TEST_FAIL();  }
-                              TEST_DONE();
-            } catch ( ... ) { TEST_FAIL(); }
+                while( *y!=0 ){ process::next(); }
+                if   ( *x != 30 ){ TEST_FAIL ();  }
+                                   TEST_DONE ();
+
+            } while(0); TEST_FAIL();
         });
 
         TEST_ADD( test, "TEST 2 | sync worker testing", [](){
-            try { ptr_t<int> x = new int(0); 
-                  ptr_t<int> y = new int(3);
+            do{ ptr_t<int> x ( 0UL ); 
+                ptr_t<int> y = new int(3);
 
                 worker::await( coroutine::add( COROUTINE(){
                 coBegin
@@ -45,8 +46,9 @@ namespace TEST { namespace WORKER {
                 }));
 
                 if( *x != 30 ){ TEST_FAIL(); }
-                              TEST_DONE();
-            } catch ( ... ) { TEST_FAIL(); }
+                                TEST_DONE();
+
+            } while(0); TEST_FAIL();
         });
 
         test.onClose.once([=](){
@@ -54,8 +56,8 @@ namespace TEST { namespace WORKER {
         });
 
         test.onDone([=](){ (*done)++; (*totl)++; });
-        test.onFail([=](){ (*err)++;  (*totl)++; });
-        test.onSkip([=](){ (*skp)++;  (*totl)++; });
+        test.onFail([=](){ (*err) ++; (*totl)++; });
+        test.onSkip([=](){ (*skp) ++; (*totl)++; });
 
         TEST_AWAIT( test );
 

@@ -19,11 +19,11 @@ protected:
 
     using  DONE = function_t<bool,A...>;
     struct NODE {
-        queue_t<DONE> que; void *addr =nullptr;
-        /*--------------*/ int   state=0x00; 
+        queue_t<DONE> que; void* addr =nullptr;
+        /*--------------*/ uchar state=0x00; 
     };  ptr_t  <NODE> obj;
 
-    enum STATE {
+    enum STATE : uchar {
          EV_STATE_UNKNOWN = 0b00000000,
          EV_STATE_KILL    = 0b10000000,
          EV_STATE_SKIP    = 0b00000001,
@@ -169,3 +169,5 @@ public:
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

@@ -7,67 +7,67 @@ using namespace nodepp;
 namespace TEST { namespace URL {
 
     void TEST_RUNNER(){
-        ptr_t<uint> totl = new uint(0);
-        ptr_t<uint> done = new uint(0);
-        ptr_t<uint> err  = new uint(0);
-        ptr_t<uint> skp  = new uint(0);
+        ptr_t<uint> totl ( 0UL );
+        ptr_t<uint> done ( 0UL );
+        ptr_t<uint> err  ( 0UL );
+        ptr_t<uint> skp  ( 0UL );
 
         auto test = TEST_CREATE();
 
         TEST_ADD( test, "TEST 1 | url hostname", [](){
-            try { string_t uri = "http://becerra:enmanuel@www.google.com/path/to/file#done?var1=10&var2=50&var3=100&var4=hello_world!";
-             if ( url::hostname(uri) != "www.google.com" ){ throw 0; }
-                              TEST_DONE();
-            } catch ( ... ) { TEST_FAIL(); }
+            do { string_t uri = "http://becerra:enmanuel@www.google.com/path/to/file#done?var1=10&var2=50&var3=100&var4=hello_world!";
+            if ( url::hostname(uri) != "www.google.com" ){ break; }
+                        TEST_DONE();
+            } while(0); TEST_FAIL();
         });
 
         TEST_ADD( test, "TEST 2 | url port", [](){
-            try { string_t uri = "http://becerra:enmanuel@www.google.com/path/to/file#done?var1=10&var2=50&var3=100&var4=hello_world!";
-             if ( url::port(uri) != 80 ){ throw 0; }
-                              TEST_DONE();
-            } catch ( ... ) { TEST_FAIL(); }
+            do { string_t uri = "http://becerra:enmanuel@www.google.com/path/to/file#done?var1=10&var2=50&var3=100&var4=hello_world!";
+            if ( url::port(uri) != 80 ){ break; }
+                        TEST_DONE();
+            } while(0); TEST_FAIL();
         });
 
         TEST_ADD( test, "TEST 3 | url protocol", [](){
-            try { string_t uri = "http://becerra:enmanuel@www.google.com/path/to/file#done?var1=10&var2=50&var3=100&var4=hello_world!";
-             if ( url::protocol(uri) != "http" ){ throw 0; }
-                              TEST_DONE();
-            } catch ( ... ) { TEST_FAIL(); }
+            do { string_t uri = "http://becerra:enmanuel@www.google.com/path/to/file#done?var1=10&var2=50&var3=100&var4=hello_world!";
+            if ( url::protocol(uri) != "http" ){ break; }
+                        TEST_DONE();
+            } while(0); TEST_FAIL();
         });
 
         TEST_ADD( test, "TEST 4 | url pathname", [](){
-            try { string_t uri = "http://becerra:enmanuel@www.google.com/path/to/file#done?var1=10&var2=50&var3=100&var4=hello_world!";
-             if ( url::path(uri) != "/path/to/file" ){ throw 0; }
-                              TEST_DONE();
-            } catch ( ... ) { TEST_FAIL(); }
+            do { string_t uri = "http://becerra:enmanuel@www.google.com/path/to/file#done?var1=10&var2=50&var3=100&var4=hello_world!";
+            if ( url::path(uri) != "/path/to/file" ){ break; }
+                        TEST_DONE();
+            } while(0); TEST_FAIL();
         });
 
         TEST_ADD( test, "TEST 5 | url search", [](){
-            try { string_t uri = "http://becerra:enmanuel@www.google.com/path/to/file#done?var1=10&var2=50&var3=100&var4=hello_world!";
-             if ( url::search(uri) != "?var1=10&var2=50&var3=100&var4=hello_world!" ){ throw 0; }
-                              TEST_DONE();
-            } catch ( ... ) { TEST_FAIL(); }
+            do { string_t uri = "http://becerra:enmanuel@www.google.com/path/to/file#done?var1=10&var2=50&var3=100&var4=hello_world!";
+            if ( url::search(uri) != "?var1=10&var2=50&var3=100&var4=hello_world!" ){ break; }
+                        TEST_DONE();
+            } while(0); TEST_FAIL();
         });
 
         TEST_ADD( test, "TEST 6 | url hash", [](){
-            try { string_t uri = "http://becerra:enmanuel@www.google.com/path/to/file#done?var1=10&var2=50&var3=100&var4=hello_world!";
-             if ( url::hash(uri) != "#done" ){ throw 0; }
-                              TEST_DONE();
-            } catch ( ... ) { TEST_FAIL(); }
+            do { string_t uri = "http://becerra:enmanuel@www.google.com/path/to/file#done?var1=10&var2=50&var3=100&var4=hello_world!";
+            if ( url::hash(uri) != "#done" ){ break; }
+                        TEST_DONE();
+            } while(0); TEST_FAIL();
         });
 
         TEST_ADD( test, "TEST 7 | url origin", [](){
-            try { string_t uri = "http://becerra:enmanuel@www.google.com/path/to/file#done?var1=10&var2=50&var3=100&var4=hello_world!";
-             if ( url::origin(uri) != "http://becerra:enmanuel@www.google.com" ){ throw 0; }
-                              TEST_DONE();
-            } catch ( ... ) { TEST_FAIL(); }
+            do { string_t uri = "http://becerra:enmanuel@www.google.com/path/to/file#done?var1=10&var2=50&var3=100&var4=hello_world!";
+            if ( url::origin(uri) != "http://becerra:enmanuel@www.google.com" ){ break; }
+                        TEST_DONE();
+            } while(0); TEST_FAIL();
         });
 
         TEST_ADD( test, "TEST 8 | url auth", [](){
-            try { string_t uri = "http://becerra:enmanuel@www.google.com/path/to/file#done?var1=10&var2=50&var3=100&var4=hello_world!";
-             if ( url::auth(uri) != "becerra:enmanuel" ){ throw 0; }
-                              TEST_DONE();
-            } catch ( ... ) { TEST_FAIL(); }
+            do { string_t uri = "http://becerra:enmanuel@www.google.com/path/to/file#done?var1=10&var2=50&var3=100&var4=hello_world!";
+            if ( url::auth(uri) != "becerra:enmanuel" ){ break; }
+                        TEST_DONE();
+            } while(0); TEST_FAIL();
         });
 
         test.onClose.once([=](){
@@ -75,8 +75,8 @@ namespace TEST { namespace URL {
         });
 
         test.onDone([=](){ (*done)++; (*totl)++; });
-        test.onFail([=](){ (*err)++;  (*totl)++; });
-        test.onSkip([=](){ (*skp)++;  (*totl)++; });
+        test.onFail([=](){ (*err) ++; (*totl)++; });
+        test.onSkip([=](){ (*skp) ++; (*totl)++; });
 
         TEST_AWAIT( test );
 

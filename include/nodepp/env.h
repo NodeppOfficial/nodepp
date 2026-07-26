@@ -15,10 +15,10 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
-    #include "file.h"
+    #include "fs.h"
     #include "windows/env.h"
 #elif _KERNEL_ == NODEPP_KERNEL_POSIX
-    #include "file.h"
+    #include "fs.h"
     #include "posix/env.h"
 #else
     #error "This OS Does not support env.h"

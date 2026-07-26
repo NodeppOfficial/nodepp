@@ -23,15 +23,15 @@ return -1; });
 namespace TEST { namespace HTTP {
 
     void TEST_RUNNER(){
-        ptr_t<uint> totl = new uint(0);
-        ptr_t<uint> done = new uint(0);
-        ptr_t<uint> err  = new uint(0);
-        ptr_t<uint> skp  = new uint(0);
+        ptr_t<uint> totl ( 0UL );
+        ptr_t<uint> done ( 0UL );
+        ptr_t<uint> err  ( 0UL );
+        ptr_t<uint> skp  ( 0UL );
 
         auto test = TEST_CREATE();
 
         TEST_ADD( test, "TEST 1 | HTTP Fetch (Promise) IPv4", [](){
-            try { ptr_t<int> x = new int(0);
+            do{ ptr_t<int> x ( 0UL );
 
                 fetch_t args;
                         args.url    = "http://www.google.com";
@@ -49,18 +49,19 @@ namespace TEST { namespace HTTP {
 
                 .fail([=]( except_t ){ *x = -1; });
 
-                while( *x==0 ){ process::next(); }
-               switch( *x ){
-                    case 1: TEST_DONE(); break;
-                    case 2: TEST_FAIL(); break;
-                   default: TEST_SKIP(); break;
+                while ( *x==0 ){ process::next(); }
+                switch( *x ){
+                    case 1 : TEST_DONE(); break;
+                    case 2 : TEST_FAIL(); break;
+                    default: TEST_SKIP(); break;
                 }
-                              TEST_FAIL();
-            } catch ( ... ) { TEST_FAIL(); }
+
+                        TEST_FAIL();
+            } while(0); TEST_FAIL();
         });
         
         TEST_ADD( test, "TEST 2 | HTTP Fetch (Promise) IPv6", [](){
-            try { ptr_t<int> x = new int(0);
+            do{ ptr_t<int> x ( 0UL );
 
                 fetch_t args;
                         args.url    = "http://[www.google.com]";
@@ -79,17 +80,18 @@ namespace TEST { namespace HTTP {
                 .fail([=]( except_t ){ *x = -1; });
 
                 while( *x==0 ){ process::next(); }
-               switch( *x ){
-                    case 1: TEST_DONE(); break;
-                    case 2: TEST_FAIL(); break;
-                   default: TEST_SKIP(); break;
+                switch( *x ){
+                    case 1 : TEST_DONE(); break;
+                    case 2 : TEST_FAIL(); break;
+                    default: TEST_SKIP(); break;
                 }
-                              TEST_FAIL();
-            } catch ( ... ) { TEST_FAIL(); }
+
+                        TEST_FAIL();
+            } while(0); TEST_FAIL();
         });
 
         TEST_ADD( test, "TEST 3 | HTTP Fetch (await) IPv4", [](){
-            try { ptr_t<int> x = new int(0);
+            do{ ptr_t<int> x ( 0UL );
 
                 fetch_t args;
                         args.url    = "http://www.google.com";
@@ -103,12 +105,12 @@ namespace TEST { namespace HTTP {
                 if( !fetch.has_value() )/*---*/{ TEST_SKIP(); }
                 if( fetch.value().status==200 ){ TEST_DONE(); }
 
-                              TEST_FAIL();
-            } catch ( ... ) { TEST_FAIL(); }
+                        TEST_FAIL();
+            } while(0); TEST_FAIL();
         });
 
         TEST_ADD( test, "TEST 4 | HTTP Fetch (await) IPv6", [](){
-            try { ptr_t<int> x = new int(0);
+            do{ ptr_t<int> x ( 0UL );
 
                 fetch_t args;
                         args.url    = "http://[www.google.com]";
@@ -122,8 +124,8 @@ namespace TEST { namespace HTTP {
                 if( !fetch.has_value() )/*---*/{ TEST_SKIP(); }
                 if( fetch.value().status==200 ){ TEST_DONE(); }
 
-                              TEST_FAIL();
-            } catch ( ... ) { TEST_FAIL(); }
+                        TEST_FAIL();
+            } while(0); TEST_FAIL();
         });
 
         test.onClose.once([=](){
@@ -131,8 +133,8 @@ namespace TEST { namespace HTTP {
         });
 
         test.onDone([=](){ (*done)++; (*totl)++; });
-        test.onFail([=](){ (*err)++;  (*totl)++; });
-        test.onSkip([=](){ (*skp)++;  (*totl)++; });
+        test.onFail([=](){ (*err) ++; (*totl)++; });
+        test.onSkip([=](){ (*skp) ++; (*totl)++; });
 
         TEST_AWAIT( test );
 

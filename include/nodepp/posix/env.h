@@ -26,10 +26,11 @@ namespace nodepp { namespace process { namespace env {
 
     inline int remove( const string_t& name ){ return unsetenv( name.c_str() ); }
 
-    inline int init( const string_t& path ){ try {
+    inline int init( const string_t& path ){ do {
 
         thread_local static regex_t reg( "^([^ =]+)[= \"]+([^\n#\"]+)" );
-        auto file = file_t( path, "r" );
+        if( !fs::exists_file( path ) ){ break; }
+        auto file = fs::readable( path );
 
         while( !file.is_closed() ){
             
@@ -42,7 +43,7 @@ namespace nodepp { namespace process { namespace env {
 
         }
         
-    } catch(...) { return -1; } return 1; }
+    return 1; } while(0); return -1; }
 
 }}}
 

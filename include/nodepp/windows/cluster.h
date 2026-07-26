@@ -30,7 +30,7 @@ protected:
         obj->state = value;
     }
 
-    enum STATE {
+    enum STATE : uchar {
          FS_STATE_UNKNOWN = 0b00000000,
          FS_STATE_OPEN    = 0b00000001,
          FS_STATE_CLOSE   = 0b00000010,
@@ -43,13 +43,9 @@ protected:
 
     struct NODE {
 
-        uchar     state=STATE::FS_STATE_CLOSE;
-        PROCESS_INFORMATION pi;
-        STARTUPINFO  si;
-        int          fd;
-        file_t    input;
-        file_t   output;
-        file_t    error;
+        PROCESS_INFORMATION pi; STARTUPINFO si;
+        uchar state = STATE::FS_STATE_CLOSE;
+        int fd; file_t input, output, error;
 
        ~NODE(){
         if( !process::env::get("CHILD").empty() ){ return; }

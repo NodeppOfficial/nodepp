@@ -26,7 +26,7 @@ namespace nodepp { template< class T > using rej_t = function_t<void,T>; }
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { struct PROMISE_STATE { enum TYPE {
+namespace nodepp { struct PROMISE_STATE { enum TYPE : uchar {
     UNDEFINED= 0b00000000,
     OPEN     = 0b00000001,
     PENDING  = 0b00000010,

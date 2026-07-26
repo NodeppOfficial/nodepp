@@ -26,7 +26,7 @@ protected:
         string_t        name;
     };  
 
-    enum STATE {
+    enum STATE : uchar {
          TS_STATE_UNKNOWN = 0b00000000,
          TS_STATE_OPEN    = 0b00000001,
          TS_STATE_SKIP    = 0b00000010,
@@ -34,7 +34,7 @@ protected:
     };
     
     struct DONE {
-        queue_t<NODE> queue; int state = 0x01; 
+        queue_t<NODE> queue; uchar state = 0x01; 
     };  ptr_t<DONE> obj;
 
 public:

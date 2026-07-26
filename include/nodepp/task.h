@@ -15,7 +15,7 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { struct task_t/**/ { int flag=0x00; void *addr, *sign; }; }
-namespace nodepp { struct TASK_STATE { enum TYPE {
+namespace nodepp { struct TASK_STATE { enum TYPE : uchar {
     UNKNOWN = 0b00000000,
     OPEN    = 0b00000001,
     USED    = 0b00000010,
@@ -24,7 +24,7 @@ namespace nodepp { struct TASK_STATE { enum TYPE {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { struct POLL_STATE { enum FLAG {
+namespace nodepp { struct POLL_STATE { enum FLAG : uchar {
     UNKNOWN = 0b00000000,
     READ    = 0b00000010,
     WRITE   = 0b00000001,

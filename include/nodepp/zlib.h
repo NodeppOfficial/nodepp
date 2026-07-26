@@ -29,7 +29,7 @@
 namespace nodepp { class zlib_t {
 protected:
 
-    enum STATE {
+    enum STATE : uchar {
          STATE_ZLIB_IDLE    = 0b00000000,
          STATE_ZLIB_OPEN    = 0b00000001,
          STATE_ZLIB_INFLATE = 0b00000010,
@@ -44,8 +44,8 @@ protected:
 
     struct NODE {
 
-        int state = STATE_ZLIB_IDLE; 
-        int type  = 0; z_stream fd;
+        uchar state= STATE_ZLIB_IDLE; 
+        int   type = 0; z_stream fd;
         ptr_t<char> bff;
 
        ~NODE() { 

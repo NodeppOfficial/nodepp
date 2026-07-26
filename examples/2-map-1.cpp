@@ -6,7 +6,7 @@ using namespace nodepp;
 
 void onMain(){
 
-    map_t<string_t,string_t> map;
+    map_t<string_t,string_t> map; // <- indirect binary tier address (Not Slow but Overhead)
 
     map["a"] = "hello world";
     map["b"] = "hello world";

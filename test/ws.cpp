@@ -31,17 +31,17 @@ return -1; });
 namespace TEST { namespace WS {
 
     void TEST_RUNNER(){
-        ptr_t<uint> totl = new uint(0);
-        ptr_t<uint> done = new uint(0);
-        ptr_t<uint> err  = new uint(0);
-        ptr_t<uint> skp  = new uint(0);
+        ptr_t<uint> totl ( 0UL );
+        ptr_t<uint> done ( 0UL );
+        ptr_t<uint> err  ( 0UL );
+        ptr_t<uint> skp  ( 0UL );
 
         auto test = TEST_CREATE(); 
         auto srv  = SERVER();
 
         TEST_ADD( test, "TEST 1 | WS Client", [](){
-            try { ptr_t<int> x = new int(0);
-
+            do{ ptr_t<int> x ( 0UL, (int)0x00 )
+                
                 auto cli = ws::client( "ws://localhost:8000" );
                 cli.onError  ([=]( except_t      ){ (*x)--; });
                 cli.onConnect([=]( ws_t     cli  ){
@@ -55,12 +55,13 @@ namespace TEST { namespace WS {
                    case  1: TEST_FAIL(); break;
                    default: TEST_SKIP(); break;
                 }
-                              TEST_FAIL();
-            } catch ( ... ) { TEST_FAIL(); }
+
+                        TEST_FAIL();
+            } while(0); TEST_FAIL();
         });
         
         TEST_ADD( test, "TEST 2 | HTTP Fetch", [](){
-            try { ptr_t<int> x = new int(0);
+            do{ ptr_t<int> x ( 0UL, (int)0x00 );
 
                 fetch_t args;
                         args.url    = "http://localhost:8000";
@@ -73,19 +74,20 @@ namespace TEST { namespace WS {
 
                 .then([=]( http_t cli ){
                     if( cli.status==200 ){ *x = 1; }
-                   else /*-------------*/{ *x = 2; }
+                    else /*------------*/{ *x = 2; }
                 })
 
                 .fail([=]( except_t ){ *x = -1; });
 
-                while( *x==0 ){ process::next(); }
-               switch( *x ){
-                    case 1: TEST_DONE(); break;
-                    case 2: TEST_FAIL(); break;
-                   default: TEST_SKIP(); break;
+                while ( *x==0 ){ process::next(); }
+                switch( *x    ){
+                    case 1 : TEST_DONE(); break;
+                    case 2 : TEST_FAIL(); break;
+                    default: TEST_SKIP(); break;
                 }
-                              TEST_FAIL();
-            } catch ( ... ) { TEST_FAIL(); }
+
+                        TEST_FAIL();
+            } while(0); TEST_FAIL();
         });
 
         test.onClose.once([=](){
@@ -93,8 +95,8 @@ namespace TEST { namespace WS {
         });
 
         test.onDone([=](){ (*done)++; (*totl)++; });
-        test.onFail([=](){ (*err)++;  (*totl)++; });
-        test.onSkip([=](){ (*skp)++;  (*totl)++; });
+        test.onFail([=](){ (*err) ++; (*totl)++; });
+        test.onSkip([=](){ (*skp) ++; (*totl)++; });
 
         TEST_AWAIT( test ); srv.close();
 

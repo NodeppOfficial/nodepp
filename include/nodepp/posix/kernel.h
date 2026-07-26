@@ -43,7 +43,7 @@
 namespace nodepp { class kernel_t {
 private:
 
-    enum FLAG { 
+    enum FLAG : uchar { 
          KV_STATE_UNKNOWN = 0b00000000, 
          KV_STATE_OPEN    = 0b10000000,
          KV_STATE_WRITE   = 0b00000001,
@@ -56,8 +56,8 @@ private:
     };
 
     struct kevent_t {
-        int fd, flag; uchar_64 pd;
-        function_t<int> callback ;
+        int fd; uchar flag; uchar_64 pd;
+        function_t<int> callback;
         event_t   <   > event; 
     };
 
@@ -151,7 +151,7 @@ protected:
 
     struct NODE { 
         
-        uring_t uring ; int idx, state;
+        uring_t uring; uchar state;
         loop_t /*------*/ ev_queue;
         queue_t<kevent_t> kv_queue;
         probe_t /*-----*/ probe   ;
@@ -197,7 +197,7 @@ public:
     /*─······································································─*/
 
     template< class T, class U, class... W >
-    ptr_t<task_t> poll_add( T& inp, int flag, U cb, ulong timeout=0, const W&... args ) const noexcept {
+    ptr_t<task_t> poll_add( T& inp, uchar flag, U cb, ulong timeout=0, const W&... args ) const noexcept {
     function_t<int,W...> clb ( cb ); if( inp.is_closed() ){ return nullptr; }
 
         if( obj->uring.address( inp.get_pd() )==nullptr ) {
@@ -207,7 +207,7 @@ public:
             kv.flag    = flag; kv.fd = inp.get_fd();
             len_t time = timeout==0 ? 0 : process::now() + timeout;
             
-            kv.callback = [=]() -> int {
+            kv.callback = [=](){
                 if( time!=0 && time<process::now() )
                   { inp.close     () ;  return -1; }
                 if( inp.is_closed () ){ return -1; } 
@@ -284,7 +284,7 @@ private:
     using EPOLLFD = struct epoll_event;
     using ETIMER  = struct timespec;
 
-    enum FLAG { 
+    enum FLAG : uchar { 
          KV_STATE_UNKNOWN = 0b00000000, 
          KV_STATE_OPEN    = 0b10000000,
          KV_STATE_WRITE   = 0b00000001,
@@ -297,7 +297,7 @@ private:
     };
 
     struct kevent_t { 
-        int fd, /*-------*/ flag;
+        int fd; /*--*/ uchar flag;
         function_t<int> callback;
         event_t   <   > event   ;
     };
@@ -424,7 +424,7 @@ protected:
 
     struct NODE {
 
-        int pd=-1, ed=-1; int idx, state;
+        int pd=-1, ed=-1; uchar state;
 
         loop_t  /*-----*/ ev_queue;
         queue_t<kevent_t> kv_queue;
@@ -487,7 +487,7 @@ public:
     /*─······································································─*/
 
     template< class T, class U, class... W >
-    ptr_t<task_t> poll_add( T& inp, int flag, U cb, ulong timeout=0, const W&... args ) const noexcept {
+    ptr_t<task_t> poll_add( T& inp, uchar flag, U cb, ulong timeout=0, const W&... args ) const noexcept {
     function_t<int,W...> clb ( cb ); if( inp.is_closed() ){ return nullptr; }
     
         if( inp.get_pd()==KV_STATE_FALLBACK ){ if( is_std( inp.get_fd() ) ){
@@ -507,7 +507,7 @@ public:
             kv.flag    = flag; kv.fd = inp.get_fd();
             len_t time = timeout==0 ? 0 : process::now() + timeout;
             
-            kv.callback = [=]() -> int {
+            kv.callback = [=](){
                 if( time!=0 && time<process::now() )
                   { inp.close     () ;  return -1; }
                 if( inp.is_closed () ){ return -1; } 
@@ -569,21 +569,21 @@ public:
 
     #if defined( SYS_epoll_pwait2 )
 
-        obj->idx  = ( obj->state & FLAG::KV_STATE_FALLBACK )==0 ? 
+        auto idx =  ( obj->state & FLAG::KV_STATE_FALLBACK )==0 ? 
         epoll_pwait2( obj->pd, &obj->ev, obj->ev.size(),&get_delay_tm(), nullptr ) :
         epoll_wait  ( obj->pd, &obj->ev, obj->ev.size(), get_delay_ms()) /*-----*/ ;
         
-        if( obj->idx==-1 && errno==ENOSYS ) { obj->state |= FLAG::KV_STATE_FALLBACK; }
+        if( idx==-1 && errno==ENOSYS ) { obj->state |= FLAG::KV_STATE_FALLBACK; }
 
     #else
-        /*----------*/ obj->idx=epoll_wait  ( obj->pd, &obj->ev, obj->ev.size(), get_delay_ms() );
+        auto idx =  obj->idx=epoll_wait( obj->pd, &obj->ev, obj->ev.size(), get_delay_ms() );
     #endif
 
         obj->state &=~ FLAG::KV_STATE_SLEEP;
 
-        while( obj->idx > 0 ){ 
+        while( idx > 0 ){ 
             
-            obj->idx--; auto &x = obj->ev[ obj->idx ];
+            idx--; auto &x = obj->ev[ idx ];
 
             if( x.data.ptr == nullptr ) { uchar_64 value = 0;
             if( ::read( obj->ed, &value, sizeof(uchar_64)) ){ /*unused*/ }
@@ -619,7 +619,7 @@ private:
     using KTIMER  = struct timespec;
     using KPOLLFD = struct kevent;
 
-    enum FLAG { 
+    enum FLAG : uchar { 
          KV_STATE_UNKNOWN = 0b00000000, 
          KV_STATE_OPEN    = 0b10000000,
          KV_STATE_WRITE   = 0b00000001,
@@ -632,7 +632,7 @@ private:
     };
 
     struct kevent_t { 
-        int fd, /*-------*/ flag;
+        int fd; /*--*/ uchar flag;
         function_t<int> callback;
         event_t   <   > event   ; 
     };
@@ -765,12 +765,11 @@ protected:
 
     struct NODE {
 
-        int pd=-1, idx, state;
-
-        loop_t   /*----*/ ev_queue;
-        queue_t<kevent_t> kv_queue;
-        probe_t  /*----*/ probe   ; 
-        uchar_32 /*----*/ timeout ; ptr_t<KPOLLFD> ev;
+        int pd=-1; /**/ uchar state;
+        loop_t   /*----*/ ev_queue ;
+        queue_t<kevent_t> kv_queue ;
+        probe_t  /*----*/ probe    ; 
+        uchar_32 /*----*/ timeout  ; ptr_t<KPOLLFD> ev;
 
        ~NODE(){ close( pd ); }
     };  ptr_t<NODE> obj;
@@ -825,7 +824,7 @@ public:
     /*─······································································─*/
 
     template< class T, class U, class... W >
-    ptr_t<task_t> poll_add( T& inp, int flag, U cb, ulong timeout=0, const W&... args ) const noexcept {
+    ptr_t<task_t> poll_add( T& inp, uchar flag, U cb, ulong timeout=0, const W&... args ) const noexcept {
     function_t<int,W...> clb ( cb ); if( inp.is_closed() ){ return nullptr; }
     
         if( inp.get_pd()==FLAG::KV_STATE_FALLBACK ){ 
@@ -846,7 +845,7 @@ public:
             kv.flag    = flag; kv.fd = inp.get_fd();
             len_t time = timeout==0 ? 0 : process::now() + timeout;
             
-            kv.callback = [=]() -> int {
+            kv.callback = [=](){
                 if( time!=0 && time<process::now() )
                   { inp.close     () ;  return -1; }
                 if( inp.is_closed () ){ return -1; } 
@@ -907,13 +906,13 @@ public:
         if( obj->ev_queue.next()==1 ){ return 1; }
         set_timeout(obj->ev_queue.get_delay());
 
-        obj->state |=  FLAG::KV_STATE_SLEEP;
-        obj->idx=kevent( obj->pd, NULL, 0, &obj->ev, obj->ev.size(), &get_delay_tm() );
-        obj->state &=~ FLAG::KV_STATE_SLEEP;
+        obj->state|=  FLAG::KV_STATE_SLEEP;
+        auto idx   = kevent( obj->pd, NULL, 0, &obj->ev, obj->ev.size(), &get_delay_tm() );
+        obj->state&=~ FLAG::KV_STATE_SLEEP;
 
-        while( obj->idx > 0 ){ 
+        while( idx > 0 ){ 
             
-            obj->idx--; auto &x = obj->ev[ obj->idx ];
+            idx--; auto &x = obj->ev[ idx ];
             if( x.filter==EVFILT_USER 
             ) { invoker( nullptr ); continue; }
 
@@ -940,7 +939,7 @@ public:
 namespace nodepp { class kernel_t {
 private:
 
-    enum FLAG { 
+    enum FLAG : uchar { 
          KV_STATE_UNKNOWN = 0b00000000, 
          KV_STATE_OPEN    = 0b10000000,
          KV_STATE_WRITE   = 0b00000001,
@@ -951,8 +950,6 @@ private:
          KV_STATE_CLOSED  = 0b00001000,
          KV_STATE_FALLBACK= 0b00000001
     };
-
-    struct kevent_t { int fd, flag; function_t<int> callback; };
 
     bool is_std( int fd ) const noexcept { 
     return fd == STDOUT_FILENO ||
@@ -981,10 +978,10 @@ protected:
 protected:
 
     struct NODE {
-        int /*-*/ state   ;
-        uchar_32  timeout ;
-        probe_t   probe   ;
-        loop_t    ev_queue;
+        uchar    state   ;
+        uchar_32 timeout ;
+        probe_t  probe   ;
+        loop_t   ev_queue;
     };  ptr_t<NODE> obj;
 
 public:
@@ -1022,7 +1019,7 @@ public:
     /*─······································································─*/
 
     template< class T, class U, class... W >
-    ptr_t<task_t> poll_add( T& inp, int flag, U cb, ulong timeout=0, const W&... args ) const noexcept {
+    ptr_t<task_t> poll_add( T& inp, uchar flag, U cb, ulong timeout=0, const W&... args ) const noexcept {
 
         function_t<int,W...> clb ( cb ); if ( inp.is_closed() ) { return nullptr; }
         function_t<int,W...> clb ( cb ); if ( inp.is_closed() ) { return nullptr; }

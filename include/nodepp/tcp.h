@@ -24,7 +24,7 @@ namespace nodepp { class tcp_t {
 private:
 
     using NODE_CLB = function_t<void,socket_t>;
-    enum STATE {
+    enum STATE : uchar {
          TCP_STATE_UNKNOWN   = 0b00000000,
          TCP_STATE_USED      = 0b00000001,
          TCP_STATE_CLOSED    = 0b00000010
@@ -33,7 +33,7 @@ private:
 protected:
 
     struct NODE {
-        int state = 0; 
+        uchar state=0; 
         agent_t agent;
         NODE_CLB func;
     };  ptr_t<NODE> obj;

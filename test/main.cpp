@@ -26,9 +26,11 @@ using namespace nodepp;
 #include "string.cpp"
 #include "promise.cpp"
 #include "listener.cpp"
+#include "observer.cpp"
 #include "function.cpp"
 #include "optional.cpp"
 #include "expected.cpp"
+#include "coroutine.cpp"
 
 void onMain(){ 
     
@@ -55,7 +57,9 @@ void onMain(){
     TEST::STRING  ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::ATOMIC  ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::PROMISE ::TEST_RUNNER(); conio::log("\n---\n");
+    TEST::COROUTINE::TEST_RUNNER(); conio::log("\n---\n");
     TEST::FUNCTION::TEST_RUNNER(); conio::log("\n---\n");
+    TEST::OBSERVER::TEST_RUNNER(); conio::log("\n---\n");
     TEST::EXPECTED::TEST_RUNNER(); conio::log("\n---\n");
     TEST::OPTION  ::TEST_RUNNER(); conio::log("\n---\n");
 
