@@ -44,7 +44,7 @@ protected:
 
     /*─······································································─*/
 
-    ptr_t<int> get_next_repeat( const string_t& pattern, ulong& off ) const noexcept {
+    ptr_t<int> get_next_repeat( string_t pattern, ulong& off ) const noexcept {
 
         if( pattern[off] == '{' ){
             auto end = get_next_key( pattern, off ); /*------*/
@@ -57,7 +57,7 @@ protected:
 
     return nullptr; }
 
-    ptr_t<int> get_rep( const string_t& pattern, int start, int end ) const noexcept {
+    ptr_t<int> get_rep( string_t pattern, int start, int end ) const noexcept {
     ptr_t<int>     rep({ 0, 0 }); 
     
         bool b=0; string_t num[2];
@@ -73,7 +73,7 @@ protected:
 
     return rep; }
 
-    ptr_t  <int> get_next_regex( const string_t& pattern, ulong off ) const noexcept {
+    ptr_t  <int> get_next_regex( string_t pattern, ulong off ) const noexcept {
     queue_t<int> out;
 
         while( off < pattern.size() ){
@@ -87,7 +87,7 @@ protected:
 
     out.push( pattern.size() ); return out.data(); }
 
-    ulong get_next_key( const string_t& pattern, ulong off ) const noexcept {
+    ulong get_next_key( string_t pattern, ulong off ) const noexcept {
     uchar k=0; while( off < pattern.size() && k < 128 ){
 
         switch( pattern[off] ){ /**/ case '\\': ++off ; break;
@@ -100,7 +100,7 @@ protected:
 
     /*─······································································─*/
 
-    REGEX compile_range( const string_t& pattern ) const {
+    REGEX compile_range( string_t pattern ) const {
     REGEX node; auto next = &node.next;
 
         for( ulong x=0; x<pattern.size(); ++x ){
@@ -117,7 +117,7 @@ protected:
 
     /*─······································································─*/
 
-    REGEX compile_pattern( const string_t& pattern ) const {
+    REGEX compile_pattern( string_t pattern ) const {
     ulong off=0; REGEX node; node.data=0x00; node.flag=0x09;
     do { /*---*/ REGEX item; item.data=0x00; item.flag=0xff;
 
@@ -170,7 +170,7 @@ protected:
 
     /*─······································································─*/
 
-    REGEX compile( const string_t& pattern ) const {
+    REGEX compile( string_t pattern ) const {
     REGEX node; node.data=0x00; node.flag=0x09;
     do{ if( pattern.empty() ){ break; }
 
@@ -299,7 +299,7 @@ public:
 
    ~regex_t () noexcept { clear_memory(); }
 
-    regex_t ( const string_t& reg, bool icase=false ): obj( new NODE() )
+    regex_t ( string_t reg, bool icase=false ): obj( new NODE() )
     /*---*/ { obj->icase=icase; obj->queue=compile(reg); }
 
     /*─······································································─*/
@@ -319,7 +319,7 @@ public:
 
     /*─······································································─*/
 
-    array_t<ptr_t<ulong>> search_all( const string_t& _str ){
+    array_t<ptr_t<ulong>> search_all( string_t _str ){
         queue_t<ptr_t<ulong>> out; ulong off=0; for(;;) {
             auto idx = search( _str, off );
             if( idx.null() /**/ ){ return out.data(); }
@@ -330,7 +330,7 @@ public:
 
     /*─······································································─*/
 
-    array_t<string_t> split_view( const string_t& _str ){ ulong n = 0;
+    array_t<string_t> split_view( string_t _str ){ ulong n = 0;
         auto idx = search_all( _str ); queue_t<string_t> out;
         if ( idx.empty()  ){ out.push(_str); return out.data(); }
         for( auto x : idx ){
@@ -338,7 +338,7 @@ public:
         }    out.push( _str.slice_view( n ) ); return out.data();
     }
 
-    array_t<string_t> split( const string_t& _str ){ ulong n = 0;
+    array_t<string_t> split( string_t _str ){ ulong n = 0;
         auto idx = search_all( _str ); queue_t<string_t> out;
         if ( idx.empty()  ){ out.push(_str); return out.data(); }
         for( auto x : idx ){
@@ -348,13 +348,13 @@ public:
 
     /*─······································································─*/
 
-    string_t replace_all( string_t _str, const string_t& _rep ){
+    string_t replace_all( string_t _str, string_t _rep ){
         auto idx = search_all( _str ).reverse(); for( auto x : idx ){
              _str.splice( x[0], x[1] - x[0], _rep );
         }    return _str;
     }
 
-    string_t replace( string_t _str, const string_t& _rep, ulong off=0 ){
+    string_t replace( string_t _str, string_t _rep, ulong off=0 ){
         auto idx = search( _str, off ); /*----------------------*/
         if( idx.null() /*-*/ ){ return _str; } /*---------------*/
         if( idx[0] == idx[1] ){ return _str; } /*---------------*/
@@ -378,7 +378,7 @@ public:
 
     /*─······································································─*/
 
-    array_t<string_t> match_all( const string_t& _str ){
+    array_t<string_t> match_all( string_t _str ){
         auto idx = search_all( _str ); queue_t<string_t> out;
         for( auto x : idx ){
              out.push(_str.slice( x[0], x[1] ));
@@ -387,7 +387,7 @@ public:
 
     /*─······································································─*/
 
-    string_t match( const string_t& _str, ulong off=0 ){
+    string_t match( string_t _str, ulong off=0 ){
         auto idx = search( _str, off ); /*-----*/
         if( idx.null() /*-*/ ){ return nullptr; }
         if( idx[0] == idx[1] ){ return nullptr; }
@@ -396,7 +396,7 @@ public:
 
     /*─······································································─*/
 
-    bool test( const string_t& _str, ulong off=0 ){
+    bool test( string_t _str, ulong off=0 ){
         auto idx = search( _str, off );
         if( idx.null() /*-*/ ){ return 0; }
         if( idx[0] == idx[1] ){ return 0; }
@@ -606,7 +606,7 @@ protected:
 
     /*─······································································─*/
 
-    int compile( const string_t& str, ptr_t<ulong>& off, ptr_t<ulong>& pos ){
+    int compile( string_t str, ptr_t<ulong>& off, ptr_t<ulong>& pos ){
         if( str == nullptr || obj->regex == nullptr ){ return -1; }
 
         if( obj->_rep == nullptr && obj->_data != nullptr ){
@@ -690,7 +690,7 @@ public:
 
     regex_t () noexcept : obj( new NODE() ){}
 
-    regex_t ( const string_t& reg, bool icase=false ): obj( new NODE() )
+    regex_t ( string_t reg, bool icase=false ): obj( new NODE() )
             { obj->icase = icase; obj->regex = reg; }
 
     /*─······································································─*/
@@ -709,7 +709,7 @@ public:
 
     /*─······································································─*/
 
-    array_t<ptr_t<ulong>> search_all( const string_t& _str ){
+    array_t<ptr_t<ulong>> search_all( string_t _str ){
     queue_t<ptr_t<ulong>> out; ulong off=0; for(;;) {
         auto idx = search( _str, off );
         if( idx   ==nullptr ){ return out.data(); }
@@ -719,7 +719,7 @@ public:
 
     /*─······································································─*/
 
-    array_t<string_t> split_view( const string_t& _str ){ ulong n = 0;
+    array_t<string_t> split_view( string_t _str ){ ulong n = 0;
         auto idx = search_all( _str ); queue_t<string_t> out;
         if ( idx.empty()  ){ out.push(_str); return out.data(); }
         for( auto x : idx ){
@@ -727,7 +727,7 @@ public:
         }    out.push( _str.slice_view( n ) ); return out.data();
     }
 
-    array_t<string_t> split( const string_t& _str ){ ulong n = 0;
+    array_t<string_t> split( string_t _str ){ ulong n = 0;
         auto idx = search_all( _str ); queue_t<string_t> out;
         if ( idx.empty()  ){ out.push(_str); return out.data(); }
         for( auto x : idx ){
@@ -737,13 +737,13 @@ public:
 
     /*─······································································─*/
 
-    string_t replace_all( string_t _str, const string_t& _rep ){
+    string_t replace_all( string_t _str, string_t _rep ){
         auto idx = search_all( _str ).reverse(); for( auto x : idx ){
              _str.splice( x[0], x[1] - x[0], _rep );
         }    return _str;
     }
 
-    string_t replace( string_t _str, const string_t& _rep, ulong off=0 ){
+    string_t replace( string_t _str, string_t _rep, ulong off=0 ){
         auto idx = search( _str, off );
         if( idx == nullptr )  { return _str; }
         if( idx[0] == idx[1] ){ return _str; }
@@ -767,7 +767,7 @@ public:
 
     /*─······································································─*/
 
-    array_t<string_t> match_all( const string_t& _str ){
+    array_t<string_t> match_all( string_t _str ){
         auto idx = search_all( _str ); queue_t<string_t> out;
         for( auto x : idx ){
              out.push(_str.slice( x[0], x[1] ));
@@ -776,7 +776,7 @@ public:
 
     /*─······································································─*/
 
-    string_t match( const string_t& _str, ulong off=0 ){
+    string_t match( string_t _str, ulong off=0 ){
         auto idx = search( _str, off );
         if( idx == nullptr )  { return nullptr; }
         if( idx[0] == idx[1] ){ return nullptr; }
@@ -785,7 +785,7 @@ public:
 
     /*─······································································─*/
 
-    bool test( const string_t& _str, ulong off=0 ){
+    bool test( string_t _str, ulong off=0 ){
         auto idx = search( _str, off );
         if( idx == nullptr )  { return 0; }
         if( idx[0] == idx[1] ){ return 0; }
@@ -802,101 +802,97 @@ public:
 
 namespace nodepp { namespace regex {
 
-    inline string_t remove( const string_t& _str, const string_t& _reg, bool _flg=false ){
+    inline string_t remove( string_t _str, string_t _reg, bool _flg=false ){
         regex_t reg( _reg, _flg ); return reg.remove( _str );
     }
 
     /*─······································································─*/
 
-    inline string_t replace_all( const string_t& _str, const string_t& _reg, const string_t& _rep, bool _flg=false ){
+    inline string_t replace_all( string_t _str, string_t _reg, string_t _rep, bool _flg=false ){
         regex_t reg( _reg, _flg ); return reg.replace_all( _str, _rep );
     }
 
     /*─······································································─*/
 
-    inline string_t remove_all( const string_t& _str, const string_t& _reg, bool _flg=false ){
+    inline string_t remove_all( string_t _str, string_t _reg, bool _flg=false ){
         regex_t reg( _reg, _flg ); return reg.remove_all( _str );
     }
 
     /*─······································································─*/
 
-    inline array_t<ptr_t<ulong>> search_all( const string_t& _str, const string_t& _reg, bool _flg=false ){
+    inline array_t<ptr_t<ulong>> search_all( string_t _str, string_t _reg, bool _flg=false ){
         regex_t reg( _reg, _flg ); return reg.search_all( _str );
     }
 
     /*─······································································─*/
 
-    inline string_t replace( const string_t& _str, const string_t& _reg, const string_t& _rep, bool _flg=false ){
+    inline string_t replace( string_t _str, string_t _reg, string_t _rep, bool _flg=false ){
         regex_t reg( _reg, _flg ); return reg.replace( _str, _rep );
     }
 
     /*─······································································─*/
 
-    inline array_t<string_t> get_memory( const string_t& _str, const string_t& _reg, bool _flg=false ){
+    inline array_t<string_t> get_memory( string_t _str, string_t _reg, bool _flg=false ){
         regex_t reg( _reg, _flg ); reg.search_all( _str ); return reg.get_memory();
     }
 
     /*─······································································─*/
 
-    inline array_t<string_t> match_all( const string_t& _str, const string_t& _reg, bool _flg=false ){
+    inline array_t<string_t> match_all( string_t _str, string_t _reg, bool _flg=false ){
         regex_t reg( _reg, _flg ); return reg.match_all( _str );
     }
 
     /*─······································································─*/
 
-    inline ptr_t<ulong> search( const string_t& _str, const string_t& _reg, bool _flg=false ){
+    inline ptr_t<ulong> search( string_t _str, string_t _reg, bool _flg=false ){
         regex_t reg( _reg, _flg ); return reg.search( _str );
     }
 
     /*─······································································─*/
 
-    inline string_t match( const string_t& _str, const string_t& _reg, bool _flg=false ){
+    inline string_t match( string_t _str, string_t _reg, bool _flg=false ){
         regex_t reg( _reg, _flg ); return reg.match( _str );
     }
 
     /*─······································································─*/
 
-    inline bool test( const string_t& _str, const string_t& _reg, bool _flg=false ){
+    inline bool test( string_t _str, string_t _reg, bool _flg=false ){
         regex_t reg( _reg, _flg ); return reg.test( _str );
     }
 
     /*─······································································─*/
 
-    inline array_t<string_t> split_view( const string_t& _str, char ch ){ 
-        return string::split_view( _str, ch ); }
+    inline array_t<string_t> split_view( string_t _str, ulong size ){ 
+        return string::split_view( _str, size );
+    }
 
-    inline array_t<string_t> split_view( const string_t& _str, int  ch ){ 
-        return string::split_view( _str, ch ); }
-
-    inline array_t<string_t> split_view( const string_t& _str, const string_t& _reg, bool _flg=false ){
-          if ( _reg.size ()== 1 ){ return string::split_view( _str, _reg[0] ); }
-        elif ( _reg.empty() )    { return string::split_view( _str, 1 ); }
+    inline array_t<string_t> split_view( string_t _str, string_t _reg, bool _flg=false ){
+        if( _reg.empty() ) /*-*/ { return string::split_view( _str, 1UL ); }
         regex_t reg( _reg, _flg ); return reg.split_view( _str );
     }
 
     /*─······································································─*/
+    
+    inline array_t<string_t> split( string_t _str, ulong size ){ 
+        return string::split( _str, size );
+    }
 
-    inline array_t<string_t> split( const string_t& _str, char ch ){ return string::split( _str, ch ); }
-
-    inline array_t<string_t> split( const string_t& _str, int ch ){ return string::split( _str, ch ); }
-
-    inline array_t<string_t> split( const string_t& _str, const string_t& _reg, bool _flg=false ){
-          if ( _reg.size ()== 1 ){ return string::split( _str, _reg[0] ); }
-        elif ( _reg.empty() )    { return string::split( _str, 1 ); }
+    inline array_t<string_t> split( string_t _str, string_t _reg, bool _flg=false ){
+        if( _reg.empty() ) /*-*/ { return string::split( _str, 1UL ); }
         regex_t reg( _reg, _flg ); return reg.split( _str );
     }
 
     /*─······································································─*/
 
     template< class T, class... V >
-    string_t join( const string_t& c, const T& argc, const V&... args ){
+    string_t join( string_t c, const T& argc, const V&... args ){
         return string::join( c, argc, args... );
     }
 
     /*─······································································─*/
 
     template< class... T >
-    string_t format( const string_t& val, const T&... args ){
+    string_t format( string_t val, const T&... args ){
         auto count = string::count( []( string_t ){ return true; }, args... );
 
         queue_t<string_t> out; ulong idx=0;

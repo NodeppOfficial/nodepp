@@ -468,19 +468,43 @@ namespace nodepp { namespace string {
 
     /*─······································································─*/
 
+    inline array_t<string_t> split_view( string_t _str, ulong size ){ 
+        queue_t<string_t> out; 
+        
+        while( !_str.empty() ){
+            out.push( _str.slice_view( 0, size ) );
+            _str.ptr().slice( size, (ulong) -1 );
+        }
+
+        return out.data();
+    }
+
     template< class T >
-    array_t<string_t> split_view( string_t _str, const T& pattern ){
+    array_t<string_t> split_view( string_t _str, T pattern ){ 
         queue_t<string_t> out; ulong offset=0; ptr_t<ulong> idx;
         
-        while((idx=_str.find( pattern, offset ) ) != nullptr ){
+        while( (idx=_str.find( pattern, offset )) != nullptr ){
             out.push( _str.slice_view( offset, idx[0] ) ); offset=idx[1];
         }   out.push( _str.slice_view( offset ) );
 
         return out.data();
     }
 
+    /*─······································································─*/
+
+    inline array_t<string_t> split( string_t _str, ulong size ){ 
+        queue_t<string_t> out; 
+        
+        while( !_str.empty() ){
+            out.push( _str.slice( 0, size ) );
+            _str.ptr().slice( size, (ulong) -1 );
+        }
+
+        return out.data();
+    }
+
     template< class T >
-    array_t<string_t> split( string_t _str, const T& pattern ){
+    array_t<string_t> split( string_t _str, T pattern ){ 
         queue_t<string_t> out; ulong offset=0; ptr_t<ulong> idx;
         
         while( (idx=_str.find( pattern, offset )) != nullptr ){
