@@ -133,7 +133,7 @@ public:
         if( is_state( STATE::FS_STATE_KILL  ) ){ return; } kill();
         if(!is_state( STATE::FS_STATE_CLOSE ) ){ onDrain .emit (); }
 
-        onClose.emit();
+        onClose.emit (); onDrain.clear();
 
         onError.clear(); onDerr .clear(); 
         onOpen .clear(); onData .clear(); 

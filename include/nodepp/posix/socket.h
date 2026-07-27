@@ -517,7 +517,7 @@ public:
         if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_STOP ) )
           { onDrain.emit(); }
 
-        onClose.emit();
+        onClose .emit (); onDrain .clear();
 
         onUnpipe.clear(); onResume.clear();
         onError .clear(); onData  .clear();
