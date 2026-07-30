@@ -13,16 +13,21 @@ void server() {
             cli.write( "not allowed" ); return;
         }
 
-        cli.onDrain([=](){ console::log( "closed from server" ); });
-
+        cli.onClose.once([=](){ console::log( "closed from server" ); });
         cli.read_body()
 
         .then([=]( http_t cli ){
-            console::log( "->", cli.body );
+
+            string_t msg = "received";
+            
             cli.write_header( 200, header_t({
-                { "Transfer-Encoding", "chunked" }
+                { "Transfer-Encoding", "chunked" },
+                { "Content-Length", string::to_string( msg.size() ) }
             }) );
-            cli.write( "received" );
+
+            console::log( "AAA>>", cli.body );
+            cli.write( msg );
+
         })
         
         .fail([=]( except_t err ){
@@ -44,20 +49,18 @@ void client() {
             args.method  = "POST";
             args.url     = "http://localhost:8000/";
             args.headers = header_t({
-                { "Host", url::host(args.url) }
-                { "Transfer-Encoding", "chunked" }
+                { "Host", url::host(args.url) },
             });
 
     http::fetch( args )
 
     .then([]( http_t cli ){
 
-        cli.onDrain([=](){ console::log( "closed from client" ); });
-
+        cli.onClose.once([=](){ console::log( "closed from client" ); });
         cli.read_body( 1000UL )
 
         .then([=]( http_t cli ){
-            console::log( ">>", cli.body );
+            console::log( "BBB>>", cli.body );
         });
 
     })

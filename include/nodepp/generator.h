@@ -27,13 +27,13 @@ namespace nodepp { namespace generator { namespace file {
         if  ( !fd->is_available() ) { coEnd; } r=fd->get_range();
         if  ( r[1] != 0  ){ auto pos=fd->pos(); d=min( r[1]-r[0], (len_t)size );
         if  ( pos < r[0] ){ fd->del_borrow(); fd->pos( r[0] ); }
-        elif( pos >=r[1] ){ fd->close(); coEnd; }} else { 
+        elif( pos >=r[1] ){ coEnd; }} else { 
               d = (len_t) min( fd->get_buffer_size(), size ); 
         }
 
         if( fd->get_borrow().empty() ){ 
             coWait((state=fd->_read( fd->get_buffer_data(), fd->get_buffer_size() ))==-2);
-        if( state <= 0 )  { fd->close(); coEnd; }  else  { 
+        if( state <= 0 )  { coEnd; }  else  { 
             fd->set_borrow( string_t( fd->get_buffer_data(), state ) );
         }}
 
@@ -54,7 +54,7 @@ namespace nodepp { namespace generator { namespace file {
         if(!fd->is_available() || msg.empty() ){ coEnd; }
 
         do{ coWait((state=fd->_write( msg.data()+data, msg.size()-data ))==-2 );
-        if( state<=0 ){ fd->close() ; coEnd; } else { 
+        if( state<=0 ){ coEnd; } else { 
             data = min( data + state, msg.size() );
         } } while( data < msg.size() );
 
@@ -62,87 +62,108 @@ namespace nodepp { namespace generator { namespace file {
 
     /*─······································································─*/
 
-    GENERATOR( until ){
+    GENERATOR( split ){
     protected: ulong pos  ; file::read _read;
-    public:    ulong state; string_t   data ;
+    public:    ulong state; string_t data;
 
     template< class T > coEmit( T* fd, string_t ch ){
     coBegin; state=0; pos=0; data.clear();
 
-        coWait( _read(fd) ==1 );
-            if( _read.state<=0 )
-              { state = data.size(); coEnd; }
-        fd->set_borrow( _read.data );
+        do{ auto &bff = fd->get_borrow(); if( !bff.empty() ){
 
-        do{ for( auto x: _read.data ){ ++state;
+        do{ for( auto &x:bff ){ ++state;
             if ( ch[pos]  ==x   ){ ++pos; } else { pos=0; }
             if ( ch.size()==pos ){ break; } }
         } while(0);
 
-        if( memcmp( _read.data.get(), ch.get(), ch.size() )==0 ){
-            auto &x = fd->get_borrow();
-            data= x.slice( 0, ch.size() );
-            /*-*/ x.ptr().slice( ch.size(), (ulong) -1 );
+        if( memcmp( bff.get(), ch.get(), ch.size() )==0 ){
+            data= bff.slice( 0, ch.size() );
         } elif( state > pos ) {
-            auto &x = fd->get_borrow();
-            data= x.slice( 0, state - pos );
-            /*-*/ x.ptr().slice( state - pos, (ulong) -1 );
+            data= bff.slice( 0, state - pos );
         } else { 
-            auto &x = fd->get_borrow();
-            data= x.slice( 0, state ); 
-            /*-*/ x.ptr().slice( state, (ulong) -1 );
-        }
+            data= bff.slice( 0, state ); 
+        } 
 
-        state = data.size();
+            fd->get_borrow().ptr().slice( data.size(), (ulong) -1 );
+            state = data.size(); 
+            
+        return -1; }} while(0); coNext;
 
-    coFinish }
+        coWait( _read( fd )==1 );
+        if( _read.state<=0 ){ state=0; coEnd; }
+        fd->set_borrow ( _read.data ); coGoto(0);
 
-    template< class T > coEmit( T* fd, char ch ){
-    coBegin; data.clear(); coYield(1); state=0;
+    coFinish }};
 
-        coWait( _read(fd) ==1 );
-            if( _read.state<=0 )
-              { state = data.size(); coEnd; }
-        fd->set_borrow( _read.data );
+    /*─······································································─*/
 
-        do{ for( auto x: _read.data ){ ++state;
-            if ( ch ==x ){ break; } continue; }
-        } while(0);
+    GENERATOR( until ){
+    protected: string_t borrow; file::read _read;
+    public:    string_t data  ; ulong state; 
 
-        do{ auto &x = fd->get_borrow();
-            data += x.slice( 0, state ); 
-            /*---*/ x.ptr().slice( state, (ulong) -1 );
-            state = data.size();
-        } while(0);
+    template< class T > coEmit( T* fd, string_t ch ){
+    coBegin data.clear(); state = 0UL;
 
-        if( data[ data.size()-1 ] == ch ){ coEnd; }
+        do{ /*----------------*/ auto &bff = fd->get_borrow();
+        if( !bff.empty() ){ do { auto pos  = bff.find ( ch );
+            
+            if( pos.null() ){ 
+            if( bff.size() > NODEPP_UNBFF_SIZE ){
+                data = type::move( fd->get_borrow() );
+                state= data.size();
+            return -1; } break; }
 
-    coGoto(1) ; coFinish }};
+            data = bff.slice( 0, pos[0] ); 
+            state= data.size();
+
+            fd->get_borrow().ptr().slice ( pos[1], (ulong) -1 );
+
+        return state==0 ? 1 : -1; } while(0); }
+            
+            borrow = type::move( fd->get_borrow() );
+
+        } while(0); coNext;
+
+        coWait( _read( fd )==1 ); if( _read.state<=0 ){
+            data = borrow; state = data.size(); coEnd; 
+        }   fd->set_borrow ( borrow+_read.data ); coGoto(0);
+
+    coFinish }};
 
     /*─······································································─*/
 
     GENERATOR( line ){
-    protected: file::read _read;
-    public:    ulong      state; string_t data; 
+    protected: string_t borrow; file::read _read; 
+    public:    string_t data  ; ulong state; 
 
     template< class T > coEmit( T* fd ){
-    coBegin data.clear(); coYield(1); state=0;
+    coBegin data.clear(); state = 0UL;
 
-        coWait( _read( fd )==1 );
-        if    ( _read.state<=0 ){ state = data.size(); coEnd; }
+        do{ /*----------------*/ auto &bff = fd->get_borrow();
+        if( !bff.empty() ){ do { auto pos  = bff.find ('\n');
+            
+            if( pos.null() ){ 
+            if( bff.size() > NODEPP_UNBFF_SIZE ){
+                data = type::move( fd->get_borrow() );
+                state= data.size();
+            return -1; } break; }
 
-        fd->set_borrow(_read.data);
+            data = bff.slice( 0, pos[0] ); 
+            state= data.size();
 
-        do{ for( auto x: _read.data ){ ++state;
-            if ('\n'==x ){ break; } continue; }
-        } while(0);
+            fd->get_borrow().ptr().slice ( pos[1], (ulong) -1 );
 
-        data +=fd->get_borrow().splice( 0, state );
-        state =data.size();
-        
-        if( data[data.size()-1] == '\n' ){ coEnd; }
+        return state==0 ? 1 : -1; } while(0); }
+            
+            borrow = type::move( fd->get_borrow() );
 
-    coGoto(1) ; coFinish }};
+        } while(0); coNext;
+
+        coWait( _read( fd )==1 ); if( _read.state<=0 ){
+            data = borrow; state = data.size(); coEnd; 
+        }   fd->set_borrow ( borrow+_read.data ); coGoto(0);
+
+    coFinish }};
 
 }}}
 #undef NODEPP_GENERATOR
@@ -228,6 +249,50 @@ namespace nodepp { namespace generator { namespace stream {
             
             inp.close(); out.close();
 
+        coFinish }
+
+    };
+
+    /*─······································································─*/
+
+    GENERATOR( split ){
+    protected:
+
+        file::write _write;
+        file::split _read ;
+
+    public:
+
+        template< class T, class U >
+        coEmit( const T& inp, const U& val ){
+        coBegin 
+        
+            inp.onPipe.emit(); inp.resume();
+            
+            while ( inp.is_available() ){
+            coWait( _read(&inp,val)==1 ); if( _read.state<=0 ){ break; }
+                inp.onData.emit(_read.data);
+            }   
+            
+            inp.close();
+        
+        coFinish }
+
+        template< class T, class V, class U >
+        coEmit( const T& inp, const V& out, const U& val ){
+        coBegin 
+        
+            inp.onPipe.emit(); inp.resume();
+            out.onPipe.emit(); out.resume();
+            
+            while( inp.is_available() && out.is_available() ){
+            coWait( _read (&inp,val)==1 ); /*--*/ if( _read .state<=0 ){ break; }
+            coWait( _write(&out,_read.data)==1 ); if( _write.state<=0 ){ break; }
+                inp.onData.emit(_read.data);
+            }   
+            
+            inp.close(); out.close();
+        
         coFinish }
 
     };

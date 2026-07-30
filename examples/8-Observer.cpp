@@ -11,15 +11,15 @@ void onMain(){
         { "var3", 69.f }
     });
 
-    obj.on( "var1", [=]( observer_t self, any_t before, any_t after ){
+    obj.on( "var1", [=]( ptr_t<observer_t> self, any_t before, any_t after ){
         console::log( "var1:", after.as<string_t>() );
     });
 
-    obj.on( "var2", [=]( observer_t self, any_t before, any_t after ){
+    obj.on( "var2", [=]( ptr_t<observer_t> self, any_t before, any_t after ){
         console::log( "var2:", after.as<int>() );
     });
 
-    obj.on( "var3", [=]( observer_t self, any_t before, any_t after ){
+    obj.on( "var3", [=]( ptr_t<observer_t> self, any_t before, any_t after ){
         console::log( "var3:", after.as<float>() );
     });
 

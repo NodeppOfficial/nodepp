@@ -1022,14 +1022,16 @@ public:
     ptr_t<task_t> poll_add( T& inp, uchar flag, U cb, ulong timeout=0, const W&... args ) const noexcept {
 
         function_t<int,W...> clb ( cb ); if ( inp.is_closed() ) { return nullptr; }
-        function_t<int,W...> clb ( cb ); if ( inp.is_closed() ) { return nullptr; }
         auto time = timeout>0 ? timeout + process::now() : timeout;
 
         return loop_add( coroutine::add( COROUTINE(){
         coBegin 
 
-            if( time > 0 && time < process::now() ){ coEnd; }
-            coSet(0); return clb( args... ) >= 0 ? 1 : -1; 
+            while( clb( args... )>=0 ){
+            if   ( time > 0 && time < process::now() ) { break; }
+        //  if   ( is_std( fd ) )    { coDelay(100); }
+            if   ( inp.is_waiting() ){ coDelay(100); coGoto(0); } 
+            coNext; }
 
         coFinish
         }));

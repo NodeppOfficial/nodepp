@@ -85,7 +85,7 @@ public:
             regex_t( "?[^#]+"  )
         });
         
-    bool b=1; coBegin
+    coBegin
 
         set_recv_mode( nullptr ); if( is_server() ) { set_send_mode( nullptr ); }
     
@@ -104,11 +104,11 @@ public:
         } else { version = base[0]; status = string::to_uint( base[1] ); }
         } while(0); 
 
-        do{ coWait( http->line( this )==1 ); if( http->line.state<=0 ){ coEnd; } 
-        do{ auto x= http->line.data; auto y = x.find( ": " ); 
-        if( y.null() ){ b=0; break; }
-            headers[ x.slice( 0, y[0] ).to_capital_case() ] = x.slice( y[1], -2 );
-        } while(0); } while(b);
+        do{ coWait( http->line( this )==1 ); if( http->line.state>0 ) { 
+            auto x= http->line.data; auto y = x.find( ": " ); 
+        if( y.null() ){ break; }
+            headers[ x.slice( 0, y[0] ).to_capital_case() ] = x.slice( y[1], -1 );
+        } else { break; } } while(true);
 
         http->read.borrow = type::move( get_borrow( ) ); 
         set_recv_mode( headers ); /*-----*/ coStay(0);

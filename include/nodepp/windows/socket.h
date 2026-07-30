@@ -704,12 +704,6 @@ public:
         return obj->_until.data;
     }
 
-    string_t read_until( char ch ) const noexcept {
-        while( obj->_until( this, ch ) == 1 )
-             { process::next(); }
-        return obj->_until.data;
-    }
-
     string_t read_line() const noexcept {
         while( obj->_line( this ) == 1 )
              { process::next(); }
