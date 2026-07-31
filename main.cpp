@@ -1,33 +1,42 @@
 #include <nodepp/nodepp.h>
 #include <nodepp/worker.h>
+#include <nodepp/timer.h>
 #include <nodepp/http.h>
+#include <nodepp/path.h>
+#include <nodepp/ws.h>
+#include <nodepp/fs.h>
 
 using namespace nodepp;
 
-void server() {
+void server(){
 
-    auto server = http::server([=]( socket_t cli ){ 
+    auto server = http::server([=]( http_t cli ){ 
 
-        cli.write( "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n9\r\nwikipedia\r\n9\r\nwikipedia\r\n9\r\nwikipedia\r\n9\r\nwikipedia\r\n9\r\nwikipedia\r\n" );
-        cli.write( "9\r\nwikipedia\r\n9"); 
-        cli.write( "\r\nwikipedia\r\n9\r\nwikip");
-        cli.write( "edia\r\n9\r\nwikipedia\r\n9\r\nwikipedia\r");
-        cli.write( "\n" );
+        cli.write_header( 200, header_t({
+            { "Content-Security-Policy", "*" }
+        }) );
 
-        file_t file ( "LICENSE", "r" );
-        stream::pipe( file );
+        cli.write("Hello World!");
 
-        file.onPipe([=](){ 
-            auto size = encoder::hex::atob( file.size() );
-            cli.write( size + "\r\n" ); 
+    }); ws::server( server );
+
+    server.onConnect([=]( ws_t cli ){
+
+        console::log("connected");
+        
+        cli.onData([=]( string_t data ){
+            cli.write( "<: received" );
+            console::log( data );
         });
 
-        file.onDrain([=](){ cli.write("\r\n"); });
-
-        file.onData([=]( string_t data ){
-            cli.write( data );
+        cli.onClose([=](){ 
+            console::log("closed"); 
         });
 
+    });
+
+    server.onError([=]( except_t err ){
+        console::log( ">>", err.what() );
     });
 
     server.listen( "localhost", 8000, [=]( socket_t server ){
@@ -38,31 +47,42 @@ void server() {
 
 void client() {
 
-    fetch_t args;
-            args.method  = "GET";
-            args.url     = "http://localhost:8000/";
-            args.headers = header_t({
-                { "Host", url::host(args.url) }
-            });
+    auto client = ws::client( "ws://localhost:8000/" );
+    
+    client.onConnect([=]( ws_t cli ){ 
 
-    http::fetch( args )
+        console::log("connected");
+    
+        cli.onData([=]( string_t data ){
+            console::log( "client read>>", data );
+        });
 
-    .then([]( http_t cli ){
-        cli.onClose([](){ console::log("closed"); });
-        cli.onData ([]( string_t chunk ){
-            console::log( chunk );
-        }); stream::pipe( cli );
-    })
+        cli.onClose([=](){
+            console::log("closed");
+        });
 
-    .fail([]( except_t err ){
-        console::error( err );
+        stream::pipe( cli );
+        timer ::add ([=](){
+            auto msg = regex::format( "hello world! ${0}", process::now() );
+            return cli.write( msg ) <= 0 ? -1 : 1 ;
+        },1000);
+
+    });
+
+    client.onError([=]( except_t err ){
+        console::log( "<>", err.data() );
     });
 
 }
 
 void onMain() {
 
-    worker::add([=](){ server(); process::wait(); return -1; });
-    worker::add([=](){ client(); process::wait(); return -1; });
+    worker::add( coroutine::add( COROUTINE(){
+    coBegin /*--*/ ; server();
+    process::wait(); coFinish }));
+
+    worker::add( coroutine::add( COROUTINE(){
+    coBegin /*--*/ ; client();
+    process::wait(); coFinish }));
 
 }

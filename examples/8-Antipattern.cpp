@@ -53,13 +53,13 @@ void onMain(){
 
     ptr_t<goodpattern_t> ptr ( 0UL );
 
-    ptr->onSomething([=]( const goodpattern_t* self ){ 
+    ptr->onSomething([=]( ptr_t<>goodpattern_t> goodpattern_t self ){ 
         self->print(); // <- no circular dependency
     }); 
 
     ptr->onSomething.emit( ptr );
 
-    // it must prints destructor
+    // it must print destructor
 
 }
 

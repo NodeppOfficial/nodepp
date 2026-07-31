@@ -27,13 +27,13 @@ namespace nodepp { namespace generator { namespace file {
         if  ( !fd->is_available() ) { coEnd; } r=fd->get_range();
         if  ( r[1] != 0  ){ auto pos=fd->pos(); d=min( r[1]-r[0], (len_t)size );
         if  ( pos < r[0] ){ fd->del_borrow(); fd->pos( r[0] ); }
-        elif( pos >=r[1] ){ coEnd; }} else { 
+        elif( pos >=r[1] ){ fd->stop(); coEnd; }} else { 
               d = (len_t) min( fd->get_buffer_size(), size ); 
         }
 
         if( fd->get_borrow().empty() ){ 
             coWait((state=fd->_read( fd->get_buffer_data(), fd->get_buffer_size() ))==-2);
-        if( state <= 0 )  { coEnd; }  else  { 
+        if( state <= 0 )  { fd->stop(); coEnd; } else { 
             fd->set_borrow( string_t( fd->get_buffer_data(), state ) );
         }}
 
@@ -54,7 +54,7 @@ namespace nodepp { namespace generator { namespace file {
         if(!fd->is_available() || msg.empty() ){ coEnd; }
 
         do{ coWait((state=fd->_write( msg.data()+data, msg.size()-data ))==-2 );
-        if( state<=0 ){ coEnd; } else { 
+        if( state<=0 ){ fd->stop(); coEnd; } else { 
             data = min( data + state, msg.size() );
         } } while( data < msg.size() );
 

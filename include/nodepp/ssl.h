@@ -214,8 +214,8 @@ protected:
 
         if  ( c<=0 ){
         if  ( stream->socket_t::is_waiting() )
-            { BIO_set_retry_write    (b); return -1; }
-        else{ stream->socket_t::close( ); return -1; }}
+            { BIO_set_retry_write   (b); return -1; }
+        else{ stream->socket_t::stop( ); return -1; }}
 
     return c; }
 
@@ -233,8 +233,8 @@ protected:
         if  ( c> 0 ){ memcpy( buf, nbuf, c ); }
         if  ( c<=0 ){
         if  ( stream->socket_t::is_waiting() )
-            { BIO_set_retry_read     (b); return -1; }
-        else{ stream->socket_t::close( ); return -1; }}
+            { BIO_set_retry_read    (b); return -1; }
+        else{ stream->socket_t::stop( ); return -1; }}
 
     return c; }
 

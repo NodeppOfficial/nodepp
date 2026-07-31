@@ -99,7 +99,7 @@ protected:
         if(!obj->kv_queue.empty() && tasks==0 ){ 
         if( obj.count()==1 ) /*------*/ { return -1; }}
         if( obj.count()> 1 && tasks==0 ){ return -1; }
-    return tasks==0 ? (uchar_32) -1 : get_timeout(); }
+    return get_timeout(); }
 
     void invoker( void* address ) const noexcept {
     if( address == nullptr ){ do {
@@ -336,7 +336,7 @@ protected:
     uchar_32 get_delay_ms() const noexcept {
         ulong tasks= obj->ev_queue.size() + obj->probe.get();
         if(tasks==0 && obj.count()>1 ){ return 1000; }
-    return tasks==0 ? (uchar_32) -1 : get_timeout(); }
+    return get_timeout(); }
 
 protected:
 

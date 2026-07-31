@@ -13,59 +13,35 @@ namespace TEST { namespace CONSOLE {
 
         auto test = TEST_CREATE();
 
-        TEST_ADD( test, "TEST 1 | console log ", [](){
-            try {
-                conio::log("-> "); console::log("Hello World!");
-                TEST_DONE();
-            } catch ( ... ) {
-                TEST_FAIL();
-            }
-        });
+        TEST_ADD( test, "TEST 1 | console log ", [](){ do {
+            conio::log("-> "); console::log("Hello World!");
+                    TEST_DONE();
+        } while(0); TEST_FAIL(); });
 
-        TEST_ADD( test, "TEST 2 | console info ", [](){
-            try {
-                conio::log("-> "); console::info("Hello World!");
-                TEST_DONE();
-            } catch ( ... ) {
-                TEST_FAIL();
-            }
-        });
+        TEST_ADD( test, "TEST 2 | console info ", [](){ do {
+            conio::log("-> "); console::info("Hello World!");
+                    TEST_DONE();
+        } while(0); TEST_FAIL(); });
 
-        TEST_ADD( test, "TEST 3 | console done ", [](){
-            try {
-                conio::log("-> "); console::done("Hello World!");
-                TEST_DONE();
-            } catch ( ... ) {
-                TEST_FAIL();
-            }
-        });
+        TEST_ADD( test, "TEST 3 | console done ", [](){ do {
+            conio::log("-> "); console::done("Hello World!");
+                    TEST_DONE();
+        } while(0); TEST_FAIL(); });
 
-        TEST_ADD( test, "TEST 4 | console error ", [](){
-            try {
-                conio::log("-> "); console::error("Hello World!");
-                TEST_DONE();
-            } catch ( ... ) {
-                TEST_FAIL();
-            }
-        });
+        TEST_ADD( test, "TEST 4 | console error ", [](){ do {
+            conio::log("-> "); console::error("Hello World!");
+                    TEST_DONE();
+        } while(0); TEST_FAIL(); });
 
-        TEST_ADD( test, "TEST 5 | console success ", [](){
-            try {
-                conio::log("-> "); console::success("Hello World!");
-                TEST_DONE();
-            } catch ( ... ) {
-                TEST_FAIL();
-            }
-        });
+        TEST_ADD( test, "TEST 5 | console success ", [](){ do {
+            conio::log("-> "); console::success("Hello World!");
+                    TEST_DONE();
+        } while(0); TEST_FAIL(); });
 
-        TEST_ADD( test, "TEST 6 | console warning ", [](){
-            try {
-                conio::log("-> "); console::warning("Hello World!");
-                TEST_DONE();
-            } catch ( ... ) {
-                TEST_FAIL();
-            }
-        });
+        TEST_ADD( test, "TEST 6 | console warning ", [](){ do {
+            conio::log("-> "); console::warning("Hello World!");
+                    TEST_DONE();
+        } while(0); TEST_FAIL(); });
 
         test.onClose.once([=](){
             console::log(":> RESULT | total:", *totl, "| passed:", *done, "| error:", *err, "| skipped:", *skp );
