@@ -14,7 +14,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
+#if   NODEPP_KERNEL == NODEPP_KERNEL_WINDOWS
     #include "windows/conio.h"
 #else
     #include "posix/conio.h"

@@ -15,7 +15,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if defined(NODEPP_OS_APPLE) || defined(NODEPP_OS_IOS)
+#if NODEPP_OS == NODEPP_OS_APPLE || NODEPP_OS == NODEPP_OS_IOS
     #pragma clang diagnostic push
     #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #endif
@@ -28,7 +28,7 @@
 #include <fcntl.h>
 #include <netdb.h>
 
-#if defined(NODEPP_OS_APPLE) || defined(NODEPP_OS_IOS)
+#if NODEPP_OS == NODEPP_OS_APPLE || NODEPP_OS == NODEPP_OS_IOS
     #pragma clang diagnostic pop
 #endif
 

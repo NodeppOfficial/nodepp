@@ -20,11 +20,11 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
+#if   NODEPP_KERNEL == NODEPP_KERNEL_WINDOWS
     #include "mutex.h"
     #include "expected.h"
     #include "windows/worker.h"
-#elif _KERNEL_ == NODEPP_KERNEL_POSIX
+#elif NODEPP_KERNEL == NODEPP_KERNEL_POSIX
     #include "mutex.h"
     #include "expected.h"
     #include "posix/worker.h"

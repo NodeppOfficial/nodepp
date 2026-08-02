@@ -15,7 +15,7 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #ifndef NODEPP_REGEX_ENGINE
-#if ( _KERNEL_==NODEPP_KERNEL_ARDUINO ) || ( _KERNEL_==NODEPP_KERNEL_WASM )
+#if ( NODEPP_KERNEL==NODEPP_KERNEL_ARDUINO ) || ( NODEPP_KERNEL==NODEPP_KERNEL_WASM )
     #define NODEPP_REGEX_ENGINE NODEPP_REGEX_LITE
 #else
     #define NODEPP_REGEX_ENGINE NODEPP_REGEX_GRPH

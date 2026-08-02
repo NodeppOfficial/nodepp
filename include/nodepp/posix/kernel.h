@@ -9,7 +9,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if ( _OS_ == NODEPP_OS_LINUX )
+#if ( NODEPP_OS == NODEPP_OS_LINUX )
 #include <linux/version.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0)
     #define NODEPP_HAS_URING 1
@@ -22,12 +22,12 @@
 
 #ifndef NODEPP_EVENT_SCHEDULER
 
-#if   ( _OS_ == NODEPP_OS_FRBSD ) || ( _OS_ == NODEPP_OS_APPLE )
+#if   ( NODEPP_OS == NODEPP_OS_FRBSD ) || ( NODEPP_OS == NODEPP_OS_APPLE )
     #define NODEPP_EVENT_SCHEDULER NODEPP_SCHEDULER_KQUEUE
-#elif ( _OS_ == NODEPP_OS_LINUX ) && ( NODEPP_HAS_URING==1 )
+#elif ( NODEPP_OS == NODEPP_OS_LINUX ) && ( NODEPP_HAS_URING==1 )
     #define NODEPP_EVENT_SCHEDULER NODEPP_SCHEDULER_IOURING
     #include "uring.h"
-#elif ( _OS_ == NODEPP_OS_LINUX ) && ( NODEPP_HAS_URING==0 )
+#elif ( NODEPP_OS == NODEPP_OS_LINUX ) && ( NODEPP_HAS_URING==0 )
     #define NODEPP_EVENT_SCHEDULER NODEPP_SCHEDULER_EPOLL
 #else
     #define NODEPP_EVENT_SCHEDULER NODEPP_SCHEDULER_LITE

@@ -14,9 +14,9 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
+#if   NODEPP_KERNEL == NODEPP_KERNEL_WINDOWS
     #include "windows/sleep.h"
-#elif _KERNEL_ == NODEPP_KERNEL_POSIX
+#elif NODEPP_KERNEL == NODEPP_KERNEL_POSIX
     #include "posix/sleep.h"
 #else
     #error "This OS Does not support sleep.h"

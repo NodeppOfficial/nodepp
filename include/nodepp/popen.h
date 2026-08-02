@@ -14,7 +14,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
+#if   NODEPP_KERNEL == NODEPP_KERNEL_WINDOWS
 #define PWROUTINE( str, cb ) worker::add(cb)
 #define PWDELAY( time )      coDelay( time )
 
@@ -24,7 +24,7 @@
     #include "initializer.h"
     #include "windows/popen.h"
 
-#elif _KERNEL_ == NODEPP_KERNEL_POSIX
+#elif NODEPP_KERNEL == NODEPP_KERNEL_POSIX
 #define PWROUTINE( str, cb ) process::poll( str, POLL_STATE::READ | POLL_STATE::EDGE, cb )
 #define PWDELAY( time )      coNext
 

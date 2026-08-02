@@ -14,10 +14,10 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
+#if   NODEPP_KERNEL == NODEPP_KERNEL_WINDOWS
     #include "fs.h"
     #include "windows/env.h"
-#elif _KERNEL_ == NODEPP_KERNEL_POSIX
+#elif NODEPP_KERNEL == NODEPP_KERNEL_POSIX
     #include "fs.h"
     #include "posix/env.h"
 #else

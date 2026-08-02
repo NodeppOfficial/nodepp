@@ -14,7 +14,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if false // _KERNEL_ == NODEPP_KERNEL_WINDOWS
+#if false // NODEPP_KERNEL == NODEPP_KERNEL_WINDOWS
 
 #define NODEPP_PATH_SEP  "\\\\"
 #define NODEPP_PATH_ROOT "c:\\\\"

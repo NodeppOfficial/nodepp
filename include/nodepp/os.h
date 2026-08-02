@@ -9,14 +9,14 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#ifndef NODEPP_OSS
-#define NODEPP_OSS
+#ifndef NODEPP__OS
+#define NODEPP__OS
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
+#if   NODEPP_KERNEL == NODEPP_KERNEL_WINDOWS
     #include "windows/os.h"
-#elif _KERNEL_ == NODEPP_KERNEL_POSIX
+#elif NODEPP_KERNEL == NODEPP_KERNEL_POSIX
     #include "posix/os.h"
 #else
     #error "This OS Does not support os.h"
@@ -26,7 +26,7 @@
 
 namespace nodepp { namespace os {
 
-    inline string_t get_arch() { switch( _OS_ ){
+    inline string_t get_arch() { switch( NODEPP_OS ){
 
         case NODEPP_ARCH_RISCV_64: return "RISCV_64"; break;
         case NODEPP_ARCH_RISCV_32: return "RISCV_32"; break;
@@ -39,7 +39,7 @@ namespace nodepp { namespace os {
 
     }}
 
-    inline string_t get_os() { switch( _OS_ ){
+    inline string_t get_os() { switch( NODEPP_OS ){
 
         case NODEPP_OS_WINDOWS: return "windows"; break;
         case NODEPP_OS_ANDROID: return "android"; break;

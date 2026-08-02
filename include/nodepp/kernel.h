@@ -9,15 +9,15 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#ifndef NODEPP_KERNEL
-#define NODEPP_KERNEL
+#ifndef NODEPP__KERNEL
+#define NODEPP__KERNEL
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if   _KERNEL_ == NODEPP_KERNEL_WINDOWS
+#if   NODEPP_KERNEL == NODEPP_KERNEL_WINDOWS
     #include "invoker.h"
     #include "windows/kernel.h"
-#elif _KERNEL_ == NODEPP_KERNEL_POSIX
+#elif NODEPP_KERNEL == NODEPP_KERNEL_POSIX
     #include "invoker.h"
     #include "posix/kernel.h"
 #else

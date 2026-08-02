@@ -157,19 +157,19 @@ return 0; } void NODEPP_BEGIN
 #define NODEPP_KERNEL_WASM    1
 #define NODEPP_KERNEL_UNKNOWN 0
 
-#ifndef _KERNEL_
+#ifndef NODEPP_KERNEL
 #if defined(_WIN32) || defined(_WIN64)
-   #define _KERNEL_ NODEPP_KERNEL_WINDOWS
+   #define NODEPP_KERNEL NODEPP_KERNEL_WINDOWS
 #elif defined(ARDUINO)
-   #define _KERNEL_ NODEPP_KERNEL_ARDUINO
+   #define NODEPP_KERNEL NODEPP_KERNEL_ARDUINO
 #elif defined(__EMSCRIPTEN__)
-   #define _KERNEL_ NODEPP_KERNEL_WASM
+   #define NODEPP_KERNEL NODEPP_KERNEL_WASM
 #elif defined(__linux__)   || defined(__APPLE__)   || defined(__FreeBSD__)   || \
       defined(__NetBSD__)  || defined(__OpenBSD__) || defined(__DragonFly__) || \
       defined(__ANDROID__) || defined(__TIZEN__)   || defined(__unix__)
-   #define _KERNEL_ NODEPP_KERNEL_POSIX
+   #define NODEPP_KERNEL NODEPP_KERNEL_POSIX
 #else
-   #define _KERNEL_ NODEPP_KERNEL_UNKNOWN
+   #define NODEPP_KERNEL NODEPP_KERNEL_UNKNOWN
 #endif
 #endif
 
@@ -186,46 +186,46 @@ return 0; } void NODEPP_BEGIN
 #define NODEPP_OS_ARDUINO 1
 #define NODEPP_OS_UNKNOWN 0
 
-#ifndef _OS_
+#ifndef NODEPP_OS
 #if defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
-   #define _OS_ NODEPP_OS_WINDOWS
+   #define NODEPP_OS NODEPP_OS_WINDOWS
 
 #elif defined(__EMSCRIPTEN__)
-   #define _OS_ NODEPP_OS_BROWSER
+   #define NODEPP_OS NODEPP_OS_BROWSER
 
 #elif defined(__ANDROID__)
-   #define _OS_ NODEPP_OS_ANDROID
+   #define NODEPP_OS NODEPP_OS_ANDROID
 
 #elif defined(__TIZEN__)
-   #define _OS_ NODEPP_OS_TIZEN
+   #define NODEPP_OS NODEPP_OS_TIZEN
 
 #elif defined(__APPLE__)
    #include <TargetConditionals.h>
    #if TARGET_OS_IPHONE
-      #define _OS_ NODEPP_OS_IOS
+      #define NODEPP_OS NODEPP_OS_IOS
    #else
-      #define _OS_ NODEPP_OS_APPLE
+      #define NODEPP_OS NODEPP_OS_APPLE
    #endif
 
 #elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
-   #define _OS_ NODEPP_OS_FRBSD
+   #define NODEPP_OS NODEPP_OS_FRBSD
 
 #elif defined(__linux__)
-   #define _OS_ NODEPP_OS_LINUX
+   #define NODEPP_OS NODEPP_OS_LINUX
 
 #elif defined(ARDUINO)
-   #define _OS_ NODEPP_OS_ARDUINO
+   #define NODEPP_OS NODEPP_OS_ARDUINO
 
 #elif defined(__unix__)
    #include <sys/param.h>
    #if defined(BSD)
-      #define _OS_ NODEPP_OS_FRBSD
+      #define NODEPP_OS NODEPP_OS_FRBSD
    #else
-      #define _OS_ NODEPP_OS_UNKNOWN
+      #define NODEPP_OS NODEPP_OS_UNKNOWN
    #endif
 
 #else
-   #define _OS_ NODEPP_OS_UNKNOWN
+   #define NODEPP_OS NODEPP_OS_UNKNOWN
 #endif
 #endif
 
@@ -240,45 +240,45 @@ return 0; } void NODEPP_BEGIN
 #define NODEPP_ARCH_ARM_32   1
 #define NODEPP_ARCH_UNKNOWN  0
 
-#ifndef _ARCH_
+#ifndef NODEPP_ARCH
 #if defined(__GNUC__) || defined(__clang__)
 
    #if defined(__x86_64__) || defined(__ppc64__) || defined(__amd64__) || defined(__LP64__)
-      #define _ARCH_ NODEPP_ARCH_CPU_64
+      #define NODEPP_ARCH NODEPP_ARCH_CPU_64
    #elif defined(__aarch64__)
-      #define _ARCH_ NODEPP_ARCH_ARM_64
+      #define NODEPP_ARCH NODEPP_ARCH_ARM_64
    #elif defined(__i386__) || defined(__i486__) || defined(__i586__) || defined(__i686__)
-      #define _ARCH_ NODEPP_ARCH_CPU_32
+      #define NODEPP_ARCH NODEPP_ARCH_CPU_32
    #elif defined(__arm__)
-      #define _ARCH_ NODEPP_ARCH_ARM_32
+      #define NODEPP_ARCH NODEPP_ARCH_ARM_32
    #elif defined(__riscv)
       #if __riscv_xlen == 64
-         #define _ARCH_ NODEPP_ARCH_RISCV_64
+         #define NODEPP_ARCH NODEPP_ARCH_RISCV_64
       #else
-         #define _ARCH_ NODEPP_ARCH_RISCV_32
+         #define NODEPP_ARCH NODEPP_ARCH_RISCV_32
       #endif
    #elif defined(__xtensa__)
-      #define _ARCH_ NODEPP_ARCH_XTENSA
+      #define NODEPP_ARCH NODEPP_ARCH_XTENSA
    #else
-      #define _ARCH_ NODEPP_ARCH_UNKNOWN
+      #define NODEPP_ARCH NODEPP_ARCH_UNKNOWN
    #endif
 
 #elif defined(_MSC_VER)
 
    #if defined(_M_X64) || defined(_M_AMD64)
-      #define _ARCH_ NODEPP_ARCH_CPU_64
+      #define NODEPP_ARCH NODEPP_ARCH_CPU_64
    #elif defined(_M_IX86)
-      #define _ARCH_ NODEPP_ARCH_CPU_32
+      #define NODEPP_ARCH NODEPP_ARCH_CPU_32
    #elif defined(_M_ARM64)
-      #define _ARCH_ NODEPP_ARCH_ARM_64
+      #define NODEPP_ARCH NODEPP_ARCH_ARM_64
    #elif defined(_M_ARM)
-      #define _ARCH_ NODEPP_ARCH_ARM_32
+      #define NODEPP_ARCH NODEPP_ARCH_ARM_32
    #else
-      #define _ARCH_ NODEPP_ARCH_UNKNOWN
+      #define NODEPP_ARCH NODEPP_ARCH_UNKNOWN
    #endif
 
 #else
-   #define _ARCH_ NODEPP_ARCH_UNKNOWN
+   #define NODEPP_ARCH NODEPP_ARCH_UNKNOWN
 #endif
 #endif
 
@@ -318,7 +318,7 @@ using uchar_16= /*----*/ uint16_t;
 using uchar_32= /*----*/ uint32_t;
 using uchar_64= /*----*/ uint64_t;
 
-#if !defined(_SYS_TYPES_H_) || _OS_ == NODEPP_OS_ANDROID
+#if !defined(_SYS_TYPES_H_) || NODEPP_OS == NODEPP_OS_ANDROID
     #define  _SYS_TYPES_H_
 
 using ushort  = unsigned short;
@@ -330,7 +330,7 @@ using uint    = unsigned int;
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if _OS_ == NODEPP_OS_WINDOWS
+#if NODEPP_OS == NODEPP_OS_WINDOWS
 #define WIN32_LEAN_AND_MEAN 
 #define sscanff( BUFFER, FORMAT, ... ) sscanf_s( BUFFER, FORMAT, __VA_ARGS__ )
 #else

@@ -157,14 +157,14 @@ namespace nodepp { namespace os {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if ( _OS_ == NODEPP_OS_LINUX )
+#if ( NODEPP_OS == NODEPP_OS_LINUX )
     #include <sched.h>
     namespace nodepp { namespace os { inline void pin_worker_to_cpu( int core_id ){ 
         cpu_set_t mask; CPU_ZERO(&mask); CPU_SET(core_id, &mask);
         sched_setaffinity(0, sizeof(mask), &mask);
     }}}
 
-#elif ( _OS_ == NODEPP_OS_FRBSD )
+#elif ( NODEPP_OS == NODEPP_OS_FRBSD )
     #include <sys/param.h>
     #include <sys/cpuset.h>
     #include <pthread_np.h>
@@ -173,7 +173,7 @@ namespace nodepp { namespace os {
         cpuset_setaffinity(CPU_LEVEL_WHICH, CPU_WHICH_TID, -1, sizeof(mask), &mask);
     }}}
 
-#elif ( _OS_ == NODEPP_OS_APPLE )
+#elif ( NODEPP_OS == NODEPP_OS_APPLE )
     #include <mach/mach.h>
     #include <mach/thread_policy.h>
     namespace nodepp { namespace os { inline void pin_worker_to_cpu( int core_id ){ 
