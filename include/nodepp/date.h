@@ -96,37 +96,37 @@ public:
 
     /*─······································································─*/
 
-    void set_stamp( const time_t& time, const bool& utc ) const noexcept {
+    void set_stamp( const time_t& time, bool utc ) const noexcept {
          set_time ( time, utc );
     }
 
     /*─······································································─*/
 
-    void set_date( const bool& utc ) const noexcept {
+    void set_date( bool utc ) const noexcept {
          set_utc(utc); set_time( ::time(nullptr), utc );
     }
 
-    void set_date( const uint& year, const bool& utc ) const noexcept {
+    void set_date( uint year, bool utc ) const noexcept {
          set_utc(utc); set_year(year);
     }
 
-    void set_date( const uint& year, const uint& month, const bool& utc ) const noexcept {
+    void set_date( uint year, uint month, bool utc ) const noexcept {
          set_utc(utc); set_year(year); set_month(month);
     }
 
-    void set_date( const uint& year, const uint& month, const uint& day, const bool& utc ) const noexcept {
+    void set_date( uint year, uint month, uint day, bool utc ) const noexcept {
          set_utc(utc); set_year(year); set_month(month); set_day(day);
     }
 
-    void set_date( const uint& year, const uint& month, const uint& day, const uint& hour, const bool& utc ) const noexcept {
+    void set_date( uint year, uint month, uint day, uint hour, bool utc ) const noexcept {
          set_utc(utc); set_year(year); set_month(month); set_day(day); set_hour(hour);
     }
 
-    void set_date( const uint& year, const uint& month, const uint& day, const uint& hour, const uint& min, const bool& utc ) const noexcept {
+    void set_date( uint year, uint month, uint day, uint hour, uint min, bool utc ) const noexcept {
          set_utc(utc); set_year(year); set_month(month); set_day(day); set_hour(hour); set_minute(min);
     }
 
-    void set_date( const uint& year, const uint& month, const uint& day, const uint& hour, const uint& min, const uint& second, const bool& utc ) const noexcept {
+    void set_date( uint year, uint month, uint day, uint hour, uint min, uint second, bool utc ) const noexcept {
          set_utc(utc); set_year(year); set_month(month); set_day(day); set_hour(hour); set_minute(min); set_second(second);
     }
 
@@ -215,17 +215,17 @@ namespace nodepp { namespace date {
 
     inline string_t fulltime(){ return date_t().get_fulltime(); }
 
-    inline uint day( const bool& utc ){ return date_t(utc).get_day(); }
+    inline uint day( bool utc ){ return date_t(utc).get_day(); }
 
-    inline uint year( const bool& utc ){ return date_t(utc).get_year(); }
+    inline uint year( bool utc ){ return date_t(utc).get_year(); }
 
-    inline uint hour( const bool& utc ){ return date_t(utc).get_hour(); }
+    inline uint hour( bool utc ){ return date_t(utc).get_hour(); }
 
-    inline uint month( const bool& utc ){ return date_t(utc).get_month(); }
+    inline uint month( bool utc ){ return date_t(utc).get_month(); }
 
-    inline uint minute( const bool& utc ){ return date_t(utc).get_minute(); }
+    inline uint minute( bool utc ){ return date_t(utc).get_minute(); }
 
-    inline uint second( const bool& utc ){ return date_t(utc).get_second(); }
+    inline uint second( bool utc ){ return date_t(utc).get_second(); }
 
 }}
 

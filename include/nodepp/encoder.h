@@ -87,7 +87,7 @@ namespace nodepp { namespace encoder { namespace hash {
 
 namespace nodepp { namespace encoder { namespace XOR {
 
-    inline string_t atob( string_t data, const string_t& key ){
+    inline string_t atob( const string_t& data, const string_t& key ){
         auto  tmp= data.copy();
         ulong pos= 0; forEach( x, tmp ) {
             x = x^ key[pos]; ++pos;
@@ -95,7 +95,7 @@ namespace nodepp { namespace encoder { namespace XOR {
         }   return tmp;
     }
 
-    inline string_t btoa( string_t data, const string_t& key ){
+    inline string_t btoa( const string_t& data, const string_t& key ){
         auto  tmp= data.copy();
         ulong pos= 0; forEach( x, tmp ) {
             x = x^ key[pos]; ++pos;
@@ -161,7 +161,7 @@ namespace nodepp { namespace encoder { namespace hex {
     }
 
     template< class T, class = typename type::enable_if<type::is_integral<T>::value,T>::type >
-    T btoa( string_t num ){ if ( num.empty() ){ return 0; }
+    T btoa( const string_t& num ){ if ( num.empty() ){ return 0; }
         T out = 0; for ( auto c: num ){    out  = out<<4;
             if   ( c >= '0' && c <= '9' ){ out |= c - '0'     ; }
             elif ( c >= 'a' && c <= 'f' ){ out |= c - 'a' + 10; }
@@ -257,22 +257,22 @@ namespace nodepp { namespace encoder { namespace base64 {
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace encoder { namespace utf8 {
-    inline ptr_t<uchar_16> to_utf16( ptr_t<uchar_8> inp ){ return utf::utf8_to_utf16( inp ); }
-    inline ptr_t<uchar_32> to_utf32( ptr_t<uchar_8> inp ){ return utf::utf8_to_utf32( inp ); }
+    inline ptr_t<uchar_16> to_utf16( const ptr_t<uchar_8>& inp ){ return utf::utf8_to_utf16( inp ); }
+    inline ptr_t<uchar_32> to_utf32( const ptr_t<uchar_8>& inp ){ return utf::utf8_to_utf32( inp ); }
 }}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace encoder { namespace utf16 {
-    inline ptr_t<uchar_8>  to_utf8 ( ptr_t<uchar_16> inp ){ return utf::utf16_to_utf8 ( inp ); }
-    inline ptr_t<uchar_32> to_utf32( ptr_t<uchar_16> inp ){ return utf::utf16_to_utf32( inp ); }
+    inline ptr_t<uchar_8>  to_utf8 ( const ptr_t<uchar_16>& inp ){ return utf::utf16_to_utf8 ( inp ); }
+    inline ptr_t<uchar_32> to_utf32( const ptr_t<uchar_16>& inp ){ return utf::utf16_to_utf32( inp ); }
 }}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace encoder { namespace utf32 {
-    inline ptr_t<uchar_8>  to_utf8 ( ptr_t<uchar_32> inp ){ return utf::utf32_to_utf8 ( inp ); }
-    inline ptr_t<uchar_16> to_utf16( ptr_t<uchar_32> inp ){ return utf::utf32_to_utf16( inp ); }
+    inline ptr_t<uchar_8>  to_utf8 ( const ptr_t<uchar_32>& inp ){ return utf::utf32_to_utf8 ( inp ); }
+    inline ptr_t<uchar_16> to_utf16( const ptr_t<uchar_32>& inp ){ return utf::utf32_to_utf16( inp ); }
 }}}
 
 /*────────────────────────────────────────────────────────────────────────────*/

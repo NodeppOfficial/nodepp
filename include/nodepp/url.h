@@ -51,15 +51,13 @@ namespace nodepp { namespace url {
          { "ftp"  ,  21 }, { "ssh" ,  22 } 
     }); return out; }
 
-    /*.........................................................................*/
-
     inline bool is_valid( const string_t& URL ){
     thread_local static regex_t reg( "^\\w+://[^.]+", true );
     return reg.test( URL ); }
 
     /*.........................................................................*/
 
-    inline string_t normalize ( string_t msg ) { 
+    inline string_t normalize ( const string_t& msg ) { 
     thread_local static regex_t reg( "%[a-z0-9]{2}", true );
         string_t res = msg; while( reg.test( res ) ){
             auto data = reg.match( res );

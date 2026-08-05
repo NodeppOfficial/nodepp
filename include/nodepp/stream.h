@@ -126,7 +126,7 @@ namespace nodepp { namespace stream {
     }); }
 
     template< class T >
-    promise_t<T,except_t> writable ( const T& fa, string_t message, ulong timeout ) {
+    promise_t<T,except_t> writable ( const T& fa, const string_t& message, ulong timeout ) {
     return promise_t< T, except_t > ([=](
         res_t<T> res, rej_t<except_t> rej
     ){

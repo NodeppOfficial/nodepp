@@ -231,7 +231,7 @@ namespace nodepp { namespace promise {
     /*─······································································─*/
 
     template< class V >
-    promise_t<V,except_t> any( initializer_t<V> prom ) {
+    promise_t<V,except_t> any( const initializer_t<V>& prom ) {
     return promise_t<V,except_t>([=]( res_t<V> res, rej_t<except_t>rej ){
 
         if( prom.empty() ){ rej( "iterator is empty" ); return; }

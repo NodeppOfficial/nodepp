@@ -88,8 +88,8 @@ private:
     class any_impl : public any_base {
     public:
         any_impl( const T& f ) noexcept : any( type::bind(f) ) {}
-        virtual ulong size() /*-------*/ const noexcept { return any.null() ?0 : sizeof(T)  ; }
-        virtual void  ptr( void*& argc ) const noexcept { argc = &any; }
+        virtual ulong size() /*-------*/ const noexcept override { return any.null() ?0 : sizeof(T)  ; }
+        virtual void  ptr( void*& argc ) const noexcept override { argc = &any; }
     private:
         ptr_t<T> any;
     };

@@ -64,7 +64,7 @@ namespace nodepp { namespace tuple {
 
     template <ulong Index, class T, typename... Types>
     void set( const tuple_t<Types...>& tuple, const T& value ) {
-        static_assert( Index < sizeof...(Types), "Index out of bounds in tuple get" );
+        static_assert( Index < sizeof...(Types), "Index out of bounds in tuple set" );
         get_helper<Index, Types...>::get(tuple)= value;
     }
 

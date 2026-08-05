@@ -130,7 +130,7 @@ thread_local static map_t<string_t,string_t>  out ({
 
 namespace nodepp { namespace path {
 
-    inline string_t normalize( string_t path ){
+    inline string_t normalize( const string_t& path ){
     thread_local static regex_t reg0 = regex_t( NODEPP_PATH_SEL );
         auto sec = reg0.split( path );
         queue_t<string_t> nsec; ulong y=0;
@@ -209,7 +209,7 @@ namespace nodepp { namespace path {
 
     /*─······································································─*/
 
-    inline string_t format( path_t& obj ) { string_t _path;
+    inline string_t format( const path_t& obj ) { string_t _path;
 
         if( !obj.path.empty() ){ return obj.path;   }
 
@@ -302,7 +302,7 @@ namespace nodepp { namespace path {
     }
 
     template< class T, ulong N >
-    string_t join( string_t (& value)[N] ){
+    string_t join( const string_t (&value)[N] ){
       return array_t<string_t>( N, value ).join("/");
     }
 
