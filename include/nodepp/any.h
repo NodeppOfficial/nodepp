@@ -17,14 +17,13 @@
 namespace nodepp { class any_t {
 public:
 
-    any_t( const char* f ) noexcept { set( string::to_string(f) ); }
-
-    any_t( null_t ) noexcept { /*---------*/ }
+    any_t( const char* value ) noexcept : any_ptr( new any_impl<string_t>( value ) ) {}
 
     template< class T >
-    any_t( const T& f ) noexcept { set( f ); }
+    any_t( const T& value ) noexcept : any_ptr( new any_impl<T>( value ) ) {}
 
-    any_t() noexcept {}
+    any_t( null_t ) noexcept {}
+    any_t()         noexcept {}
 
     /*─······································································─*/
 
@@ -42,10 +41,6 @@ public:
     /*─······································································─*/
 
     template< typename T >
-    typename type::enable_if< type::is_same<T,any_t>::value, void >::type
-    set( const any_t& value ) noexcept { any_ptr = value.any_ptr; }
-
-    template< typename T >
     typename type::enable_if< type::is_same<T,any_t>::value, bool >::type
     is() const noexcept { return true; }
 
@@ -56,14 +51,9 @@ public:
     /*─······································································─*/
 
     template< typename T >
-    typename type::enable_if< !type::is_same<T,any_t>::value, void >::type
-    set( const T& value ) noexcept { any_ptr = new any_impl<T>( value ); }
-
-    template< typename T >
     typename type::enable_if< !type::is_same<T,any_t>::value, bool >::type
     is() const noexcept { return type_size()==sizeof(T); }
 
-    
     template< typename T >
     typename type::enable_if< !type::is_same<T,any_t>::value, T >::type
     as() const { void* ptr = nullptr; any_ptr->ptr( ptr ); 
@@ -87,7 +77,7 @@ private:
     template< class T >
     class any_impl : public any_base {
     public:
-        any_impl( const T& f ) noexcept : any( type::bind(f) ) {}
+        any_impl( const T& f ) noexcept : any( type::bind<T>(f) ) {}
         virtual ulong size() /*-------*/ const noexcept override { return any.null() ?0 : sizeof(T)  ; }
         virtual void  ptr( void*& argc ) const noexcept override { argc = &any; }
     private:
@@ -103,3 +93,5 @@ private:
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

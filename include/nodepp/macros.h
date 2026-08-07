@@ -288,7 +288,6 @@ return 0; } void NODEPP_BEGIN
 namespace nodepp {
 
 using ullong  = unsigned long long int;
-using ulong   = unsigned long int;
 
 using llong   = /*----*/ long long int;
 using ldouble = /*----*/ long double;
@@ -318,13 +317,9 @@ using uchar_16= /*----*/ uint16_t;
 using uchar_32= /*----*/ uint32_t;
 using uchar_64= /*----*/ uint64_t;
 
-#if !defined(_SYS_TYPES_H_) || NODEPP_OS == NODEPP_OS_ANDROID
-    #define  _SYS_TYPES_H_
-
+using ulong   = unsigned long int;
 using ushort  = unsigned short;
 using uint    = unsigned int;
-
-#endif
 
 }
 

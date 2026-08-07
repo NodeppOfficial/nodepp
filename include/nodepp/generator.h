@@ -48,7 +48,7 @@ namespace nodepp { namespace generator { namespace file {
     GENERATOR( write ){
     public: ulong data; int state;
 
-    template< class T > coEmit( T* fd, string_t msg ){
+    template< class T > coEmit( T* fd, const string_t& msg ){
     coBegin state=0; data=0;
 
         if(!fd->is_available() || msg.empty() ){ coEnd; }
@@ -66,7 +66,7 @@ namespace nodepp { namespace generator { namespace file {
     protected: ulong pos  ; file::read _read;
     public:    ulong state; string_t data;
 
-    template< class T > coEmit( T* fd, string_t ch ){
+    template< class T > coEmit( T* fd, const string_t& ch ){
     coBegin; state=0; pos=0; data.clear();
 
         do{ auto &bff = fd->get_borrow(); if( !bff.empty() ){
@@ -101,7 +101,7 @@ namespace nodepp { namespace generator { namespace file {
     protected: string_t borrow; file::read _read;
     public:    string_t data  ; ulong state; 
 
-    template< class T > coEmit( T* fd, string_t ch ){
+    template< class T > coEmit( T* fd, const string_t& ch ){
     coBegin data.clear(); state = 0UL;
 
         do{ /*----------------*/ auto &bff = fd->get_borrow();
@@ -749,7 +749,7 @@ namespace nodepp { namespace generator { namespace ws {
 
     /*─······································································─*/
 
-    template< class T > bool client( T& cli, string_t url ) { do {
+    template< class T > bool client( T& cli, const string_t& url ) { do {
         string_t hsh = encoder::key::generate("abcdefghiABCDEFGHI0123456789",22);
         string_t key = string::format("%s==",hsh.data());
 
@@ -805,7 +805,7 @@ namespace nodepp { namespace generator { namespace ws {
 
     protected:
 
-        bool read_ws_frame( string_t borrow, ulong& size ) { 
+        bool read_ws_frame( const string_t& borrow, ulong& size ) { 
 
             frame={0}; size=0;
 

@@ -69,7 +69,7 @@ private:
 
 protected:
 
-    uchar_64 append( kevent_t kv ) const noexcept {
+    uchar_64 append( kevent_t& kv ) const noexcept {
 
         obj->kv_queue.push( kv ); auto id = obj->kv_queue.last();
         obj->uring.append( kv.pd, id );
@@ -310,7 +310,7 @@ private:
 
 protected:
 
-    uchar_64 append( kevent_t kv ) const noexcept {
+    uchar_64 append( kevent_t& kv ) const noexcept {
 
         if( kv.flag == 0x00 ){ return KV_STATE_FALLBACK; }
 
@@ -645,7 +645,7 @@ private:
 
 protected:
 
-    uchar_64 append( kevent_t kv ) const noexcept {
+    uchar_64 append( kevent_t& kv ) const noexcept {
 
         if( kv.flag==0x00 ){ return FLAG::KV_STATE_FALLBACK; }
 

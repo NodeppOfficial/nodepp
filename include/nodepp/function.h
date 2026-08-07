@@ -16,12 +16,12 @@
 
 namespace nodepp { template< class V, class... T > class function_t {
 public:
-    
-    template< class F >
-    function_t( const F& f ) : func_ptr( new func_impl<F>(f) ) {}
+
+    template< class U >
+    function_t( const U& value ) noexcept : func_ptr( new func_impl<U>( value ) ) {}
 
     function_t( null_t ) noexcept : func_ptr(nullptr) {}
-   
+    
     function_t() noexcept : func_ptr(nullptr) {}
     
     /*─······································································─*/
@@ -91,7 +91,7 @@ private:
             invoker_helper ( out, func, arg... );
         }
 
-        func_impl( const F& f ) : func( type::bind(f) ) {}
+        func_impl( const F& f ) : func( type::bind<F>(f) ) {}
 
     private: ptr_t<F> func; };
     
@@ -104,3 +104,5 @@ private:
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

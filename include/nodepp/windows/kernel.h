@@ -61,7 +61,7 @@ private:
 
 protected:
 
-    uchar_64 append( kevent_t kv ) const noexcept {
+    uchar_64 append( kevent_t& kv ) const noexcept {
 
         obj->kv_queue.push( kv ); auto id = obj->kv_queue.last();
 
