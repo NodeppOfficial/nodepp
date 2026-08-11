@@ -1,18 +1,31 @@
 #include <nodepp/nodepp.h>
-#include <nodepp/path.h>
-#include <nodepp/fs.h>
+#include <nodepp/event.h>
+#include <nodepp/timer.h>
 
 using namespace nodepp;
 
-void onMain(){
+GENERATOR( process_1 ) {
     
-    auto file = fs::readable( "LICENSE" );
-    // file.set_range( 128, 1024 );
-    
-    file.onData.on([]( string_t chunk ){
-        console::log( chunk );
-    });
+    int counter = 10;
 
-    stream::line( file );
+    coEmit(){ 
+    coBegin
     
+        while( counter-->0 ){
+            console::done( ":>", counter ); 
+            coNext;
+        }
+
+    coFinish
+    }
+
+};
+
+void onMain(){ 
+
+    event_t<> ev;
+
+    ev.add    ( process_1() );
+    timer::add( process_1() ,1000 ); 
+
 }

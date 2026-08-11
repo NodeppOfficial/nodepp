@@ -18,28 +18,23 @@ namespace nodepp { namespace timer {
     
     template< class V, class... T >
     ptr_t<task_t> add ( const V& cb, ulong time, const T&... args ){
+        auto clb = function_t<int,T...>( cb );
         return process::add( coroutine::add( COROUTINE(){
-        coBegin coDelay( time ); 
-            
-            if( cb(args...)<0 ){ coEnd; } 
-
-        coGoto(0); coFinish
+        coBegin coDelay( time ); coSet(0); return clb(args...); coFinish
     })); }
     
     template< class V, class... T >
     ptr_t<task_t> timeout ( const V& cb, ulong time, const T&... args ){
-        auto clb = type::bind( cb );
+        auto clb = function_t<void,T...>( cb );
         return process::add( coroutine::add( COROUTINE(){
-        coBegin coDelay( time ); cb(args...);
-        coFinish
+        coBegin coDelay( time ); clb(args...); coFinish
     })); }
     
     template< class V, class... T >
     ptr_t<task_t> interval ( const V& cb, ulong time, const T&... args ){
-        auto clb = type::bind( cb );
+        auto clb = function_t<void,T...>( cb );
         return process::add( coroutine::add( COROUTINE(){
-        coBegin coDelay( time ); cb(args...);
-        coGoto(0); coFinish
+        coBegin coDelay( time ); clb(args...); coGoto(0); coFinish
     })); }
     
     /*─······································································─*/
@@ -54,29 +49,23 @@ namespace nodepp { namespace utimer {
     
     template< class V, class... T >
     ptr_t<task_t> add ( const V& cb, ulong time, const T&... args ){
-        auto clb = type::bind( cb );
+        auto clb = function_t<int,T...>( cb );
         return process::add( coroutine::add( COROUTINE(){
-        coBegin coUDelay( time ); 
-            
-            if( cb(args...)<0 ){ coEnd; } 
-
-        coGoto(0); coFinish
+        coBegin coUDelay( time ); coSet(0); return clb(args...); coFinish
     })); }
     
     template< class V, class... T >
     ptr_t<task_t> timeout ( const V& cb, ulong time, const T&... args ){
-        auto clb = type::bind( cb );
+        auto clb = function_t<void,T...>( cb );
         return process::add( coroutine::add( COROUTINE(){
-        coBegin coUDelay( time ); cb(args...);
-        coFinish
+        coBegin coUDelay( time ); clb(args...); coFinish
     })); }
     
     template< class V, class... T >
     ptr_t<task_t> interval ( const V& cb, ulong time, const T&... args ){
-        auto clb = type::bind( cb );
+        auto clb = function_t<void,T...>( cb );
         return process::add( coroutine::add( COROUTINE(){
-        coBegin coUDelay( time ); cb(args...);
-        coGoto(0); coFinish
+        coBegin coUDelay( time ); clb(args...); coGoto(0); coFinish
     })); }
     
     /*─······································································─*/
@@ -88,3 +77,5 @@ namespace nodepp { namespace utimer {
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
