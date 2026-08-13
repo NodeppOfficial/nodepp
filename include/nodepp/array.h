@@ -14,8 +14,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { template< class T >
-class array_t {
+namespace nodepp { template< class T > class array_t {
 protected:
 
     ptr_t<T> buffer;

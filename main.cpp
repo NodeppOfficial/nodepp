@@ -1,31 +1,19 @@
 #include <nodepp/nodepp.h>
-#include <nodepp/event.h>
-#include <nodepp/timer.h>
 
 using namespace nodepp;
 
-GENERATOR( process_1 ) {
-    
-    int counter = 10;
-
-    coEmit(){ 
-    coBegin
-    
-        while( counter-->0 ){
-            console::done( ":>", counter ); 
-            coNext;
-        }
-
-    coFinish
-    }
-
-};
-
 void onMain(){ 
 
-    event_t<> ev;
+    auto tmp  = ptr_t<uchar_64>( 0UL );
+    auto addr = process::invoke([=]( any_t ){
 
-    ev.add    ( process_1() );
-    timer::add( process_1() ,1000 ); 
+        process::delay(1000);
+        console::log( "BBBB", *tmp );
+        process::call( *tmp, nullptr );
+
+    return -1; }); *tmp = addr;
+
+    console::log( "AAAA", *tmp );
+    process::call( *tmp, nullptr );
 
 }

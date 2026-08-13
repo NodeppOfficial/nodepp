@@ -14,11 +14,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp {
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-namespace string {
+namespace nodepp { namespace string {
 
     inline bool is_hex  ( uchar c ){ return ((c>='0' && c<='9') ||(c>='A'  && c<='F' ) || ( c>='a' && c<='f'  ) ); }
     inline bool is_space( uchar c ){ return ( c==' ' || c=='\t' || c=='\n' || c=='\r'  ||   c=='\f'|| c=='\v' ); }
@@ -66,11 +62,11 @@ namespace string {
     inline bool is_alnum( uchar c ){ return ( is_alpha(c) || is_digit(c) ); }
     inline bool is_punct( uchar c ){ return ( is_print(c) && !is_space(c) && !is_alnum(c) ); }
 
-}
+}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-class string_t {
+namespace nodepp { class string_t {
 protected:
 
     ptr_t<char> buffer;
@@ -519,9 +515,11 @@ public:
 
     ptr_t<char>&  ptr()       noexcept { return buffer; }
 
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { 
 
 inline string_t operator+( const string_t& A, const string_t& B ){
     if( A.empty() ){ return B; } if( B.empty() ){ return A; }
@@ -542,9 +540,11 @@ inline void operator^=( string_t& A, const string_t& B ){
     while( a != A.end() ){ *a = *a ^ *b; ++a; ++b; }
 }
 
+}
+
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace string {
+namespace nodepp { namespace string {
 
     inline string_t null (){ return buffer( 1, '\0' ); }
 
@@ -577,6 +577,11 @@ namespace string {
     inline float to_float( const string_t& buffer ){
         float out=0.0f; if( buffer.empty() ){ return out; }
         sscanff( (char*) buffer, "%f", &out ); return out;
+    }
+
+    inline uchar to_uchar( const string_t& buffer ){
+        uchar out=0; if( buffer.empty() ){ return out; }
+        sscanff( (char*) buffer, "%c", &out ); return out;
     }
 
     inline char to_char( const string_t& buffer ){
@@ -709,22 +714,22 @@ namespace string {
 
     /*─······································································─*/
 
-    inline uchar_64 to_i64( const string_t& buffer ) { return type::cast<char_64>( to_llong(buffer) ); }
-    inline uchar_32 to_i32( const string_t& buffer ) { return type::cast<char_32>( to_long (buffer) ); }
-    inline uchar_16 to_i16( const string_t& buffer ) { return type::cast<char_16>( to_long (buffer) ); }
-    inline uchar_8  to_i8 ( const string_t& buffer ) { return type::cast<char_8> ( to_char (buffer) ); }
+    inline char_64 to_i64( const string_t& buffer ) { return type::cast<char_64>( to_llong(buffer) ); }
+    inline char_32 to_i32( const string_t& buffer ) { return type::cast<char_32>( to_long (buffer) ); }
+    inline char_16 to_i16( const string_t& buffer ) { return type::cast<char_16>( to_long (buffer) ); }
+    inline char_8  to_i8 ( const string_t& buffer ) { return type::cast<char_8> ( to_char (buffer) ); }
 
     /*─······································································─*/
 
     inline uchar_64 to_u64( const string_t& buffer ) { return type::cast<uchar_64>( to_ullong(buffer) ); }
     inline uchar_32 to_u32( const string_t& buffer ) { return type::cast<uchar_32>( to_ulong (buffer) ); }
     inline uchar_16 to_u16( const string_t& buffer ) { return type::cast<uchar_16>( to_ulong (buffer) ); }
-    inline uchar_8  to_u8 ( const string_t& buffer ) { return type::cast<uchar_8> ( to_char  (buffer) ); }
+    inline uchar_8  to_u8 ( const string_t& buffer ) { return type::cast<uchar_8> ( to_uchar (buffer) ); }
 
-}
+}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-}
-
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
