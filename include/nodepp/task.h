@@ -24,14 +24,6 @@ namespace nodepp { struct TASK_STATE { enum TYPE : uchar {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { struct CO_STATE { enum STATE : char {
-    BLOCK =  0, DONE  = 1,
-    END   = -1, YIELD = 1,
-    WAIT  = -2  /*------*/
-};}; }
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
 namespace nodepp { struct POLL_STATE { enum FLAG : uchar {
     UNKNOWN = 0b00000000,
     READ    = 0b00000010,
@@ -41,4 +33,14 @@ namespace nodepp { struct POLL_STATE { enum FLAG : uchar {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+namespace nodepp { struct CO_STATE { enum STATE : int {
+    BLOCK =  0, DONE  = 1,
+    END   = -1, YIELD = 1,
+    WAIT  = -2  /*------*/
+};}; }
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

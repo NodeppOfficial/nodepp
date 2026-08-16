@@ -91,7 +91,7 @@ public:
 
     /*─······································································─*/
 
-    expected_t<T,V> get_value() const { 
+    expected_t<T,V> get_value() const {
         
         if  ( emit() == 1 ){
         if  ( obj->state & PROMISE_STATE::RESOLVED )
@@ -99,14 +99,6 @@ public:
         if  ( obj->state & PROMISE_STATE::REJECTED )
             { return obj->value.template as<V>() ; }}
             
-        if  ( obj->state & PROMISE_STATE::FINISHED )
-            { NODEPP_THROW_ERROR( "invalid value" ); }
-        elif( obj->state & PROMISE_STATE::CLOSED )
-            { NODEPP_THROW_ERROR( "promise is closed" ); }
-        elif( obj->state & PROMISE_STATE::PENDING )
-            { NODEPP_THROW_ERROR( "promise still pending" ); } 
-        else{ NODEPP_THROW_ERROR( "something went wrong"  ); }
-
     return nullptr; }
 
     void   off() const noexcept { obj->state |= PROMISE_STATE::CLOSED; }

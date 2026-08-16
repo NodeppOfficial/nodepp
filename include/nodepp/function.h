@@ -21,7 +21,7 @@ public:
     function_t( const U& value ) noexcept : func_ptr( new func_impl<U>( value ) ) {}
 
     function_t( null_t ) noexcept : func_ptr(nullptr) {}
-    
+
     function_t() noexcept : func_ptr(nullptr) {}
     
     /*─······································································─*/
@@ -64,8 +64,8 @@ public:
 private:
 
     class func_base { public:
-        virtual ~func_base () {}
-        virtual void invoke( V*, const T&... ) const {}
+        virtual ~func_base () /*--*/ noexcept {}
+        virtual void invoke( V*, const T&... ){}
     };
     
     /*─······································································─*/
@@ -74,26 +74,22 @@ private:
     class func_impl : public func_base { private:
 
         template< typename U = V >
-        typename type::enable_if< type::is_same<U,void>::value, void >::type
-        invoker_helper( U*, ptr_t<F> cb, const T&... args ) const noexcept {
-            (*cb)( args... );
-        }
+        typename type::enable_if< !type::is_same<U,void>::value, void >::type
+        invoker_helper( U* dst, const T&... args ){ *dst = callback( args... ); }
 
         template< typename U = V >
-        typename type::enable_if< !type::is_same<U,void>::value, void >::type
-        invoker_helper( U* dst, ptr_t<F> cb, const T&... args ) const noexcept {
-            *dst = (*cb)( args... );
-        }
+        typename type::enable_if< type::is_same<U,void>::value, void >::type
+        invoker_helper( U*, const T&... args ){ callback( args... ); }
 
     public:
 
-        virtual void invoke( V* out, const T&... arg ) const override { 
-            invoker_helper ( out, func, arg... );
+        virtual void invoke( V* out, const T&... arg ) override { 
+            invoker_helper ( out, arg... );
         }
 
-        func_impl( const F& f ) : func( type::bind<F>(f) ) {}
+        func_impl( const F& value ) : callback( value ) {}
 
-    private: ptr_t<F> func; };
+    private: F callback; };
     
     /*─······································································─*/
     

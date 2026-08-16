@@ -41,35 +41,33 @@ public:
     /*─······································································─*/
 
     template< typename T >
+    typename type::enable_if< !type::is_same<T,any_t>::value, bool >::type
+    is() const noexcept { return empty() ? false : type_size()==sizeof(T); }
+
+    template< typename T >
+    typename type::enable_if< !type::is_same<T,any_t>::value, T >::type
+    as() const {
+    if( !is<T>() ){ NODEPP_THROW_ERROR("any_t invalid value"); }
+        void* ptr = nullptr; any_ptr->get( ptr ); 
+    return  * type::cast<T>(ptr); }
+
+    /*─······································································─*/
+
+    template< typename T >
     typename type::enable_if< type::is_same<T,any_t>::value, bool >::type
-    is() const noexcept { return true; }
+    is() const noexcept { return !empty(); }
 
     template< typename T >
     typename type::enable_if< type::is_same<T,any_t>::value, any_t >::type
     as() const { return *this; }
 
-    /*─······································································─*/
-
-    template< typename T >
-    typename type::enable_if< !type::is_same<T,any_t>::value, bool >::type
-    is() const noexcept { return type_size()==sizeof(T); }
-
-    template< typename T >
-    typename type::enable_if< !type::is_same<T,any_t>::value, T >::type
-    as() const { void* ptr = nullptr; any_ptr->ptr( ptr ); 
-
-        if( ptr==nullptr ){ NODEPP_THROW_ERROR("any_t has no value"); }
-        if( !is<T>() )/**/{ NODEPP_THROW_ERROR("any_t size isn't aligned"); }
-
-    return * type::cast<T>(ptr); }
-
 private:
 
     class any_base {
     public:
-        virtual ~any_base () /*---------*/ noexcept {}
-        virtual void  ptr ( void*& ) const noexcept {}
-        virtual ulong size() /*---*/ const noexcept =0;
+        virtual ~any_base () /*---*/ noexcept {}
+        virtual void  get ( void*& ) noexcept {}
+        virtual ulong size() /*---*/ noexcept =0;
     };
 
     /*─······································································─*/
@@ -77,12 +75,10 @@ private:
     template< class T >
     class any_impl : public any_base {
     public:
-        any_impl( const T& f ) noexcept : any( type::bind<T>(f) ) {}
-        virtual ulong size() /*-------*/ const noexcept override { return any.null() ?0 : sizeof(T)  ; }
-        virtual void  ptr( void*& argc ) const noexcept override { argc = &any; }
-    private:
-        ptr_t<T> any;
-    };
+        virtual void  get ( void*& argc ) noexcept override { argc = (void*) &any; }
+        virtual ulong size() /*--------*/ noexcept override { return sizeof(T); }
+        any_impl( const T& value ) /*--*/ noexcept :any( type::bind<T>( value ) ) {}
+    private: ptr_t<T> any; };
 
     /*─······································································─*/
 

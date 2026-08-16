@@ -102,7 +102,7 @@ protected:
     /*─······································································─*/
 
     uchar_32 get_delay_ms() const noexcept {
-        ulong tasks= obj->ev_queue.size() + obj->probe.get();
+        ulong tasks= obj->ev_queue.size();
         if(!obj->kv_queue.empty() && tasks==0 ){ 
         if( obj.count()==1 ) /*------*/ { return -1; }}
         if( obj.count()> 1 && tasks==0 ){ return -1; }
@@ -154,7 +154,6 @@ protected:
         uring_t uring; uchar state;
         loop_t /*------*/ ev_queue;
         queue_t<kevent_t> kv_queue;
-        probe_t /*-----*/ probe   ;
         uchar_32 /*----*/ timeout ;
 
     };  ptr_t<NODE> obj;
@@ -173,9 +172,9 @@ public:
 
 public:
 
-    ulong size() const noexcept { return obj->ev_queue.size() + obj->kv_queue.size() + obj->probe.get() + obj.count()-1; }
+    ulong size() const noexcept { return obj->ev_queue.size() + obj->kv_queue.size() + obj.count()-1; }
 
-    void clear() const noexcept { /*--*/ obj->ev_queue.clear(); obj->kv_queue.clear(); obj->probe.clear(); }
+    void clear() const noexcept { /*--*/ obj->ev_queue.clear(); obj->kv_queue.clear(); }
     
     bool should_close() const noexcept { return empty() || NODEPP_SHTDWN() || NODEPP_LOCAL_SHTDWN(); }
 
@@ -241,8 +240,7 @@ public:
     /*─······································································─*/
 
     template< class T, class... V > 
-    int await( T cb, const V&... args ) const { 
-    int c=0; probe_t tmp = obj->probe;
+    int await( T cb, const V&... args ) const { int c=0;
 
         if ((c =cb(args...))>=0 ){
         if ( c==1 ){ auto t = coroutine::getno().delay;
@@ -358,7 +356,7 @@ protected:
 
     ptr_t<ETIMER> get_delay_tm() const noexcept {
 
-        uchar_32 tasks= obj->ev_queue.size() + obj->probe.get();
+        uchar_32 tasks= obj->ev_queue.size();
         uchar_32 TIME = get_timeout();
 
         if(!obj->kv_queue.empty() && tasks==0 ){ 
@@ -373,7 +371,7 @@ protected:
     return ts; }
 
     uchar_32 get_delay_ms() const noexcept { 
-        ulong tasks= obj->ev_queue.size() + obj->probe.get();
+        ulong tasks= obj->ev_queue.size();
         if(!obj->kv_queue.empty() && tasks==0 ){ 
         if( obj.count()==1 ) /*------*/ { return -1; }}
         if( obj.count()> 1 && tasks==0 ){ return -1; }
@@ -428,7 +426,6 @@ protected:
 
         loop_t  /*-----*/ ev_queue;
         queue_t<kevent_t> kv_queue;
-        probe_t  /*----*/ probe   ;
         uchar_32 /*----*/ timeout ; ptr_t<EPOLLFD> ev;
 
        ~NODE(){ ::close( ed ); ::close( pd ); }
@@ -463,9 +460,9 @@ public:
 
 public:
 
-    ulong size() const noexcept { return obj->ev_queue.size() + obj->kv_queue.size() + obj->probe.get() + obj.count()-1; }
+    ulong size() const noexcept { return obj->ev_queue.size() + obj->kv_queue.size() + obj.count()-1; }
 
-    void clear() const noexcept { /*--*/ obj->ev_queue.clear(); obj->kv_queue.clear(); obj->probe.clear(); }
+    void clear() const noexcept { /*--*/ obj->ev_queue.clear(); obj->kv_queue.clear(); }
     
     bool should_close() const noexcept { return empty() || NODEPP_SHTDWN() || NODEPP_LOCAL_SHTDWN(); }
 
@@ -548,8 +545,7 @@ public:
     /*─······································································─*/
 
     template< class T, class... V > 
-    int await( T cb, const V&... args ) const { 
-    int c=0; probe_t tmp = obj->probe;
+    int await( T cb, const V&... args ) const { int c=0;
 
         if ((c =cb(args...))>=0 ){
         if ( c==1 ){ auto t = coroutine::getno().delay;
@@ -699,8 +695,8 @@ protected:
 
     ptr_t<KTIMER> get_delay_tm() const noexcept {
 
-        uchar_32 tasks= obj->ev_queue.size() + obj->probe.get();
-        uchar_32 TIME = tasks==0 ? (uchar_32)-1 : get_timeout();
+        uchar_32 tasks= obj->ev_queue.size();
+        uchar_32 TIME = get_timeout();
 
         if(!obj->kv_queue.empty() && tasks==0 ){ 
         if( obj.count()==1 ) /*------*/ { return nullptr; }}
@@ -714,7 +710,7 @@ protected:
     return ts; }
 
     uchar_32 get_delay_ms() const noexcept {
-        ulong tasks= obj->ev_queue.size() + obj->probe.get();
+        ulong tasks= obj->ev_queue.size();
         if(!obj->kv_queue.empty() && tasks==0 ){ 
         if( obj.count()==1 ) /*------*/ { return -1; }}
         if( obj.count()> 1 && tasks==0 ){ return -1; }
@@ -768,7 +764,6 @@ protected:
         int pd=-1; /**/ uchar state;
         loop_t   /*----*/ ev_queue ;
         queue_t<kevent_t> kv_queue ;
-        probe_t  /*----*/ probe    ; 
         uchar_32 /*----*/ timeout  ; ptr_t<KPOLLFD> ev;
 
        ~NODE(){ close( pd ); }
@@ -800,9 +795,9 @@ public:
 
 public:
 
-    ulong size() const noexcept { return obj->ev_queue.size() + obj->kv_queue.size() + obj->probe.get() + obj.count()-1; }
+    ulong size() const noexcept { return obj->ev_queue.size() + obj->kv_queue.size() + obj.count()-1; }
 
-    void clear() const noexcept { /*--*/ obj->ev_queue.clear(); obj->kv_queue.clear(); obj->probe.clear(); }
+    void clear() const noexcept { /*--*/ obj->ev_queue.clear(); obj->kv_queue.clear(); }
     
     bool should_close() const noexcept { return empty() || NODEPP_SHTDWN() || NODEPP_LOCAL_SHTDWN(); }
 
@@ -889,8 +884,7 @@ public:
     /*─······································································─*/
 
     template< class T, class... V > 
-    int await( T cb, const V&... args ) const { 
-    int c=0; probe_t tmp = obj->probe;
+    int await( T cb, const V&... args ) const { int c=0;
 
         if ((c =cb(args...))>=0 ){
         if ( c==1 ){ auto t = coroutine::getno().delay;
@@ -971,7 +965,7 @@ protected:
     return obj->timeout; }
 
     uchar_32 get_delay_ms() const noexcept {
-        ulong tasks= obj->ev_queue.size() + obj->probe.get();
+        ulong tasks= obj->ev_queue.size() ;
         if(tasks==0 && obj.count()>1 ){ return 1000; }
     return get_timeout(); }
 
@@ -980,7 +974,6 @@ protected:
     struct NODE {
         uchar    state   ;
         uchar_32 timeout ;
-        probe_t  probe   ;
         loop_t   ev_queue;
     };  ptr_t<NODE> obj;
 
@@ -1002,9 +995,9 @@ public:
     
     bool should_close() const noexcept { return empty() || NODEPP_SHTDWN() || NODEPP_LOCAL_SHTDWN(); }
 
-    ulong size() const noexcept { return obj->ev_queue.size() + obj->probe.get() + obj.count()-1; }
+    ulong size() const noexcept { return obj->ev_queue.size() + obj.count()-1; }
 
-    void clear() const noexcept { /*--*/ obj->ev_queue.clear(); obj->probe.clear(); }
+    void clear() const noexcept { /*--*/ obj->ev_queue.clear(); }
 
     bool empty() const noexcept { return size()==0; }
 
@@ -1062,8 +1055,7 @@ public:
     /*─······································································─*/
 
     template< class T, class... V > 
-    int await( T cb, const V&... args ) const { 
-    int c=0; probe_t tmp = obj->probe;
+    int await( T cb, const V&... args ) const { int c=0;
 
         if ((c =cb(args...))>=0 ){
         if ( c==1 ){ auto t = coroutine::getno().delay;

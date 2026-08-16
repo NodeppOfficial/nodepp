@@ -1,19 +1,33 @@
 #include <nodepp/nodepp.h>
+#include <nodepp/worker.h>
+#include <nodepp/timer.h>
 
 using namespace nodepp;
 
-void onMain(){ 
+void onMain(){
 
-    auto tmp  = ptr_t<uchar_64>( 0UL );
-    auto addr = process::invoke([=]( any_t ){
+    ptr_t<int> x ( 0UL, 5 );
 
-        process::delay(1000);
-        console::log( "BBBB", *tmp );
-        process::call( *tmp, nullptr );
+    worker::add( coroutine::add( COROUTINE(){
+    coBegin
 
-    return -1; }); *tmp = addr;
+        while( *x > 0 ){
+            console::log( "wrk2>> Hello World", *x );
+        *x-=1; coDelay(3000); }
 
-    console::log( "AAAA", *tmp );
-    process::call( *tmp, nullptr );
+    coFinish
+    }));
+
+    /*
+    process::add( coroutine::add( COROUTINE(){
+    coBegin
+
+        while( *x > 0 ){
+            console::log( "---" );
+        coDelay(1000); }
+
+    coFinish
+    }));
+    */
 
 }

@@ -17,13 +17,13 @@
 namespace nodepp { template< class... A > class coroutine_arg_t { 
 private:
 
-    using T = function_t<int,uchar_64&,ulong&,A...>;
+    using T = function_t<int,uchar_64&,uchar_32&,A...>;
 
 protected:
 
     struct NODE {
         T        callback; 
-        ulong    time =0 ;
+        uchar_32 time =0 ;
         uchar_64 state=0 ;
     };  ptr_t<NODE> obj;
 
@@ -54,8 +54,8 @@ public:
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp    { using coroutine_t = coroutine_arg_t</*----*/>; 
-struct co_state_t   { uchar flag  =0; ulong delay=0; int state=0; };
-struct generator_t  { ulong _time_=0; uchar_64 _state_=0; };
+struct co_state_t   { uchar    flag  =0; uchar_32 delay  =0; int state=0; };
+struct generator_t  { uchar_32 _time_=0; uchar_64 _state_=0; };
 namespace coroutine { enum STATE : uchar {
      CO_STATE_START = 0b00000001,
      CO_STATE_YIELD = 0b00000010,
@@ -68,7 +68,7 @@ namespace coroutine { enum STATE : uchar {
 
 namespace nodepp { namespace coroutine {
 
-    inline coroutine_t add( function_t<int, uchar_64&, ulong&> callback ) {
+    inline coroutine_t add( function_t<int, uchar_64&, uchar_32&> callback ) {
         return coroutine_t( callback );
     }
 
@@ -82,10 +82,10 @@ namespace nodepp { namespace coroutine {
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace coroutine {
-    inline co_state_t getno( int state=0, uchar_64 _state_=0, ulong time=0 ){
+    inline co_state_t getno( int state=0, uchar_64 _state_=0, uchar_32 time=0 ){
     thread_local static co_state_t tmp; co_state_t out; 
     
-    memcpy( &out, &tmp, sizeof(co_state_t) ); tmp = co_state_t {};
+    out = tmp; tmp = co_state_t {};
 
     tmp.state=_state_; if( time>0 ){ 
         tmp.delay=time; /*------------*/

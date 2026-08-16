@@ -17,7 +17,14 @@
 #define NODEPP_REGEX_GRPH 1
 #define NODEPP_REGEX_LITE 0
 
+#define NODEPP_LOOP_FULL  1
+#define NODEPP_LOOP_LITE  0
+
 /*────────────────────────────────────────────────────────────────────────────*/
+
+#ifndef NODEPP_ALLOW_SSO
+#define NODEPP_ALLOW_SSO 1
+#endif
 
 #ifndef NODEPP_ALLOW_THREADS
 #define NODEPP_ALLOW_THREADS 1
@@ -91,7 +98,7 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 #define coEnd          do { _time_=0; _state_=_time_; /**/ nodepp::coroutine::getno(-1); } while(0); return -1;
 #define coStop            } _time_=0; _state_=_time_; /**/ nodepp::coroutine::getno(-1); } while(0); return -1;
 
-#define coStart thread_local static uchar_64 _state_=0; thread_local static ulong _time_=0; coBegin
+#define coStart thread_local static uchar_64 _state_=0; thread_local static uchar_32 _time_=0; coBegin
 #define coBegin do { switch(_state_) { case 0:; nodepp::coroutine::getno(-2);
 #define coEmit  int operator()
 
@@ -101,8 +108,8 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define COROUTINE_ARG(... ) [=]( uchar_64& _state_, ulong& _time_, __VA_ARGS__ ) -> int
-#define COROUTINE()         [=]( uchar_64& _state_, ulong& _time_ ) /*--------*/ -> int
+#define COROUTINE_ARG(... ) [=]( uchar_64& _state_, uchar_32& _time_, __VA_ARGS__ ) -> int
+#define COROUTINE()         [=]( uchar_64& _state_, uchar_32& _time_ ) /*--------*/ -> int
 #define GENERATOR( NAME )   struct NAME : public nodepp::generator_t
 
 /*────────────────────────────────────────────────────────────────────────────*/

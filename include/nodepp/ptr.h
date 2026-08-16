@@ -24,34 +24,34 @@
 namespace nodepp { template< class T, ulong STACK_SIZE = NODEPP_MAX_SSO_SIZE > class ptr_t {
 private:
 
+#if NODEPP_ALLOW_SSO == 1
     static constexpr ulong SSO = ( STACK_SIZE>0 && type::is_trivially_copyable<T>::value ) ? STACK_SIZE : 1;
+#else 
+    static constexpr ulong SSO = 1;
+#endif
 
 #ifdef NODEPP_PTR_ATOMIC_SUPPORTED
 
     struct NODE_STACK {
-        atomic_t<ulong> /*------*/ count; 
-        ulong length; T* value; int flag;
-        alignas(T) char stack [SSO];
+        atomic_t<ulong> count; ulong length; 
+        T* value; uchar flag ; char stack [SSO];
     };
 
     struct NODE_HEAP {
-        atomic_t<ulong>  count; 
-        ulong length; T* value; 
-        void* stack; int  flag; 
+        atomic_t<ulong> count; ulong length; 
+        T* value; uchar flag ; char stack [1];
     };
 
 #else
 
     struct NODE_STACK {
-        ulong /*----------------*/ count; 
-        ulong length; T* value; int flag;
-        alignas(T) char stack [SSO];
+        ulong  count, length; 
+        T* value; uchar flag; char stack [SSO];
     };
 
     struct NODE_HEAP {
-        ulong /*------*/ count; 
-        ulong length; T* value; 
-        void* stack ; uchar flag; 
+        ulong  count, length; 
+        T* value; uchar flag; char stack[1];
     };
 
 #endif
