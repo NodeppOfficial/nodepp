@@ -13,9 +13,7 @@ void server(){
     server.onConnect([=]( socket_t cli ){
 
         cli.onData([=]( string_t data ){
-            auto tmp = cli.get_client_address();
-            /*async logic or coroutines*/
-            cli.set_client_address( tmp );
+            cli.set_write_address( cli.get_read_address() );
             cli.write( "<: received" );
             console::log( data );
         });
@@ -83,4 +81,4 @@ void onMain() {
     coBegin /*--*/ ; client();
     process::wait(); coFinish }));
 
-}
+} 

@@ -67,11 +67,6 @@ protected:
         obj->state |= STATE::FS_STATE_KILL; 
     }
 
-    SOCKADDR_ST& get_addr() const noexcept { 
-        return is_server() ? obj->client_addr 
-        /*--------------*/ : obj->server_addr; 
-    }
-
     bool is_state( uchar_16 value ) const noexcept {
         if( obj->state & value ){ return true; }
     return false; }
@@ -108,7 +103,7 @@ protected:
 
         SOCKET fd  = INVALID_SOCKET;
         SOCKET tmp = INVALID_SOCKET;
-        SOCKADDR_ST server_addr, client_addr;
+        SOCKADDR_ST server_addr, client_addr, tmp_addr;
 
         LPFN_ACCEPTEX  lpfnAcceptEx  = nullptr;
         LPFN_CONNECTEX lpfnConnectEx = nullptr;
@@ -349,7 +344,7 @@ public:
     }
 
     expected_t<ip_t,except_t> get_peername() const noexcept { 
-        SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
+        SOCKADDR_ST& addr = get_read_address(); socklen_t len = sizeof(addr);
 
         if( is_closed() )
           { return except_t( "invalid socket" ); }
@@ -381,9 +376,17 @@ public:
 
     /*─······································································─*/
 
-    void set_client_address( SOCKADDR_ST address ) const noexcept { get_addr()=address; }
+    void set_write_address( const SOCKADDR_ST& address ) const noexcept { 
+         obj->tmp_addr = address; 
+    }
 
-    SOCKADDR_ST get_client_address() /*---------*/ const noexcept { return get_addr (); }
+    SOCKADDR_ST& get_read_address() const noexcept { 
+        return is_server() ? obj->client_addr : obj->server_addr; 
+    }
+
+    SOCKADDR_ST& get_write_address() const noexcept { 
+        return is_server() ? obj->tmp_addr : obj->server_addr;
+    }
 
     /*─······································································─*/
 
@@ -737,7 +740,7 @@ public:
             return c==0 ? -1 : (int) c;
         }}
 
-        SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
+        SOCKADDR_ST& addr = get_read_address(); socklen_t len = sizeof(addr);
 
         obj->state |= STATE::FS_STATE_READING; 
         ov = {0}; bu= { sx, bf }; f =0; c =0;
@@ -775,7 +778,7 @@ public:
             return c==0 ? -1 : (int) c;
         }}
 
-        SOCKADDR_ST& addr = get_addr(); socklen_t len = sizeof(addr);
+        SOCKADDR_ST& addr = get_write_address(); socklen_t len = sizeof(addr);
 
         obj->state |= STATE::FS_STATE_WRITING;
         ov = {0}; bu= { sx, bf }; f =0; c =0;
