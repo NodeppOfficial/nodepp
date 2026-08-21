@@ -9,8 +9,10 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#ifndef NODEPP_ITERATOR
-#define NODEPP_ITERATOR
+#ifndef NODEPP_ITERATOR_VARADIC
+#define NODEPP_ITERATOR_VARADIC
+
+/*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace iterator {
 
@@ -85,10 +87,14 @@ namespace nodepp { namespace iterator {
     
 }}
 
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #endif
 
 #if !defined(NODEPP_ITERATOR_STRING) && defined(NODEPP_STRING)
     #define  NODEPP_ITERATOR_STRING
+
+/*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { namespace string {
 
@@ -168,4 +174,99 @@ namespace nodepp { namespace string {
 
 }}
 
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #endif
+
+#if !defined(NODEPP_ITERATOR_JOIN) && defined(NODEPP_STRING)
+    #define  NODEPP_ITERATOR_JOIN
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace string {
+    
+    template< class T >
+    array_t<T> operator+( const array_t<T>& A, const array_t<T>& B ){
+        if( A.empty() ){ return B; } if( B.empty() ){ return A; }
+        ptr_t<T> C( A.size() + B.size() ); /*--------------*/
+        type::copy( B.begin(), B.end(), C.begin()+A.size() );
+        type::copy( A.begin(), A.end(), C.begin() ); return C;
+    }
+
+    /*─······································································─*/
+
+    template< class T >
+    string_t join( const initializer_t<T>& raw, string_t c=", " ){ 
+        return array_t<T>( raw.data() ).join(c); 
+    }
+
+    template< class T >
+    string_t join( const queue_t<T>& raw, string_t c=", " ){ 
+        return array_t<T>( raw.data() ).join(c); 
+    }
+
+    template< class T >
+    string_t join( const array_t<T>& raw, string_t c=", " ){ 
+        return raw.join(c); 
+    }
+
+    template< class T >
+    string_t join( const ptr_t<T>& raw, string_t c=", " ){ 
+        return array_t<T>( raw ).join(c); 
+    }
+
+    /*─······································································─*/
+
+    inline array_t<string_t> split_view( string_t _str, ulong size ){ 
+        queue_t<string_t> out; 
+        
+        while( !_str.empty() ){
+            out.push( _str.slice_view( 0, size ) );
+            _str.ptr().slice( size, (ulong) -1 );
+        }
+
+        return out.data();
+    }
+
+    template< class T >
+    array_t<string_t> split_view( string_t _str, T pattern ){ 
+        queue_t<string_t> out; ulong offset=0; ptr_t<ulong> idx;
+        
+        while( (idx=_str.find( pattern, offset )) != nullptr ){
+            out.push( _str.slice_view( offset, idx[0] ) ); offset=idx[1];
+        }   out.push( _str.slice_view( offset ) );
+
+        return out.data();
+    }
+
+    /*─······································································─*/
+
+    inline array_t<string_t> split( string_t _str, ulong size ){ 
+        queue_t<string_t> out; 
+        
+        while( !_str.empty() ){
+            out.push( _str.slice( 0, size ) );
+            _str.ptr().slice( size, (ulong) -1 );
+        }
+
+        return out.data();
+    }
+
+    template< class T >
+    array_t<string_t> split( string_t _str, T pattern ){ 
+        queue_t<string_t> out; ulong offset=0; ptr_t<ulong> idx;
+        
+        while( (idx=_str.find( pattern, offset )) != nullptr ){
+            out.push( _str.slice( offset, idx[0] ) ); offset=idx[1];
+        }   out.push( _str.slice( offset ) );
+
+        return out.data();
+    }
+
+}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+#endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

@@ -56,6 +56,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#include "initializer.h"
 #include "iterator.h"
 #include "console.h"
 #include "sleep.h"
