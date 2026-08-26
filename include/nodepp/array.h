@@ -455,6 +455,20 @@ public:
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+namespace nodepp {
+    
+    template< class T >
+    array_t<T> operator+( const array_t<T>& A, const array_t<T>& B ){
+        if( A.empty() ){ return B; } if( B.empty() ){ return A; }
+        ptr_t<T> C( A.size() + B.size() ); /*--------------*/
+        type::copy( B.begin(), B.end(), C.begin()+A.size() );
+        type::copy( A.begin(), A.end(), C.begin() ); return C;
+    }
+
+}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #endif
 
 /*────────────────────────────────────────────────────────────────────────────*/

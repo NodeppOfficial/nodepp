@@ -110,9 +110,9 @@ protected:
         elif( flag == "w"  ){ _flag |= O_WRONLY | O_CREAT  | O_TRUNC; }
         elif( flag == "a"  ){ _flag |= O_WRONLY | O_APPEND | O_CREAT; }
         elif( flag == "r+" ){ _flag |= O_RDWR   | O_APPEND ;          }
-        elif( flag == "w+" ){ _flag |= O_RDWR   | O_APPEND | O_CREAT; }
+        elif( flag == "w+" ){ _flag |= O_RDWR   | O_CREAT  ;          }
         elif( flag == "a+" ){ _flag |= O_RDWR   | O_APPEND ;          }
-        else /*----------*/ { _flag |= O_RDWR   ; /*---------------*/ }
+        else /*----------*/ { _flag |= O_RDWR   | O_CREAT  ;          }
     return _flag; }
 
 public:
