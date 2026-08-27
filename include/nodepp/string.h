@@ -639,6 +639,9 @@ namespace nodepp { namespace string {
         return sscanff( (char*)data, (char*)str, args... );
     }
 
+    template< class T >
+    string_t type(){ return typeid( T ).name(); }
+
     /*─······································································─*/
 
     inline string_t to_string( char* num )/*------*/{ return num; }

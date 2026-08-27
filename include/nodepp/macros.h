@@ -291,7 +291,6 @@ return 0; } void NODEPP_BEGIN
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define typecast(DATA) nodepp::string_t( typeid(DATA).name() )
 namespace nodepp {
 
 using ullong  = unsigned long long int;
