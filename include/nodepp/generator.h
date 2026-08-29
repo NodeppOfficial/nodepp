@@ -812,14 +812,14 @@ namespace nodepp { namespace generator { namespace ws {
             if ( borrow.size() < 2 ){ return false; } do { 
 
                 auto y = borrow[size]; size++;
-                frame.FIN = ( y & 0x80 ) >>7 ;
+                frame.FIN = ( y & 0x80 ) !=0 ;
                 frame.RSV = ( y & 0x70 ) >>4 ;
                 frame.OPC = ( y & 0x0f )     ;
 
             } while(0); do {
 
                 auto y = borrow[size]; size++;
-                frame.MSK = ( y & 0x80 ) >>7 ;
+                frame.MSK = ( y & 0x80 ) !=0 ;
                 frame.LEN = ( y & 0x7f )     ;
 
             } while(0);
@@ -916,7 +916,7 @@ namespace nodepp { namespace generator { namespace ws {
         ulong write_ws_frame( char* bf, ulong sx, uchar opcode, uchar_32* mask ) {
         ulong idx = 0;
 
-            if( opcode == 0 ){ bool b=0; for ( ulong x=0; x<sx; x++ ){
+            if( opcode == 0 ){ bool b=0; for( ulong x=0; x<sx; x++ ){
             if( !string::is_print( bf[x] ) ){ b=1; break; }}
                      bfx[idx] = !b? 0x82:0x81;
             } else { bfx[idx] = 0x80 | opcode; } ++idx; 

@@ -38,7 +38,7 @@ namespace nodepp { namespace _socket_ {
 
 namespace nodepp {
 
-struct ip_t    { string_t address; uint port; };
+struct ip_t    { string_t host; uint port; int family; };
 struct agent_t {
     ulong buffer_size    = NODEPP_CHUNK_SIZE;
     ulong conn_timeout   = 60000;
@@ -319,6 +319,47 @@ public:
 
     /*─······································································─*/
 
+    SOCKADDR_ST get_sockaddr( const ip_t& address ) const noexcept {
+    SOCKADDR_ST out_st; memset(&out_st, 0, sizeof(SOCKADDR_ST));
+
+        auto &host   = address.host  ;
+        auto &port   = address.port  ;
+        auto &family = address.family;
+
+        if( family == AF_INET6 ) {
+
+            SOCKADDR_IN6* s = (SOCKADDR_IN6*)&out_st;
+            obj->addrlen    = sizeof( SOCKADDR_IN6 );
+
+            memset( s,0,sizeof(SOCKADDR_IN6) );
+
+            s->sin6_family  = AF_INET6; if( port>0 ){ s->sin6_port = htons(port); }
+
+            if  ( host == "::0" || host == "global"    ){ s->sin6_addr = in6addr_any;      }
+            elif( host == "::2" || host == "loopback"  ){ s->sin6_addr = in6addr_loopback; }
+            elif( host == "::1" || host == "localhost" ){ inet_pton(family, "::1", /*-*/ &s->sin6_addr); }
+            else                                        { inet_pton(family, host.c_str(),&s->sin6_addr); }
+
+        } else {
+
+            SOCKADDR_IN* s = (SOCKADDR_IN*)&out_st;
+            obj->addrlen   = sizeof( SOCKADDR_IN );
+
+            memset( s,0,sizeof(SOCKADDR_IN) );
+
+            s->sin_family  = AF_INET; if( port>0 ){ s->sin_port = htons(port); }
+
+            if  ( host == "0.0.0.0"   || host == "global"    ){ s->sin_addr.s_addr = INADDR_ANY;       }
+            elif( host == "1.1.1.1"   || host == "loopback"  ){ s->sin_addr.s_addr = INADDR_LOOPBACK;  }
+            elif( host == "127.0.0.1" || host == "localhost" ){ inet_pton(family, "127.0.0.1", &s->sin_addr); }
+            else                                              { inet_pton(family, host.c_str(),&s->sin_addr); }
+
+        }
+
+    return out_st; }
+
+    /*─······································································─*/
+
     expected_t<ip_t,except_t> get_sockname() const noexcept {
         SOCKADDR_ST addr; socklen_t len = sizeof(addr);
 
@@ -329,6 +370,7 @@ public:
           { return except_t( "address not found" ); }
 
         char host[INET6_ADDRSTRLEN] = {0}; uint port;
+        int  family = addr.ss_family;
 
         if( addr.ss_family == AF_INET ) {
             SOCKADDR_IN* s = (SOCKADDR_IN*)&addr;
@@ -340,7 +382,7 @@ public:
             inet_ntop( AF_INET6, &s->sin6_addr, host, sizeof(host) );
         }
 
-        return ip_t({ host, port });
+        return ip_t({ host, port, family });
     }
 
     expected_t<ip_t,except_t> get_peername() const noexcept { 
@@ -353,6 +395,7 @@ public:
           { return except_t( "address not found" ); }
 
         char host[INET6_ADDRSTRLEN] = {0}; uint port;
+        int  family = addr.ss_family;
 
         if( addr.ss_family == AF_INET ) {
             SOCKADDR_IN* s = (SOCKADDR_IN*)&addr;
@@ -364,7 +407,7 @@ public:
             inet_ntop( AF_INET6, &s->sin6_addr, host, sizeof(host) );
         }
 
-        return ip_t({ host, port });
+        return ip_t({ host, port, family });
     }
 
     /*─······································································─*/
@@ -375,6 +418,10 @@ public:
     }
 
     /*─······································································─*/
+
+    void set_write_address( const ip_t& address ) const noexcept { 
+         set_write_address( get_sockaddr( address ) );
+    }
 
     void set_write_address( const SOCKADDR_ST& address ) const noexcept { 
          obj->tmp_addr = address; 
@@ -390,10 +437,10 @@ public:
 
     /*─······································································─*/
 
-    ulong    set_timeout( ulong time ) const noexcept {
-        set_conn_timeout( time );
-        set_recv_timeout( time );
-        set_send_timeout( time ); return time;
+    ulong set_timeout( ulong time ) const noexcept {
+          set_conn_timeout ( time );
+          set_recv_timeout ( time );
+          set_send_timeout ( time ); return time;
     }
 
     /*─······································································─*/
@@ -464,17 +511,17 @@ public:
     /*─······································································─*/
 
     void set_sockopt( agent_t opt ) const noexcept {
-        set_no_delay_mode( opt.no_delay_mode );
-        set_reuse_address( opt.reuse_address );
-        set_conn_timeout ( opt.conn_timeout  );
-        set_recv_timeout ( opt.recv_timeout  );
-        set_send_timeout ( opt.send_timeout  );
-        set_buffer_size  ( opt.buffer_size   );
+         set_no_delay_mode( opt.no_delay_mode );
+         set_reuse_address( opt.reuse_address );
+         set_conn_timeout ( opt.conn_timeout  );
+         set_recv_timeout ( opt.recv_timeout  );
+         set_send_timeout ( opt.send_timeout  );
+         set_buffer_size  ( opt.buffer_size   );
     #ifdef SO_REUSEPORT
-        set_reuse_port   ( opt.reuse_port    );
+         set_reuse_port   ( opt.reuse_port    );
     #endif
-        set_keep_alive   ( opt.keep_alive    );
-        set_broadcast    ( opt.broadcast     );
+         set_keep_alive   ( opt.keep_alive    );
+         set_broadcast    ( opt.broadcast     );
     }
 
     agent_t get_sockopt() const noexcept {
@@ -502,6 +549,10 @@ public:
 
    ~socket_t() noexcept { if( obj.count()>1 && !is_closed() ){ return; } free(); }
 
+    socket_t( int AF, int SOCK, int IPPROTO ) noexcept : obj( new NODE() ){
+              this->AF = AF ; this->SOCK = SOCK ; this->IPPROTO = IPPROTO ;
+    }
+
     socket_t() noexcept : obj( new NODE() ) { _socket_::start_device(); }
 
     /*─······································································─*/
@@ -512,7 +563,7 @@ public:
         if( is_state( STATE::FS_STATE_KILL  ) ){ return; } kill();
         if(!is_state( STATE::FS_STATE_CLOSE | STATE::FS_STATE_STOP ) )
           { onDrain.emit(); }
-          
+
         onClose .emit (); onDrain .clear();
 
         onUnpipe.clear(); onResume.clear();
@@ -524,7 +575,7 @@ public:
 
     /*─······································································─*/
 
-    virtual int socket( const string_t& host, int port ) const noexcept {
+    virtual int socket( const string_t& host, uint port ) const noexcept {
         if( host.empty() ){ onError.emit("invalid IP address"); return -1; }
 
         if((obj->fd=WSASocketW( AF, SOCK, IPPROTO, NULL, 0, WSA_FLAG_OVERLAPPED )) == INVALID_SOCKET )
@@ -553,33 +604,8 @@ public:
         SOCKADDR_ST server_st; memset(&server_st, 0, sizeof(SOCKADDR_ST));
         SOCKADDR_ST client_st; memset(&client_st, 0, sizeof(SOCKADDR_ST));
 
-        if( AF == AF_INET6 ) { set_ipv6_only_mode(0);
-
-            SOCKADDR_IN6* s = (SOCKADDR_IN6*)&server_st;
-            obj->addrlen    = sizeof( SOCKADDR_IN6 );
-            memset( s,0,sizeof(SOCKADDR_IN6));
-
-            s->sin6_family  = AF_INET6; if( port>0 ){ s->sin6_port = htons(port); }
-
-            if  ( host == "::0" || host == "global"    ){ s->sin6_addr = in6addr_any;      }
-            elif( host == "::2" || host == "loopback"  ){ s->sin6_addr = in6addr_loopback; }
-            elif( host == "::1" || host == "localhost" ){ inet_pton(AF, "::1", /*-*/ &s->sin6_addr); }
-            else                                        { inet_pton(AF, host.c_str(),&s->sin6_addr); }
-
-        } else {
-
-            SOCKADDR_IN* s = (SOCKADDR_IN*)&server_st;
-            obj->addrlen   = sizeof(SOCKADDR_IN);
-            memset( s,0,sizeof(SOCKADDR_IN) );
-
-            s->sin_family  = AF_INET; if( port>0 ){ s->sin_port = htons(port); }
-
-            if  ( host == "0.0.0.0"   || host == "global"    ){ s->sin_addr.s_addr = INADDR_ANY;       }
-            elif( host == "1.1.1.1"   || host == "loopback"  ){ s->sin_addr.s_addr = INADDR_LOOPBACK;  }
-            elif( host == "127.0.0.1" || host == "localhost" ){ inet_pton(AF, "127.0.0.1", &s->sin_addr); }
-            else                                              { inet_pton(AF, host.c_str(),&s->sin_addr); }
-
-        }
+        if( AF == AF_INET6 ){ set_ipv6_only_mode(0); }
+        server_st = get_sockaddr( ip_t({ host, port, AF }) );
 
         obj->server_addr = server_st;
         obj->client_addr = client_st;

@@ -63,17 +63,15 @@ public:
     /*─······································································─*/
 
     expected_t<udp_t,except_t>
-    listen( const dns_t& addr, int port, NODE_CLB clb=nullptr ) const noexcept {
+    listen( const dns_t& addr, uint port, NODE_CLB clb=nullptr ) const noexcept {
 
         if( obj->state & STATE::UDP_STATE_CLOSED )
           { except_t err = "udp listener is closed"; onError.emit(err); return err; } 
         if( obj->state & STATE::UDP_STATE_USED )
           { except_t err = "udp listener is used"  ; onError.emit(err); return err; } 
 
-        socket_t sk; obj->state = STATE::UDP_STATE_USED;
-        sk.AF      = addr.family;
-        sk.SOCK    = SOCK_DGRAM ;
-        sk.IPPROTO = IPPROTO_UDP;
+        socket_t sk( addr.family, SOCK_DGRAM, IPPROTO_UDP );
+        obj->state = STATE::UDP_STATE_USED;
 
         if( sk.socket( addr.address, port )==-1 ){
             except_t err = "Error while creating UDP";
@@ -101,7 +99,7 @@ public:
     return *this; }
 
     expected_t<udp_t,except_t>
-    listen( const string_t& host, int port, NODE_CLB clb=nullptr ) const noexcept {
+    listen( const string_t& host, uint port, NODE_CLB clb=nullptr ) const noexcept {
     auto addr = dns::lookup( host, obj->agent.socket_family );
         if( addr.empty() ){ 
             except_t err = "dns address not found";
@@ -112,17 +110,15 @@ public:
     /*─······································································─*/
 
     expected_t<udp_t,except_t>
-    connect( const dns_t& addr, int port, NODE_CLB clb=nullptr ) const noexcept {
+    connect( const dns_t& addr, uint port, NODE_CLB clb=nullptr ) const noexcept {
 
         if( obj->state & STATE::UDP_STATE_CLOSED )
           { except_t err = "udp connector is closed"; onError.emit(err); return err; } 
         if( obj->state & STATE::UDP_STATE_USED )
           { except_t err = "udp connector is used"  ; onError.emit(err); return err; } 
 
-        socket_t sk; obj->state = STATE::UDP_STATE_USED;
-        sk.AF      = addr.family;
-        sk.SOCK    = SOCK_DGRAM ;
-        sk.IPPROTO = IPPROTO_UDP;
+        socket_t sk( addr.family, SOCK_DGRAM, IPPROTO_UDP );
+        obj->state = STATE::UDP_STATE_USED;
 
         if( sk.socket( addr.address, port )==-1 ){
             except_t err = "Error while creating UDP";
@@ -145,7 +141,7 @@ public:
     return *this; }
 
     expected_t<udp_t,except_t>
-    connect( const string_t& host, int port, NODE_CLB clb=nullptr ) const noexcept {
+    connect( const string_t& host, uint port, NODE_CLB clb=nullptr ) const noexcept {
     auto addr = dns::lookup( host, obj->agent.socket_family );
         if( addr.empty() ){ 
             except_t err = "dns address not found";

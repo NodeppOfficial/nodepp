@@ -489,11 +489,7 @@ public:
     
         if( inp.get_pd()==KV_STATE_FALLBACK ){ if( is_std( inp.get_fd() ) ){
             return loop_add( coroutine::add( COROUTINE(){
-            coBegin; 
-
-                while( clb( args... )>=0 )
-                     { coDelay( 100 ); }
-
+            coBegin; while( clb( args... )>=0 ){ coNext; } 
             coFinish
             }));
         } else { return loop_add( cb, args... ); }}
@@ -825,11 +821,7 @@ public:
         if( inp.get_pd()==FLAG::KV_STATE_FALLBACK ){ 
         if( is_std( inp.get_fd() ) ) /*---------*/ {
             return loop_add( coroutine::add( COROUTINE(){
-            coBegin; 
-
-                while( clb( args... )>=0 )
-                     { coDelay( 100 ); }
-
+            coBegin; while( clb( args... )>=0 ){ coNext; } 
             coFinish
             }));
         } else { return loop_add( cb, args... ); }}
@@ -1021,9 +1013,8 @@ public:
         coBegin 
 
             while( clb( args... )>=0 ){
-            if   ( time > 0 && time < process::now() ) { break; }
-        //  if   ( is_std( fd ) )    { coDelay(100); }
-            if   ( inp.is_waiting() ){ coDelay(100); coGoto(0); } 
+            if( time > 0 && time < process::now() ){ break; }
+            if( inp.is_waiting() ) /*-------*/ { coGoto(0); } 
             coNext; }
 
         coFinish
