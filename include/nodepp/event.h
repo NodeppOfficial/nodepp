@@ -19,8 +19,7 @@ protected:
 
     using  DONE = function_t<bool,A...>;
     struct NODE {
-        queue_t<DONE> que; void* addr =nullptr;
-        /*--------------*/ uchar state=0x00; 
+        queue_t<DONE> que; uchar state=0x00; 
     };  ptr_t  <NODE> obj;
 
     enum STATE : uchar {
@@ -46,11 +45,11 @@ public:
     ptr_t<task_t> task( 0UL, task_t() );
 
         obj->que.push([=]( A... args ){ int c=-1; do {
-            if( task.null() || cb.null() ) /*-*/ { return false; }
+            if( task.null() || cb.null() )       { return false; }
             if( task->flag & TASK_STATE::CLOSED ){ return false; }
             if( task->flag & TASK_STATE::USED   ){ return true ; }
-                task->flag|= TASK_STATE::USED ; c= cb( args... ); 
-            if( cb.null() || task.null() ) /*-*/ { return false; }
+                task->flag|= TASK_STATE::USED    ; c=cb( args... ); 
+            if( cb.null() || task.null() )       { return false; }
                 task->flag&=~TASK_STATE::USED;
         } while(c==0); return c==-1 ? false : true; });
 
@@ -82,8 +81,8 @@ public:
             if( task.null() ) /*--------------*/ { return false; }
             if( task->flag & TASK_STATE::CLOSED ){ return false; }
             if( task->flag & TASK_STATE::USED   ){ return true ; }
-                task->flag|= TASK_STATE::USED; cb(args...); 
-            if( cb.null() || task.null() ) /*-*/ { return false; }
+                task->flag|= TASK_STATE::USED    ; cb(args...); 
+            if( cb.null() || task.null() )       { return false; }
                 task->flag&=~TASK_STATE::USED;
         return true; });
 
@@ -100,9 +99,9 @@ public:
         if( address->sign != &obj ) /*-------*/ { return; }
         if( address->flag & TASK_STATE::CLOSED ){ return; }
             address->flag = TASK_STATE::CLOSED;
-            auto node = obj->que.as ( address->addr ); 
-        if( obj->addr == address->addr ){ obj->addr = node->next; }
-        if( node != nullptr ) /*-----*/ { obj->que.erase( node ); }
+            auto node = obj->que.as( address->addr ); 
+        if( node == nullptr ) /*-------------*/ { return; }
+            obj->que.erase( node );
     }
 
     /*─······································································─*/
@@ -125,15 +124,19 @@ public:
         if( empty() || is_paused() || is_used() ){ return; }
 
         obj->state |= STATE::EV_STATE_USED;
-        auto x=obj->que.first();
+        obj->que.set( obj->que.first() );
 
-        while( x != nullptr ){ obj->addr = x->next;
+        while( obj->que.get() != nullptr ){
 
-            bool val= x->data.emit( args... );
-            if( obj->que.empty() ){ break ; }
-            if( val == false )/**/{ obj->que.erase(x); }
+            auto x   = obj->que.get();
+            auto y   = x->next;
+            bool val = x->data.emit( args... );
 
-        x = obj->que.as( obj->addr ); }
+            if( empty() ) /*---*/ { break; }
+            if( !val ){ obj->que.erase(x); }
+            if( y==nullptr ) /**/ { break; }
+
+        obj->que.next(); }
 
         /**/obj->state &=~ STATE::EV_STATE_USED;
         if( obj->state &   STATE::EV_STATE_KILL ){ clear(); }
