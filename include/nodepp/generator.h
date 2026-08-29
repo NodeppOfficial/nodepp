@@ -811,18 +811,16 @@ namespace nodepp { namespace generator { namespace ws {
 
             if ( borrow.size() < 2 ){ return false; } do { 
 
-                auto y = array_t<bool>(encoder::bin::atob( borrow[size] )); size++;
-
-                frame.FIN   = y.slice_view(0,1)[0] == 1;
-                for( auto x : y.slice_view(1,4) ){ frame.RSV = frame.RSV<<1 | x; }
-                for( auto x : y.slice_view(4,8) ){ frame.OPC = frame.OPC<<1 | x; }
+                auto y = borrow[size]; size++;
+                frame.FIN = ( y & 0x80 ) >>7 ;
+                frame.RSV = ( y & 0x70 ) >>4 ;
+                frame.OPC = ( y & 0x0f )     ;
 
             } while(0); do {
 
-                auto y = array_t<bool>(encoder::bin::atob( borrow[size] )); size++;
-
-                frame.MSK   = y.slice_view(0,1)[0] == 1;
-                for( auto x : y.slice_view(1,8) ){ frame.LEN = frame.LEN<<1 | x; }
+                auto y = borrow[size]; size++;
+                frame.MSK = ( y & 0x80 ) >>7 ;
+                frame.LEN = ( y & 0x7f )     ;
 
             } while(0);
 

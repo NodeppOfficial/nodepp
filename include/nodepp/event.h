@@ -48,7 +48,7 @@ public:
             if( task.null() || cb.null() )       { return false; }
             if( task->flag & TASK_STATE::CLOSED ){ return false; }
             if( task->flag & TASK_STATE::USED   ){ return true ; }
-                task->flag|= TASK_STATE::USED    ; c=cb( args... ); 
+                task->flag|= TASK_STATE::USED    ; c=cb(args...) ; 
             if( cb.null() || task.null() )       { return false; }
                 task->flag&=~TASK_STATE::USED;
         } while(c==0); return c==-1 ? false : true; });
@@ -65,7 +65,7 @@ public:
         obj->que.push([=]( A... args ){
             if( task.null() || cb.null() ) /*-*/ { return false; }
             if( task->flag & TASK_STATE::CLOSED ){ return false; }
-                task->flag = TASK_STATE::CLOSED; cb(args...); 
+                task->flag = TASK_STATE::CLOSED  ; cb(args...) ; 
         return false; });
 
         task->flag = TASK_STATE::OPEN;
@@ -81,7 +81,7 @@ public:
             if( task.null() ) /*--------------*/ { return false; }
             if( task->flag & TASK_STATE::CLOSED ){ return false; }
             if( task->flag & TASK_STATE::USED   ){ return true ; }
-                task->flag|= TASK_STATE::USED    ; cb(args...); 
+                task->flag|= TASK_STATE::USED    ; cb(args...) ; 
             if( cb.null() || task.null() )       { return false; }
                 task->flag&=~TASK_STATE::USED;
         return true; });
