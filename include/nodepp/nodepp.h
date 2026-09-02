@@ -70,9 +70,8 @@ namespace nodepp { namespace process {
     }
 
     inline void exit( int err=0 ){
-    if( should_close() ){ goto DONE; } do {
-        auto *raw = &NODEPP_SHTDWN(); 
-             *raw = true; clear(); 
+    if( should_close () ){ goto DONE; } do {
+        NODEPP_SHTDWN() = true; clear(); 
     } while(0); DONE:; ::exit(err); }
 
 }}
