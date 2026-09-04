@@ -65,7 +65,6 @@ public:
     string_t  version;
     header_t  headers;
 
-    string_t  body  ;
     string_t  search;
     string_t  method;
     string_t  path  ;
@@ -117,45 +116,46 @@ public:
     
     /*─······································································─*/
 
-    promise_t<https_t,except_t> read_body( ulong timeout=60000UL ) const noexcept {
-
-        auto self = type::bind( this ); set_recv_timeout( timeout );
-
-    return promise_t<https_t,except_t> ([=](
-        res_t<https_t> res, rej_t<except_t> rej
+    promise_t<string_t,except_t> read_body( ulong timeout=60000UL ) const noexcept {
+           auto self = type::bind( this );
+    return promise_t<string_t,except_t> ([=](
+           res_t<string_t> res, rej_t<except_t> rej
     ){
 
-        auto task = self->onDrain.once([&self,res](){ res( *self ); });
+        auto time = process::now() + timeout;
+        auto body = ptr_t<string_t>( 0UL );
 
-        process::poll( *self, POLL_STATE::READ | POLL_STATE::EDGE, coroutine::add( COROUTINE(){
-        coBegin
+        process::add([=](){ 
+            
+            if( process::now() > time ){ rej( except_t( "timeout reached" ) ); return -1; }
 
             if( self->http->mode[0].state & FLAG::HTTP_FLAG_STREAM ){
 
-                while ( self->http->mode[0].size != 0 ){
-                coWait( self->http->read( self.get(), 
-                        self->get_buffer().data   (), 
-                        self->get_buffer().size   (), self->http->mode[0]
-                )==1 );
-                    self->body += string_t( self->get_buffer_data(), self->http->read.data );
+                while( self->is_available() ){
+                if   ( self->http->mode[0].size == 0 ){ break; }
+                if   ( self->http->read( self.get(),
+                       self->get_buffer().data   (), 
+                       self->get_buffer().size   (), self->http->mode[0]
+                )==1 ){ return 1; }
+                    body[0] += string_t( self->get_buffer_data(), self->http->read.data );
                 }
 
             } else { 
                 
-                while ( self->is_available() ){
-                coWait( self->http->read( self.get(), 
-                        self->get_buffer().data   (), 
-                        self->get_buffer().size   (), self->http->mode[0]
-                )==1 );
-                    self->body += string_t( self->get_buffer_data(), self->http->read.data );
-                }
+                while( self->is_available() ){
+                if   ( self->http->read( self.get(), 
+                       self->get_buffer().data   (), 
+                       self->get_buffer().size   (), self->http->mode[0]
+                )==1 ){ return 1; }
+                    body[0] = string_t( self->get_buffer_data(), self->http->read.data );
+                break; }
 
             }
-            
-            self->onDrain.off(task); res( *self ); 
+                
+            if( body[0].empty() ){ rej( except_t( "no data" ) ); }
+            else /*-----------*/ { res( body[0] ); }
 
-        coFinish
-        }), 0UL );
+        return -1; });
 
     }); }
     

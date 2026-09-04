@@ -907,13 +907,13 @@ namespace nodepp { namespace generator { namespace ws {
 
     GENERATOR( write ){
     protected:
-            uchar_32* mask; string_t borrow; 
-            ulong size=0  ; ptr_t<char> bfx;
-    public: ulong data=0  ;
+            uchar_32 mask; string_t borrow; 
+            ulong  size=0; ptr_t<char> bfx;
+    public: ulong  data=0;
 
     protected:
 
-        ulong write_ws_frame( char* bf, ulong sx, uchar opcode, uchar_32* mask ) {
+        ulong write_ws_frame( char* bf, ulong sx, uchar opcode, uchar_32& mask ) {
         ulong idx = 0;
 
             if( opcode == 0 ){ bool b=0; for( ulong x=0; x<sx; x++ ){
@@ -921,7 +921,7 @@ namespace nodepp { namespace generator { namespace ws {
                      bfx[idx] = !b? 0x82:0x81;
             } else { bfx[idx] = 0x80 | opcode; } ++idx; 
             
-            bfx[idx] = *mask == 0UL ? 0x00 : 0x80;
+            bfx[idx] = mask > 0 ? 0x80 : 0x00;
 
             if ( sx < 126 ){
                 bfx[idx]|= type::cast<uchar>( sx ); ++idx;
@@ -935,9 +935,9 @@ namespace nodepp { namespace generator { namespace ws {
                 type::copy_reverse( mem, mem + len, bfx.get() + idx ); idx += len;
             } 
             
-            if( *mask!= 0UL ) {
+            if( mask > 0 ) {
                 auto mem = (uchar_32*)( bfx.get() + idx );
-                   * mem = *mask; idx += sizeof( uchar_32 );
+                   * mem = mask; idx += sizeof( uchar_32 );
             }
 
         return idx; }
@@ -947,17 +947,15 @@ namespace nodepp { namespace generator { namespace ws {
         template< class T > 
         coEmit( T* fd, char* bf, const ulong& sx ) {
 
-            do { if( borrow.empty() ){
+            do { if( borrow.empty() ){ size = 0UL; 
 
-                mask= &fd->get_mask() ; ulong sy = write_ws_frame( bf, sx, 0, mask );
+                mask   = fd->get_frame_mask(); ulong sy = write_ws_frame( bf, sx, 0, mask );
                 borrow = string_t( bfx.get(), sy ) + string_t( bf, sx );
 
-                if ( *mask != 0UL ){ ulong sz=0; char* key = (char*) mask;
-                for( auto &y: borrow.slice_view( sy, (ulong) -1 ) ){
-                     /**/ y^= key[ sz++ % sizeof (uchar_32) ];
-                }  } 
-                
-                if ( *mask != 0UL ){ *mask = rand(); } size = 0UL; 
+                if ( mask > 0 ){ ulong sz=0; char* key = (char*) &mask;
+                for( auto &y: borrow.slice_view( sy ) ){
+                     /**/ y^= key[sz]; sz = ( sz+1 ) % sizeof(uchar_32);
+                }  }
 
             }   int c = fd->_write_( borrow.get(), borrow.size(), &size );
 
