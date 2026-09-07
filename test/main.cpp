@@ -25,6 +25,7 @@ using namespace nodepp;
 #include "atomic.cpp"
 #include "string.cpp"
 #include "promise.cpp"
+#include "encoder.cpp"
 #include "listener.cpp"
 #include "observer.cpp"
 #include "function.cpp"
@@ -57,6 +58,7 @@ void onMain(){
     TEST::STRING  ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::ATOMIC  ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::PROMISE ::TEST_RUNNER(); conio::log("\n---\n");
+    TEST::ENCODER ::TEST_RUNNER(); conio::log("\n---\n");
     TEST::COROUTINE::TEST_RUNNER(); conio::log("\n---\n");
     TEST::FUNCTION::TEST_RUNNER(); conio::log("\n---\n");
     TEST::OBSERVER::TEST_RUNNER(); conio::log("\n---\n");

@@ -110,19 +110,20 @@ namespace nodepp { namespace encoder { namespace XOR {
 namespace nodepp { namespace encoder { namespace bytes {
 
     template< class T >
-    ptr_t<uchar> atob( T num ){
-        ptr_t<uchar> out ( sizeof(num), 0 );
+    ptr_t<uchar> atob( T num ){ ptr_t<uchar> out( sizeof( num ), 0 );
+        auto tmp = typename type::make_unsigned<T>::type( num );
         for( ulong y=0; y<out.size(); ++y ){
-             out[y] = num >> ( 8*(out.size()-y-1) );
-        }    return out;
-    }
+             out[y] = tmp >> ( 8*(out.size()-y-1) );
+        }
+    return out; }
 
     template< class T >
-    T btoa( const ptr_t<uchar>& num ){ T out;
-      for( ulong y=0; y<num.size(); ++y ){
-           out = out << 8 | num[y];
-      }    return out;
-    }
+    T btoa( const ptr_t<uchar>& num ){
+    auto out = typename type::make_unsigned<T>::type( 0x00 );
+        for( ulong y=0; y<num.size(); ++y ){
+             out = ( out << 8 ) | num[y];
+        }    
+    return out; }
 
 }}}
 
@@ -131,20 +132,19 @@ namespace nodepp { namespace encoder { namespace bytes {
 namespace nodepp { namespace encoder { namespace bin {
 
     template< class T >
-    ptr_t<bool> atob( T num ){
-    ptr_t<bool> out ( sizeof(num) * 8, 0 );
-        for ( auto x=sizeof(num)*8; x--; ){
-              out[x] = num & 1 ; num >>= 1;
-        }     return out;
+    ptr_t<bool> atob( T num ){ ptr_t<bool> out ( sizeof ( num ) * 8, 0 );
+        auto tmp = typename type::make_unsigned<T>::type( num );
+        for( auto x= out.size(); x-- >0; ){
+             out[x]= tmp & 0x01; tmp >>= 1;
+        }    return out;
     }
 
     template< class T >
-    T btoa( const ptr_t<bool>& num ){ T out = 0;
-        if  ( num.empty() ){ return out; }
-        for ( auto& x : num ){
-              out = out << 1 | ( x & 1 );
-        }     return out;
-    }
+    T btoa( const ptr_t<bool>& num ){ 
+    auto out = typename type::make_unsigned<T>::type( 0x00 );
+        if ( num.empty () ){ return out; }
+        for( auto& x: num ){ out = ( out << 0x01 ) | ( x & 0x01 ); }
+    return out; }
 
 }}}
 
@@ -153,21 +153,21 @@ namespace nodepp { namespace encoder { namespace bin {
 namespace nodepp { namespace encoder { namespace hex {
 
     template< class T, class = typename type::enable_if<type::is_integral<T>::value,T>::type >
-    string_t atob( T num ){ string_t out; do {
-             out.unshift( NODEPP_BASE8[num&(T)(0xf)] ); num >>= 4;
-        } while( num != 0 ); if( out.size()%2!=0 ){
-             out.unshift( '0' );
-        } return out;
-    }
+    string_t atob( T num ){ auto tmp = typename type::make_unsigned<T>::type( num );
+    string_t out ; do {
+         out.unshift( NODEPP_BASE8[ tmp & 0x0F ] ); tmp >>= 4;
+    } while( tmp != 0 ); if( out.size() % 2 != 0 ){
+         out.unshift( '0' );
+    } return out; }
 
     template< class T, class = typename type::enable_if<type::is_integral<T>::value,T>::type >
     T btoa( const string_t& num ){ if ( num.empty() ){ return 0; }
-        T out = 0; for ( auto c: num ){    out  = out<<4;
-            if   ( c >= '0' && c <= '9' ){ out |= c - '0'     ; }
-            elif ( c >= 'a' && c <= 'f' ){ out |= c - 'a' + 10; }
-            elif ( c >= 'A' && c <= 'F' ){ out |= c - 'A' + 10; }
-            else { return 0; }
-        }   return out;
+        auto out = typename type::make_unsigned<T>::type (0x00);
+        for ( auto c: num ){ out  = out << 4;
+        if  ( c >= '0' && c <= '9' ){ out |= c - '0'     ; }
+        elif( c >= 'a' && c <= 'f' ){ out |= c - 'a' + 10; }
+        elif( c >= 'A' && c <= 'F' ){ out |= c - 'A' + 10; }
+        else{ return 0; }} return out;
     }
 
 }}}
@@ -177,7 +177,7 @@ namespace nodepp { namespace encoder { namespace hex {
 namespace nodepp { namespace encoder { namespace hex {
 
     inline string_t atob( const ptr_t<uchar>& inp ){
-        if ( inp.empty() ){ return nullptr; }
+        if ( inp.empty() ) { return nullptr; }
         queue_t<char> out; for( auto x : inp ){
             for( auto y: atob(x) ){ out.push( y ); }
         }   out.push('\0'); return string_t( out.data() );
@@ -218,11 +218,11 @@ namespace nodepp { namespace encoder { namespace base16 {
 
 namespace nodepp { namespace encoder { namespace base64 {
 
-    inline string_t atob( const string_t &in ) {
+    inline string_t atob( const string_t &inp ) {
 
         queue_t<char> out; int pos1 = 0, pos2 = -6;
 
-        for ( uchar c: in ) {
+        for ( uchar c: inp ) {
             pos1= ( pos1 << 8 ) + c; pos2 += 8;
             while ( pos2 >= 0 ) {
                 out.push(NODEPP_BASE64[(pos1>>pos2)&0x3F]);
