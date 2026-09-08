@@ -257,7 +257,7 @@ namespace nodepp { namespace encoder { namespace base64 {
 
 namespace nodepp { namespace encoder { namespace base58 {
 
-    string_t atob( string_t message ){
+    inline string_t atob( string_t message ){
         
         if( message.empty() ){ return nullptr; } 
         
@@ -286,11 +286,11 @@ namespace nodepp { namespace encoder { namespace base58 {
         }
         
         out.insert( out.first(), zrs.data() ); 
-        out.push( '\0' ); return out.data();
+        out.push  ( '\0' ); return out.data();
 
     }
 
-    string_t btoa( string_t message ){
+    inline string_t btoa( string_t message ){
 
         if ( message.empty() ){ return nullptr; } 
         int T[256]; type::fill( T, T+256, -1 );
@@ -318,9 +318,9 @@ namespace nodepp { namespace encoder { namespace base58 {
 
         }
         
-        out.insert( nullptr, zrs.data() );
-        out.insert( nullptr, nmb.reverse().ptr() ); 
-        out.push( '\0' ); return out.data();
+        out.insert( nullptr , nmb.reverse().ptr() ); 
+        out.insert( out.first(), zrs.data() );
+        out.push  ( '\0' ); return out.data();
     }
 
 }}}

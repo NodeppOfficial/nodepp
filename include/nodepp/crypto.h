@@ -415,48 +415,16 @@ public:
 namespace nodepp { class base58_encoder_t {
 protected:
 
-    struct NODE {
-        queue_t<string_t> bff;
-        BIGNUM* bn = nullptr; bool state =0;
-       ~NODE() { if( bn ){ BN_clear_free( bn ); } }
-    };  ptr_t<NODE> obj;
-
-    string_t encode( string_t msg ) const noexcept {
-        if( msg.empty() ){ return nullptr; }
-
-        BN_zero(obj->bn); BN_bin2bn((uchar*)msg.data(), msg.size(), obj->bn);
-        auto chr = string_t( NODEPP_BASE58 );
-
-        string_t result; while(!BN_is_zero(obj->bn)) {
-            int rem = BN_div_word(obj->bn, chr.size());
-            result.unshift(chr[rem]);
-        }
-
-        for( auto& byte : msg ) {
-        if ( byte != 0x00 ){ break; }
-             result.unshift(chr[0]);
-        }
-
-        if( !onData.empty() ){ onData.emit(result); }
-
-    return result; }
+    struct NODE { queue_t<string_t> bff; bool state=0; }; ptr_t<NODE> obj;
 
 public:
-
-    event_t<string_t> onData;
-    event_t<>         onClose;
-
-    base58_encoder_t() : obj( new NODE() ) { 
-    NODEPP_CRYPTO_INITIALIZATOR();
-        obj->state = 1; obj->bn = (BIGNUM*) BN_new();
-        if( !obj->bn ){ NODEPP_THROW_ERROR("can't initializate encoder"); }
-    }
-    
+  
    ~base58_encoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
+    base58_encoder_t() : obj( new NODE() ) { obj->state = 1; }
 
     string_t get() const noexcept { if( obj->state == 0 ){ return nullptr; }
-        auto raw = array_t<string_t>( obj->bff.data() ).join(nullptr);
-        auto data= encode( raw ); free(); return data; 
+        auto raw = string::join( obj->bff, "" );
+        auto data= encoder::base58::atob( raw ); free(); return data; 
     }
 
     void update( const string_t& msg ) const noexcept { 
@@ -464,9 +432,7 @@ public:
     }
 
     void free() const noexcept { 
-        if( obj->state == 1 ){ return; } 
-        obj->state = 0; onClose.emit (); 
-        onData.clear(); onClose.clear();
+        if( obj->state == 1 ){ return; } obj->state = 0; 
     }
 
     bool is_available() const noexcept { return obj->state == 1; }
@@ -482,54 +448,20 @@ public:
 namespace nodepp { class base58_decoder_t {
 protected:
 
-    struct NODE {
-        queue_t<string_t> bff;
-        BIGNUM* bn =nullptr; bool state=0;
-       ~NODE() { if( bn ){ BN_clear_free( bn ); } }
-    };  ptr_t<NODE> obj;
-
-    string_t decode( string_t msg ) const noexcept {
-        if( msg.empty() ){ return nullptr; }
-
-        BN_zero(obj->bn); ulong lz = 0; ulong ch = true;
-        auto chr = string_t( NODEPP_BASE58 );
-
-        for ( const auto& c : msg ){
-        if  ( ch && c == chr[0] ){ lz++; } 
-        else{ ch = false; }
-
-            const char* pos = strchr(chr.data(), c);
-            if( pos == nullptr ){ return nullptr; }
-            
-            BN_mul_word(obj->bn, chr.size());
-            BN_add_word(obj->bn, pos- chr.data());
-        }
-
-        int num_bytes = BN_num_bytes(obj->bn); 
-        ptr_t<uchar> tmp ( lz + num_bytes, '\0' );
-        BN_bn2bin( obj->bn, tmp.data() + lz );
-
-        string_t out( (char*)tmp.data(), tmp.size() );
-
-    return out; }
+    struct NODE { queue_t<string_t> bff; bool state=0; }; ptr_t<NODE> obj;
 
 public:
 
-    base58_decoder_t() : obj( new NODE() ) { 
-    NODEPP_CRYPTO_INITIALIZATOR();
-        obj->state = 1; obj->bn = (BIGNUM*) BN_new();
-        if( !obj->bn ){ NODEPP_THROW_ERROR("can't initializate decoder"); }
-    }
-    
    ~base58_decoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
+    base58_decoder_t() : obj( new NODE() ) { obj->state = 1; }
 
     void update( const string_t& msg ) const noexcept { 
          if( obj->state!=1 ){ return; } obj->bff.push( msg );
     }
 
     string_t get() const noexcept { if( obj->state == 0 ){ return nullptr; }
-        auto raw = array_t<string_t>( obj->bff.data() ).join(nullptr);
-        auto data= decode( raw ); free(); return data; 
+        auto raw = string::join( obj->bff, "" );
+        auto data= encoder::base58::btoa( raw ); free(); return data; 
     }
 
     void free() const noexcept { 
