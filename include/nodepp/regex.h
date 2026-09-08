@@ -910,7 +910,7 @@ namespace nodepp { namespace regex {
              out.push( string::get( y , args... ) ); idx = x[1];
         }    out.push( val.slice_view( idx ) );
 
-        return array_t<string_t>( out.data() ).join("");
+        return string::join( out, "" );
     }
 
 }}

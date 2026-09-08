@@ -23,32 +23,14 @@ protected:
 
     /*─······································································─*/
 
-    uchar_64 msk1, msk2; queue_t<ptr_t<T>> que; 
+    uchar_64 mask; queue_t<ptr_t<T>> que; 
 
     /*─······································································─*/
 
-    uchar_64 atob( void* address ) const noexcept {
-    uchar_64 raw = ( (uchar_64) address ) & (((uchar_64)-1)>>16);
-    uchar_64 msk = ( (uchar_64) msk1    ) & (((uchar_64)-1)>>16);
-    uchar_64 col =   (uchar_64) address   ^   (uchar_64) msk2 ;
+    uchar_64 atob( void*    address ) const noexcept { return encoder::ofuscator::atob( address, mask ); }
+    void*    btoa( uchar_64 address ) const noexcept { return encoder::ofuscator::btoa( address, mask ); }
 
-        uchar_64 sum = ( col^(col>>16)^(col>>32)^(col>>48)) & 0xffff;
-        return ( raw ^ msk ) | ( sum << 48 );
-
-    }
-
-    void* btoa( uchar_64 address ) const noexcept {
-    uchar_64 msk = ( (uchar_64)  msk1  )& (((uchar_64)-1)>>16);
-    void*    raw = (void*)((address^msk)& (((uchar_64)-1)>>16) );
-    uchar_64 col = (uchar_64) raw       ^   (uchar_64) msk2 ;
-
-        uchar_64 sum = ( col^(col>>16)^(col>>32)^(col>>48)) & 0xffff;
-        uchar_64 out = ( address >>48) /*----------------*/ & 0xffff;
-        return out==sum ? raw : nullptr ; 
-
-    }
-
-public: handler_t() : msk1( (uchar_64) this ), msk2( (uchar_64) &que ) {}
+public: handler_t() : mask( (uchar_64) &que ) {}
 
     uchar_64 create() const noexcept { que.push( ptr_t<T>() ); return atob( que.last() ); }
 

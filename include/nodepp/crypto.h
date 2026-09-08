@@ -15,7 +15,9 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define CRYPTO_BASE64 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+#define NODEPP_BASE64 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+#define NODEPP_BASE58 "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
 #include "encoder.h"
 #include "fs.h"
 
@@ -69,9 +71,7 @@ namespace nodepp { class NODEPP_CRYPTO_INITIALIZATOR { public:
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp {
-
-class hash_t {
+namespace nodepp { class hash_t {
 protected:
 
     struct NODE {
@@ -125,11 +125,11 @@ public:
 
     void close() const noexcept { free(); } 
 
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-class hmac_t {
+namespace nodepp { class hmac_t {
 protected:
 
     struct NODE {
@@ -185,11 +185,11 @@ public:
 
     void close() const noexcept { free(); } 
 
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-class xor_t {
+namespace nodepp { class xor_t {
 protected:
 
     struct CTX {
@@ -250,11 +250,11 @@ public:
 
     void close() const noexcept { free(); } 
 
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-class encrypt_t {
+namespace nodepp { class encrypt_t {
 protected:
 
     struct NODE {
@@ -329,11 +329,11 @@ public:
 
     void close() const noexcept { free(); } 
 
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-class decrypt_t {
+namespace nodepp { class decrypt_t {
 protected:
 
     struct NODE {
@@ -408,17 +408,16 @@ public:
 
     void close() const noexcept { free(); } 
 
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-class encoder_t {
+namespace nodepp { class base58_encoder_t {
 protected:
 
     struct NODE {
-        string_t chr; bool state =0;
         queue_t<string_t> bff;
-        BIGNUM* bn = nullptr;
+        BIGNUM* bn = nullptr; bool state =0;
        ~NODE() { if( bn ){ BN_clear_free( bn ); } }
     };  ptr_t<NODE> obj;
 
@@ -426,15 +425,16 @@ protected:
         if( msg.empty() ){ return nullptr; }
 
         BN_zero(obj->bn); BN_bin2bn((uchar*)msg.data(), msg.size(), obj->bn);
+        auto chr = string_t( NODEPP_BASE58 );
 
         string_t result; while(!BN_is_zero(obj->bn)) {
-            int rem = BN_div_word(obj->bn, obj->chr.size());
-            result.unshift(obj->chr[rem]);
+            int rem = BN_div_word(obj->bn, chr.size());
+            result.unshift(chr[rem]);
         }
 
         for( auto& byte : msg ) {
         if ( byte != 0x00 ){ break; }
-             result.unshift(obj->chr[0]);
+             result.unshift(chr[0]);
         }
 
         if( !onData.empty() ){ onData.emit(result); }
@@ -446,13 +446,13 @@ public:
     event_t<string_t> onData;
     event_t<>         onClose;
 
-    encoder_t( const string_t& chr ) : obj( new NODE() ) { 
+    base58_encoder_t() : obj( new NODE() ) { 
     NODEPP_CRYPTO_INITIALIZATOR();
-        obj->state = 1; obj->chr = chr; obj->bn = (BIGNUM*) BN_new();
+        obj->state = 1; obj->bn = (BIGNUM*) BN_new();
         if( !obj->bn ){ NODEPP_THROW_ERROR("can't initializate encoder"); }
     }
     
-   ~encoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
+   ~base58_encoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     string_t get() const noexcept { if( obj->state == 0 ){ return nullptr; }
         auto raw = array_t<string_t>( obj->bff.data() ).join(nullptr);
@@ -475,17 +475,16 @@ public:
 
     void close() const noexcept { free(); }
 
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-class decoder_t {
+namespace nodepp { class base58_decoder_t {
 protected:
 
     struct NODE {
-        string_t chr; bool state=0;
         queue_t<string_t> bff;
-        BIGNUM* bn =nullptr;
+        BIGNUM* bn =nullptr; bool state=0;
        ~NODE() { if( bn ){ BN_clear_free( bn ); } }
     };  ptr_t<NODE> obj;
 
@@ -493,39 +492,36 @@ protected:
         if( msg.empty() ){ return nullptr; }
 
         BN_zero(obj->bn); ulong lz = 0; ulong ch = true;
+        auto chr = string_t( NODEPP_BASE58 );
 
         for ( const auto& c : msg ){
-        if  ( ch && c == obj->chr[0] ){ lz++; } 
+        if  ( ch && c == chr[0] ){ lz++; } 
         else{ ch = false; }
 
-            const char* pos = strchr(obj->chr.data(), c);
+            const char* pos = strchr(chr.data(), c);
             if( pos == nullptr ){ return nullptr; }
             
-            BN_mul_word(obj->bn, obj->chr.size());
-            BN_add_word(obj->bn, pos- obj->chr.data());
+            BN_mul_word(obj->bn, chr.size());
+            BN_add_word(obj->bn, pos- chr.data());
         }
 
         int num_bytes = BN_num_bytes(obj->bn); 
         ptr_t<uchar> tmp ( lz + num_bytes, '\0' );
         BN_bn2bin( obj->bn, tmp.data() + lz );
 
-        string_t out( (char*)tmp.data(),tmp.size() );
-        if( !onData.empty() ){ onData.emit( out ); }
+        string_t out( (char*)tmp.data(), tmp.size() );
 
     return out; }
 
 public:
 
-    event_t<string_t> onData;
-    event_t<>         onClose;
-
-    decoder_t( const string_t& chr ) : obj( new NODE() ) { 
+    base58_decoder_t() : obj( new NODE() ) { 
     NODEPP_CRYPTO_INITIALIZATOR();
-        obj->state = 1; obj->chr = chr; obj->bn = (BIGNUM*) BN_new();
+        obj->state = 1; obj->bn = (BIGNUM*) BN_new();
         if( !obj->bn ){ NODEPP_THROW_ERROR("can't initializate decoder"); }
     }
     
-   ~decoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
+   ~base58_decoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
     void update( const string_t& msg ) const noexcept { 
          if( obj->state!=1 ){ return; } obj->bff.push( msg );
@@ -537,9 +533,7 @@ public:
     }
 
     void free() const noexcept { 
-        if( obj->state == 1 ){ return; } 
-        obj->state = 0; onClose.emit (); 
-        onData.clear(); onClose.clear();
+        if( obj->state == 1 ){ return; } obj->state = 0;
     }
 
     bool is_available() const noexcept { return obj->state == 1; }
@@ -548,11 +542,11 @@ public:
 
     void close() const noexcept { free(); } 
 
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-class base64_encoder_t {
+namespace nodepp { class base64_encoder_t {
 protected:
 
     struct CTX {
@@ -599,7 +593,7 @@ public:
             obj->ctx->pos2 += 8;
 
             while ( obj->ctx->pos2 >= 0 ) { 
-                obj->bff[obj->ctx->len] = CRYPTO_BASE64[(obj->ctx->pos1 >> obj->ctx->pos2) & 0x3F];
+                obj->bff[obj->ctx->len] = NODEPP_BASE64[(obj->ctx->pos1 >> obj->ctx->pos2) & 0x3F];
                 obj->ctx->pos2 -= 6; ++obj->ctx->len; 
             }   obj->ctx->pos1 &= 0x3F; 
         
@@ -618,7 +612,7 @@ public:
         string_t out; obj->state = 0; obj->ctx->len = 0;
 
         if( obj->ctx->pos2 > -6 ){ 
-            obj->bff[obj->ctx->len] = CRYPTO_BASE64[((obj->ctx->pos1<<8)>>(obj->ctx->pos2+8))&0x3F];
+            obj->bff[obj->ctx->len] = NODEPP_BASE64[((obj->ctx->pos1<<8)>>(obj->ctx->pos2+8))&0x3F];
             obj->ctx->len++; 
         } while ( ( obj->ctx->len + obj->ctx->size ) % 4 ) { 
             obj->bff[obj->ctx->len] = '='; 
@@ -638,18 +632,18 @@ public:
 
     void close() const noexcept { free(); } 
 
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-class base64_decoder_t {
+namespace nodepp { class base64_decoder_t {
 protected:
 
     struct CTX {
         int pos1, pos2;
         ulong     size;
         ulong      len;
-        int    T [255];
+        int    T [256];
     };
 
     struct NODE {
@@ -680,24 +674,20 @@ public:
     void update( string_t msg ) const noexcept { 
         if( !obj->state ){ return; } ulong chunk = obj->bff.size();
 
-        while( !msg.empty() ){ auto tmp = msg.slice( 0, chunk );
-        for  ( int x=0; x<64; x++ ){ 
-            
-            obj->ctx->T[type::cast<int>(CRYPTO_BASE64[x])] =x; }
+        while( !msg.empty() ){ auto tmp = msg.slice_view( 0, chunk );
+        type::fill( obj->ctx->T, obj->ctx->T+256, -1 ); string_t out; obj->ctx->len =0; 
+        for  ( int x=0; x<64; x++ ){ obj->ctx->T[type::cast<int>(NODEPP_BASE64[x])] =x; }
+        for  ( auto &x: tmp ) { uint y = type::cast<uint>(x);
+        if   ( obj->ctx->T[y]==-1 ){ break; }
 
-            string_t out; obj->ctx->len = 0; forEach ( x, tmp ) {
-                uint   y = type::cast<uint>(x);
+            obj->ctx->pos1 = ( obj->ctx->pos1 << 6 ) + obj->ctx->T[y]; obj->ctx->pos2 += 6;
 
-                if( obj->ctx->T[y]==-1 ){ break; }
+            if( obj->ctx->pos2 >= 0 ) {
+                obj->bff[obj->ctx->len] = char((obj->ctx->pos1>>obj->ctx->pos2)&0xFF);
+                obj->ctx->pos2 -= 8; ++obj->ctx->len;
+            }
 
-                obj->ctx->pos1 = ( obj->ctx->pos1 << 6 ) + obj->ctx->T[y]; obj->ctx->pos2 += 6;
-
-                if( obj->ctx->pos2 >= 0 ) {
-                    obj->bff[obj->ctx->len] = char((obj->ctx->pos1>>obj->ctx->pos2)&0xFF);
-                    obj->ctx->pos2 -= 8; ++obj->ctx->len;
-                }
-
-            }   obj->ctx->size += obj->ctx->len; out = string_t( &obj->bff, obj->ctx->len );
+        }   obj->ctx->size += obj->ctx->len; out = string_t( &obj->bff, obj->ctx->len );
 
             if ( obj->ctx->len == 0 ){ return; }
             if ( onData.empty()     ){ obj->buff.push(out); } else { onData.emit( out ); }
@@ -719,11 +709,11 @@ public:
 
     void close() const noexcept { free(); } 
 
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-class X509_t {
+namespace nodepp { class X509_t {
 protected:
 
     static int PASS_CLB ( char *buf, int size, int rwflag, void *args ) {
@@ -830,11 +820,11 @@ public:
             obj->state = 0; 
     }
 
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-class rsa_t {
+namespace nodepp { class rsa_t {
 protected:
 
     static int PASS_CLB ( char *buf, int size, int rwflag, void *args ) {
@@ -958,11 +948,11 @@ public:
             obj->state =  0;
     }
     
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-class ec_t {
+namespace nodepp { class ec_t {
 protected:
 
     struct NODE {
@@ -973,9 +963,9 @@ protected:
         bool      state = 0;
 
        ~NODE() {
-            if( priv_key  ){ BN_free      ( priv_key ); }
-        //  if( key_pair  ){ EC_KEY_free  ( key_pair ); }
-            if( pub_key   ){ EC_POINT_free( pub_key ); }
+            if( priv_key  ){ BN_free      ( priv_key  ); }
+        //  if( key_pair  ){ EC_KEY_free  ( key_pair  ); }
+            if( pub_key   ){ EC_POINT_free( pub_key   ); }
             if( key_group ){ EC_GROUP_free( key_group ); }
         }
 
@@ -1042,11 +1032,11 @@ public:
 
     void close() const noexcept { free(); } 
 
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-class dh_t {
+namespace nodepp { class dh_t {
 protected:
 
     struct NODE {
@@ -1116,11 +1106,11 @@ public:
         return encoder::base16::atob( string_t( (char*) &shared, (ulong) len ) );
     }
 
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-class dsa_t {
+namespace nodepp { class dsa_t {
 protected:
 
     static int PASS_CLB ( char *buf, int size, int rwflag, void *args ) {
@@ -1221,11 +1211,11 @@ public:
 
     void        close() const noexcept { free(); } 
     
-};
+};}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace crypto { namespace hash {
+namespace nodepp { namespace crypto { namespace hash {
 
     class MD5 : public hash_t { public:
           MD5() : hash_t( EVP_md5(), MD5_DIGEST_LENGTH ) {}
@@ -1263,11 +1253,11 @@ namespace crypto { namespace hash {
           RIPEMD160() : hash_t( EVP_ripemd160(), RIPEMD160_DIGEST_LENGTH ) {}
     }; 
 
-}}
+}}}
     
-    /*─······································································─*/
+/*────────────────────────────────────────────────────────────────────────────*/
 
-namespace crypto { namespace hmac {
+namespace nodepp { namespace crypto { namespace hmac {
 
     class MD5 : public hmac_t { public:
           MD5 ( const string_t& key ) : hmac_t( key, EVP_md5(), MD5_DIGEST_LENGTH ) {}
@@ -1305,11 +1295,11 @@ namespace crypto { namespace hmac {
           RIPEMD160( const string_t& key ) : hmac_t( key, EVP_ripemd160(), RIPEMD160_DIGEST_LENGTH ) {}
     }; 
 
-}}
+}}}
     
-    /*─······································································─*/
+/*────────────────────────────────────────────────────────────────────────────*/
 
-namespace crypto { namespace encrypt {
+namespace nodepp { namespace crypto { namespace encrypt {
 
     class RSA : public rsa_t { public: template< class... T > 
           RSA ( const T&... args ) : rsa_t( args... ) {}
@@ -1369,11 +1359,11 @@ namespace crypto { namespace encrypt {
           TRIPLE_DES_ECB ( const T&... args ) : encrypt_t( args..., EVP_des_ede3_ecb() ) {}
     };
 
-}}
+}}}
     
-    /*─······································································─*/
+/*────────────────────────────────────────────────────────────────────────────*/
 
-namespace crypto { namespace decrypt {
+namespace nodepp { namespace crypto { namespace decrypt {
 
     class RSA : public rsa_t { public: template< class... T > 
           RSA ( const T&... args ) : rsa_t( args... ) {}
@@ -1433,63 +1423,39 @@ namespace crypto { namespace decrypt {
           TRIPLE_DES_ECB ( const T&... args ) : decrypt_t( args..., EVP_des_ede3_ecb() ) {}
     };
 
-}}
+}}}
     
-    /*─······································································─*/
+/*────────────────────────────────────────────────────────────────────────────*/
 
-namespace crypto { namespace encoder {
+namespace nodepp { namespace crypto { namespace encoder {
 
-    class BASE58 : public encoder_t { public:
-          BASE58 () : encoder_t( "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz" ) {}
-    };
-
-    class BASE16 : public encoder_t { public: 
-          BASE16 () : encoder_t( "123456789ABCDEF" ){}
-    };
-
-    class BASE8 : public encoder_t { public: 
-          BASE8 () : encoder_t( "1234567" ){}
-    };
-
-    class BASE4 : public encoder_t { public: 
-          BASE4 () : encoder_t( "123" ){}
+    class BASE58 : public base58_encoder_t { public:
+          BASE58 () : base58_encoder_t() {}
     };
 
     class BASE64 : public base64_encoder_t { public:
           BASE64 () : base64_encoder_t() {}
     };
 
-}}
+}}}
     
-    /*─······································································─*/
+/*────────────────────────────────────────────────────────────────────────────*/
 
-namespace crypto { namespace decoder {
+namespace nodepp { namespace crypto { namespace decoder {
 
-    class BASE58 : public decoder_t { public:
-          BASE58 () : decoder_t( "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz" ) {}
-    };
-
-    class BASE16 : public decoder_t { public: 
-          BASE16 () : decoder_t( "123456789ABCDEF" ){}
-    };
-
-    class BASE8 : public decoder_t { public: 
-          BASE8 () : decoder_t( "1234567" ){}
-    };
-
-    class BASE4 : public decoder_t { public: 
-          BASE4 () : decoder_t( "123" ){}
+    class BASE58 : public base58_decoder_t { public: 
+          BASE58 () : base58_decoder_t(){}
     };
 
     class BASE64 : public base64_decoder_t { public:
           BASE64 () : base64_decoder_t() {}
     };
 
-}}
+}}}
     
-    /*─······································································─*/
+/*────────────────────────────────────────────────────────────────────────────*/
 
-namespace crypto { namespace curve { //openssl ecparam -list_curves
+namespace nodepp { namespace crypto { namespace curve { //openssl ecparam -list_curves
     
     class PRIME256V1: public ec_t { public: template< class... T >
           PRIME256V1( const T&... args ) noexcept : ec_t( args..., NID_X9_62_prime256v1 ) {}
@@ -1529,11 +1495,11 @@ namespace crypto { namespace curve { //openssl ecparam -list_curves
           SECP256K1( const T&... args ) noexcept : ec_t( args..., NID_secp256k1 ) {}
     };
 
-}}
+}}}
     
-    /*─······································································─*/
+/*────────────────────────────────────────────────────────────────────────────*/
 
-namespace crypto { namespace sign {
+namespace nodepp { namespace crypto { namespace sign {
     
     class DSA : public dsa_t { public: template< class... T >
           DSA ( const T&... args ) : dsa_t ( args... ) {}
@@ -1543,25 +1509,22 @@ namespace crypto { namespace sign {
           DH ( const T&... args ) : dh_t ( args... ) {}
     };
 
-}}
-    
-    /*─······································································─*/
+}}}  
 
-namespace crypto { namespace certificate {
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace crypto { namespace certificate {
 
     class X509 : public X509_t { public: template< class... T > 
           X509 ( const T&... args ) : X509_t ( args... ) {}
     };
 
-}}
+}}}
   
-    /*─······································································─*/
-
-}
-
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#undef CRYPTO_BASE64
+#undef NODEPP_BASE58
+#undef NODEPP_BASE64
 #endif
 
 /*────────────────────────────────────────────────────────────────────────────*/

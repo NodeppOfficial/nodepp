@@ -19,8 +19,8 @@ namespace TEST { namespace ENCODER {
             auto clb = function_t<string_t>( [=](){ return "hello world!"; } );
             auto adr = &clb; auto sign = (uchar_64) rand();
 
-            auto inp = encoder::ofuscator::atob( (void*) adr, (void*) sign );
-            auto out = encoder::ofuscator::btoa( /*---*/ inp, (void*) sign );
+            auto inp = encoder::ofuscator::atob( (void*) adr, sign );
+            auto out = encoder::ofuscator::btoa( /*---*/ inp, sign );
             auto nlb = (function_t<string_t>*) out;
 
             if( out == nullptr ) /*------*/ { TEST_FAIL(); }
@@ -42,9 +42,9 @@ namespace TEST { namespace ENCODER {
 
         TEST_ADD( test, "TEST 3 | encoder bytes", [](){
 
-            auto x = (ulong) 0x32;
-            auto a = encoder::bytes::atob       ( x );
-            auto b = encoder::bytes::btoa<ulong>( a );
+            auto x = (char) 0xFF;
+            auto a = encoder::bytes::atob      ( x );
+            auto b = encoder::bytes::btoa<char>( a );
 
             if( x != b ){ TEST_FAIL(); } TEST_DONE();
 
@@ -52,9 +52,9 @@ namespace TEST { namespace ENCODER {
 
         TEST_ADD( test, "TEST 4 | encoder binary", [](){
 
-            auto x = (ulong) 0x32;
-            auto a = encoder::bin::atob       ( x );
-            auto b = encoder::bin::btoa<ulong>( a );
+            auto x = (char) 0xFF;
+            auto a = encoder::bin::atob      ( x );
+            auto b = encoder::bin::btoa<char>( a );
 
             if( x != b ){ TEST_FAIL(); } TEST_DONE();
 
@@ -62,22 +62,22 @@ namespace TEST { namespace ENCODER {
 
         TEST_ADD( test, "TEST 5 | encoder hex", [](){
 
-            auto x = (ulong) 0x32;
-            auto a = encoder::hex::atob       ( x );
-            auto b = encoder::hex::btoa<ulong>( a );
+            auto x = (char) 0xFF;
+            auto a = encoder::hex::atob      ( x );
+            auto b = encoder::hex::btoa<char>( a );
 
-            if( a != "32" ){ TEST_FAIL(); }
+            if( a != "ff" ){ TEST_FAIL(); }
             if( x != b    ){ TEST_FAIL(); } TEST_DONE();
 
         });
 
         TEST_ADD( test, "TEST 6 | encoder hex 2", [](){
 
-            auto x = ptr_t<uchar>({ 0x32 });
+            auto x = ptr_t<uchar>({ 0xFF });
             auto a = encoder::hex::atob( x );
             auto b = encoder::hex::btoa( a );
 
-            if( a != "32" ) /*-----------------*/ { TEST_FAIL(); }
+            if( a != "ff" ) /*-----------------*/ { TEST_FAIL(); }
             if( memcmp( x.get(), b.get(), 1 )!=0 ){ TEST_FAIL(); } TEST_DONE();
 
         });
@@ -87,6 +87,16 @@ namespace TEST { namespace ENCODER {
             auto x = string_t( "hello world!" );
             auto a = encoder::base16::atob( x );
             auto b = encoder::base16::btoa( a );
+
+            if( x != b ){ TEST_FAIL(); } TEST_DONE();
+
+        });
+
+        TEST_ADD( test, "TEST 8 | base58", [](){
+
+            auto x = string_t( "hello world!" );
+            auto a = encoder::base58::atob( x );
+            auto b = encoder::base58::btoa( a );
 
             if( x != b ){ TEST_FAIL(); } TEST_DONE();
 

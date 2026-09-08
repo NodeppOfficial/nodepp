@@ -307,6 +307,15 @@ public:
 
     /*─······································································─*/
 
+    template< class T >
+    void insert( NODE* node, const ptr_t<T>& value ) const noexcept {
+         for( ulong y=0; y<value.size(); y++ ){ insert( node, value[y] ); }
+    }
+
+    void insert( NODE* node, const queue_t& value ) const noexcept {
+         value.map([&]( V value ){ insert( node, value ); });
+    }
+
     template< class T, ulong N >
     void insert( NODE* node, const T(&value)[N] ) const noexcept {
          for( ulong y=0; y<N; y++ ){ insert( node, value[y] ); }
