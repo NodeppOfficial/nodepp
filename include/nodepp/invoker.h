@@ -18,11 +18,11 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { template< class... T > class invoker_t {
+namespace nodepp { template< class... A > class invoker_t {
 protected:
 
-    using NODE_CLB = function_t<int,T...>;
-    /*-*/ handler_t<NODE_CLB> que;
+    using T = pair_t<function_t<int,A...>,ptr_t<task_t>>;
+    handler_t<T> que;
 
 public: invoker_t() {}
 
@@ -38,25 +38,35 @@ public: invoker_t() {}
 
     /*─······································································─*/
 
-    int emit( uchar_64 address, const T&... arg ) const noexcept {
-        auto mem = que.read( address );
-        if( mem.null() ){ return -1; }
-        int c = mem->emit( arg... );
+    handler_t<T> get_handler() const noexcept { return que; }
+
+    /*─······································································─*/
+
+    int emit( uchar_64 address, const A&... arg ) const noexcept {
+    auto mem= que.read( address );
+
+        if( mem.null() ) /*----------------------*/ { return -1; }
+        if( mem->second->flag & TASK_STATE::USED   ){ return -2; }
+
+        mem->second->flag |=  TASK_STATE::USED; 
+        int c = mem->first.emit( arg... );
+        mem->second->flag &=~ TASK_STATE::USED; 
+
         if( c==-1 )/*-*/{ off( address ); }
+
     return c; }
 
     /*─······································································─*/
 
-    uchar_64 add( NODE_CLB clb ) const noexcept {
-        auto tsk = ptr_t<int>( 0UL, 0x00 );
+    uchar_64 add( const function_t<int,A...>& clb ) const noexcept {
+        auto tsk = ptr_t<task_t>( 0UL );
         auto mid = que.create();
 
-        que.update( mid, [=]( const T&... args ){
-        if( *tsk & TASK_STATE::USED ){ return -2; }
-            *tsk|= TASK_STATE::USED; int c = clb( args... );
-        if( tsk.null() ) /*-------*/ { return -1; }
-            *tsk&=~TASK_STATE::USED;
-        return c; });
+        que.update( mid, { [=]( const A&... args ){ return clb(args...); }, tsk });
+
+        tsk->flag = TASK_STATE::OPEN;
+        tsk->addr = (void*) &que;
+        tsk->sign = (void*) &que;
         
     return mid; }
 

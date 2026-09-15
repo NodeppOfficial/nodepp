@@ -9,34 +9,6 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#if ( NODEPP_OS == NODEPP_OS_LINUX )
-#include <linux/version.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0)
-    #define NODEPP_HAS_URING 1
-#else 
-    #define NODEPP_HAS_URING 0
-#endif
-#endif
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-#ifndef NODEPP_EVENT_SCHEDULER
-
-#if   ( NODEPP_OS == NODEPP_OS_FRBSD ) || ( NODEPP_OS == NODEPP_OS_APPLE )
-    #define NODEPP_EVENT_SCHEDULER NODEPP_SCHEDULER_KQUEUE
-#elif ( NODEPP_OS == NODEPP_OS_LINUX ) && ( NODEPP_HAS_URING==1 )
-    #define NODEPP_EVENT_SCHEDULER NODEPP_SCHEDULER_IOURING
-    #include "uring.h"
-#elif ( NODEPP_OS == NODEPP_OS_LINUX ) && ( NODEPP_HAS_URING==0 )
-    #define NODEPP_EVENT_SCHEDULER NODEPP_SCHEDULER_EPOLL
-#else
-    #define NODEPP_EVENT_SCHEDULER NODEPP_SCHEDULER_LITE
-#endif
-
-#endif
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
 #if NODEPP_EVENT_SCHEDULER == NODEPP_SCHEDULER_IOURING
 #include "uring.h"
 
@@ -173,24 +145,23 @@ public:
 public:
 
     ulong size() const noexcept { return obj->ev_queue.size() + obj->kv_queue.size() + obj.count()-1; }
-
-    void clear() const noexcept { /*--*/ obj->ev_queue.clear(); obj->kv_queue.clear(); }
     
     bool should_close() const noexcept { return empty() || NODEPP_SHTDWN() || NODEPP_LOCAL_SHTDWN(); }
+
+    void clear() const noexcept { /*--*/ obj->ev_queue.clear(); obj->kv_queue.clear(); }
 
     bool empty() const noexcept { return size()==0; }
 
     /*─······································································─*/
 
     void off  ( ptr_t<task_t> address ) const noexcept { clear( address ); }
-
     void clear( ptr_t<task_t> address ) const noexcept {
-        if( address.null() ) /*-*/ { return; }
-        if( address->sign == &obj ){
+        if( address.null() ) /*--------------*/ { return; }
         if( address->flag & TASK_STATE::CLOSED ){ return; }
-            address->flag = TASK_STATE::CLOSED;
+        if( address->sign == &obj ){
+            address->flag = TASK_STATE::CLOSED ;
             remove( address->addr ); 
-        } else { obj->ev_queue.off( address ); }
+        }   obj->ev_queue.off( address );
     }
 
     /*─······································································─*/
@@ -471,14 +442,13 @@ public:
     /*─······································································─*/
 
     void off  ( ptr_t<task_t> address ) const noexcept { clear( address ); }
-
     void clear( ptr_t<task_t> address ) const noexcept {
-        if( address.null() ) /*-*/ { return; }
-        if( address->sign == &obj ){
+        if( address.null() ) /*--------------*/ { return; }
         if( address->flag & TASK_STATE::CLOSED ){ return; }
-            address->flag = TASK_STATE::CLOSED;
+        if( address->sign == &obj ){
+            address->flag = TASK_STATE::CLOSED ;
             remove( address->addr ); 
-        } else { obj->ev_queue.off( address ); }
+        }   obj->ev_queue.off( address );
     }
 
     /*─······································································─*/
@@ -488,10 +458,7 @@ public:
     function_t<int,W...> clb ( cb ); if( inp.is_closed() ){ return nullptr; }
     
         if( inp.get_pd()==KV_STATE_FALLBACK ){ if( is_std( inp.get_fd() ) ){
-            return loop_add( coroutine::add( COROUTINE(){
-            coBegin; while( clb( args... )>=0 ){ coNext; } 
-            coFinish
-            }));
+                 return loop_add([=](){ return clb( args... )>=0 ? 1 : -1; });
         } else { return loop_add( cb, args... ); }}
 
         if( obj->kv_queue.as( (void*) inp.get_pd() )==nullptr ) {
@@ -802,14 +769,13 @@ public:
     /*─······································································─*/
 
     void off  ( ptr_t<task_t> address ) const noexcept { clear( address ); }
-
     void clear( ptr_t<task_t> address ) const noexcept {
-        if( address.null() ) /*-*/ { return; }
-        if( address->sign == &obj ){
+        if( address.null() ) /*--------------*/ { return; }
         if( address->flag & TASK_STATE::CLOSED ){ return; }
-            address->flag = TASK_STATE::CLOSED;
-            remove( address->addr );
-        } else { obj->ev_queue.off( address ); }
+        if( address->sign == &obj ){
+            address->flag = TASK_STATE::CLOSED ;
+            remove( address->addr ); 
+        }   obj->ev_queue.off( address );
     }
 
     /*─······································································─*/
@@ -820,10 +786,7 @@ public:
     
         if( inp.get_pd()==FLAG::KV_STATE_FALLBACK ){ 
         if( is_std( inp.get_fd() ) ) /*---------*/ {
-            return loop_add( coroutine::add( COROUTINE(){
-            coBegin; while( clb( args... )>=0 ){ coNext; } 
-            coFinish
-            }));
+                 return loop_add([=](){ return clb( args... )>=0 ? 1 : -1; });
         } else { return loop_add( cb, args... ); }}
 
         if( obj->kv_queue.as( (void*) inp.get_pd() )==nullptr ) {
@@ -841,8 +804,9 @@ public:
 
             inp.get_pd() = append(kv);
 
-            if( inp.get_pd()==KV_STATE_FALLBACK )
-              { return poll_add( inp, flag, cb, timeout, args... ); }
+            if( inp.get_pd()==KV_STATE_FALLBACK ){ 
+                return poll_add( inp, flag, cb, timeout, args... ); 
+            }
 
         }
 
@@ -937,12 +901,6 @@ private:
          KV_STATE_FALLBACK= 0b00000001
     };
 
-    bool is_std( int fd ) const noexcept { 
-    return fd == STDOUT_FILENO ||
-           fd == STDIN_FILENO  ||
-           fd == STDERR_FILENO ;
-    }
-
 protected:
 
     void clear_timeout() const noexcept { get_timeout(true); }
@@ -975,13 +933,9 @@ public:
 
 public:
 
+    void clear( ptr_t<task_t> address ) const noexcept { obj->ev_queue.clear( address ); }
+   
     void off  ( ptr_t<task_t> address ) const noexcept { clear( address ); }
-
-    void clear( ptr_t<task_t> address ) const noexcept {
-         if( address.null() ) /*--------------*/ { return; }
-         if( address->flag & TASK_STATE::CLOSED ){ return; }
-             address->flag = TASK_STATE::CLOSED;
-    }
 
     /*─······································································─*/
     

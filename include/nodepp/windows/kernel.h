@@ -9,18 +9,6 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#ifndef NODEPP_EVENT_SCHEDULER
-
-#if   ( NODEPP_OS == NODEPP_OS_WINDOWS )
-    #define NODEPP_EVENT_SCHEDULER NODEPP_SCHEDULER_IOCP
-#else
-    #define NODEPP_EVENT_SCHEDULER NODEPP_SCHEDULER_LITE
-#endif
-
-#endif
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
 #if NODEPP_EVENT_SCHEDULER == NODEPP_SCHEDULER_IOCP
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -169,24 +157,23 @@ public:
 public:
 
     ulong size() const noexcept { return obj->ev_queue.size() + obj->kv_queue.size() + obj.count()-1; }
-
-    void clear() const noexcept { /*--*/ obj->ev_queue.clear(); obj->kv_queue.clear(); }
     
     bool should_close() const noexcept { return empty() || NODEPP_SHTDWN() || NODEPP_LOCAL_SHTDWN(); }
+
+    void clear() const noexcept { /*--*/ obj->ev_queue.clear(); obj->kv_queue.clear(); }
 
     bool empty() const noexcept { return size()==0; }
 
     /*─······································································─*/
 
     void off  ( ptr_t<task_t> address ) const noexcept { clear( address ); }
-
     void clear( ptr_t<task_t> address ) const noexcept {
-        if( address.null() ) /*-*/ { return; }
-        if( address->sign == &obj ){
+        if( address.null() ) /*--------------*/ { return; }
         if( address->flag & TASK_STATE::CLOSED ){ return; }
-            address->flag = TASK_STATE::CLOSED;
+        if( address->sign == &obj ){
+            address->flag = TASK_STATE::CLOSED ;
             remove( address->addr ); 
-        } else { obj->ev_queue.off( address ); }
+        }   obj->ev_queue.off( address );
     }
 
     /*─······································································─*/
@@ -308,12 +295,6 @@ private:
          KV_STATE_FALLBACK= 0b00000001
     };
 
-    bool is_std( HANDLE fd ) const noexcept { 
-        return fd == GetStdHandle( STD_INPUT_HANDLE ) ||
-               fd == GetStdHandle( STD_OUTPUT_HANDLE) ||
-               fd == GetStdHandle( STD_ERROR_HANDLE ) ;
-    }
-
 protected:
 
     void clear_timeout() const noexcept { get_timeout(true); }
@@ -346,13 +327,9 @@ public:
 
 public:
 
-    void off  ( ptr_t<task_t> address ) const noexcept { clear( address ); }
+    void clear( ptr_t<task_t> address ) const noexcept { obj->ev_queue.clear( address ); }
 
-    void clear( ptr_t<task_t> address ) const noexcept {
-         if( address.null() ) /*--------------*/ { return; }
-         if( address->flag & TASK_STATE::CLOSED ){ return; }
-             address->flag = TASK_STATE::CLOSED;
-    }
+    void off  ( ptr_t<task_t> address ) const noexcept { clear( address ); }
 
     /*─······································································─*/
     
@@ -386,8 +363,7 @@ public:
 
             while( clb( args... )>=0 ){
             if   ( time > 0 && time < process::now() ){ break; }
-            if   ( inp.is_waiting() ) /*-------*/ { coGoto(0); } 
-            coNext; }
+            if   ( inp.is_waiting() ) /*-------*/ { coGoto(0); } coNext; }
 
         coFinish
         }));

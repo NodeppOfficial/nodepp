@@ -83,8 +83,7 @@ protected:
     };  ptr_t<NODE> obj;
 
     string_t hex() const noexcept { 
-        free(); return { (char*) &obj->bff, obj->length }; 
-    }
+    free(); return string_t( (char*) &obj->bff, obj->length ); }
 
 public:
 
@@ -140,8 +139,7 @@ protected:
     };  ptr_t<NODE> obj;
 
     string_t hex() const noexcept { 
-        free(); return { (char*) &obj->bff, obj->length }; 
-    }
+    free(); return string_t( (char*) &obj->bff, obj->length ); }
 
 public:
 
@@ -176,8 +174,7 @@ public:
     }
 
     string_t get() const noexcept { 
-        return encoder::base16::atob( this->hex() );
-    }
+    return encoder::base16::atob( this->hex() ); }
 
     bool is_available() const noexcept { return obj->state == 1; }
 
@@ -228,9 +225,9 @@ public:
 
     void update( string_t msg ) const noexcept { 
         if( !obj->state ){ return; } ulong chunk = NODEPP_CHUNK_SIZE;
-        while( !msg.empty() ){ auto tmp = msg.slice( 0, chunk );
-        forEach( x, tmp ){ CTX &y = obj->ctx[0];
-            x ^= y.key[ y.pos % y.key.size() ]; ++y.pos; 
+        while( !msg.empty()   )  { auto tmp = msg.slice( 0, chunk );
+        for  ( auto &x: tmp   )  { CTX   &y = obj->ctx [ 0 ];
+            x ^= y.key[ y.pos ]; y.pos += ( y.pos+1 )% y.key.size(); 
         } if ( tmp   .empty() )  { return; }
         elif ( onData.empty() )  { obj->bff +=tmp; }
         else { onData.emit(tmp); } msg.ptr().slice( chunk, (ulong)-1 ); }
@@ -238,9 +235,9 @@ public:
 
     bool is_available() const noexcept { return obj->state == 1; }
 
-    bool is_closed() const noexcept { return obj->state == 0; }
+    bool    is_closed() const noexcept { return obj->state == 0; }
 
-    string_t get() const noexcept { free(); return obj->bff; }
+    string_t      get() const noexcept { free(); return obj->bff; }
 
     void free() const noexcept { 
         if( obj->state == 0 ){ return; } 

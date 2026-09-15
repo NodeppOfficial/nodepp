@@ -136,13 +136,12 @@ public: loop_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    void off( ptr_t<task_t> address ) const noexcept { clear( address ); }
-
+    void off  ( ptr_t<task_t> address ) const noexcept { clear( address ); }
     void clear( ptr_t<task_t> address ) const noexcept {
-        if( address.null() ) /*-*/ { return; }
-        if( address->sign != &obj ){ return; }
+        if( address.null() ) /*--------------*/ { return; }
         if( address->flag & TASK_STATE::CLOSED ){ return; }
-            address->flag = TASK_STATE::CLOSED;
+        if( address->sign != &obj ) /*-------*/ { return; }
+            address->flag = TASK_STATE::CLOSED ;
     }
 
     /*─······································································─*/
@@ -164,7 +163,7 @@ public: loop_t() noexcept : obj( new NODE() ) {}
     /*─······································································─*/
 
     ulong size() const noexcept { return obj->queue.size  (); }
-
+    
     bool empty() const noexcept { return obj->queue.empty (); }
 
     /*─······································································─*/
@@ -221,12 +220,11 @@ public: loop_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    void off( ptr_t<task_t> address ) const noexcept { clear( address ); }
-
+    void off  ( ptr_t<task_t> address ) const noexcept { clear( address ); }
     void clear( ptr_t<task_t> address ) const noexcept {
-        if( address.null() ) /*-*/ { return; }
-        if( address->sign != &obj ){ return; }
+        if( address.null() ) /*--------------*/ { return; }
         if( address->flag & TASK_STATE::CLOSED ){ return; }
+        if( address->sign!= &obj ) /*--------*/ { return; }
             address->flag = TASK_STATE::CLOSED;
     }
 

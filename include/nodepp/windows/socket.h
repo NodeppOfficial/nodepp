@@ -424,7 +424,7 @@ public:
     }
 
     void set_write_address( const SOCKADDR_ST& address ) const noexcept { 
-         obj->tmp_addr = address; 
+         get_write_address() = address; 
     }
 
     SOCKADDR_ST& get_read_address() const noexcept { 

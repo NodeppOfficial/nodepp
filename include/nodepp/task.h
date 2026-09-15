@@ -14,7 +14,10 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { struct task_t/**/ { int flag=0x00; void *addr, *sign; }; }
+namespace nodepp { struct task_t/**/ { uchar flag=0x00; void *addr, *sign; }; }
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 namespace nodepp { struct TASK_STATE { enum TYPE : uchar {
     UNKNOWN = 0b00000000,
     OPEN    = 0b00000001,
