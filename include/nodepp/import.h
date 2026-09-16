@@ -57,6 +57,7 @@
 
 #include "initializer.h"
 #include "iterator.h"
+#include "encoder.h"
 #include "console.h"
 #include "sleep.h"
 
@@ -68,7 +69,6 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#include "encoder.h"
 #include "kernel.h"
 #include "query.h"
 #include "os.h"

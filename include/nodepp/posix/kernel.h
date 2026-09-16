@@ -968,8 +968,7 @@ public:
 
             while( clb( args... )>=0 ){
             if( time > 0 && time < process::now() ){ break; }
-            if( inp.is_waiting() ) /*-------*/ { coGoto(0); } 
-            coNext; }
+            if( inp.is_waiting() ) /*-------*/ { coGoto(0); } coNext; }
 
         coFinish
         }));

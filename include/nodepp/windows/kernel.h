@@ -184,10 +184,7 @@ public:
 
         if( inp.get_pd()==FLAG::KV_STATE_FALLBACK ){ 
         if( is_std( (HANDLE) inp.get_fd() ) ) /**/ {
-            return loop_add( coroutine::add( COROUTINE(){
-            coBegin; while( clb( args... )>=0 ){ coNext; } 
-            coFinish
-            }));
+                 return loop_add([=](){ return clb( args... )>=0; });
         } else { return loop_add( cb, args... ); }}
 
         if( obj->kv_queue.as( (void*) inp.get_pd() )==nullptr ) {

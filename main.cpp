@@ -5,43 +5,22 @@ using namespace nodepp;
 
 void onMain(){
 
-    event_t<> event;
-    ptr_t<int> x ( 0UL, 10 );
+    event_t<> event; ptr_t<task_t> ppt ( 0UL );
+    ptr_t<uchar> tmp (0UL, 10);
 
-    event.add( coroutine::add( COROUTINE(){
-    coBegin
+    auto out = event.add([=](){
 
-        while( *x >= 3 ){
-            console::log( "hello world A", *x );
-        coNext; *x -= 1; }
+        event.off( ppt );
+        
+        while( tmp[0] --> 0 ){
+             console::log( ">>", *tmp ); 
+             return 1;
+        }
 
-    coFinish
-    }));
+    return -1; });
 
-    event.add( coroutine::add( COROUTINE(){
-    coBegin
-
-        while( *x >= 2 ){
-            console::log( "hello world B", *x );
-        coNext; *x -= 1; }
-
-    coFinish
-    }));
-
-    event.add( coroutine::add( COROUTINE(){
-    coBegin
-
-        while( *x >= 1 ){
-            console::log( "hello world C", *x );
-        coNext; *x -= 1; }
-
-    coFinish
-    }));
-
-    while( !event.empty() ){ 
-        event.emit(); 
-        process::delay(1000);
-        console::log( "---", event.size() );
-    }
+    *ppt = *out; 
+    
+    while( !event.empty() ){ event.emit(); }
 
 }

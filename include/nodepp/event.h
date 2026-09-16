@@ -117,13 +117,8 @@ public:
 
         x=y; }
 
-        obj->tmp.map([&]( void* item ){
-            auto ptr  = obj->que.as   ( item );
-            if ( ptr ){ obj->que.erase( ptr  ); }
-        });
-
-        /**/obj->tmp.clear();
-        /**/obj->state &=~ STATE::EV_STATE_USED; 
+        obj->tmp.map([&]( void* item ){ obj->que.erase( obj->que.as(item) ); });
+        /**/obj->state &=~ STATE::EV_STATE_USED; obj->tmp.clear();
         if( obj->state &   STATE::EV_STATE_KILL ){ clear(); }
 
     }
