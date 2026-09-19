@@ -204,24 +204,6 @@ namespace nodepp { namespace promise {
 
     /*─······································································─*/
 
-    template< class T, class... V >
-    promise_t<any_t,except_t> resolve( T cb, const V&... args ) {
-    return promise_t<any_t,except_t>([=]( 
-           res_t<any_t> res, rej_t<except_t> rej 
-    ){  function_t<int,V...> clb ( cb );
-
-        process::add( coroutine::add( COROUTINE(){
-        coBegin
-
-            coWait( clb( args... )>=0 );
-            res   ( process::now() );
-
-        coFinish } ));
-
-    }); }
-
-    /*─······································································─*/
-
     template< class V >
     promise_t<V,except_t> any( const initializer_t<V>& prom ) {
     return promise_t<V,except_t>([=]( res_t<V> res, rej_t<except_t>rej ){

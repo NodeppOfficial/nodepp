@@ -11,7 +11,6 @@
 
 #ifndef NODEPP_LOOP
 #define NODEPP_LOOP
-#define NODEPP_MIN_TIMEOUT 0
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -150,15 +149,15 @@ public: loop_t() noexcept : obj( new NODE() ) {}
 
     uchar_32 get_delay() const noexcept { 
 
-        if(!obj->normal .empty() ){ return NODEPP_MIN_TIMEOUT; }
-        if( obj->blocked.empty() ){ return NODEPP_MIN_TIMEOUT; }
+        if(!obj->normal .empty() ){ return 0; }
+        if( obj->blocked.empty() ){ return 0; }
 
         auto lmt = type::cast<uchar_64>((uchar_32)-1);
         auto raw = obj->blocked.first()->data.first;
         auto now = process::now();
         auto out = raw - now;
 
-        return raw>now ? out>lmt ? lmt : out : NODEPP_MIN_TIMEOUT;
+        return raw>now ? out>lmt ? lmt : out : 0;
         
     }
 
@@ -232,7 +231,7 @@ public: loop_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    uchar_32 get_delay() const noexcept { return NODEPP_MIN_TIMEOUT; }
+    uchar_32 get_delay() const noexcept { return 0; }
 
     /*─······································································─*/
 
@@ -309,7 +308,6 @@ public: loop_t() noexcept : obj( new NODE() ) {}
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
-#undef NODEPP_MIN_TIMEOUT
 #endif
 
 /*────────────────────────────────────────────────────────────────────────────*/

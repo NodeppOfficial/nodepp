@@ -5,22 +5,15 @@ using namespace nodepp;
 
 void onMain(){
 
-    event_t<> event; ptr_t<task_t> ppt ( 0UL );
-    ptr_t<uchar> tmp (0UL, 10);
+    event_t<> ev;
 
-    auto out = event.add([=](){
+    ev.once([=](){ console::log( "hello once" ); });
+    ev.on  ([=](){
+        console::log( "hello world" );
+    ev.emit(); });
 
-        event.off( ppt );
-        
-        while( tmp[0] --> 0 ){
-             console::log( ">>", *tmp ); 
-             return 1;
-        }
-
-    return -1; });
-
-    *ppt = *out; 
-    
-    while( !event.empty() ){ event.emit(); }
+    ev.emit();
+    ev.emit();
+    ev.emit();
 
 }
