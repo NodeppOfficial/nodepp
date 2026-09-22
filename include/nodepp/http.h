@@ -270,7 +270,7 @@ public:
         auto x = headers.raw().first(); while( x!=nullptr ){ 
         auto y = x->next; auto &z = x->data;
                out.push( string::format( "%s: %s", z.first.to_capital_case().get(), z.second.get() ) );
-        x=y; } out.push( "\r\n" ); write( array_t<string_t>( out.data() ).join("\r\n") );
+        x=y; } out.push( "\r\n" ); write( string::join( out, "\r\n" ) );
         
         if( method=="HEAD" ){ close(); return; } set_send_mode( headers );
 
@@ -287,7 +287,7 @@ public:
         auto x = headers.raw().first(); while( x!=nullptr ){ 
         auto y = x->next; auto &z = x->data;
                out.push( string::format( "%s: %s", z.first.to_capital_case().get(), z.second.get() ) );
-        x=y; } out.push( "\r\n" ); write( array_t<string_t>( out.data() ).join("\r\n") );
+        x=y; } out.push( "\r\n" ); write( string::join( out, "\r\n" ) );
         
         if( method=="HEAD" ){ close(); return; } set_send_mode( headers );
 
@@ -309,7 +309,7 @@ public:
                out.push( string::format( "%s: %s", z.first.to_capital_case().get(), z.second.get() ) );
         x=y; } out.push( "\r\n" + fetch.body ); 
 
-        write( array_t<string_t>( out.data() ).join("\r\n") );
+        write( string::join( out, "\r\n" ) );
         if( fetch.method == "HEAD" ){ close(); return; } set_send_mode( fetch.headers );
 
     }
