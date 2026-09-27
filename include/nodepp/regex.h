@@ -895,7 +895,7 @@ namespace nodepp { namespace regex {
 
     template< class... T >
     string_t format( string_t val, const T&... args ){
-        auto count = string::count( []( string_t ){ return true; }, args... );
+        auto count = sizeof...(args); if ( count==0 ){ return val; }
 
         queue_t<string_t> out; ulong idx=0;
         thread_local static ptr_t<regex_t> reg ({

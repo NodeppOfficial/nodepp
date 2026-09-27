@@ -14,21 +14,10 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#include <typeinfo>
 #include <cstring>
 #include <cstdlib>
 #include <cstdint>
 #include <cstdio>
-#include <cmath>
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-#ifndef NODEPP_DISABLE_STL_SUPPORT
-#include <string>
-#include <queue>
-#include <array>
-#include <vector>
-#endif
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

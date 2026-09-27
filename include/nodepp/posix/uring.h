@@ -201,14 +201,14 @@ public:
 
     /*─······································································─*/
 
-    int start_device() const noexcept { 
-        
+    int start_device() const { do {
     if( obj->ed == NODEPP_INVALID_FILE && 
         obj->fd == NODEPP_INVALID_FILE 
     ) {
 
         obj->entries = NODEPP_MAX_BATCH_SIZE ; IOprm &p = obj->prm;
         obj->fd = syscall(__NR_io_uring_setup, obj->entries, &obj->prm);
+        if( obj->fd == -1 ){ NODEPP_THROW_ERROR( "can't initialize uring_t" ); }
 
         obj->sq_ring_size = p.sq_off.array + p.sq_entries * sizeof(uint);
         obj->sq_ptr = mmap(NULL, obj->sq_ring_size, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_POPULATE, obj->fd, IORING_OFF_SQ_RING);
@@ -230,9 +230,10 @@ public:
 
         obj->ed = eventfd( 0, EFD_CLOEXEC|EFD_NONBLOCK );
         obj->pqes.fd = obj->ed; obj->pqes.events= POLLIN;
+        if( obj->ed == -1 ){ NODEPP_THROW_ERROR( "can't initialize uring_t" ); break; }
         syscall(__NR_io_uring_register, obj->fd, IORING_REGISTER_EVENTFD, &obj->ed, 1);
 
-    return 1; } return -1; }
+    return 1; }} while(0); return -1; }
     
     /*─······································································─*/
 

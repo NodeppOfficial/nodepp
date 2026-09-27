@@ -1,23 +1,47 @@
 #include <nodepp/nodepp.h>
-#include <nodepp/listener.h>
+#include <nodepp/event.h>
 
 using namespace nodepp;
 
 void onMain(){
 
-    listener_t< string_t, any_t > ev;
+    event_t<> event;
+    ptr_t<int> x ( 0UL, 10 );
 
-    auto addr = process::invoke([=]( any_t val ){
-         console::log( ">>", val.has_value() );
-         ev.emit( "mojon", nullptr );
-    return 1; });
+    event.add( coroutine::add( COROUTINE(){
+    coBegin
 
-    ev.on( "mojon", [=]( any_t raw ){ 
-        process::call( addr, raw );
-    });
+        while( *x >= 3 ){
+            console::log( "hello world A", *x );
+        coNext; *x -= 1; }
 
-    ev.emit( "mojon", nullptr );
-    ev.emit( "mojon", nullptr );
-    ev.emit( "mojon", nullptr );
+    coFinish
+    }));
+
+    event.add( coroutine::add( COROUTINE(){
+    coBegin
+
+        while( *x >= 2 ){
+            console::log( "hello world B", *x );
+        coNext; *x -= 1; }
+
+    coFinish
+    }));
+
+    event.add( coroutine::add( COROUTINE(){
+    coBegin
+
+        while( *x >= 1 ){
+            console::log( "hello world C", *x );
+        coNext; *x -= 1; }
+
+    coFinish
+    }));
+
+    while( !event.empty() ){ 
+        event.emit(); 
+        process::delay(1000);
+        console::log( "---", event.size() );
+    }
 
 }

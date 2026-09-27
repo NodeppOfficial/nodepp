@@ -133,13 +133,16 @@ public:
 
     file_t( const string_t& path, const string_t& mode, const ulong& _size=NODEPP_CHUNK_SIZE ) : obj( new NODE() ) {
         auto fg = get_fd_flag( mode ); obj->fd = CreateFileA( path.c_str(), fg[0], fg[1], NULL, fg[2], fg[3], NULL ); 
-        if( obj->fd == INVALID_HANDLE_VALUE ){ NODEPP_THROW_ERROR("such file or directory does not exist"); }
-        set_nonbloking_mode(); set_buffer_size( _size ); 
+        if( obj->fd == INVALID_HANDLE_VALUE ){ 
+            auto error = except_t( path, "such file or directory does not exist" );
+            NODEPP_THROW_ERROR   ( error ); 
+        }   set_nonbloking_mode(); set_buffer_size( _size ); 
     }
 
     file_t( const HANDLE& fd, const ulong& _size=NODEPP_CHUNK_SIZE ) : obj( new NODE() ) {
-        if( fd == INVALID_HANDLE_VALUE ){ NODEPP_THROW_ERROR("such file or directory does not exist"); }
-        obj->fd = fd; set_nonbloking_mode(); set_buffer_size( _size ); 
+        if( fd == INVALID_HANDLE_VALUE ){ 
+            NODEPP_THROW_ERROR   ( "invalid file handler" ); 
+        }   obj->fd = fd; set_nonbloking_mode(); set_buffer_size( _size ); 
     }
  
    ~file_t() noexcept { if( obj.count()>1 && !is_closed() ){ return; } free(); }

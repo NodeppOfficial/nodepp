@@ -64,6 +64,16 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#if NODEPP_ALLOW_STD_SUPPORT==1
+#include <string>
+#include <queue>
+#include <array>
+#include <vector>
+#include <functional>
+#endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #if NODEPP_ALLOW_THROW_EXCEPTION==1
 #define NODEPP_THROW_ERROR(...) do { throw nodepp::except_t(__VA_ARGS__); } while(0)
 #else
