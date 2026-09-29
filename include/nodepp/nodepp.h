@@ -65,6 +65,7 @@ namespace nodepp { namespace process {
     /*─······································································─*/
 
     inline int next(){ 
+        /*--*/ next_time_interval  ();
         /*--*/ NODEPP_ALLOC ().next();
         return NODEPP_EVLOOP().next(); 
     }
