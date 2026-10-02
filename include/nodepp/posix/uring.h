@@ -306,7 +306,7 @@ public:
 
         string_t &raw = mem.mem; raw.resize( len );
         memset( &sqe, 0, sizeof(IOsqe) );
-        memcpy( raw.get() , buf, len );
+        memcpy( raw.get(), buf, len );
 
         sqe.addr      = (uchar_64) raw.get();
         sqe.len       = len ;
@@ -469,12 +469,11 @@ public:
         string_t &raw = mem.mem; 
         raw.resize( sizeof(IOmsg) + sizeof(IOvec) + len, '\0' );
 
-        memcpy( raw.get()+len, buf, len );
-        memset( &sqe, 0, sizeof (IOsqe) );
-        
+        memset( &sqe, 0, sizeof(IOsqe) );
         IOmsg* msg = (IOmsg*) raw.get() ;
         IOvec* iov = (IOvec*)(raw.get() + sizeof(IOmsg));
 
+        memcpy( raw.get() + sizeof(IOmsg) + sizeof(IOvec), buf, len );
         iov->iov_base = raw.get() + sizeof(IOmsg) + sizeof(IOvec);
         iov->iov_len  = len;
 
