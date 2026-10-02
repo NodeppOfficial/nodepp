@@ -224,7 +224,6 @@ protected:
         auto nlen   = min( (ulong)len, stream->get_buffer_size() );
 
         if( stream->is_closed() ){ return -1; }
-
         int c = stream->socket_t::__read( nbuf, nlen );
 
         if  ( c> 0 ){ memcpy( buf, nbuf, c ); }

@@ -285,22 +285,19 @@ public:
 
         if( obj->state & STATE::FS_STATE_READING ){ 
         if( is_blocked( ov, c ) ){ 
-            obj->state |= STATE::FS_STATE_WAITING;
-            return -2;
+            obj->state|= STATE::FS_STATE_WAITING; return -2;
         } else {
             obj->state&=~STATE::FS_STATE_READING;
             obj->state&=~STATE::FS_STATE_WAITING;
-            return c==0 ? -1 : (int) c;
-        }}
+        return c==0 ? -1 : (int) c; }}
 
-        obj->state|= STATE::FS_STATE_READING;
         ov = {0}; ov.Offset = obj->offset;
         ReadFile( obj->fd, bf, sx, &c, &ov );
+        obj->state|= STATE::FS_STATE_READING;
         
         if( is_blocked(c) ){
-            obj->state |= STATE::FS_STATE_WAITING;
-            return -2; 
-        } else { if( c >0 ){ obj->offset += c; }
+            obj->state|= STATE::FS_STATE_WAITING; return -2; 
+        } else { if( c>0 ){ obj->offset += c; }
             obj->state&=~STATE::FS_STATE_READING;
             obj->state&=~STATE::FS_STATE_WAITING;
         }
@@ -315,23 +312,21 @@ public:
 
         if( obj->state & STATE::FS_STATE_WRITING ){
         if( is_blocked( ov, c ) ){ 
-            obj->state |= STATE::FS_STATE_WAITING;
-            return -2; 
+            obj->state|= STATE::FS_STATE_WAITING; return -2; 
         } else {
             obj->state&=~STATE::FS_STATE_WRITING; 
             obj->state&=~STATE::FS_STATE_WAITING;
-            return c==0 ? -1 : (int) c;
-        }}
+        return c==0 ? -1 : (int) c; }}
 
-        obj->state|= STATE::FS_STATE_WRITING;
         ov = {0}; ov.Offset = obj->offset;
+        obj->state|= STATE::FS_STATE_WRITING;
         WriteFile( obj->fd, bf, sx, &c, &ov );
         
         if( is_blocked(c) ){ 
-            obj->state&=~STATE::FS_STATE_WAITING;
-            return -2; 
+            obj->state&=~STATE::FS_STATE_WAITING; return -2; 
         } else { if( c >0 ){ obj->offset += c; }
-            obj->state&=~ STATE::FS_STATE_WRITING;
+            obj->state&=~STATE::FS_STATE_WRITING; 
+            obj->state&=~STATE::FS_STATE_WAITING;
         }
 
     return c==0 ? -1 : (int) c; }

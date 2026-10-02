@@ -44,9 +44,10 @@ namespace nodepp { namespace stream {
     /*─······································································─*/
     
     template< class T, class V >
-    ptr_t<task_t> duplex( const T& fa, const V& fb ){ generator::stream::pipe arg;
-           process::poll( arg, fb, POLL_STATE::READ | POLL_STATE::EDGE, arg, 0UL, fb, fa ); 
-    return process::poll( arg, fa, POLL_STATE::READ | POLL_STATE::EDGE, arg, 0UL, fa, fb ); }
+    ptr_t<task_t> duplex( const T& fa, const V& fb ){
+           generator::stream::pipe a, b;
+           process::poll( fb, POLL_STATE::READ | POLL_STATE::EDGE, a, 0UL, fb, fa );
+    return process::poll( fa, POLL_STATE::READ | POLL_STATE::EDGE, b, 0UL, fa, fb ); }
     
     /*─······································································─*/
     

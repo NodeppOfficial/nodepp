@@ -21,8 +21,10 @@ namespace nodepp { namespace type {
     
     /*─······································································─*/
 
-    struct false_type { static constexpr bool value = false; using type = false_type; };
-    struct true_type  { static constexpr bool value = true;  using type = true_type;  };
+    template< bool B >
+    struct bool_type  { static constexpr bool value = B; using type = bool_type ; };
+    struct false_type : bool_type<false> {};
+    struct true_type  : bool_type<true > {}; 
     
     /*─······································································─*/
 
@@ -31,124 +33,118 @@ namespace nodepp { namespace type {
     
     /*─······································································─*/
 
-    template <typename T> struct is_array : false_type {};
-    template <typename T> struct is_array<T[]> : true_type {};
-    template <typename T, ulong N> struct is_array<T[N]> : true_type {};
+    template <typename T> struct is_array                : false_type {};
+    template <typename T> struct is_array<T[]>           : true_type  {};
+    template <typename T, ulong N> struct is_array<T[N]> : true_type  {};
     
     /*─······································································─*/
 
     template <typename T, typename U> struct is_same : false_type {};
-    template <typename T> struct is_same<T, T> : true_type {};
+    template <typename T> struct is_same<T, T>       : true_type  {};
     
     /*─······································································─*/
 
-    template <typename T, typename U> struct is_different : true_type {};
-    template <typename T> struct is_different<T, T> : false_type {};
+    template <typename T, typename U> struct is_different : true_type  {};
+    template <typename T> struct is_different<T, T>       : false_type {};
     
     /*─······································································─*/
 
-    template <typename T> struct is_pointer : false_type {};
-    template <typename T> struct is_pointer<T*> : true_type {};
+    template <typename T> struct is_pointer     : false_type {};
+    template <typename T> struct is_pointer<T*> : true_type  {};
         
     /*─······································································─*/
 
-    template <typename T> struct is_void : false_type {};
+    template <typename T> struct is_void            : false_type {};
 
-    template <> struct is_void<const volatile void> : true_type {};
-    template <> struct is_void<volatile void> : true_type {};
-    template <> struct is_void<const void> : true_type {};
-    template <> struct is_void<void> : true_type {};
+    template <> struct is_void<const volatile void> : true_type  {};
+    template <> struct is_void<volatile void>       : true_type  {};
+    template <> struct is_void<const void>          : true_type  {};
+    template <> struct is_void<void>                : true_type  {};
     
     /*─······································································─*/
 
     template <typename T> struct is_null : false_type {};
-    template <> struct is_null<null_t> : true_type {};
+    template <> struct is_null<null_t>   : true_type {};
     
     /*─······································································─*/
 
     template <typename T> struct is_character : false_type {};
-
-    template <> struct is_character<char> : true_type {};
-    template <> struct is_character<uchar> : true_type {};
+    template <> struct is_character<char>     : true_type  {};
+    template <> struct is_character<uchar>    : true_type  {};
     
     /*─······································································─*/
 
     template <typename T> struct is_integral : false_type {};
-
-    template <> struct is_integral<bool  > : true_type {};
-    template <> struct is_integral< int  > : true_type {};
-    template <> struct is_integral<uint  > : true_type {};
-    template <> struct is_integral< long > : true_type {};
-    template <> struct is_integral<ulong > : true_type {};
-    template <> struct is_integral< char > : true_type {};
-    template <> struct is_integral<uchar > : true_type {};
-    template <> struct is_integral< short> : true_type {};
-    template <> struct is_integral<ushort> : true_type {};
-    template <> struct is_integral< llong> : true_type {};
-    template <> struct is_integral<ullong> : true_type {};
-    template <> struct is_integral<wchar > : true_type {};
+    template <> struct is_integral<bool  >   : true_type  {};
+    template <> struct is_integral< int  >   : true_type  {};
+    template <> struct is_integral<uint  >   : true_type  {};
+    template <> struct is_integral< long >   : true_type  {};
+    template <> struct is_integral<ulong >   : true_type  {};
+    template <> struct is_integral< char >   : true_type  {};
+    template <> struct is_integral<uchar >   : true_type  {};
+    template <> struct is_integral< short>   : true_type  {};
+    template <> struct is_integral<ushort>   : true_type  {};
+    template <> struct is_integral< llong>   : true_type  {};
+    template <> struct is_integral<ullong>   : true_type  {};
+    template <> struct is_integral<wchar >   : true_type  {};
 
     /*─······································································─*/
 
-    template <typename T> struct is_floating_point : false_type {};
-    template <> struct is_floating_point<float> : true_type {};
-    template <> struct is_floating_point<double> : true_type {};
-    template <> struct is_floating_point<ldouble> : true_type {};
+    template <typename T> struct is_floating_point: false_type {};
+    template <> struct is_floating_point<float>   : true_type  {};
+    template <> struct is_floating_point<double>  : true_type  {};
+    template <> struct is_floating_point<ldouble> : true_type  {};
     
     /*─······································································─*/
 
-    template <typename T> struct is_const_reference : false_type {};
-    template <typename T> struct is_const_reference<const T&> : true_type {};
-    template <typename T> struct is_const_reference<const T&&> : true_type {};
+    template <typename T> struct is_number : bool_type< is_integral      <T>::value  || 
+                                                        is_floating_point<T>::value >{};
+
+    template <typename T> struct is_pod    : bool_type< is_number <T>::value  || 
+                                                        is_pointer<T>::value >{};
     
     /*─······································································─*/
 
-    template <typename T> struct is_const : false_type {};
-    template <typename T> struct is_const<const T> : true_type {};
+    template <typename T> struct is_const_reference            : false_type {};
+    template <typename T> struct is_const_reference<const T& > : true_type  {};
+    template <typename T> struct is_const_reference<const T&&> : true_type  {};
+    
+    /*─······································································─*/
+
+    template <typename T> struct is_const          : false_type {};
+    template <typename T> struct is_const<const T> : true_type  {};
     
     /*────────────────────────────────────────────────────────────────────────────*/
 
-    template <typename T> struct is_volatile : false_type {};
-    template <typename T> struct is_volatile<volatile T> : true_type {};
+    template <typename T> struct is_volatile             : false_type {};
+    template <typename T> struct is_volatile<volatile T> : true_type  {};
     
     /*────────────────────────────────────────────────────────────────────────────*/
 
-    template <typename T> struct is_reference : false_type {};
-    template <typename T> struct is_reference<T&> : true_type {};
-    template <typename T> struct is_reference<T&&> : true_type {};
+    template <typename T> struct is_reference      : false_type {};
+    template <typename T> struct is_reference<T&>  : true_type  {};
+    template <typename T> struct is_reference<T&&> : true_type  {};
     
     /*────────────────────────────────────────────────────────────────────────────*/
 
-    template <typename T> struct is_lvalue_reference : false_type {};
-    template <typename T> struct is_lvalue_reference<T&> : true_type {};
+    template <typename T> struct is_lvalue_reference     : false_type {};
+    template <typename T> struct is_lvalue_reference<T&> : true_type  {};
     
     /*─······································································─*/
 
-    template <typename T> struct is_rvalue_reference : false_type {};
-    template <typename T> struct is_rvalue_reference<T&&> : true_type {};
+    template <typename T> struct is_rvalue_reference      : false_type {};
+    template <typename T> struct is_rvalue_reference<T&&> : true_type  {};
     
     /*─······································································─*/
 
-    template <typename T, ulong N = 0> struct add_extent { typedef T type[N]; };
-    template <typename T> struct add_extent<T[], 0> { typedef T type[]; };
-    template <typename T, ulong N> struct add_extent<T[], N> { typedef T type[N]; };
+    template <typename T, ulong N = 0> struct add_extent    { typedef T type[N]; };
+    template <typename T> struct add_extent<T[], 0>         { typedef T type[ ]; };
+    template <typename T, ulong N> struct add_extent<T[], N>{ typedef T type[N]; };
     
     /*─······································································─*/
 
-    template <typename T> struct remove_extent { typedef T type; };
-    template <typename T, ulong N> struct remove_extent<T[N]> { typedef T type; };
-    
-    /*─······································································─*/
-
-    template<typename T> struct add_const { using type = const T; };
-    template<typename T> struct remove_const { using type = T; };
-    template<typename T> struct remove_const<const T> { using type = T; };
-    
-    /*─······································································─*/
-
-    template<typename T> struct add_volatile { using type = volatile T; };
-    template<typename T> struct remove_volatile { using type = T; };
-    template<typename T> struct remove_volatile<volatile T> { using type = T; };
+    template <typename T> struct remove_extent               { typedef T type; };
+    template <typename T, ulong N> struct remove_extent<T[N]>{ typedef T type; };
     
     /*─······································································─*/
 
@@ -158,12 +154,24 @@ namespace nodepp { namespace type {
     
     /*─······································································─*/
 
-    template<typename T> struct add_pointer { using type = T*; };
-    template<typename T> struct remove_pointer { using type = T; };
-    template<typename T> struct remove_pointer<T*> { using type = T; };
-    template<typename T> struct remove_pointer<T* const> { using type = T; };
-    template<typename T> struct remove_pointer<T* volatile> { using type = T; };
-    template<typename T> struct remove_pointer<T* const volatile> { using type = T; };
+    template<typename T> struct add_const            { using type = const T; };
+    template<typename T> struct remove_const         { using type = T; };
+    template<typename T> struct remove_const<const T>{ using type = T; };
+    
+    /*─······································································─*/
+
+    template<typename T> struct add_volatile               { using type = volatile T; };
+    template<typename T> struct remove_volatile            { using type = T; };
+    template<typename T> struct remove_volatile<volatile T>{ using type = T; };
+    
+    /*─······································································─*/
+
+    template<typename T> struct add_pointer                      { using type = T*; };
+    template<typename T> struct remove_pointer                   { using type = T; };
+    template<typename T> struct remove_pointer<T*>               { using type = T; };
+    template<typename T> struct remove_pointer<T* const>         { using type = T; };
+    template<typename T> struct remove_pointer<T* volatile>      { using type = T; };
+    template<typename T> struct remove_pointer<T* const volatile>{ using type = T; };
     
     /*─······································································─*/
     
@@ -256,13 +264,13 @@ namespace nodepp { namespace type {
     /*─······································································─*/
 
     template <typename T>
-    struct is_member_pointer : false_type {};
+    struct is_member_pointer             : false_type {};
 
     template <typename T, typename U>
-    struct is_member_pointer<T U::*> : true_type {};
+    struct is_member_pointer<T U::*>     : true_type  {};
 
     template <typename T, typename U>
-    struct is_member_pointer<T (U::*)()> : true_type {};
+    struct is_member_pointer<T (U::*)()> : true_type  {};
 
     /*─······································································─*/
     
@@ -332,10 +340,6 @@ namespace nodepp { namespace type {
         static constexpr bool value = __is_enum(T);
     };
 
-    template<typename T> struct is_pod {
-        static constexpr bool value = __is_pod(T);
-    };
-
     /*─······································································─*/
 
     template<typename T, typename U> struct pair { T first;  U second; };
@@ -345,61 +349,73 @@ namespace nodepp { namespace type {
 
 namespace nodepp { namespace type {
 
-    template<typename T> 
-    void swap( T& a, T& b ) noexcept { 
-        T t = move(a); 
-          a = move(b); 
-          b = move(t);
-    }
-
     template < class A >
     int compare( A src_first, A src_last, A dst_first ) {
+    if( type::is_number<typename type::remove_pointer<A>::type>::value ){
+        auto mem = sizeof( typename type::remove_pointer<A>::type ); 
+        auto size= mem * ( src_last - src_first );
+        auto out = memcmp( src_first, dst_first, size ); 
+        return out<0 ? -1 : out>0? 1 : 0;
+    } else { 
         while ( src_first != src_last ){
            if (*src_first <*dst_first ){ return -1; }
            if (*src_first >*dst_first ){ return  1; }
            ++src_first; ++dst_first;
         }  return 0;
-    }
+    }}
 
     template < class A, class B >
-    void copy_reverse( A src_first, A src_last, B dst_first ) {
-        while ( src_first != src_last ) {
-          --src_last;
-           *dst_first=*src_last;
-          ++dst_first;
+    void fill( A src_first, A src_last, B value ) {
+        while( src_first != src_last ) {
+           *src_first = value; ++src_first;
         }
     }
 
-    template < class A, class B >
-    void move_reverse( A src_first, A src_last, B dst_first ) {
-        while ( src_first != src_last ) {
-          --src_last;
-           *dst_first= move( *src_last );
-          ++dst_first;
-        }
+    template<typename T> 
+    void swap( T& a, T& b ) noexcept { 
+        T t = move(a); a = move(b); 
+          b = move(t);
     }
     
     template < class A, class B >
     void move( A src_first, A src_last, B dst_first ) {
-        while ( src_first != src_last ) {
-            *dst_first = move( *src_first );
+    if( type::is_number<typename type::remove_pointer<A>::type>::value ){
+        auto mem  = sizeof( typename type::remove_pointer<A>::type ); 
+        auto size = mem * ( src_last - src_first );
+        memmove( dst_first, src_first, size ); 
+    } else { 
+        while( src_first != src_last ) {
+           *dst_first= move( *src_first );
           ++src_first; ++dst_first;
+        }
+    }}
+
+    template < class A, class B >
+    void move_reverse( A src_first, A src_last, B dst_first ) {
+        while ( src_first != src_last ) {
+          --src_last ; *dst_first= move( *src_last );
+          ++dst_first;
         }
     }
 
     template < class A, class B >
     void copy( A src_first, A src_last, B dst_first ) {
-        while ( src_first != src_last ) {
-           *dst_first =*src_first;
+    if( type::is_number<typename type::remove_pointer<A>::type>::value ){
+        auto mem  = sizeof( typename type::remove_pointer<A>::type ); 
+        auto size = mem * ( src_last - src_first );
+        memcpy( dst_first, src_first, size ); 
+    } else {
+        while( src_first != src_last ) {
+           *dst_first= *src_first;
           ++src_first;++dst_first;
         }
-    }
+    }}
 
     template < class A, class B >
-    void fill( A src_first, A src_last, B value ) {
+    void copy_reverse( A src_first, A src_last, B dst_first ) {
         while ( src_first != src_last ) {
-           *src_first = value;
-          ++src_first;
+          --src_last ; *dst_first=*src_last;
+          ++dst_first;
         }
     }
 

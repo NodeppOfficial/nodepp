@@ -758,17 +758,14 @@ public:
         if( obj->state & STATE::FS_STATE_READING ){
 
         if( is_blocked( ov, c ) ){ 
-            obj->state |= STATE::FS_STATE_WAITING;
-            return -2; 
+            obj->state|= STATE::FS_STATE_WAITING; return -2; 
         } else {
             obj->state&=~STATE::FS_STATE_READING;
             obj->state&=~STATE::FS_STATE_WAITING;
-            return c==0 ? -1 : (int) c;
-        }}
+        return c==0 ? -1 : (int) c; }}
 
         SOCKADDR_ST& addr = get_read_address(); socklen_t len = sizeof(addr);
-
-        obj->state |= STATE::FS_STATE_READING; 
+        obj->state |= STATE::FS_STATE_READING;
         ov = {0}; bu= { sx, bf }; f =0; c =0;
 
         SOCK != SOCK_DGRAM
@@ -776,11 +773,10 @@ public:
         : WSARecvFrom( obj->fd, &bu, 1, &c, &f, (SOCKADDR*) &addr, &len, &ov, NULL );
 
         if( is_blocked(c) ){ 
-            obj->state |= STATE::FS_STATE_WAITING;
-            return -2; 
+            obj->state|= STATE::FS_STATE_WAITING; return -2; 
         } else {
-            obj->state&=~ STATE::FS_STATE_READING;
-            obj->state&=~ STATE::FS_STATE_WAITING;
+            obj->state&=~STATE::FS_STATE_READING;
+            obj->state&=~STATE::FS_STATE_WAITING;
         }
 
     return c==0 ? -1 : (int) c; }
@@ -796,29 +792,26 @@ public:
 
         if( obj->state & STATE::FS_STATE_WRITING ){
         if( is_blocked( ov, c ) ){ 
-            obj->state |= STATE::FS_STATE_WAITING;
-            return -2; 
+            obj->state|= STATE::FS_STATE_WAITING; return -2; 
         } else {
             obj->state&=~STATE::FS_STATE_WRITING;
             obj->state&=~STATE::FS_STATE_WAITING;
-            return c==0 ? -1 : (int) c;
-        }}
+        return c==0 ? -1 : (int) c; }}
 
         SOCKADDR_ST& addr = get_write_address(); socklen_t len = sizeof(addr);
 
         obj->state |= STATE::FS_STATE_WRITING;
-        ov = {0}; bu= { sx, bf }; f =0; c =0;
+        ov = {0}; bu= { sx, bf }; f=0 ; c=0;
 
         SOCK != SOCK_DGRAM
         ? WSASend  ( obj->fd, &bu, 1, &c, f, /*-------------------*/ &ov, NULL )
         : WSASendTo( obj->fd, &bu, 1, &c, f, (SOCKADDR*) &addr, len, &ov, NULL );
 
         if( is_blocked(c) ) { 
-            obj->state|= STATE::FS_STATE_WAITING;
-            return -2; 
+            obj->state|= STATE::FS_STATE_WAITING; return -2; 
         } else {
-            obj->state&=~ STATE::FS_STATE_WRITING;
-            obj->state&=~ STATE::FS_STATE_WAITING;
+            obj->state&=~STATE::FS_STATE_WRITING;
+            obj->state&=~STATE::FS_STATE_WAITING;
         }
 
     return c==0 ? -1 : (int) c; }

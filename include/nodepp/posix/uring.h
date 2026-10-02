@@ -72,6 +72,7 @@ protected:
         void *sq_ptr , *cq_ptr    ; 
         
         queue_t<void*> borrow;
+        queue_t<void*> kill  ;
         queue_t<DENO > que   ; int ed = -1;
         queue_t<DONE > sque  ; int fd = -1;
         
@@ -92,25 +93,19 @@ protected:
 
     template< class T >
     int io_consumer( T* raw, int flag ) const noexcept {
-    if( raw==nullptr ) { errno=EINVAL; return -1; }
+    if( raw==nullptr ) { return -EINVAL; }
 
         auto &mem = raw->data.data[ flag ];
     
     if( mem.mode==FLAG::URING_FLAG_DONE ){
         mem.mode =FLAG::URING_FLAG_FREE ;
-        
-        IOcqe cqe = mem.cqe;
-
-        if  ( cqe.res  < 0  )
-            { errno=-cqe.res; return -1; } 
-        else{ return cqe.res; /*------*/ }
-    
+        return mem.cqe.res;
     }
 
         io_submit (); 
         io_consume();
 
-    errno=EWOULDBLOCK; return -1; }
+    return -EWOULDBLOCK; }
     
     /*─······································································─*/
 
@@ -262,7 +257,7 @@ public:
     int free( uchar_64 pd ) const noexcept {
         auto mem = obj->que.as( (void*) pd );
     if( mem == nullptr ){ return -1; }
-        obj->que.erase( mem );
+        obj->kill.push( mem );
     return 1; }
 
     int remove( uchar_64 pd ) const noexcept {
@@ -282,6 +277,15 @@ public:
             ::poll( &obj->pqes, 1, ms ); io_consume();
         if( ::read( obj->ed,&value,sizeof(uchar_64))>0 ){} }
 
+        if( obj->kill.get() != nullptr ){ do {
+            auto raw  = obj->kill.get( ); obj->kill.next();
+            auto node = obj->que .as ( raw->data );  
+        if( node == nullptr ) /*------------------------------------------------------*/ { break; }
+        if((node->data.data[0].mode & (FLAG::URING_FLAG_FREE|FLAG::URING_FLAG_DONE))==0 ){ break; }
+        if((node->data.data[1].mode & (FLAG::URING_FLAG_FREE|FLAG::URING_FLAG_DONE))==0 ){ break; }
+            obj->kill.erase( raw ); obj->que.erase( node );
+        } while(0); }
+
         return io_queue(); 
         
     }
@@ -291,61 +295,80 @@ public:
     template< class T >
     int write( T* fd, void* buf, size_t len ) const noexcept {
         
-        auto  io  = io_submitter( fd, FLAG::URING_FLAG_WRTE );
+        auto flag = FLAG::URING_FLAG_WRTE;
+        auto   io = io_submitter( fd, flag );
         auto  raw = obj->que.as ( io );
-        auto &mem = raw->data.data  [ FLAG::URING_FLAG_WRTE ];
+        auto &mem = raw->data.data  [ flag ];
         
     if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){
         mem.mode      = FLAG::URING_FLAG_USED;
         IOsqe &sqe    = mem.sqe; 
 
+        string_t &raw = mem.mem; raw.resize( len );
         memset( &sqe, 0, sizeof(IOsqe) );
+        memcpy( raw.get() , buf, len );
 
-        sqe.addr      = (uchar_64) buf ;
+        sqe.addr      = (uchar_64) raw.get();
         sqe.len       = len ;
-        sqe.off       = -1;
+        sqe.off       = -1  ;
         sqe.opcode    = IORING_OP_WRITE;
 
         sqe.fd        = fd->get_fd();
-        sqe.user_data = fd->get_pd()| ((uchar_64)FLAG::URING_FLAG_WRTE) << 48; 
-        
+        sqe.user_data = fd->get_pd()| ((uchar_64)flag) <<48; 
         obj->sque.push( mem ); errno=EWOULDBLOCK; return -1;
         
-    } return io_consumer( raw, FLAG::URING_FLAG_WRTE ); }
+    } int out = io_consumer( raw, flag ); switch( out<0 ){
+
+        case true : errno= -out; return -1; break; 
+        case false: return  out; return  1; break;
+
+    }}
     
     template< class T >
     int read( T* fd, void* buf, size_t len ) const noexcept {
         
-        auto  io  = io_submitter( fd, FLAG::URING_FLAG_READ );
+        auto flag = FLAG::URING_FLAG_READ;
+        auto   io = io_submitter( fd, flag );
         auto  raw = obj->que.as ( io );
-        auto &mem = raw->data.data  [ FLAG::URING_FLAG_READ ];
+        auto &mem = raw->data.data  [ flag ];
         
     if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){
         mem.mode      = FLAG::URING_FLAG_USED;
         IOsqe &sqe    = mem.sqe;
         
+        string_t &raw = mem.mem; raw.resize( len );
         memset( &sqe, 0, sizeof(IOsqe) );
 
-        sqe.addr      = (uchar_64) buf;
+        sqe.addr      = (uchar_64) raw.get();
         sqe.len       = len ;
         sqe.off       = -1;
         sqe.opcode    = IORING_OP_READ;
 
         sqe.fd        = fd->get_fd();
-        sqe.user_data = fd->get_pd()| ((uchar_64)FLAG::URING_FLAG_READ) << 48; 
-
+        sqe.user_data = fd->get_pd()| ((uchar_64)flag) <<48; 
         obj->sque.push( mem ); errno=EWOULDBLOCK; return -1;
 
-    } return io_consumer( raw, FLAG::URING_FLAG_READ ); }
+    } int out = io_consumer( raw, flag ); switch( out<0 ){
+
+        case true : errno= -out; return -1; break; case false: do {
+
+            IOsqe    &sqe = mem.sqe;
+            string_t &raw = mem.mem;
+            memcpy( buf, raw.get(), len );
+
+        return out; return 1; } while(0); break;
+
+    }}
     
     /*─······································································─*/
     
     template< class T, class V >
     int connect( T* fd, V* buf, socklen_t len ) const noexcept {
         
-        auto  io  = io_submitter( fd, FLAG::URING_FLAG_WRTE );
+        auto flag = FLAG::URING_FLAG_READ;
+        auto   io = io_submitter( fd, flag );
         auto  raw = obj->que.as ( io );
-        auto &mem = raw->data.data  [ FLAG::URING_FLAG_WRTE ];
+        auto &mem = raw->data.data  [ flag ];
         
     if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){
         mem.mode      = FLAG::URING_FLAG_USED;
@@ -358,18 +381,23 @@ public:
         sqe.addr2     = (uchar_64) len ;
 
         sqe.fd        = fd->get_fd(); 
-        sqe.user_data = fd->get_pd()| ((uchar_64)FLAG::URING_FLAG_WRTE) << 48; 
-
+        sqe.user_data = fd->get_pd()| ((uchar_64)flag) <<48; 
         obj->sque.push( mem ); errno=EWOULDBLOCK; return -1;
+        
+    } int out = io_consumer( raw, flag ); switch( out<0 ){
 
-    } return io_consumer( raw, FLAG::URING_FLAG_WRTE ); }
+        case true : errno= -out; return -1; break; 
+        case false: return  out; return  1; break;
+
+    }}
 
     template< class T, class V >
     int accept( T* fd, V* buf, socklen_t* len ) const noexcept {
         
-        auto  io  = io_submitter( fd, FLAG::URING_FLAG_READ );
+        auto flag = FLAG::URING_FLAG_READ;
+        auto   io = io_submitter( fd, flag );
         auto  raw = obj->que.as ( io );
-        auto &mem = raw->data.data  [ FLAG::URING_FLAG_READ ];
+        auto &mem = raw->data.data  [ flag ];
 
     if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){
         mem.mode      = FLAG::URING_FLAG_USED;
@@ -382,59 +410,72 @@ public:
         sqe.addr2     = (uchar_64) len ;
 
         sqe.fd        = fd->get_fd();
-        sqe.user_data = fd->get_pd()| ((uchar_64)FLAG::URING_FLAG_READ) << 48; 
-
+        sqe.user_data = fd->get_pd()| ((uchar_64)flag) <<48; 
         obj->sque.push( mem ); errno=EWOULDBLOCK; return -1;
     
-    } return io_consumer( raw, FLAG::URING_FLAG_READ ); }
+    } int out = io_consumer( raw, flag ); switch( out<0 ){
+
+        case true : errno= -out; return -1; break; 
+        case false: return  out; return  1; break;
+
+    }}
     
     /*─······································································─*/
     
     template< class T >
     int send( T* fd, void* buf, size_t len, int flags ) const noexcept {
         
-        auto  io  = io_submitter( fd, FLAG::URING_FLAG_WRTE );
+        auto flag = FLAG::URING_FLAG_WRTE;
+        auto   io = io_submitter( fd, flag );
         auto  raw = obj->que.as ( io );
-        auto &mem = raw->data.data  [ FLAG::URING_FLAG_WRTE ];
+        auto &mem = raw->data.data  [ flag ];
         
     if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){
         mem.mode      = FLAG::URING_FLAG_USED;
         IOsqe &sqe    = mem.sqe;
         
+        string_t &raw = mem.mem; raw.resize( len );
         memset( &sqe, 0, sizeof(IOsqe) );
+        memcpy( raw.get(), buf, len );
 
         sqe.opcode    = IORING_OP_SEND;
         sqe.msg_flags = flags;
         sqe.len       = len  ;
-        sqe.addr      = (uchar_64) buf;
+        sqe.addr      = (uchar_64) raw.get();
 
         sqe.fd        = fd->get_fd();
-        sqe.user_data = fd->get_pd()| ((uchar_64)FLAG::URING_FLAG_WRTE) << 48; 
-
+        sqe.user_data = fd->get_pd()| ((uchar_64)flag) <<48; 
         obj->sque.push( mem ); errno=EWOULDBLOCK; return -1;
 
-    } return io_consumer( raw, FLAG::URING_FLAG_WRTE ); }
+    } int out = io_consumer( raw, flag ); switch( out<0 ){
+
+        case true : errno= -out; return -1; break; 
+        case false: return  out; return  1; break;
+
+    }}
     
     template< class T, class V >
     int sendto( T* fd, void* buf, size_t len, int flags, const V* addr, socklen_t addrlen ) const noexcept {
         
-        auto  io  = io_submitter( fd, FLAG::URING_FLAG_WRTE );
+        auto flag = FLAG::URING_FLAG_WRTE;
+        auto   io = io_submitter( fd, flag );
         auto  raw = obj->que.as ( io );
-        auto &mem = raw->data.data  [ FLAG::URING_FLAG_WRTE ];
+        auto &mem = raw->data.data  [ flag ];
         
     if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){
         mem.mode      = FLAG::URING_FLAG_USED;
         
         IOsqe    &sqe = mem.sqe;
         string_t &raw = mem.mem; 
-        raw.resize( sizeof(IOmsg) + sizeof(IOvec), '\0' );
-        
-        memset( &sqe, 0, sizeof(IOsqe) );
+        raw.resize( sizeof(IOmsg) + sizeof(IOvec) + len, '\0' );
+
+        memcpy( raw.get()+len, buf, len );
+        memset( &sqe, 0, sizeof (IOsqe) );
         
         IOmsg* msg = (IOmsg*) raw.get() ;
         IOvec* iov = (IOvec*)(raw.get() + sizeof(IOmsg));
 
-        iov->iov_base = buf;
+        iov->iov_base = raw.get() + sizeof(IOmsg) + sizeof(IOvec);
         iov->iov_len  = len;
 
         msg->msg_name    = (void*)addr;
@@ -448,58 +489,74 @@ public:
         sqe.addr         = (uchar_64)msg;
         sqe.len          = 1;
         sqe.msg_flags    = 0;
-        sqe.user_data    = fd->get_pd() | ((uchar_64)FLAG::URING_FLAG_WRTE) << 48; 
-
+        sqe.user_data = fd->get_pd()| ((uchar_64)flag) <<48; 
         obj->sque.push( mem ); errno=EWOULDBLOCK; return -1;
 
-    } return io_consumer( raw, FLAG::URING_FLAG_WRTE ); }
-    
+    } int out = io_consumer( raw, flag ); switch( out<0 ){
+
+        case true : errno= -out; return -1; break; 
+        case false: return  out; return  1; break;
+
+    }}
+
     /*─······································································─*/
     
     template< class T >
     int recv( T* fd, void* buf, size_t len, int flags ) const noexcept {
         
-        auto  io  = io_submitter( fd, FLAG::URING_FLAG_READ );
+        auto flag = FLAG::URING_FLAG_READ;
+        auto   io = io_submitter( fd, flag );
         auto  raw = obj->que.as ( io );
-        auto &mem = raw->data.data  [ FLAG::URING_FLAG_READ ];
+        auto &mem = raw->data.data  [ flag ];
     
     if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){
         mem.mode      = FLAG::URING_FLAG_USED;
         IOsqe &sqe    = mem.sqe;
         
+        string_t &raw = mem.mem; raw.resize( len );
         memset( &sqe, 0, sizeof(IOsqe) );
 
         sqe.opcode    = IORING_OP_RECV;
         sqe.msg_flags = flags;
         sqe.len       = len  ;
-        sqe.addr      = (uchar_64) buf;
+        sqe.addr      = (uchar_64) raw.get();
 
         sqe.fd        = fd->get_fd();
-        sqe.user_data = fd->get_pd()| ((uchar_64)FLAG::URING_FLAG_READ) << 48; 
-
+        sqe.user_data = fd->get_pd()| ((uchar_64)flag) <<48; 
         obj->sque.push( mem ); errno=EWOULDBLOCK; return -1;
         
-    } return io_consumer( raw, FLAG::URING_FLAG_READ ); }
+    } int out = io_consumer( raw, flag ); switch( out<0 ){
+
+        case true : errno= -out; return -1; break; case false: do {
+
+            IOsqe    &sqe = mem.sqe;
+            string_t &raw = mem.mem; 
+            memmove( buf, raw.get(), len );
+
+        return out; return 1; } while(0); break;
+
+    }}
     
     template< class T, class V >
     int recvfrom( T* fd, void* buf, size_t len, int flags, const V* addr, socklen_t* addrlen ) const noexcept {
         
-        auto  io  = io_submitter( fd, FLAG::URING_FLAG_READ );
+        auto flag = FLAG::URING_FLAG_READ;
+        auto   io = io_submitter( fd, flag );
         auto  raw = obj->que.as ( io );
-        auto &mem = raw->data.data  [ FLAG::URING_FLAG_READ ];
+        auto &mem = raw->data.data  [ flag ];
 
     if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){
         mem.mode      = FLAG::URING_FLAG_USED;
 
         IOsqe    &sqe = mem.sqe;
         string_t &raw = mem.mem; 
-        raw.resize( sizeof(IOmsg) + sizeof(IOvec), '\0' );
+        raw.resize( sizeof(IOmsg) + sizeof(IOvec) + len, '\0' );
         
         memset( &sqe, 0, sizeof(IOsqe) );
         IOmsg* msg = (IOmsg*) raw.get() ;
         IOvec* iov = (IOvec*)(raw.get() + sizeof(IOmsg));
 
-        iov->iov_base    = buf;
+        iov->iov_base    = raw.get() + sizeof(IOmsg) + sizeof(IOvec);
         iov->iov_len     = len;
 
         msg->msg_name    = (void*)addr;
@@ -513,11 +570,20 @@ public:
         sqe.addr         = (uchar_64)msg;
         sqe.len          = 1;
         sqe.msg_flags    = 0;
-        sqe.user_data    = fd->get_pd() | ((uchar_64)FLAG::URING_FLAG_READ) << 48; 
-        
+        sqe.user_data = fd->get_pd()| ((uchar_64)flag) <<48; 
         obj->sque.push( mem ); errno=EWOULDBLOCK; return -1;
 
-    } return io_consumer( raw, FLAG::URING_FLAG_READ ); }
+    } int out = io_consumer( raw, flag ); switch( out<0 ){
+
+        case true : errno= -out; return -1; break; case false: do {
+
+            IOsqe    &sqe = mem.sqe;
+            string_t &raw = mem.mem; 
+            memmove( buf, raw.get() + sizeof(IOmsg) + sizeof(IOvec), len );
+
+        return out; return 1; } while(0); break;
+
+    }}
 
 }; }
 
