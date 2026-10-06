@@ -9,31 +9,13 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#ifndef NODEPP_EVENT_SCHEDULER
-
-#if   ( _OS_ == NODEPP_OS_WINDOWS )
-    #define NODEPP_EVENT_SCHEDULER NODEPP_SCHEDULER_IOCP
-#else
-    #define NODEPP_EVENT_SCHEDULER NODEPP_SCHEDULER_LITE
-#endif
-
-#endif
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
 #if NODEPP_EVENT_SCHEDULER == NODEPP_SCHEDULER_IOCP
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-#include <winsock2.h>
-#include <mswsock.h>
+#include "iocp.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
 namespace nodepp { class kernel_t {
 private:
-
-    using HPOLLFD = OVERLAPPED_ENTRY;
 
     enum FLAG : uchar { 
          KV_STATE_UNKNOWN = 0b00000000, 
@@ -48,7 +30,7 @@ private:
     };
 
     struct kevent_t { 
-        uchar flag; HANDLE fd;
+        uchar flag; HANDLE fd; uchar_64 pd;
         function_t<int> callback; 
         event_t   <   > event   ;
     };
@@ -64,9 +46,7 @@ protected:
     uchar_64 append( kevent_t& kv ) const noexcept {
 
         obj->kv_queue.push( kv ); auto id = obj->kv_queue.last();
-
-        if( !CreateIoCompletionPort( id->data.fd, obj->pd, (ULONG_PTR)id, 0 ) ) 
-          { obj->kv_queue.erase(id); return FLAG::KV_STATE_FALLBACK; }
+        obj->iocp.append( kv.pd, id );
 
     return (uchar_64) id; }
 
@@ -74,9 +54,10 @@ protected:
 
         auto kv = obj->kv_queue.as( ptr );
         if ( kv== nullptr ){ return -1; }
-        
-        obj->kv_queue.erase( kv );
-        
+
+        obj->iocp.remove(kv->data.pd);
+        obj->kv_queue.erase( kv ); 
+    
     return 1; }
 
     /*─······································································─*/
@@ -144,21 +125,18 @@ protected:
 
     struct NODE {
 
-        HANDLE pd; /**/ uchar state;
-
+        iocp_t iocp ; uchar state ;
         loop_t   /*----*/ ev_queue;
         queue_t<kevent_t> kv_queue;
-        uchar_32 /*----*/ timeout ; ptr_t<HPOLLFD> ev;
+        uchar_32 /*----*/ timeout ;
 
-       ~NODE(){ CloseHandle( pd ); }
     };  ptr_t<NODE> obj;
 
 public:
 
-    kernel_t() : obj( new NODE() ) {
-        obj->pd = CreateIoCompletionPort( INVALID_HANDLE_VALUE, NULL, 0, 0 );
-        if( obj->pd == NULL ){ NODEPP_THROW_ERROR("Can't Initialize kernel_t"); }
-        obj->ev.resize( NODEPP_MAX_BATCH_SIZE );
+    kernel_t() : obj( new NODE() ) { 
+        obj->iocp = NODEPP_IOCP(); obj->iocp.start_device();
+        obj->state= KV_STATE_OPEN ; 
     }
 
    ~kernel_t() noexcept { 
@@ -169,24 +147,23 @@ public:
 public:
 
     ulong size() const noexcept { return obj->ev_queue.size() + obj->kv_queue.size() + obj.count()-1; }
-
-    void clear() const noexcept { /*--*/ obj->ev_queue.clear(); obj->kv_queue.clear(); }
     
     bool should_close() const noexcept { return empty() || NODEPP_SHTDWN() || NODEPP_LOCAL_SHTDWN(); }
+
+    void clear() const noexcept { /*--*/ obj->ev_queue.clear(); obj->kv_queue.clear(); }
 
     bool empty() const noexcept { return size()==0; }
 
     /*─······································································─*/
 
     void off  ( ptr_t<task_t> address ) const noexcept { clear( address ); }
-
     void clear( ptr_t<task_t> address ) const noexcept {
-        if( address.null() ) /*-*/ { return; }
-        if( address->sign == &obj ){
+        if( address.null() ) /*--------------*/ { return; }
         if( address->flag & TASK_STATE::CLOSED ){ return; }
-            address->flag = TASK_STATE::CLOSED;
+        if( address->sign == &obj ){
+            address->flag = TASK_STATE::CLOSED ;
             remove( address->addr ); 
-        } else { obj->ev_queue.off( address ); }
+        }   obj->ev_queue.off( address );
     }
 
     /*─······································································─*/
@@ -195,21 +172,10 @@ public:
     ptr_t<task_t> poll_add( T& inp, uchar flag, U cb, ulong timeout=0, const W&... args ) const noexcept {
     function_t<int,W...> clb ( cb ); if( inp.is_closed() ){ return nullptr; }
 
-        if( inp.get_pd()==FLAG::KV_STATE_FALLBACK ){ 
-        if( is_std( (HANDLE) inp.get_fd() ) ) /**/ {
-            return loop_add( coroutine::add( COROUTINE(){
-            coBegin; 
+        if( obj->iocp.address( inp.get_pd() )==nullptr ){
+        if( obj->iocp.append ( &inp )        ==nullptr ){ return loop_add( cb, args... ); }
 
-                while( clb( args... )>=0 )
-                     { coDelay( 100 ); }
-
-            coFinish
-            }));
-        } else { return loop_add( cb, args... ); }}
-
-        if( obj->kv_queue.as( (void*) inp.get_pd() )==nullptr ) {
-
-            kevent_t     kv  ;
+            kevent_t     kv  ; kv.pd = /*----*/ inp.get_pd();
             kv.flag    = flag; kv.fd = (HANDLE) inp.get_fd();
             len_t time = timeout==0 ? 0 : process::now() + timeout;
             
@@ -220,18 +186,14 @@ public:
                 if( inp.is_waiting() ){ return  0; }
             return 1; };
 
-            inp.get_pd() = append(kv);
-
-            if( inp.get_pd()==KV_STATE_FALLBACK )
-              { return poll_add( inp, flag, cb, timeout, args... ); }
-
-        }
+        append(kv); }
 
         ptr_t<task_t> task( 0UL, task_t() );
-        task->addr  = (void*) inp.get_pd();
+
+        task->addr  = obj->iocp.address( inp.get_pd() );
         task->flag  = TASK_STATE::OPEN; 
         task->sign  = &obj;
-        
+
         obj->kv_queue.as(task->addr)->data.event.add([=](){ 
             return clb( args... )>=0 ? 1 : -1; 
         }); invoker( task->addr );
@@ -245,12 +207,8 @@ public:
     /*─······································································─*/
 
     bool is_sleeping() const noexcept { return obj->state & FLAG::KV_STATE_SLEEP; }
-
-    ulong get_delay () const noexcept { return get_delay_ms(); }
-
-    int wake() const noexcept {
-        return PostQueuedCompletionStatus( obj->pd, 0, 0, NULL ) ? 1 : -1;
-    }
+    int         wake() const noexcept { return obj->iocp.wake(); }
+    ulong  get_delay() const noexcept { return get_delay_ms(); }
 
     /*─······································································─*/
 
@@ -269,25 +227,16 @@ public:
     int next() const { invoker( nullptr );
 
         if( obj->ev_queue.next()==1 ){ return 1; } 
-        set_timeout(obj->ev_queue.get_delay());
-        
-        obj->state |= FLAG::KV_STATE_SLEEP;
+        set_timeout( obj->ev_queue.get_delay() );
 
-        ULONG idx; int res = GetQueuedCompletionStatusEx( 
-            obj->pd , obj->ev.data(), obj->ev.size(), 
-            &idx, get_delay_ms(), FALSE
-        );
+        obj->state |=  FLAG::KV_STATE_SLEEP;
+        auto list   =  obj->iocp.next( get_delay_ms() );
+        obj->state &=~ FLAG::KV_STATE_SLEEP;
 
-        obj->state &=~ FLAG::KV_STATE_SLEEP; 
-
-        if( res ){ while( idx > 0 ){ 
-            
-            idx--; auto &x = obj->ev[ idx ];
-            invoker( (void*) x.lpCompletionKey );
-
-        }}  clear_timeout(); 
-        
-    return 1; }
+        for( auto &x: list ){ invoker( obj->iocp.address( x.lpCompletionKey ) ); }
+        clear_timeout(); return 1; 
+    
+    }
 
 };}
 
@@ -296,6 +245,7 @@ public:
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #if NODEPP_EVENT_SCHEDULER == NODEPP_SCHEDULER_LITE
+#include "iocp.h"
 
 namespace nodepp { class kernel_t {
 private:
@@ -311,12 +261,6 @@ private:
          KV_STATE_CLOSED  = 0b00001000,
          KV_STATE_FALLBACK= 0b00000001
     };
-
-    bool is_std( HANDLE fd ) const noexcept { 
-        return fd == GetStdHandle( STD_INPUT_HANDLE ) ||
-               fd == GetStdHandle( STD_OUTPUT_HANDLE) ||
-               fd == GetStdHandle( STD_ERROR_HANDLE ) ;
-    }
 
 protected:
 
@@ -350,13 +294,9 @@ public:
 
 public:
 
-    void off  ( ptr_t<task_t> address ) const noexcept { clear( address ); }
+    void clear( ptr_t<task_t> address ) const noexcept { obj->ev_queue.clear( address ); }
 
-    void clear( ptr_t<task_t> address ) const noexcept {
-         if( address.null() ) /*--------------*/ { return; }
-         if( address->flag & TASK_STATE::CLOSED ){ return; }
-             address->flag = TASK_STATE::CLOSED;
-    }
+    void off  ( ptr_t<task_t> address ) const noexcept { clear( address ); }
 
     /*─······································································─*/
     
@@ -389,10 +329,8 @@ public:
         coBegin 
 
             while( clb( args... )>=0 ){
-            if   ( time > 0 && time < process::now() ) { break; }
-        //  if   ( is_std( fd ) )    { coDelay(100); }
-            if   ( inp.is_waiting() ){ coDelay(100); coGoto(0); } 
-            coNext; }
+            if   ( time > 0 && time < process::now() ){ break; }
+            if   ( inp.is_waiting() ) /*-------*/ { coGoto(0); } coNext; }
 
         coFinish
         }));
@@ -433,6 +371,8 @@ public:
     return -1; }
 
 };}
+
+/*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
 

@@ -1,6 +1,6 @@
 #include <nodepp/nodepp.h>
 #include <nodepp/worker.h>
-#include <nodepp/invoke.h>
+#include <nodepp/invoker.h>
 #include <nodepp/http.h>
 #include <nodepp/os.h>
 

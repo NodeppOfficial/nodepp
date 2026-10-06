@@ -55,11 +55,19 @@ protected:
          URING_FLAG_WRTE = 0b00000001,
          URING_FLAG_READ = 0b00000000
     };
+
+    bool is_blocked( int& c ) const noexcept {
+    if ( c >= 0 ) /*---------*/ { return 0; }
+    if ( errno == EISCONN ){ c=0; return 0; } return (
+         errno == EWOULDBLOCK || errno == EINPROGRESS ||
+         errno == EALREADY    || errno == EAGAIN      ||
+         errno == ECONNRESET  || errno == EMFILE
+    );}
     
     /*─······································································─*/
 
-    struct DONE { void* sign; int mode; IOsqe sqe; IOcqe cqe; string_t mem; };
-    struct DENO { void* addr; DONE data[2]; };
+    struct DONE { int mode; IOsqe sqe; IOcqe cqe; string_t mem; };
+    struct DENO { DONE data[2]; void* addr; };
     struct NODE {
  
         IOprm prm; IOpll pqes; uint entries; int count=0;
@@ -72,6 +80,7 @@ protected:
         void *sq_ptr , *cq_ptr    ; 
         
         queue_t<void*> borrow;
+        queue_t<void*> kill  ;
         queue_t<DENO > que   ; int ed = -1;
         queue_t<DONE > sque  ; int fd = -1;
         
@@ -92,25 +101,20 @@ protected:
 
     template< class T >
     int io_consumer( T* raw, int flag ) const noexcept {
-    if( raw==nullptr ) { errno=EINVAL; return -1; }
+    if( raw==nullptr ) { return -EINVAL; }
 
         auto &mem = raw->data.data[ flag ];
     
     if( mem.mode==FLAG::URING_FLAG_DONE ){
         mem.mode =FLAG::URING_FLAG_FREE ;
-        
-        IOcqe cqe = mem.cqe;
+    return is_blocked(mem.cqe.res) ? -2 : mem.cqe.res<0 ? -1 : mem.cqe.res; }
 
-        if  ( cqe.res  < 0  )
-            { errno=-cqe.res; return -1; } 
-        else{ return cqe.res; /*------*/ }
-    
-    }
-
+    /*
         io_submit (); 
         io_consume();
+    */
 
-    errno=EWOULDBLOCK; return -1; }
+    return -2; }
     
     /*─······································································─*/
 
@@ -132,6 +136,9 @@ protected:
 
         auto &mem     = /*-----*/ obj->que.last()->data; 
         fd ->get_pd() = (uchar_64)obj->que.last();
+
+        mem.data[0].mem.resize( sizeof(IOmsg) + sizeof(IOvec) + NODEPP_CHUNK_SIZE );
+        mem.data[1].mem.resize( sizeof(IOmsg) + sizeof(IOvec) + NODEPP_CHUNK_SIZE );
 
         mem.addr         = nullptr;
         mem.data[0].mode = FLAG::URING_FLAG_FREE;
@@ -201,14 +208,14 @@ public:
 
     /*─······································································─*/
 
-    int start_device() const noexcept { 
-        
+    int start_device() const { do {
     if( obj->ed == NODEPP_INVALID_FILE && 
         obj->fd == NODEPP_INVALID_FILE 
     ) {
 
         obj->entries = NODEPP_MAX_BATCH_SIZE ; IOprm &p = obj->prm;
         obj->fd = syscall(__NR_io_uring_setup, obj->entries, &obj->prm);
+        if( obj->fd == -1 ){ NODEPP_THROW_ERROR( "can't initialize uring_t" ); }
 
         obj->sq_ring_size = p.sq_off.array + p.sq_entries * sizeof(uint);
         obj->sq_ptr = mmap(NULL, obj->sq_ring_size, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_POPULATE, obj->fd, IORING_OFF_SQ_RING);
@@ -230,9 +237,10 @@ public:
 
         obj->ed = eventfd( 0, EFD_CLOEXEC|EFD_NONBLOCK );
         obj->pqes.fd = obj->ed; obj->pqes.events= POLLIN;
+        if( obj->ed == -1 ){ NODEPP_THROW_ERROR( "can't initialize uring_t" ); break; }
         syscall(__NR_io_uring_register, obj->fd, IORING_REGISTER_EVENTFD, &obj->ed, 1);
 
-    return 1; } return -1; }
+    return 1; }} while(0); return -1; }
     
     /*─······································································─*/
 
@@ -261,7 +269,7 @@ public:
     int free( uchar_64 pd ) const noexcept {
         auto mem = obj->que.as( (void*) pd );
     if( mem == nullptr ){ return -1; }
-        obj->que.erase( mem );
+        obj->kill.push( mem );
     return 1; }
 
     int remove( uchar_64 pd ) const noexcept {
@@ -281,6 +289,15 @@ public:
             ::poll( &obj->pqes, 1, ms ); io_consume();
         if( ::read( obj->ed,&value,sizeof(uchar_64))>0 ){} }
 
+        if( obj->kill.get() != nullptr ){ do {
+            auto raw  = obj->kill.get( ); obj->kill.next();
+            auto node = obj->que .as ( raw->data );  
+        if( node == nullptr ) /*------------------------------------------------------*/ { break; }
+        if((node->data.data[0].mode & (FLAG::URING_FLAG_FREE|FLAG::URING_FLAG_DONE))==0 ){ break; }
+        if((node->data.data[1].mode & (FLAG::URING_FLAG_FREE|FLAG::URING_FLAG_DONE))==0 ){ break; }
+            obj->kill.erase( raw ); obj->que.erase( node );
+        } while(0); }
+
         return io_queue(); 
         
     }
@@ -290,63 +307,88 @@ public:
     template< class T >
     int write( T* fd, void* buf, size_t len ) const noexcept {
         
-        auto  io  = io_submitter( fd, FLAG::URING_FLAG_WRTE );
+        auto flag = FLAG::URING_FLAG_WRTE;
+        auto   io = io_submitter( fd, flag );
         auto  raw = obj->que.as ( io );
-        auto &mem = raw->data.data  [ FLAG::URING_FLAG_WRTE ];
+        auto &mem = raw->data.data  [ flag ];
+        auto size = min( len, (size_t) NODEPP_CHUNK_SIZE );
         
-    if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){
-        mem.mode      = FLAG::URING_FLAG_USED;
+    if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){ do {
+        int c     = ::write( fd->get_fd(), buf, len );
+    if( !is_blocked(c) ){ return c; }} while(0);
+
+        mem.mode      = FLAG::URING_FLAG_USED ;
         IOsqe &sqe    = mem.sqe; 
+        string_t &raw = mem.mem;
 
         memset( &sqe, 0, sizeof(IOsqe) );
+        memcpy( raw.get(), buf, size );
 
-        sqe.addr      = (uchar_64) buf ;
-        sqe.len       = len ;
-        sqe.off       = -1;
+        sqe.addr      = (uchar_64) raw.get();
+        sqe.len       = size;
+        sqe.off       = -1  ;
         sqe.opcode    = IORING_OP_WRITE;
 
         sqe.fd        = fd->get_fd();
-        sqe.user_data = fd->get_pd()| ((uchar_64)FLAG::URING_FLAG_WRTE) << 48; 
+        sqe.user_data = fd->get_pd()| ((uchar_64)flag) <<48; 
+        obj->sque.push( mem ); return -2;
         
-        obj->sque.push( mem ); errno=EWOULDBLOCK; return -1;
-        
-    } return io_consumer( raw, FLAG::URING_FLAG_WRTE ); }
+    } return io_consumer( raw, flag ); }
     
     template< class T >
     int read( T* fd, void* buf, size_t len ) const noexcept {
         
-        auto  io  = io_submitter( fd, FLAG::URING_FLAG_READ );
+        auto flag = FLAG::URING_FLAG_READ;
+        auto   io = io_submitter( fd, flag );
         auto  raw = obj->que.as ( io );
-        auto &mem = raw->data.data  [ FLAG::URING_FLAG_READ ];
+        auto &mem = raw->data.data  [ flag ];
+        auto size = min( len, (size_t) NODEPP_CHUNK_SIZE );
         
-    if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){
+    if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){ do {
+        int c     = ::read( fd->get_fd(), buf, len );
+    if( !is_blocked(c) ){ return c; }} while(0);
+
         mem.mode      = FLAG::URING_FLAG_USED;
         IOsqe &sqe    = mem.sqe;
-        
+        string_t &raw = mem.mem;
+
         memset( &sqe, 0, sizeof(IOsqe) );
 
-        sqe.addr      = (uchar_64) buf;
-        sqe.len       = len ;
-        sqe.off       = -1;
+        sqe.addr      = (uchar_64) raw.get();
+        sqe.len       = size;
+        sqe.off       = -1  ;
         sqe.opcode    = IORING_OP_READ;
 
+        sqe.user_data = fd->get_pd()| ((uchar_64)flag) <<48; 
         sqe.fd        = fd->get_fd();
-        sqe.user_data = fd->get_pd()| ((uchar_64)FLAG::URING_FLAG_READ) << 48; 
 
-        obj->sque.push( mem ); errno=EWOULDBLOCK; return -1;
+        obj->sque.push( mem ); return -2;
 
-    } return io_consumer( raw, FLAG::URING_FLAG_READ ); }
+    } int out = io_consumer( raw, flag ); switch( out<=0 ){
+
+        case true : return out; break; case false: do {
+
+            string_t &raw = mem.mem;
+            memmove( buf, raw.get(), out );
+
+        return out; } while(0); break;
+
+    }}
     
     /*─······································································─*/
     
     template< class T, class V >
     int connect( T* fd, V* buf, socklen_t len ) const noexcept {
         
-        auto  io  = io_submitter( fd, FLAG::URING_FLAG_WRTE );
+        auto flag = FLAG::URING_FLAG_WRTE;
+        auto   io = io_submitter( fd, flag );
         auto  raw = obj->que.as ( io );
-        auto &mem = raw->data.data  [ FLAG::URING_FLAG_WRTE ];
+        auto &mem = raw->data.data  [ flag ];
         
-    if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){
+    if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){ do {
+        int c   = ::connect( fd->get_fd(), buf, len );
+    if( !is_blocked(c) ){ return c; }} while(0);
+
         mem.mode      = FLAG::URING_FLAG_USED;
         IOsqe &sqe    = mem.sqe;
         
@@ -356,21 +398,25 @@ public:
         sqe.addr      = (uchar_64) buf ;
         sqe.addr2     = (uchar_64) len ;
 
+        sqe.user_data = fd->get_pd()| ((uchar_64)flag) <<48; 
         sqe.fd        = fd->get_fd(); 
-        sqe.user_data = fd->get_pd()| ((uchar_64)FLAG::URING_FLAG_WRTE) << 48; 
 
-        obj->sque.push( mem ); errno=EWOULDBLOCK; return -1;
-
-    } return io_consumer( raw, FLAG::URING_FLAG_WRTE ); }
+        obj->sque.push( mem ); return -2;
+        
+    } return io_consumer( raw, flag ); }
 
     template< class T, class V >
     int accept( T* fd, V* buf, socklen_t* len ) const noexcept {
         
-        auto  io  = io_submitter( fd, FLAG::URING_FLAG_READ );
+        auto flag = FLAG::URING_FLAG_WRTE;
+        auto   io = io_submitter( fd, flag );
         auto  raw = obj->que.as ( io );
-        auto &mem = raw->data.data  [ FLAG::URING_FLAG_READ ];
+        auto &mem = raw->data.data  [ flag ];
 
-    if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){
+    if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){ do {
+        int c   = ::accept( fd->get_fd(), buf, len );
+    if( !is_blocked(c) ){ return c; }} while(0);
+
         mem.mode      = FLAG::URING_FLAG_USED;
         IOsqe &sqe    = mem.sqe;
         
@@ -380,126 +426,154 @@ public:
         sqe.addr      = (uchar_64) buf ;
         sqe.addr2     = (uchar_64) len ;
 
+        sqe.user_data = fd->get_pd()| ((uchar_64)flag) <<48; 
         sqe.fd        = fd->get_fd();
-        sqe.user_data = fd->get_pd()| ((uchar_64)FLAG::URING_FLAG_READ) << 48; 
 
-        obj->sque.push( mem ); errno=EWOULDBLOCK; return -1;
-    
-    } return io_consumer( raw, FLAG::URING_FLAG_READ ); }
+        obj->sque.push( mem ); return -2;
+
+    } return io_consumer( raw, flag ); }
     
     /*─······································································─*/
     
     template< class T >
     int send( T* fd, void* buf, size_t len, int flags ) const noexcept {
         
-        auto  io  = io_submitter( fd, FLAG::URING_FLAG_WRTE );
+        auto flag = FLAG::URING_FLAG_WRTE;
+        auto   io = io_submitter( fd, flag );
         auto  raw = obj->que.as ( io );
-        auto &mem = raw->data.data  [ FLAG::URING_FLAG_WRTE ];
+        auto &mem = raw->data.data  [ flag ];
+        auto size = min( len, (size_t) NODEPP_CHUNK_SIZE );
         
-    if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){
+    if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){ do {
+        int c   = ::send( fd->get_fd(), buf, len, flags );
+    if( !is_blocked(c) ){ return c; }} while(0);
+
         mem.mode      = FLAG::URING_FLAG_USED;
         IOsqe &sqe    = mem.sqe;
-        
+        string_t &raw = mem.mem;
+
+        memcpy( raw.get(), buf, size );
         memset( &sqe, 0, sizeof(IOsqe) );
 
         sqe.opcode    = IORING_OP_SEND;
         sqe.msg_flags = flags;
-        sqe.len       = len  ;
-        sqe.addr      = (uchar_64) buf;
+        sqe.len       = size ;
+        sqe.addr      = (uchar_64) raw.get();
 
+        sqe.user_data = fd->get_pd()| ((uchar_64)flag) <<48; 
         sqe.fd        = fd->get_fd();
-        sqe.user_data = fd->get_pd()| ((uchar_64)FLAG::URING_FLAG_WRTE) << 48; 
 
-        obj->sque.push( mem ); errno=EWOULDBLOCK; return -1;
+        obj->sque.push( mem ); return -2;
 
-    } return io_consumer( raw, FLAG::URING_FLAG_WRTE ); }
+    } return io_consumer( raw, flag ); }
     
     template< class T, class V >
-    int sendto( T* fd, void* buf, size_t len, int flags, const V* addr, socklen_t addrlen ) const noexcept {
+    int sendto( T* fd, void* buf, size_t len, int flags, V* addr, socklen_t addrlen ) const noexcept {
         
-        auto  io  = io_submitter( fd, FLAG::URING_FLAG_WRTE );
+        auto flag = FLAG::URING_FLAG_WRTE;
+        auto   io = io_submitter( fd, flag );
         auto  raw = obj->que.as ( io );
-        auto &mem = raw->data.data  [ FLAG::URING_FLAG_WRTE ];
+        auto &mem = raw->data.data  [ flag ];
+        auto size = min( len, (size_t) NODEPP_CHUNK_SIZE );
         
-    if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){
+    if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){ do {
+        int c  = ::sendto( fd->get_fd(), buf, len, flags, addr, addrlen );
+    if( !is_blocked(c) ){ return c; }} while(0);
+
         mem.mode      = FLAG::URING_FLAG_USED;
-        
         IOsqe    &sqe = mem.sqe;
         string_t &raw = mem.mem; 
-        raw.resize( sizeof(IOmsg) + sizeof(IOvec), '\0' );
-        
+
         memset( &sqe, 0, sizeof(IOsqe) );
-        
         IOmsg* msg = (IOmsg*) raw.get() ;
         IOvec* iov = (IOvec*)(raw.get() + sizeof(IOmsg));
 
-        iov->iov_base = buf;
-        iov->iov_len  = len;
+        memcpy( raw.get() + sizeof(IOmsg) + sizeof(IOvec), buf, size );
+        iov->iov_base = raw.get() + sizeof(IOmsg) + sizeof(IOvec);
+        iov->iov_len  = size;
 
         msg->msg_name    = (void*)addr;
         msg->msg_namelen = addrlen;
         msg->msg_flags   = flags;
         msg->msg_iov     = iov;
-        msg->msg_iovlen  = 1;
+        msg->msg_iovlen  = 1  ;
 
         sqe.opcode       = IORING_OP_SENDMSG;
         sqe.fd           = fd->get_fd() ;
         sqe.addr         = (uchar_64)msg;
         sqe.len          = 1;
         sqe.msg_flags    = 0;
-        sqe.user_data    = fd->get_pd() | ((uchar_64)FLAG::URING_FLAG_WRTE) << 48; 
+        sqe.user_data    = fd->get_pd()| ((uchar_64)flag) <<48; 
 
-        obj->sque.push( mem ); errno=EWOULDBLOCK; return -1;
+        obj->sque.push( mem ); return -2;
 
-    } return io_consumer( raw, FLAG::URING_FLAG_WRTE ); }
-    
+    } return io_consumer( raw, flag ); }
+
     /*─······································································─*/
     
     template< class T >
     int recv( T* fd, void* buf, size_t len, int flags ) const noexcept {
         
-        auto  io  = io_submitter( fd, FLAG::URING_FLAG_READ );
+        auto flag = FLAG::URING_FLAG_READ;
+        auto   io = io_submitter( fd, flag );
         auto  raw = obj->que.as ( io );
-        auto &mem = raw->data.data  [ FLAG::URING_FLAG_READ ];
+        auto &mem = raw->data.data  [ flag ];
+        auto size = min( len, (size_t) NODEPP_CHUNK_SIZE );
     
-    if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){
+    if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){ do {
+        int c   = ::recv( fd->get_fd(), buf, len, flags );
+    if( !is_blocked(c) ){ return c; }} while(0);
+
         mem.mode      = FLAG::URING_FLAG_USED;
-        IOsqe &sqe    = mem.sqe;
-        
+        IOsqe &sqe    = mem.sqe;    
+        string_t &raw = mem.mem;
+
         memset( &sqe, 0, sizeof(IOsqe) );
 
         sqe.opcode    = IORING_OP_RECV;
         sqe.msg_flags = flags;
-        sqe.len       = len  ;
-        sqe.addr      = (uchar_64) buf;
+        sqe.len       = size ;
+        sqe.addr      = (uchar_64) raw.get();
 
+        sqe.user_data = fd->get_pd()| ((uchar_64)flag) <<48; 
         sqe.fd        = fd->get_fd();
-        sqe.user_data = fd->get_pd()| ((uchar_64)FLAG::URING_FLAG_READ) << 48; 
 
-        obj->sque.push( mem ); errno=EWOULDBLOCK; return -1;
-        
-    } return io_consumer( raw, FLAG::URING_FLAG_READ ); }
+        obj->sque.push( mem ); return -2;
+
+    } int out = io_consumer( raw, flag ); switch( out<=0 ){
+
+        case true : return out; break; case false: do {
+
+            string_t &raw = mem.mem; 
+            memmove( buf, raw.get(), out );
+
+        return out; } while(0); break;
+
+    }}
     
     template< class T, class V >
-    int recvfrom( T* fd, void* buf, size_t len, int flags, const V* addr, socklen_t* addrlen ) const noexcept {
+    int recvfrom( T* fd, void* buf, size_t len, int flags, V* addr, socklen_t* addrlen ) const noexcept {
         
-        auto  io  = io_submitter( fd, FLAG::URING_FLAG_READ );
+        auto flag = FLAG::URING_FLAG_READ;
+        auto   io = io_submitter( fd, flag );
         auto  raw = obj->que.as ( io );
-        auto &mem = raw->data.data  [ FLAG::URING_FLAG_READ ];
+        auto &mem = raw->data.data  [ flag ];
+        auto size = min( len, (size_t) NODEPP_CHUNK_SIZE );
 
-    if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){
+    if( mem.mode== /**/ FLAG::URING_FLAG_FREE ){ do {
+        int c   = ::recvfrom( fd->get_fd(), buf, len, flags, addr, addrlen );
+    if( !is_blocked(c) ){ return c; }} while(0);
+
         mem.mode      = FLAG::URING_FLAG_USED;
-
         IOsqe    &sqe = mem.sqe;
         string_t &raw = mem.mem; 
-        raw.resize( sizeof(IOmsg) + sizeof(IOvec), '\0' );
         
         memset( &sqe, 0, sizeof(IOsqe) );
         IOmsg* msg = (IOmsg*) raw.get() ;
         IOvec* iov = (IOvec*)(raw.get() + sizeof(IOmsg));
 
-        iov->iov_base    = buf;
-        iov->iov_len     = len;
+        iov->iov_base    = raw.get() + sizeof(IOmsg) + sizeof(IOvec);
+        iov->iov_len     = size;
 
         msg->msg_name    = (void*)addr;
         msg->msg_namelen = *addrlen;
@@ -512,11 +586,20 @@ public:
         sqe.addr         = (uchar_64)msg;
         sqe.len          = 1;
         sqe.msg_flags    = 0;
-        sqe.user_data    = fd->get_pd() | ((uchar_64)FLAG::URING_FLAG_READ) << 48; 
-        
-        obj->sque.push( mem ); errno=EWOULDBLOCK; return -1;
+        sqe.user_data    = fd->get_pd()| ((uchar_64)flag) <<48; 
 
-    } return io_consumer( raw, FLAG::URING_FLAG_READ ); }
+        obj->sque.push( mem ); return -2;
+
+    } int out = io_consumer( raw, flag ); switch( out<=0 ){
+
+        case true : return out; break; case false: do {
+
+            string_t &raw = mem.mem; 
+            memmove( buf, raw.get() + sizeof(IOmsg) + sizeof(IOvec), out );
+
+        return out; } while(0); break;
+
+    }}
 
 }; }
 

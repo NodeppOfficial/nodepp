@@ -14,6 +14,28 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#ifndef NODEPP_EVENT_SCHEDULER
+
+#if  ( NODEPP_OS == NODEPP_OS_WINDOWS )
+    #define NODEPP_EVENT_SCHEDULER NODEPP_SCHEDULER_IOCP
+#elif( NODEPP_OS == NODEPP_OS_LINUX )
+    #include <linux/version.h>
+    #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0)
+        #define  NODEPP_EVENT_SCHEDULER NODEPP_SCHEDULER_IOURING
+        #include "posix/uring.h"
+    #else 
+        #define  NODEPP_EVENT_SCHEDULER NODEPP_SCHEDULER_EPOLL
+    #endif
+#elif( NODEPP_OS == NODEPP_OS_FRBSD ) || ( NODEPP_OS == NODEPP_OS_APPLE )
+    #define NODEPP_EVENT_SCHEDULER NODEPP_SCHEDULER_KQUEUE
+#else
+    #define NODEPP_EVENT_SCHEDULER NODEPP_SCHEDULER_LITE
+#endif
+
+#endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #if   NODEPP_KERNEL == NODEPP_KERNEL_WINDOWS
     #include "invoker.h"
     #include "windows/kernel.h"
@@ -27,3 +49,5 @@
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

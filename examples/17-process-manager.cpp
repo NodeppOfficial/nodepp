@@ -1,5 +1,6 @@
 #include <nodepp/nodepp.h>
 #include <nodepp/worker.h>
+#include <nodepp/date.h>
 #include <nodepp/http.h>
 #include <nodepp/cluster.h>
 

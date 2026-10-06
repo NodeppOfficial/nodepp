@@ -311,6 +311,18 @@ public:
         }
     }
 
+    void insert( ulong index, const ptr_t<T>& value ) noexcept {
+	    index = min( index, size() ); if( empty() ){ buffer = ptr_t<T> ( value.size() );
+            type::copy( value.begin(), value.end(), buffer.begin() );
+        } else { auto n_buffer = ptr_t<T>( size() + value.size() );
+                 ulong N=value.size();
+            type::copy( begin()+index, end()        , n_buffer.begin()+index+N );
+            type::copy( value.begin(), value.end()  , n_buffer.begin()+index   );
+            type::copy( begin()      , begin()+index, n_buffer.begin()         );
+            buffer = n_buffer;
+        }
+    }
+
     void insert( ulong index, ulong N, T* value ) noexcept {
 	    index = min( index, size() ); if( empty() ){ buffer = ptr_t<T> ( value, N ); }
         else { ulong n=size() + N; auto n_buffer = ptr_t<T>( n );

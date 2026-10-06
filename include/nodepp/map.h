@@ -44,16 +44,18 @@ protected:
 
     /*─······································································─*/
 
-    void* get_address( uchar_64 key ) const noexcept {
+    void* get_address( uchar_64 key, bool search_mode=false ) const noexcept {
         
         NODE*  tmp = &obj;
         while( key != 0 ){ switch( key & 0x1 ){
 
         case 0: do { if( tmp->left==nullptr ){ 
+        if( search_mode ){ return nullptr; }
             tmp->left /*--*/ = new NODE;
         }   tmp = tmp->left; } while(0); break;
 
         case 1: do { if( tmp->right==nullptr ){ 
+        if( search_mode ){ return nullptr; }
             tmp->right /*--*/ = new NODE;
         }   tmp = tmp->right; } while(0); break;
 
@@ -85,8 +87,8 @@ protected:
 
     void append( const T& pair ) const noexcept {
 
-        auto idx = get_key( pair.first );
-        auto que = table.as( get_address(idx) )->data;
+        auto idx = get_address( get_key(pair.first), 0 );
+        auto que = table.as( idx )->data;
         auto n   = que  .first();
 
         while( n!=nullptr ){ auto itm = queue.as( n->data );
@@ -115,8 +117,8 @@ public:
 
     V& operator[]( const U& id ) const noexcept {
 
-        auto idx = get_key( id );
-        auto que = table.as( get_address(idx) )->data;
+        auto idx = get_address( get_key(id), 0 );
+        auto que = table.as( idx )->data;
         auto n   = que  .first();
 
         while( n!=nullptr ){ auto itm = queue.as( n->data );
@@ -140,10 +142,11 @@ public:
 
     /*─······································································─*/
 
-    bool has( const U& id ) const noexcept {
+    bool has( const U& id ) const noexcept { do {
+    auto idx = get_address( get_key(id), 1 );
 
-        auto idx = get_key( id );
-        auto que = table.as( get_address(idx) )->data;
+        if( idx == nullptr ){ break; }
+        auto que = table.as( idx )->data;
         auto n   = que  .first();
 
         while( n!=nullptr ){ auto itm = queue.as( n->data );
@@ -152,9 +155,7 @@ public:
         /**/ { return true; }
         n = n->next; } 
         
-        return false;
-
-    }
+    } while(0); return false; }
 
     /*─······································································─*/
 
@@ -174,9 +175,7 @@ public:
 
     void erase( const U& id ) const noexcept {
 
-        auto  key = string::to_string ( id );
-        ulong idx = encoder::hash::get( key, SIZE );
-
+        ulong idx = get_key ( id );
         auto  que = table.as( get_address(idx) )->data;
         auto  n   = que  .first();
 

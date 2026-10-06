@@ -65,14 +65,14 @@ namespace nodepp { namespace process {
     /*─······································································─*/
 
     inline int next(){ 
+        /*--*/ next_time_interval  ();
         /*--*/ NODEPP_ALLOC ().next();
         return NODEPP_EVLOOP().next(); 
     }
 
     inline void exit( int err=0 ){
-    if( should_close() ){ goto DONE; } do {
-        auto *raw = &NODEPP_SHTDWN(); 
-             *raw = true; clear(); 
+    if( should_close () ){ goto DONE; } do {
+        NODEPP_SHTDWN() = true; clear(); 
     } while(0); DONE:; ::exit(err); }
 
 }}

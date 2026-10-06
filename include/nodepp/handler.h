@@ -28,9 +28,10 @@ protected:
     /*─······································································─*/
 
     uchar_64 atob( void* address ) const noexcept {
-    uchar_64 raw = ( (uchar_64) address ) & (((uchar_64)-1)>>16);
-    uchar_64 msk = ( (uchar_64) msk1    ) & (((uchar_64)-1)>>16);
-    uchar_64 col =   (uchar_64) address   ^   (uchar_64) msk2 ;
+        
+        uchar_64 raw = ( (uchar_64) address ) & (((uchar_64)-1)>>16);
+        uchar_64 msk = ( (uchar_64) msk1    ) & (((uchar_64)-1)>>16);
+        uchar_64 col =   (uchar_64) address   ^   (uchar_64) msk2 ;
 
         uchar_64 sum = ( col^(col>>16)^(col>>32)^(col>>48)) & 0xffff;
         return ( raw ^ msk ) | ( sum << 48 );
@@ -38,9 +39,10 @@ protected:
     }
 
     void* btoa( uchar_64 address ) const noexcept {
-    uchar_64 msk = ( (uchar_64)  msk1  )& (((uchar_64)-1)>>16);
-    void*    raw = (void*)((address^msk)& (((uchar_64)-1)>>16) );
-    uchar_64 col = (uchar_64) raw       ^   (uchar_64) msk2 ;
+
+        uchar_64 msk = ( (uchar_64)  msk1  )& (((uchar_64)-1)>>16 );
+        void*    raw = (void*)((address^msk)& (((uchar_64)-1)>>16));
+        uchar_64 col = (uchar_64) raw       ^   (uchar_64) msk2 ;
 
         uchar_64 sum = ( col^(col>>16)^(col>>32)^(col>>48)) & 0xffff;
         uchar_64 out = ( address >>48) /*----------------*/ & 0xffff;

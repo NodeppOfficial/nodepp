@@ -50,11 +50,10 @@ protected:
 
 protected:
 
-    struct DONE { OVERLAPPED ov; DWORD result; };
     struct NODE {
 
         HANDLE   fd      = INVALID_HANDLE_VALUE;
-        DWORD    offset  = 0UL; DONE ddl[2];
+        DWORD    offset  = 0UL;
         uchar_64 tag     = 0UL;
         uchar_64 pd      = 0UL;
         len_t    range[2]= { 0, 0 };
@@ -74,8 +73,7 @@ protected:
             fd == GetStdHandle( STD_ERROR_HANDLE ) 
         ) { break; } CloseHandle( fd ); } while(0);
 
-        CancelIoEx((HANDLE)fd, &ddl[0].ov);
-        CancelIoEx((HANDLE)fd, &ddl[1].ov); }
+        NODEPP_IOCP().free( fd, pd ); }
         
     };  ptr_t<NODE> obj;
     
@@ -96,28 +94,6 @@ protected:
     
     int set_nonbloking_mode() const noexcept { return 0; }
     
-    /*─······································································─*/
-
-    bool is_blocked( DWORD /*unused*/ ) const noexcept {
-        DWORD err = GetLastError();
-        return( err == ERROR_IO_INCOMPLETE || 
-                err == ERROR_IO_PENDING    || 
-                err == WAIT_TIMEOUT 
-        );
-    }
-
-    bool is_blocked( OVERLAPPED& ov, DWORD& c ) const noexcept {
-    
-        if( !HasOverlappedIoCompleted(&ov) ) { return 1; }
-
-        if( obj->state & ( STATE::FS_STATE_READING | STATE::FS_STATE_WRITING ) ){
-        if( GetOverlappedResult((HANDLE)obj->fd, &ov, &c, FALSE) )
-          { goto DONE; }} else { goto DONE; }
-
-        if( is_blocked( c ) ){ return 1; }
-
-    DONE:; obj->offset+= c; return 0; }
-    
 public:
 
     event_t<>          onUnpipe;
@@ -133,13 +109,16 @@ public:
 
     file_t( const string_t& path, const string_t& mode, const ulong& _size=NODEPP_CHUNK_SIZE ) : obj( new NODE() ) {
         auto fg = get_fd_flag( mode ); obj->fd = CreateFileA( path.c_str(), fg[0], fg[1], NULL, fg[2], fg[3], NULL ); 
-        if( obj->fd == INVALID_HANDLE_VALUE ){ NODEPP_THROW_ERROR("such file or directory does not exist"); }
-        set_nonbloking_mode(); set_buffer_size( _size ); 
+        if( obj->fd == INVALID_HANDLE_VALUE ){ 
+            auto error = except_t( path, "such file or directory does not exist" );
+            NODEPP_THROW_ERROR   ( error ); 
+        }   set_nonbloking_mode(); set_buffer_size( _size ); 
     }
 
     file_t( const HANDLE& fd, const ulong& _size=NODEPP_CHUNK_SIZE ) : obj( new NODE() ) {
-        if( fd == INVALID_HANDLE_VALUE ){ NODEPP_THROW_ERROR("such file or directory does not exist"); }
-        obj->fd = fd; set_nonbloking_mode(); set_buffer_size( _size ); 
+        if( fd == INVALID_HANDLE_VALUE ){ 
+            NODEPP_THROW_ERROR   ( "invalid file handler" ); 
+        }   obj->fd = fd; set_nonbloking_mode(); set_buffer_size( _size ); 
     }
  
    ~file_t() noexcept { if( obj.count()>1 && !is_closed() ){ return; } free(); }
@@ -276,62 +255,25 @@ public:
 
     virtual int __read( char* bf, const ulong& sx ) const noexcept {
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; } 
-        
-        auto &c  = obj->ddl[0].result;
-        auto &ov = obj->ddl[0].ov    ;
+        auto c = NODEPP_IOCP().read( this, bf, sx, &obj->offset );
+        auto b = c==-2;
 
-        if( obj->state & STATE::FS_STATE_READING ){ 
-        if( is_blocked( ov, c ) ){ 
-            obj->state |= STATE::FS_STATE_WAITING;
-            return -2;
-        } else {
-            obj->state&=~STATE::FS_STATE_READING;
-            obj->state&=~STATE::FS_STATE_WAITING;
-            return c==0 ? -1 : (int) c;
-        }}
+        obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
+                         obj->state &~STATE::FS_STATE_WAITING;
 
-        obj->state|= STATE::FS_STATE_READING;
-        ov = {0}; ov.Offset = obj->offset;
-        ReadFile( obj->fd, bf, sx, &c, &ov );
-        
-        if( is_blocked(c) ){
-            obj->state |= STATE::FS_STATE_WAITING;
-            return -2; 
-        } else { if( c >0 ){ obj->offset += c; }
-            obj->state&=~STATE::FS_STATE_READING;
-            obj->state&=~STATE::FS_STATE_WAITING;
-        }
-
-    return c==0 ? -1 : (int) c; }
+        return b ? -2 : c;
+    }
 
     virtual int __write( char* bf, const ulong& sx ) const noexcept {
-        if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
-        
-        auto &c  = obj->ddl[1].result;
-        auto &ov = obj->ddl[1].ov    ;
+        if( is_closed() ){ return -1; } if( sx==0 ) { return 0; }
+        auto c = NODEPP_IOCP().write( this, bf, sx, &obj->offset );
+        auto b = c==-2;
 
-        if( obj->state & STATE::FS_STATE_WRITING ){
-        if( is_blocked( ov, c ) ){ 
-            obj->state |= STATE::FS_STATE_WAITING;
-            return -2; 
-        } else {
-            obj->state&=~STATE::FS_STATE_WRITING; 
-            obj->state&=~STATE::FS_STATE_WAITING;
-            return c==0 ? -1 : (int) c;
-        }}
+        obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
+                         obj->state &~STATE::FS_STATE_WAITING;
 
-        obj->state|= STATE::FS_STATE_WRITING;
-        ov = {0}; ov.Offset = obj->offset;
-        WriteFile( obj->fd, bf, sx, &c, &ov );
-        
-        if( is_blocked(c) ){ 
-            obj->state&=~STATE::FS_STATE_WAITING;
-            return -2; 
-        } else { if( c >0 ){ obj->offset += c; }
-            obj->state&=~ STATE::FS_STATE_WRITING;
-        }
-
-    return c==0 ? -1 : (int) c; }
+        return b ? -2 : c;
+    }
 
     /*─······································································─*/
 

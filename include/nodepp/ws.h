@@ -11,6 +11,7 @@
 
 #ifndef NODEPP_WS
 #define NODEPP_WS
+#define NODEPP_WS_MASK   0x8000
 #define NODEPP_WS_SECRET "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -50,7 +51,16 @@ public:
 
     /*─······································································─*/
 
-    uchar_32& get_mask() const noexcept { return ws->mask; }
+    void set_frame_mask( bool state ) const noexcept { 
+        if( state ){ obj->state |= NODEPP_WS_MASK; }
+        else /*-*/ { obj->state &=~NODEPP_WS_MASK; }
+    }
+
+    uchar_32 get_frame_mask() const noexcept {
+        uchar_64 raw = (uchar_64) this; 
+        uchar_32 out = raw ^ (raw>>32);
+        return (obj->state&NODEPP_WS_MASK) ? out : 0UL;
+    } 
 
 };}
 
@@ -62,15 +72,13 @@ namespace nodepp { namespace ws {
     skt.onSocket([=]( ptr_t<tcp_t> self, socket_t raw ){
 
         http_t hrv = raw;
+        ws_t   cli = raw; cli.set_frame_mask( false );
 
         if( !generator::ws::server( hrv ) )
-          { self->onConnect.skip(); return; }  
-
-        ws_t cli   = raw;
+          { self->onConnect.skip(); return; }
 
         process::add([=](){ 
             cli.set_timeout(0); cli.resume();
-            cli.get_mask()=0UL;
             self->onConnect.resume( );
             self->onConnect.emit(cli);
             stream::pipe /*--*/ (cli);
@@ -92,15 +100,13 @@ namespace nodepp { namespace ws {
     skt.onSocket.once([=]( ptr_t<tcp_t> self, socket_t raw ){
 
         http_t hrv = raw;
+        ws_t   cli = raw; cli.set_frame_mask( true );
 
         if( !generator::ws::client( hrv, uri ) )
           { self->onConnect.skip(); return; }
 
-        ws_t cli   = raw;
-
         process::add([=](){ 
             cli.set_timeout(0); cli.resume();
-            cli.get_mask() = (uchar_32) -1;
             self->onConnect.resume( );
             self->onConnect.emit(cli);
             stream::pipe /*--*/ (cli);
@@ -110,5 +116,10 @@ namespace nodepp { namespace ws {
 
 }}
 
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #undef NODEPP_WS_SECRET
+#undef NODEPP_WS_MASK
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

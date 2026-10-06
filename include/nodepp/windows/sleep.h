@@ -30,9 +30,12 @@ namespace nodepp { namespace process {
 
     return out / 10; }
 
-    inline uchar_64 get_time_interval(){ 
+    inline uchar_64& get_time_interval(){
+    thread_local static uchar_64 interval=0; return interval; }
+
+    inline uchar_64 next_time_interval(){ 
     thread_local static uchar_64 borrow   = start_sleep_machine();
-    thread_local static uchar_64 stamp    = 0;
+    /*---------------*/ uchar_64 &stamp   = get_time_interval  ();
     /*---------------*/ uchar_64 interval = start_sleep_machine();
 
         if( borrow > interval ){

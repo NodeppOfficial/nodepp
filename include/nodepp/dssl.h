@@ -220,14 +220,11 @@ protected:
     if( b==nullptr ){ return -1; }
 
         auto stream = (socket_t*)BIO_get_data(b);
-        auto nbuf   = stream->get_buffer_data( );
         auto nlen   = min( (ulong)len, stream->get_buffer_size() );
 
         if( stream->is_closed() ){ return -1; }
+        int c = stream->socket_t::__read( buf, nlen );
 
-        int c = stream->socket_t::__read( nbuf, nlen );
-
-        if  ( c> 0 ){ memcpy( buf, nbuf, c ); }
         if  ( c<=0 ){
         if  ( stream->socket_t::is_waiting() )
             { BIO_set_retry_read    (b); return -1; }

@@ -213,23 +213,23 @@ namespace nodepp { namespace fs {
 
     /*─······································································─*/
 
-    inline int create_folder( const string_t& path, uint permission=0777 ){
-        if( path.empty() ){ return -1; }
-        return mkdir( path.c_str(), permission );
+    inline int create_folder( const string_t& dirname, uint permission=0777 ){
+        if( dirname.empty() ){ return -1; }
+        return mkdir( dirname.c_str(), permission );
     }
 
     /*─······································································─*/
 
-    inline int remove_folder( const string_t& path ){
-        if( path.empty() ){ return -1; }
-        return rmdir( path.c_str() );
+    inline int remove_folder( const string_t& dirname ){
+        if( dirname.empty() ){ return -1; }
+        return rmdir( dirname.c_str() );
     }
 
     /*─······································································─*/
 
-    inline int read_folder_iterator( const string_t& path, function_t<void,string_t> cb ){
-        if( path.empty() ){ return -1; } 
-        DIR* dir=opendir( path.c_str() );
+    inline int read_folder_iterator( const string_t& dirname, function_t<void,string_t> cb ){
+        if( dirname.empty() ){ return -1; } 
+        DIR* dir=opendir( dirname.c_str() );
         if ( dir == nullptr ){ return -1; }
 
         process::add( coroutine::add( COROUTINE(){
@@ -239,7 +239,7 @@ namespace nodepp { namespace fs {
             while( (entry=readdir(dir)) != NULL ){ do {
     		if( string_t(entry->d_name) == ".." ){ break; }
     		if( string_t(entry->d_name) == "."  ){ break; }
-                cb( entry->d_name );
+                cb( path::join( dirname, entry->d_name ) );
             } while(0); coNext; } 
             
             closedir( dir );
@@ -251,13 +251,13 @@ namespace nodepp { namespace fs {
 
     /*─······································································─*/
 
-    inline promise_t<ptr_t<string_t>,except_t> read_folder( const string_t& path ){
+    inline promise_t<ptr_t<string_t>,except_t> read_folder( const string_t& dirname ){
     return promise_t<ptr_t<string_t>,except_t> ([=](
         res_t<ptr_t<string_t>> res, rej_t<except_t> rej
     ){  process::add([=](){
 
-        if( path.empty() ){ rej( except_t( "invalid path" ) ); return -1; }
-        DIR* dir = opendir( path.c_str() );
+        if( dirname.empty() ){ rej( except_t( "invalid path" ) ); return -1; }
+        DIR* dir = opendir( dirname.c_str() );
         if( dir==nullptr ){ rej( except_t( "invalid dir"  ) ); return -1; }
             
         struct dirent* entry; queue_t<string_t> list;
@@ -265,7 +265,7 @@ namespace nodepp { namespace fs {
         while( (entry=readdir(dir))  != NULL ){
         if( string_t ( entry->d_name )==".." ){ continue; }
         if( string_t ( entry->d_name )=="."  ){ continue; }
-            list.push( entry->d_name );
+            list.push( path::join( dirname, entry->d_name ) );
         }
         
         closedir( dir ); res( list.data() );

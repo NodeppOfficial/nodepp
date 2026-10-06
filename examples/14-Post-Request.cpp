@@ -15,7 +15,7 @@ void server() {
 
         cli.read_body()
 
-        .then([=]( http_t cli ){
+        .then([=]( string_t data ){
 
             file_t file ( "LICENSE", "r" );
 

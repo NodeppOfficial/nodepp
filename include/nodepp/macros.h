@@ -64,6 +64,16 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#if NODEPP_ALLOW_STD_SUPPORT==1
+#include <string>
+#include <queue>
+#include <array>
+#include <vector>
+#include <functional>
+#endif
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 #if NODEPP_ALLOW_THROW_EXCEPTION==1
 #define NODEPP_THROW_ERROR(...) do { throw nodepp::except_t(__VA_ARGS__); } while(0)
 #else
@@ -150,10 +160,10 @@ return 0; } void NODEPP_BEGIN
 #define NODEPP_MAX_PATH_SIZE    CHUNK_KB(1)
 #define NODEPP_MAX_SSO_SIZE     16
 #define NODEPP_UNBFF_SIZE       CHUNK_KB(4)
+#define NODEPP_HASH_TABLE_SIZE  (uchar_16) -1
 #define NODEPP_MAX_SOCKET       nodepp::os::get_soft_fileno()
 #define NODEPP_ARCH_SIZE        sizeof(void*)*8
 #define NODEPP_MAX_BATCH_SIZE   16
-#define NODEPP_HASH_TABLE_SIZE  CHUNK_KB(16)
 #define NODEPP_HEAP_SIZE        CHUNK_KB(64)
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -291,7 +301,6 @@ return 0; } void NODEPP_BEGIN
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define typecast(DATA) nodepp::string_t( typeid(DATA).name() )
 namespace nodepp {
 
 using ullong  = unsigned long long int;

@@ -1,63 +1,47 @@
 #include <nodepp/nodepp.h>
 #include <nodepp/worker.h>
-#include <nodepp/date.h>
-#include <nodepp/http.h>
-#include <nodepp/cluster.h>
+#include <nodepp/channel.h>
 
 using namespace nodepp;
 
-/*────────────────────────────────────────────────────────────────────────────*/
+channel_t<coroutine_t> ch1, ch2;
 
-void server( int x ){
+int worker_1(){
+coStart
 
-    auto server = http::server([=]( http_t cli ){ 
-
-        cli.write_header( 200, header_t({
-            { "content-type", "text/html" }
-        }));
+    while( true ){ coDelay(1000); 
         
-        cli.write( date::fulltime() );
-        cli.close();
+        ch2.write( coroutine_t( COROUTINE(){
+            console::log( "worker1 -> worker2", process::now() );
+        return -1; }) );
 
-    });
+    for( auto x: ch1.read() ){ process::add( x ); }}
 
-    server.listen( "localhost", 8000, [=]( socket_t server ){
-        console::log("server started at http://localhost:8000");
-    });
-
+coStop
 }
 
-/*────────────────────────────────────────────────────────────────────────────*/
+int worker_2(){
+coStart
 
-void spawn( int x ) {
+    while( true ){ coDelay(1000); 
+        
+        ch1.write( coroutine_t( COROUTINE(){
+            console::log( "worker2 -> worker1", process::now() );
+        return -1; }) );
 
-    auto cid = regex::format( "?CPU=${0}", x );
-    auto pid = cluster::add( ptr_t<string_t>({ cid }) );
+    for( auto x: ch2.read() ){ process::add( x ); }}
 
-    if( pid.has_value() ){
-        pid.value().onClose.once([=](){ spawn(x); });
-        pid.value().onData([=]( string_t msg ){
-            conio::log( msg );
-        });
-    }
-
+coStop
 }
 
-/*────────────────────────────────────────────────────────────────────────────*/
+void onMain(){
 
-void onMain(){ 
+    worker ::add([=](){
+    process::add([=](){ return worker_1(); });
+    process::wait(); return -1; });
 
-    os::set_process_priority( os::PRIORITY::HIGH_PRIORITY );
-    os::set_hard_fileno/*-*/( (uint)-1 );
-    os::set_soft_fileno/*-*/( (uint)-1 );
-
-    int y = string::to_uint( process::env::get( "CPU" ) );
-
-    for  ( auto x=os::cpus(); x-->0; ){
-    if   ( cluster::is_child() )
-         { server(y); break; } 
-    else { spawn (x); } }
+    worker ::add([=](){
+    process::add([=](){ return worker_2(); });
+    process::wait(); return -1; });
 
 }
-
-/*────────────────────────────────────────────────────────────────────────────*/

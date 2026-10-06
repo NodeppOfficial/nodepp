@@ -48,11 +48,11 @@ public:
     typename type::enable_if< !type::is_same<T,any_t>::value, T >::type
     as() const {
     if( !is<T>() ){ NODEPP_THROW_ERROR("any_t invalid value"); }
-    return *type::cast<T>( raw() ); }
+    return ( (T*) raw() )[0]; }
 
     /*─······································································─*/
 
-    void* raw() const noexcept { 
+    void* raw() const noexcept { if( empty() ){ return nullptr; }
     void* ptr = nullptr; any_ptr->get( ptr ); return ptr; }
 
     /*─······································································─*/

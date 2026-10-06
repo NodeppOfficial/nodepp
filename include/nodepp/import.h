@@ -14,21 +14,10 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#include <typeinfo>
 #include <cstring>
 #include <cstdlib>
 #include <cstdint>
 #include <cstdio>
-#include <cmath>
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-#ifndef NODEPP_DISABLE_STL_SUPPORT
-#include <string>
-#include <queue>
-#include <array>
-#include <vector>
-#endif
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -46,7 +35,6 @@
 #include "iterator.h"
 #include "function.h"
 #include "queue.h"
-#include "probe.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -58,6 +46,7 @@
 
 #include "initializer.h"
 #include "iterator.h"
+#include "encoder.h"
 #include "console.h"
 #include "sleep.h"
 
@@ -69,9 +58,9 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#include "os.h"
-#include "query.h"
 #include "kernel.h"
+#include "query.h"
+#include "os.h"
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

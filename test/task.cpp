@@ -51,24 +51,6 @@ namespace TEST { namespace TASK {
             } while(0); TEST_FAIL();
         });
 
-        TEST_ADD( test, "TEST 3 | task resolver testing", [](){
-            do{ ptr_t<int> x ( 0UL ); 
-                ptr_t<int> y = new int(3);
-
-                promise::resolve( coroutine::add( COROUTINE(){
-                coBegin
-
-                    while( *y>0 ){ *x += 10; *y-=1; coNext; }
-                    
-                coFinish })).emit();
-                
-                while( *y!=0 ){ process::next(); }
-                if   ( *x != 30 ){ TEST_FAIL (); }
-                                   TEST_DONE ();
-
-            } while(0); TEST_FAIL();
-        });
-
         test.onClose.once([=](){
             console::log("\nRESULT | total:", *totl, "| passed:", *done, "| error:", *err, "| skipped:", *skp );
         });

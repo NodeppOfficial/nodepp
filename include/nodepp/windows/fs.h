@@ -233,27 +233,27 @@ namespace nodepp { namespace fs {
 
     /*─······································································─*/
 
-    inline int create_folder( const string_t& path, uint /*unused*/ ){
-        if( path.empty() ){ return -1; }
-        return CreateDirectoryA( path.c_str(), NULL )!=0 ? -1 : 0;
+    inline int create_folder( const string_t& dirname, uint /*unused*/ ){
+        if( dirname.empty() ){ return -1; }
+        return CreateDirectoryA( dirname.c_str(), NULL )!=0 ? -1 : 0;
     }
 
     /*─······································································─*/
 
-    inline int remove_folder( const string_t& path ){
-        if( path.empty() ){ return -1; }
-        return RemoveDirectoryA( path.c_str() )!=0 ? -1 : 0;
+    inline int remove_folder( const string_t& dirname ){
+        if( dirname.empty() ){ return -1; }
+        return RemoveDirectoryA( dirname.c_str() )!=0 ? -1 : 0;
     }
 
     /*─······································································─*/
 
-    inline int read_folder_iterator( const string_t& path, function_t<void,string_t> cb ){
-        if( path.empty() ){ return -1; } 
+    inline int read_folder_iterator( const string_t& dirname, function_t<void,string_t> cb ){
+        if( dirname.empty() ){ return -1; } 
 
         auto findData = type::bind( new WIN32_FIND_DATAA() );
         memset( &findData, 0, sizeof(WIN32_FIND_DATAA) );
 
-        string_t npath= path::push( path, "*" );
+        string_t npath= path::push( dirname, "*" );
         HANDLE hFind  = FindFirstFileA( npath.c_str(), &findData );
 
         if( hFind == INVALID_HANDLE_VALUE ){ return -1; }
@@ -264,7 +264,7 @@ namespace nodepp { namespace fs {
             while( FindNextFileA(hFind,&findData) != 0 ){ do {
         	if( string_t(findData->cFileName)==".." ){ break; }
         	if( string_t(findData->cFileName)=="."  ){ break; }
-                cb( findData->cFileName );
+                cb( path::join( dirname, findData->cFileName ) );
             } while(0); coNext; }
 
             FindClose( hFind );
@@ -276,15 +276,15 @@ namespace nodepp { namespace fs {
 
     /*─······································································─*/
 
-    inline promise_t<ptr_t<string_t>,except_t> read_folder( const string_t& path ){
+    inline promise_t<ptr_t<string_t>,except_t> read_folder( const string_t& dirname ){
     return promise_t<ptr_t<string_t>,except_t> ([=](
         res_t<ptr_t<string_t>> res, rej_t<except_t> rej
     ){  process::add([=](){
 
-        if( path.empty() )
+        if( dirname.empty() )
           { rej( except_t( "invalid path" ) ); return -1; }
         
-        string_t npath = path::push( path, "*" );
+        string_t npath = path::push( dirname, "*" );
 
         WIN32_FIND_DATAA findData; queue_t<string_t> list;
         HANDLE hFind = FindFirstFileA( npath.c_str(), &findData );
@@ -295,7 +295,7 @@ namespace nodepp { namespace fs {
         while( FindNextFileA(hFind,&findData) != 0 ){
             string_t fileName = findData.cFileName;
             if( fileName != "." && fileName != ".." )
-              { list.push( fileName ); }
+              { list.push( path::join( dirname, fileName ) ); }
         }
 
         FindClose( hFind ); res( list.data() );

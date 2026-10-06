@@ -129,14 +129,17 @@ public:
     /*─······································································─*/
 
     file_t( const string_t& path, const string_t& mode, const ulong& _size=NODEPP_CHUNK_SIZE ) : obj( new NODE() ) {
-            obj->fd = ::open( path.data(), get_fd_flag( mode ), 0644 ); /*-----------*/
-        if( obj->fd < 0 ){ NODEPP_THROW_ERROR("such file or directory does not exist"); }
-        set_nonbloking_mode(); set_buffer_size( _size );
+            obj->fd = ::open( path.data(), get_fd_flag( mode ), 0644 );
+        if( obj->fd < 0 ){ 
+            auto error = except_t( path, "such file or directory does not exist" );
+            NODEPP_THROW_ERROR   ( error ); 
+        }   set_nonbloking_mode(); set_buffer_size( _size );
     }
 
     file_t( const int& fd, const ulong& _size=NODEPP_CHUNK_SIZE ) : obj( new NODE() ) {
-        if( fd<0 ){ NODEPP_THROW_ERROR("such file or directory does not exist"); }
-        obj->fd = fd; set_nonbloking_mode(); set_buffer_size( _size );
+        if( fd<0 ){ 
+            NODEPP_THROW_ERROR   ( except_t( "invalid fd" ) ); 
+        }   obj->fd = fd; set_nonbloking_mode(); set_buffer_size( _size );
     }
 
    ~file_t() noexcept { if( obj.count()>1 && !is_closed() ){ return; } free(); }
@@ -282,7 +285,7 @@ public:
     virtual int __read( char* bf, const ulong& sx ) const noexcept {
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
         auto c = NODEPP_URING().read( this, bf, sx );
-        auto b = is_blocked( c );
+        auto b = c==-2;
 
         obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
                          obj->state &~STATE::FS_STATE_WAITING;
@@ -293,7 +296,7 @@ public:
     virtual int __write( char* bf, const ulong& sx ) const noexcept {
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
         auto c = NODEPP_URING().write( this, bf, sx );
-        auto b = is_blocked( c );
+        auto b = c==-2;
 
         obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
                          obj->state &~STATE::FS_STATE_WAITING;

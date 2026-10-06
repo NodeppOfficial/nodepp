@@ -1,5 +1,6 @@
 #include <nodepp/nodepp.h>
 #include <nodepp/http.h>
+#include <nodepp/json.h>
 
 using namespace nodepp;
 
@@ -18,10 +19,10 @@ void onMain(){
     http::fetch( args )
 
     .then([]( http_t cli ){
-        console::log( cli.headers["Host"] );
-        cli.onData([]( string_t chunk ){
-            console::log( chunk );
-        }); stream::pipe( cli );
+
+        auto body = cli.read_body().await().value();
+        console::log( ">>", body );
+
     })
 
     .fail([]( except_t err ){

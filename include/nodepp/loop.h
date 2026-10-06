@@ -48,8 +48,9 @@ protected:
     void* get_nearest_timeout( uchar_64 time ) const noexcept {
     
         auto x = obj->blocked.last(); while( x!=nullptr ){
-        if( time>=x->data.first ){ return x->next; }
-        x = x->prev; }
+        if ( time>=x->data.first ){ return x->next; }
+             x = x->prev; 
+        }
 
     return obj->blocked.first(); }
 
@@ -63,8 +64,8 @@ protected:
         if( x->data.first > stamp ){ return -1; }
 
         if( x->data.first < stamp ){
-            obj->normal .push ( x->data.second ); 
-            obj->blocked.erase( x );
+            obj->normal .unshift( x->data.second ); 
+            obj->blocked.erase  ( x );
         } else { break; }} while(1); return 1;
 
     }
@@ -76,11 +77,12 @@ protected:
         if( obj->normal.empty() ) /*-*/ { return -1; } do {
         if( obj->normal.get()==nullptr ){ return -1; }
 
-        auto x = obj->normal.get(); auto y = obj->queue.as(x->data);
-        auto o = obj->normal.get() == obj->normal.last() ? -1 : 1;
+        auto x = obj->normal.get(); 
+        auto y = obj->queue .as (x->data);
+        auto o = obj->normal.get()->prev ? 1 : -1;
         
         if( y->data.second->flag & TASK_STATE::USED   ){ 
-            obj->normal.next(); 
+            obj->normal.prev(); 
         return 0; }
         
         if( y->data.second->flag & TASK_STATE::CLOSED ){ 
@@ -90,11 +92,10 @@ protected:
 
         y->data.second->flag |= TASK_STATE::USED;
 
-        int c=0; uchar_32 d=0; while( ([&](){
+        uchar_32 d=0; while( ([&](){
             
-            do{ auto mem = &y->data.second;
-                c=y->data.first  (); auto z = coroutine::getno();
-            if( obj->normal.empty() || &y->data.second != mem  ){ return -1; }
+            do{ int c=y->data.first (); auto z = coroutine::getno();
+            if( obj->normal.empty() ){ return -1; }
             if( c==1 && z.flag&coroutine::STATE::CO_STATE_DELAY )
               { d=z.delay; goto GOT3; } switch(c) {
                 case  1 :  goto GOT1;   break;
@@ -105,7 +106,7 @@ protected:
             GOT1:;
 
                 y->data.second->flag &=~ TASK_STATE::USED; 
-                obj->normal.next(); return -1;
+                obj->normal.prev(); return -1;
 
             GOT2:;
 
@@ -121,7 +122,7 @@ protected:
                 auto z = obj->blocked.as( get_nearest_timeout( wake_time ) );
                 
                 obj->blocked.insert( z, NODE_TASK( { wake_time, y } ));
-                obj->normal .erase (x); 
+                obj->normal .erase ( x ); 
 
             return -1; } while(0);
 
@@ -136,13 +137,12 @@ public: loop_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    void off( ptr_t<task_t> address ) const noexcept { clear( address ); }
-
+    void off  ( ptr_t<task_t> address ) const noexcept { clear( address ); }
     void clear( ptr_t<task_t> address ) const noexcept {
-        if( address.null() ) /*-*/ { return; }
-        if( address->sign != &obj ){ return; }
+        if( address.null() ) /*--------------*/ { return; }
         if( address->flag & TASK_STATE::CLOSED ){ return; }
-            address->flag = TASK_STATE::CLOSED;
+        if( address->sign != &obj ) /*-------*/ { return; }
+            address->flag = TASK_STATE::CLOSED ;
     }
 
     /*─······································································─*/
@@ -152,7 +152,7 @@ public: loop_t() noexcept : obj( new NODE() ) {}
         if(!obj->normal .empty() ){ return 0; }
         if( obj->blocked.empty() ){ return 0; }
 
-        auto lmt = type::cast<uchar_64>( (uchar_32)-1 );
+        auto lmt = type::cast<uchar_64>((uchar_32)-1);
         auto raw = obj->blocked.first()->data.first;
         auto now = process::now();
         auto out = raw - now;
@@ -164,7 +164,7 @@ public: loop_t() noexcept : obj( new NODE() ) {}
     /*─······································································─*/
 
     ulong size() const noexcept { return obj->queue.size  (); }
-
+    
     bool empty() const noexcept { return obj->queue.empty (); }
 
     /*─······································································─*/
@@ -188,11 +188,11 @@ public: loop_t() noexcept : obj( new NODE() ) {}
 
         function_t<int,V...> clb ( cb );
 
-        obj->queue .push({[=](){ return clb(args...); }, tsk });
-        obj->normal.push( obj->queue.last() ); 
+        obj->queue .push   ({[=](){ return clb(args...); }, tsk });
+        obj->normal.unshift( obj->queue.last() ); 
 
-        tsk->addr = obj->queue.last();
-        tsk->flag = TASK_STATE::OPEN ;
+        tsk->addr = obj->queue.first();
+        tsk->flag = TASK_STATE::OPEN  ;
         tsk->sign = &obj;
 
     return tsk; }
@@ -221,18 +221,19 @@ public: loop_t() noexcept : obj( new NODE() ) {}
 
     /*─······································································─*/
 
-    void off( ptr_t<task_t> address ) const noexcept { clear( address ); }
-
+    void off  ( ptr_t<task_t> address ) const noexcept { clear( address ); }
     void clear( ptr_t<task_t> address ) const noexcept {
-        if( address.null() ) /*-*/ { return; }
-        if( address->sign != &obj ){ return; }
+        if( address.null() ) /*--------------*/ { return; }
         if( address->flag & TASK_STATE::CLOSED ){ return; }
+        if( address->sign!= &obj ) /*--------*/ { return; }
             address->flag = TASK_STATE::CLOSED;
     }
 
     /*─······································································─*/
 
     uchar_32 get_delay() const noexcept { return 0; }
+
+    /*─······································································─*/
 
     void clear() const noexcept { obj->queue.clear(); }
 
@@ -248,10 +249,10 @@ public: loop_t() noexcept : obj( new NODE() ) {}
         if( obj->queue.get()==nullptr ){ return -1; }
 
         auto x = obj->queue.get();
-        auto o = obj->queue.get()->next == nullptr ? -1 : 1;
+        auto o = obj->queue.get()->prev ? 1 : -1;
         
         if( x->data.second->flag & TASK_STATE::USED   ){ 
-            obj->queue.next(); 
+            obj->queue.prev(); 
         return 0; }
         
         if( x->data.second->flag & TASK_STATE::CLOSED ){ 
@@ -260,11 +261,10 @@ public: loop_t() noexcept : obj( new NODE() ) {}
 
         x->data.second->flag |= TASK_STATE::USED;
 
-        int c=0; while( ([&](){
+        while( ([&](){
             
-            do{ auto mem = &x->data.second; c=x->data .first();
-            if( obj->queue.empty() || &x->data.second != mem )
-              { return -1; } switch(c) {
+            do{ int c=x->data.first();
+            if( obj->queue.empty() ){ return -1; } switch(c) {
                 case  1 : goto GOT1; break;
                 case -1 : goto GOT2; break;
                 case  0 : goto GOT3; break;
@@ -273,7 +273,7 @@ public: loop_t() noexcept : obj( new NODE() ) {}
             GOT1:;
 
                 x->data.second->flag &=~ TASK_STATE::USED; 
-                obj->queue.next(); return -1;
+                obj->queue.prev(); return -1;
 
             GOT2:;
 
@@ -295,10 +295,10 @@ public: loop_t() noexcept : obj( new NODE() ) {}
 
         function_t<int,V...> clb ( cb );
 
-        obj->queue.push({[=](){ return clb(args...); }, tsk });
+        obj->queue.unshift({[=](){ return clb(args...); }, tsk });
 
-        tsk->addr = obj->queue.last();
-        tsk->flag = TASK_STATE::OPEN ;
+        tsk->addr = obj->queue.first();
+        tsk->flag = TASK_STATE::OPEN  ;
         tsk->sign = &obj;
 
     return tsk; }
