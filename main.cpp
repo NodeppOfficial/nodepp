@@ -1,47 +1,26 @@
 #include <nodepp/nodepp.h>
-#include <nodepp/worker.h>
-#include <nodepp/channel.h>
 
 using namespace nodepp;
 
-channel_t<coroutine_t> ch1, ch2;
+/*────────────────────────────────────────────────────────────────────────────*/
 
-int worker_1(){
-coStart
+void onMain() {
 
-    while( true ){ coDelay(1000); 
-        
-        ch2.write( coroutine_t( COROUTINE(){
-            console::log( "worker1 -> worker2", process::now() );
-        return -1; }) );
+    handler_t<int> hdl;
 
-    for( auto x: ch1.read() ){ process::add( x ); }}
+    auto hdl1 = hdl.create(); hdl.update( hdl1, 10 );
+    auto hdl2 = hdl.create(); hdl.update( hdl2, 20 );
+    auto hdl3 = hdl.create(); hdl.update( hdl3, 30 );
+    auto hdl4 = hdl.create(); hdl.update( hdl4, 40 );
 
-coStop
-}
+    hdl.get_queue().swap( 
+        hdl.get_queue().first(), 
+        hdl.get_queue().last () 
+    );
 
-int worker_2(){
-coStart
-
-    while( true ){ coDelay(1000); 
-        
-        ch1.write( coroutine_t( COROUTINE(){
-            console::log( "worker2 -> worker1", process::now() );
-        return -1; }) );
-
-    for( auto x: ch2.read() ){ process::add( x ); }}
-
-coStop
-}
-
-void onMain(){
-
-    worker ::add([=](){
-    process::add([=](){ return worker_1(); });
-    process::wait(); return -1; });
-
-    worker ::add([=](){
-    process::add([=](){ return worker_2(); });
-    process::wait(); return -1; });
+    console::log( hdl.read( hdl1 )[0] );
+    console::log( hdl.read( hdl4 )[0] );
 
 }
+
+/*────────────────────────────────────────────────────────────────────────────*/

@@ -146,6 +146,7 @@ public:
     auto idx = get_address( get_key(id), 1 );
 
         if( idx == nullptr ){ break; }
+        
         auto que = table.as( idx )->data;
         auto n   = que  .first();
 
@@ -174,10 +175,12 @@ public:
     /*─······································································─*/
 
     void erase( const U& id ) const noexcept {
+    auto idx = get_address( get_key( id ), 1 );
 
-        ulong idx = get_key ( id );
-        auto  que = table.as( get_address(idx) )->data;
-        auto  n   = que  .first();
+        if( idx == nullptr ){ return; }
+
+        auto que = table.as( idx )->data;
+        auto n   = que  .first();
 
         while( n != nullptr ){ 
         auto itm = queue.as ( n->data );

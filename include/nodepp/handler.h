@@ -66,7 +66,7 @@ public: handler_t() : msk1( (uchar_64) this ), msk2( (uchar_64) &que ) {}
         if  ( ptr == nullptr )  { return false; }
     return que.is_valid( ptr ); }
 
-    int update( uchar_64 address, T value ) const noexcept {
+    int write( uchar_64 address, T value ) const noexcept {
         if  ( que.empty() )/**/{ return -1; }
         auto  ptr = que.as( btoa( address ) );
         if  ( ptr == nullptr ) { return -1; }
@@ -99,7 +99,7 @@ public: handler_t() : msk1( (uchar_64) this ), msk2( (uchar_64) &que ) {}
     void dispatch( uchar_64 handle, const F& action ) const noexcept {
         auto state = this->read(handle); if( !state.null() ){
               action( *state );
-        this->update( handle , *state ); }
+        this->write ( handle , *state ); }
     }
 
     /*─······································································─*/

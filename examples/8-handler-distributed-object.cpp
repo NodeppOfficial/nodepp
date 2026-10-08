@@ -19,7 +19,7 @@ void server(){
         cli.onData([=]( string_t data ){
             auto obj = json::parse( data ); if( ! obj.has_value() ){ return; }
             auto addr= string::to_u64( obj["addr"].as<string_t>() );
-            int    c = redux.update  ( addr, obj["data"].as<string_t>() );
+            int    c = redux.write( addr, obj["data"].as<string_t>() );
             console::log( ">>", c, addr );
         });
 

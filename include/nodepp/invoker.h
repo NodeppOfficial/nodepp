@@ -62,7 +62,7 @@ public: invoker_t() {}
         auto tsk = ptr_t<task_t>( 0UL );
         auto mid = que.create();
 
-        que.update( mid, { [=]( const A&... args ){ return clb(args...); }, tsk });
+        que.write( mid, { [=]( const A&... args ){ return clb(args...); }, tsk });
 
         tsk->flag = TASK_STATE::OPEN;
         tsk->addr = (void*) &que;

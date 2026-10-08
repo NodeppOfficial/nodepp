@@ -350,34 +350,50 @@ public:
 
     /*─······································································─*/
 
-    void swap( NODE* n, NODE* x ){
-        if( !is_valid(x) || n==x ){ return; }
-        if( !is_valid(n) ){ n = obj->lst; }
-        type::swap( x->data, n->data );
+    void swap( NODE* n, NODE* x ) const noexcept {
+        if( !is_valid(x) ){ x = obj->lst; }
+        if( !is_valid(n) ){ n = obj->lst; } if( x==n ) { return; }
+
+        if( obj->fst ==x ){ obj->fst = n; } elif ( obj->fst ==n ){ obj->fst = x; }
+        if( obj->lst ==x ){ obj->lst = n; } elif ( obj->lst ==n ){ obj->lst = x; }
+
+        type::swap( x->next, n->next );
+        type::swap( x->prev, n->prev );
+
+        if( n->prev!= nullptr ){ n->prev->next = n; }
+        if( n->next!= nullptr ){ n->next->prev = n; }
+        if( x->prev!= nullptr ){ x->prev->next = x; }
+        if( x->next!= nullptr ){ x->next->prev = x; }
+
+        if( x->next==x ){ x->next = n; } elif ( n->next==n ){ n->next=x; }
+        if( x->prev==x ){ x->prev = n; } elif ( n->prev==n ){ n->prev=x; }
+
     }
 
     void move( NODE* n, NODE* x ) const noexcept {
-        if( !is_valid(x) || n==x ){ return; }
-        if(  is_valid(n) ){
+        if( !is_valid(x) ) /*-----*/ { return; }
+        if(  is_valid(n) ){ if(n==x) { return; }
 
-        if( x->prev!= nullptr ){ x->prev->next = x->next; }
-        if( x->next!= nullptr ){ x->next->prev = x->prev; }
-        if( obj->fst==x ) /**/ { obj->fst /**/ = x->next; }
-        if( obj->lst==x ) /**/ { obj->lst /**/ = x->prev; }
-        
-        x->prev = n->prev; x->next = n;
-        if( n->prev != nullptr ){ n->prev->next = x; }
-        n->prev = x;
-        if( obj->fst == n )/*-*/{ obj->fst = x; }
+            if( obj->fst==x ) /**/ { obj->fst /**/ = x->next; }
+            if( obj->lst==x ) /**/ { obj->lst /**/ = x->prev; }
+            if( x->prev!= nullptr ){ x->prev->next = x->next; }
+            if( x->next!= nullptr ){ x->next->prev = x->prev; }
+            
+            x->prev = n->prev; 
+            x->next = n      ;
+
+            if( n->prev != nullptr ){ n->prev->next = x; } n->prev = x;
+            if( obj->fst == n )/*-*/{ obj->fst      = x; }
 
         } elif( obj->lst != x ) {
 
-        if( x->next!= nullptr ){ x->next->prev = x->prev; }
-        if( x->prev!= nullptr ){ x->prev->next = x->next; }
-        
-        if( obj->fst == x )/**/{ obj->fst = x->next; }
-        x->prev = obj->lst; x->next = nullptr;
-        x->prev->next = x ; obj->lst= x; 
+            if( x->next!= nullptr ){ x->next->prev = x->prev; }
+            if( x->prev!= nullptr ){ x->prev->next = x->next; }
+            if( obj->fst == x )/**/{ obj->fst      = x->next; }
+            
+            x->prev = obj->lst; 
+            x->next = nullptr ;
+            x->prev->next = x ; obj->lst= x; 
 
         }
     }

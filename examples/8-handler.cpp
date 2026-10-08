@@ -8,7 +8,7 @@ void onMain(){
     handler_t<string_t> hdl;
 
     auto addr = hdl.create();
-    hdl.update( addr, "hello world" );
+    hdl.write( addr, "hello world" );
 
     auto val = hdl.read( addr );
     
