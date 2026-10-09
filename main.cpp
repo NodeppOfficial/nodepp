@@ -1,4 +1,5 @@
 #include <nodepp/nodepp.h>
+#include <nodepp/timer.h>
 
 using namespace nodepp;
 
@@ -6,20 +7,13 @@ using namespace nodepp;
 
 void onMain() {
 
-    handler_t<int> hdl;
+    console::log( encoder::hex::atob( 17 ) );
+    console::log( encoder::hex::atob(  7 ) );
+    console::log( encoder::hex::atob( 13 ) );
 
-    auto hdl1 = hdl.create(); hdl.update( hdl1, 10 );
-    auto hdl2 = hdl.create(); hdl.update( hdl2, 20 );
-    auto hdl3 = hdl.create(); hdl.update( hdl3, 30 );
-    auto hdl4 = hdl.create(); hdl.update( hdl4, 40 );
-
-    hdl.get_queue().swap( 
-        hdl.get_queue().first(), 
-        hdl.get_queue().last () 
-    );
-
-    console::log( hdl.read( hdl1 )[0] );
-    console::log( hdl.read( hdl4 )[0] );
+    timer::add([=](){
+        console::log( os::rand() );
+    return 1; }, 1000 );
 
 }
 

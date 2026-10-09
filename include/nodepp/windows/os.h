@@ -59,6 +59,13 @@ namespace nodepp { namespace os {
 
     inline int call( string_t cmd ){ return ::system( cmd.get() ); }
 
+    inline uchar_64 rand() {
+    thread_local static uchar_64 seed = (uchar_64)&seed;
+        seed ^= seed << 0x11;
+        seed ^= seed >> 0x07;
+        seed ^= seed << 0x0b; return seed;
+    }
+
     /*─······································································─*/
 
     inline uint pid(){ return GetCurrentProcessId(); }
