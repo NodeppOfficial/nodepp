@@ -98,18 +98,18 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 #define coDelay(VALUE)           do { _time_=nodepp::process::millis()+VALUE; while( nodepp::process::millis()<_time_ ){ coErrno(VALUE,__LINE__,1); }} while(0);
 #define coUDelay(VALUE)          do { _time_=nodepp::process::micros()+VALUE; while( nodepp::process::micros()<_time_ ){ /*--------------*/ coNext; }} while(0);
-#define coErrno(DELAY,STATE,OUT) do { coSet(STATE);  nodepp ::coroutine::getno( OUT,coGet,DELAY ); return OUT; case STATE:; } while(0);
+#define coErrno(DELAY,STATE,OUT) do { coSet( STATE ); nodepp::coroutine::getno( OUT,coGet,DELAY ); return OUT; case STATE:; } while(0);
 
-#define coGoto(VALUE)  do { coSet( VALUE ); nodepp::coroutine::getno(1,coGet); return 1; } while(0);
-#define coStay(VALUE)  do { coSet( VALUE ); nodepp::coroutine::getno(0,coGet); return 0; } while(0);
-#define coNext         do { coErrno(0UL, __LINE__ ,1); /*-----------------------------*/ } while(0);
-#define coYield(VALUE) do { coErrno(0UL, VALUE,1); /*---------------------------------*/ } while(0);
-#define coWait(VALUE)  do { while( VALUE ){ /*-------------------------------*/ coNext; }} while(0);
-#define coEnd          do { _time_=0; _state_=_time_; /**/ nodepp::coroutine::getno(-1); } while(0); return -1;
-#define coStop            } _time_=0; _state_=_time_; /**/ nodepp::coroutine::getno(-1); } while(0); return -1;
+#define coGoto(VALUE)            do { coSet( VALUE ); nodepp::coroutine::getno(1,coGet); return 1; } while(0);
+#define coStay(VALUE)            do { coSet( VALUE ); nodepp::coroutine::getno(0,coGet); return 0; } while(0);
+#define coNext                   do { coErrno(0UL, __LINE__ ,1); /*-----------------------------*/ } while(0);
+#define coYield(VALUE)           do { coErrno(0UL, VALUE,1); /*---------------------------------*/ } while(0);
+#define coWait(VALUE)            do { while( VALUE ){ /*-------------------------------*/ coNext; }} while(0);
+#define coEnd                    do { _time_=0; _state_=_time_; /**/ nodepp::coroutine::getno(-1); } while(0); return -1;
+#define coStop                      } _time_=0; _state_=_time_; /**/ nodepp::coroutine::getno(-1); } while(0); return -1;
 
-#define coStart thread_local static uchar_64 _state_=0; thread_local static uchar_32 _time_=0; coBegin
-#define coBegin do { switch(_state_) { case 0:; nodepp::coroutine::getno(-2);
+#define coStart thread_local static uchar_64 _state_=0; thread_local static uchar_64 _time_=0; coBegin
+#define coBegin do { switch(_state_){ case 0:; nodepp::coroutine::getno(-2);
 #define coEmit  int operator()
 
 #define coSet(VALUE) _state_ = VALUE
@@ -118,8 +118,8 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define COROUTINE_ARG(... ) [=]( uchar_64& _state_, uchar_32& _time_, __VA_ARGS__ ) -> int
-#define COROUTINE()         [=]( uchar_64& _state_, uchar_32& _time_ ) /*--------*/ -> int
+#define COROUTINE_ARG(... ) [=]( uchar_64& _state_, uchar_64& _time_, __VA_ARGS__ ) -> int
+#define COROUTINE()         [=]( uchar_64& _state_, uchar_64& _time_ ) /*--------*/ -> int
 #define GENERATOR( NAME )   struct NAME : public nodepp::generator_t
 
 /*────────────────────────────────────────────────────────────────────────────*/

@@ -1,20 +1,39 @@
+#define NODEPP_EVENT_SCHEDULER NODEPP_SCHEDULER_IOURING
+#define NODEPP_ALLOW_ALLOCATOR 1
+
 #include <nodepp/nodepp.h>
-#include <nodepp/timer.h>
+#include <nodepp/http.h>
+#include <nodepp/date.h>
 
 using namespace nodepp;
 
-/*────────────────────────────────────────────────────────────────────────────*/
+void onMain(){
 
-void onMain() {
+    auto server = http::server([=]( http_t cli ){ 
 
-    console::log( encoder::hex::atob( 17 ) );
-    console::log( encoder::hex::atob(  7 ) );
-    console::log( encoder::hex::atob( 13 ) );
+    //  console::log( cli.path, cli.get_fd() );
+        
+        cli.write_header( 200, header_t({
+            { "content-type", "text/html" }
+        }));
+        
+        cli.write( date::fulltime() );
+        cli.close();
 
-    timer::add([=](){
-        console::log( os::rand() );
-    return 1; }, 1000 );
+    });
+
+    server.onError([=]( except_t err ){
+        console::log( ">>", err.what() );
+    });
+
+    /*
+    server.listen( "[localhost]", 8000, [=]( socket_t server ){
+        console::log("server started at http://[::1]:8000");
+    });
+    */
+
+    server.listen( "localhost", 8000, [=]( socket_t server ){
+        console::log("server started at http://localhost:8000");
+    });
 
 }
-
-/*────────────────────────────────────────────────────────────────────────────*/

@@ -80,7 +80,6 @@ protected:
         void *sq_ptr , *cq_ptr    ; 
         
         queue_t<void*> borrow;
-        queue_t<void*> kill  ;
         queue_t<DENO > que   ; int ed = -1;
         queue_t<DONE > sque  ; int fd = -1;
         
@@ -269,7 +268,7 @@ public:
     int free( uchar_64 pd ) const noexcept {
         auto mem = obj->que.as( (void*) pd );
     if( mem == nullptr ){ return -1; }
-        obj->kill.push( mem );
+        obj->que.erase( mem );
     return 1; }
 
     int remove( uchar_64 pd ) const noexcept {
@@ -288,15 +287,6 @@ public:
         if( ms!=0 && obj->borrow.empty() ){ uchar_64 value=0;
             ::poll( &obj->pqes, 1, ms ); io_consume();
         if( ::read( obj->ed,&value,sizeof(uchar_64))>0 ){} }
-
-        if( obj->kill.get() != nullptr ){ do {
-            auto raw  = obj->kill.get( ); obj->kill.next();
-            auto node = obj->que .as ( raw->data );  
-        if( node == nullptr ) /*------------------------------------------------------*/ { break; }
-        if((node->data.data[0].mode & (FLAG::URING_FLAG_FREE|FLAG::URING_FLAG_DONE))==0 ){ break; }
-        if((node->data.data[1].mode & (FLAG::URING_FLAG_FREE|FLAG::URING_FLAG_DONE))==0 ){ break; }
-            obj->kill.erase( raw ); obj->que.erase( node );
-        } while(0); }
 
         return io_queue(); 
         

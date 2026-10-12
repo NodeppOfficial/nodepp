@@ -92,16 +92,16 @@ protected:
 
         y->data.second->flag |= TASK_STATE::USED;
 
-        uchar_32 d=0; while( ([&](){
+        uchar_64 d=0; while( ([&](){
             
             do{ int c=y->data.first (); auto z = coroutine::getno();
             if( obj->normal.empty() ){ return -1; }
             if( c==1 && z.flag&coroutine::STATE::CO_STATE_DELAY )
               { d=z.delay; goto GOT3; } switch(c) {
-                case  1 :  goto GOT1;   break;
-                case -1 :  goto GOT2;   break;
-                case  0 :  goto GOT4;   break;
-            } } while(0);
+                case  1  : goto GOT1;   break;
+                case -1  : goto GOT2;   break;
+                case  0  : goto GOT4;   break;
+            } } while(0) ;
 
             GOT1:;
 

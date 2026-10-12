@@ -25,10 +25,10 @@ private:
 protected:
 
     enum FLAG : u_8 {
-         ALLOC_FLAG_NULL = 0b00000000,
-         ALLOC_FLAG_FREE = 0b00000100,
-         ALLOC_FLAG_USED = 0b00000010,
-         ALLOC_FLAG_SOLO = 0b00000001
+         ALLOC_FLAG_NULL = 0x00,
+         ALLOC_FLAG_FREE = 0x01,
+         ALLOC_FLAG_USED = 0x02,
+         ALLOC_FLAG_SOLO = 0x03
     };
 
     u_64 _align_( u_64 size ) const noexcept {
@@ -38,12 +38,11 @@ protected:
 
 protected:
 
-    struct alignas(NODEPP_ARCH_SIZE) HEAD { u_64 size; u_8* offs; };
-    struct alignas(NODEPP_ARCH_SIZE) BODY { u_64 size; u_8  mode; };
-    struct alignas(NODEPP_ARCH_SIZE) NODE {
-        NODE* next= nullptr  ; NODE* prev = nullptr;
-        u_8 * addr= nullptr  ; HEAD  head ;
-        u_8   bffr[HEAP_SIZE];
+    struct HEAD { u_64 size; u_8* offs; };
+    struct BODY { u_64 size; u_8  mode; };
+    struct NODE {
+        NODE* next= nullptr; NODE* prev= nullptr;
+        HEAD  head; u_8 bffr[HEAP_SIZE];
     };
     
     /*─······································································─*/
@@ -53,102 +52,84 @@ protected:
 
     /*─······································································─*/
 
-    int _del_page_( NODE* addr ) noexcept { do {
-    if( addr == nullptr ){ break; } 
+    int _mov_page_( NODE* addr ) noexcept {
+    if( addr && addr!=obj ){
 
-        NODE* prv = addr->prev;
-        NODE* nxt = addr->next;
+        if( addr->prev ){ addr->prev->next=addr->next; }
+        if( addr->next ){ addr->next->prev=addr->prev; }
 
-        if( addr==obj ){ return 1; }
-        if( prv ){ prv->next =nxt; }
-        if( nxt ){ nxt->prev =prv; }
+        obj->prev=addr; addr->next=obj ; obj=addr;
+    
+    return 1; } return addr ? 0 : -1; }
 
-    ::free( addr ); return 1; } while(0); return -1; }
-
-    /*─······································································─*/
-
-    NODE* _new_page_() noexcept { do {
-
-        NODE* addr = (NODE*) ::malloc( _align_( sizeof(NODE) ) );
-        if( obj ){ obj->prev = addr ; }
-
-        addr->head.offs = addr->bffr;
-        addr->head.size = HEAP_SIZE ;
-        addr->addr      = addr->bffr;
-
-        addr->prev = nullptr ;
-        addr->next = obj     ;
-        obj        = addr    ;
-
-        BODY* body = (BODY*) addr->bffr   ;
-        body->mode = FLAG::ALLOC_FLAG_FREE;
-        body->size = HEAP_SIZE - sizeof(BODY);
-
-    return addr; } while(0); return nullptr; }
-
-    /*─······································································─*/
+    int _del_page_( NODE* addr ) noexcept {
+        if( _mov_page_(addr)!=-1 ){
+            obj = addr->next; ::free( addr ); 
+        return 1; } return -1; 
+    }
 
     int _clr_page_() noexcept { do {
-    if( obj==nullptr || NODEPP_SHTDWN() ){ break; } 
-        while( obj != nullptr ){ 
-            auto x= obj; obj= obj->next; 
-            /*--------*/ _del_page_ (x);
-        }   /**/ return  1; 
-    } while(0) ; return -1; }
+        if   ( NODEPP_SHTDWN() ){ break; } 
+        while( obj ){ auto x=obj->next; ::free(obj); obj=x; }
+    return 1; } while(0) ; return -1; }
+
+    int _new_page_() noexcept {
+
+        NODE* addr = (NODE*) ::malloc( _align_( sizeof(NODE) ) );
+        if( obj ){ obj->prev = addr; }
+
+        addr->prev= nullptr;
+        addr->next= obj ; obj = addr ;
+        addr->head.size = HEAP_SIZE  ;
+        addr->head.offs = addr->bffr ;
+
+        BODY* body = (BODY*)addr->head.offs;
+        body->size = HEAP_SIZE-sizeof(BODY);
+        body->mode = FLAG::ALLOC_FLAG_FREE ;
+
+    return 1; }
 
     /*─······································································─*/
 
     void* _new_mem_( u_64 size ) noexcept {
     if ( size == 0 ){ return nullptr; }
 
-        u_64 sx = _align_( size + sizeof(BODY) + sizeof(BODY) );
-        u_64 sy = _align_( size + sizeof(BODY) );
+        u_64 sz = _align_    ( size );
+        u_64 sy = sz + sizeof( BODY );
+        u_64 sx = sy + sizeof( BODY );
 
     do { if ( sy >= HEAP_SIZE ) {
 
         u_8 * mem  = (u_8 *) ::malloc(sy);
         BODY* body = (BODY*) mem;
-
-        body->size = sy - sizeof(BODY);
+        body->size = sz         ;
         body->mode = FLAG::ALLOC_FLAG_SOLO;
 
         return (void*)( mem + sizeof(BODY) );
 
-    } else { if( obj==nullptr ){ break; }
-
-        NODE* x=obj; if( x == nullptr ){ break; }
-        if( x->head.size <  sx ){ _nxt_mem_(x); }
-        if( x->head.size <  sx ){
-        if( x->head.size != sy ){ break; }}
-
-        u_8 * end  = x->bffr + HEAP_SIZE;
-        u_8 * amem = x->head.offs;
-
-        BODY* body = (BODY*) amem;
-        body->mode = FLAG::ALLOC_FLAG_USED;
-        body->size = sx - sizeof(BODY) - sizeof(BODY);
-
-    if( x->head.size == sy ){
-
-        x->head.offs = nullptr;
-        x->head.size = 0ULL   ;
-    
     } else {
 
-        u_8 * bmem = amem + body->size + sizeof(BODY);
+        NODE* x=obj; if( x == nullptr ){ break; }
+    //  if( x->head.size < sx ){ _nxt_mem_ (x); }
+        if( x->head.size < sx ){
+        if( x->head.size !=sy ){ break; }}
 
-        BODY* brrw = (BODY*) bmem;
-        brrw->size = x->head.size - sx;
-        brrw->mode = FLAG::ALLOC_FLAG_FREE;
+        u_8 * mem  = x->head.offs;
 
-        x->head.offs = bmem;
-        x->head.size = brrw->size + sizeof(BODY);
+        x->head.offs = mem + sy  ;
+        x->head.size = x->head.size - sy;
 
-    }
+        BODY* body = (BODY*) mem ;
+        body->size = sz          ;
+        body->mode = FLAG::ALLOC_FLAG_USED;
 
-        return (void*)( amem + sizeof(BODY) );
+    if( x->head.size > 0UL ){
 
-    }} while(0);
+        BODY* body = (BODY*) x->head.offs ;
+        body->mode = FLAG::ALLOC_FLAG_FREE;
+        body->size = x->head.size - sizeof(BODY);
+
+    } return (void*)( mem + sizeof(BODY) ); }} while(0);
 
         /*--*/ _new_page_( /**/ );
         return _new_mem_ ( size );
@@ -169,65 +150,61 @@ protected:
         return 1; } 
 
         if( body->mode == FLAG::ALLOC_FLAG_SOLO ){
-            ::free(mem ); return 1;
-        }   ::free(addr); return 0; 
+            body->mode =  FLAG::ALLOC_FLAG_FREE ; 
+            ::free( mem ); return 1;
+        }   ::free( mem ); return 0; 
 
     } while(0); return -1; }
 
     /*─······································································─*/
 
-    int _nxt_mem_( NODE* addr ) noexcept { do {
-    if( addr == nullptr ){ break; }
+    int _nxt_mem_( NODE* addr ) noexcept { if( addr!=nullptr ){
 
         u_8 * end = addr->bffr + HEAP_SIZE;
         u_8 * prv = nullptr    ;
         u_8 * mem = addr->bffr ; while( mem<end ){
-        
+
         BODY* bd1 = (BODY*)mem ;
         u_8 * nxt = mem + bd1->size + sizeof(BODY);
 
+        if( bd1->mode == FLAG::ALLOC_FLAG_NULL ){ return 0; }
         if( bd1->mode == FLAG::ALLOC_FLAG_FREE ){
         if( prv != nullptr ){
             
-            BODY* bd2 = (BODY*)prv;
+            BODY* bd2 = (BODY*) prv;
 
         if( bd2->mode == FLAG::ALLOC_FLAG_FREE ){
             bd2->size += bd1->size + sizeof(BODY);
-        } else { prv=nullptr; }
-        } else { prv=mem    ; }
+        } else { prv=mem; }
+        } else { prv=mem; }
 
             BODY* bd2 = (BODY*)prv;
-    
-            if( addr->head.size < bd2->size ){
-                addr->head.size = bd2->size + sizeof(BODY);
-                addr->head.offs = prv; 
+
+            if( addr->head.size < bd2->size + sizeof(BODY) ){
+                addr->head.size = bd2->size + sizeof(BODY) ;
+                addr->head.offs = prv       ;
             }
 
-        } else { prv=nullptr; } mem=nxt; } 
+        } else { prv=nullptr; } mem=nxt; }
 
         if( addr->head.size>=     HEAP_SIZE ){ return 1; }
-        if( addr->head.size> obj->head.size ){ return 2; }
+        if( addr->head.size>=obj->head.size ){ return 2; }
 
-    return 0; } while(0); return -1; }
+    return 0; } return -1; }
 
 protected:
 
-    int _next_() noexcept { do { if( obj == nullptr ){ break; }
+    int _next_() noexcept { if( obj!=nullptr ){
     int b = NODEPP_MAX_BATCH_SIZE; act = act ? act : obj;
 
         while ( b-->0 ){ auto x=act; act = act->next; 
-        switch( _nxt_mem_ (x) ){ 
-        case 1: _del_page_(x); break ; case 2: do {
-
-            if( x== obj ){ break; }
-            if( x->prev ){ x->prev->next=x->next; }
-            if( x->next ){ x->next->prev=x->prev; }
-
-            obj->prev = x; x->next = obj ; obj = x;
-    
-        } while(0); break; } if( !act ){ break; } }
-
-    return 1; } while(0); return -1; }
+        switch( _nxt_mem_(x) ){ 
+            case 1: _del_page_(x); break; 
+            case 2: _mov_page_(x); break; 
+            case 0: /*--unused--*/ break;
+        } if( !act ){ break; }}
+         
+    return 1; } return -1; }
 
 public:
 
@@ -239,13 +216,13 @@ public:
     void* calloc( u_64 num, u_64 size ) noexcept {
     void* mem = malloc( num * size );
           memset( mem, 0x00, num * size );
-          return mem;
+          return  mem;
     }
 
     void* realloc( void* ptr, u_64 size ) noexcept {
         if( size== 0 ) /**/ { free(ptr); return nullptr; }
         if( ptr == nullptr ){ return malloc(size); }
-    void* mem = malloc(size); memmove(mem,ptr,size);
+    void* mem = malloc(size); memmove (mem,ptr,size);
         free(ptr); return mem;
     }
 
