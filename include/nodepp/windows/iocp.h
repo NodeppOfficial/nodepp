@@ -58,7 +58,9 @@ protected:
         DWORD err = GetLastError();
         return( err == ERROR_IO_INCOMPLETE || 
                 err == ERROR_IO_PENDING    || 
-                err == WAIT_TIMEOUT 
+                err == WAIT_TIMEOUT        ||
+                err == WSAEWOULDBLOCK      ||
+                err == WSAEINPROGRESS
         );
     }
 
@@ -66,7 +68,7 @@ protected:
     
         if( !HasOverlappedIoCompleted(&ov) ) /*----*/ { return 1; }
         if( GetOverlappedResult( fd, &ov, &c, FALSE) ){ break   ; }
-        if( is_blocked( c ) ){ return 1; }
+        if( is_blocked( c ) ) /*-------------------*/ { return 1; }
 
     } while(0); return 0; }
     
@@ -191,18 +193,18 @@ public:
     int write( T* fd, void* buf, DWORD len, DWORD* offset ) const noexcept {
         
         auto flag = FLAG::IOCP_FLAG_WRTE;
-        auto   io = io_submitter( fd, flag );
-        auto  raw = obj->que.as ( io );
+        auto io   = io_submitter( fd, flag );
+        auto raw  = obj->que.as ( io );
         auto &mem = raw->data.data  [ flag ];
         auto size = min( len, (DWORD) NODEPP_CHUNK_SIZE );
         
     if( mem.mode == FLAG::IOCP_FLAG_FREE ){
         mem.mode  = FLAG::IOCP_FLAG_USED ;
 
-        auto &ov  = mem.ov ; ov.Offset=offset[0];
-        auto &raw = mem.mem;
+        auto &ov  = mem.ov ; ov = {0};
         auto &c   = mem.c  ; c  = 0UL;
         auto &hd  = mem.fd ; hd = fd->get_fd();
+        auto &raw = mem.mem; ov.Offset=offset[0];
 
         memcpy( raw.get(), buf, size );
         WriteFile( fd->get_fd(), raw.get(), size, &c, &ov );
@@ -222,18 +224,18 @@ public:
     int read( T* fd, void* buf, DWORD len, DWORD* offset ) const noexcept {
         
         auto flag = FLAG::IOCP_FLAG_READ;
-        auto   io = io_submitter( fd, flag );
-        auto  raw = obj->que.as ( io );
+        auto io   = io_submitter( fd, flag );
+        auto raw  = obj->que.as ( io );
         auto &mem = raw->data.data  [ flag ];
         auto size = min( len, (DWORD) NODEPP_CHUNK_SIZE );
         
     if( mem.mode == FLAG::IOCP_FLAG_FREE ){
         mem.mode  = FLAG::IOCP_FLAG_USED ;
 
-        auto &ov  = mem.ov ; ov.Offset=offset[0];
+        auto &ov  = mem.ov ; ov = {0};
         auto &c   = mem.c  ; c  = 0UL;
-        auto &raw = mem.mem;
         auto &hd  = mem.fd ; hd = fd->get_fd();
+        auto &raw = mem.mem; ov.Offset=offset[0];
 
         ReadFile( fd->get_fd(), raw.get(), size, &c, &ov );
 
@@ -258,17 +260,17 @@ public:
     int connect( T* fd, V* addr, DWORD len, int addr_family ) const noexcept {
         
         auto flag = FLAG::IOCP_FLAG_WRTE;
-        auto   io = io_submitter( fd, flag );
-        auto  raw = obj->que.as ( io );
+        auto io   = io_submitter( fd, flag );
+        auto raw  = obj->que.as ( io );
         auto &mem = raw->data.data  [ flag ];
         
     if( mem.mode == FLAG::IOCP_FLAG_FREE ){
         mem.mode  = FLAG::IOCP_FLAG_USED ;
 
         auto &hd  = mem.fd ; hd = (HANDLE) fd->get_fd();
-        auto &raw = mem.mem; 
-        auto &c   = mem.c  ; c  = 0UL;
-        auto &ov  = mem.ov ; LPFN_CONNECTEX connect = nullptr;
+        auto &ov  = mem.ov ; ov = {0};
+        auto &c   = mem.c  ; c  = 0UL; 
+        auto &raw = mem.mem; LPFN_CONNECTEX connect = nullptr;
 
         GUID GuidConnectEx = WSAID_CONNECTEX; WSAIoctl( fd->get_fd(), 
              SIO_GET_EXTENSION_FUNCTION_POINTER, 
@@ -303,8 +305,8 @@ public:
     int accept( T* fd, V* addr, socklen_t* addr_len, int addr_family, int addr_sock, int addr_ipproto ) const noexcept {
         
         auto flag = FLAG::IOCP_FLAG_WRTE;
-        auto   io = io_submitter( fd, flag );
-        auto  raw = obj->que.as ( io );
+        auto io   = io_submitter( fd, flag );
+        auto raw  = obj->que.as ( io );
         auto &mem = raw->data.data  [ flag ];
         
     if( mem.mode == FLAG::IOCP_FLAG_FREE ){
@@ -313,7 +315,7 @@ public:
         auto &ov  = mem.ov ; LPFN_ACCEPTEX accept = nullptr;
         auto &hd  = mem.fd ; hd = (HANDLE) fd->get_fd();
         auto &c   = mem.c  ; c  = 0UL  ; SOCKET tmp;
-        auto &raw = mem.mem;
+        auto &raw = mem.mem; ov = {0}  ;
         auto sk   = (SOCKET*) raw.get();
 
         sk[0] = WSASocketW( addr_family, addr_sock, addr_ipproto, NULL, 0, WSA_FLAG_OVERLAPPED );
@@ -351,8 +353,8 @@ public:
     int send( T* fd, void* buf, DWORD len, int flags ) const noexcept {
         
         auto flag = FLAG::IOCP_FLAG_WRTE;
-        auto   io = io_submitter( fd, flag );
-        auto  raw = obj->que.as ( io );
+        auto io   = io_submitter( fd, flag );
+        auto raw  = obj->que.as ( io );
         auto &mem = raw->data.data  [ flag ];
         auto size = min( len, (DWORD) NODEPP_CHUNK_SIZE );
         
@@ -360,10 +362,10 @@ public:
         mem.mode  = FLAG::IOCP_FLAG_USED ;
 
         auto &raw = mem.mem;
-        auto &bu  = mem.buf; 
+        auto &ov  = mem.ov ; ov = {0}  ;
         auto &c   = mem.c  ; c  = 0UL  ;
         auto &f   = mem.f  ; f  = flags;
-        auto &ov  = mem.ov ; bu = { size, raw.get() };
+        auto &bu  = mem.buf; bu = { size, raw.get() };
         auto &hd  = mem.fd ; hd = (HANDLE) fd->get_fd();
 
         memcpy ( raw.get(), buf, size );
@@ -378,8 +380,8 @@ public:
     int sendto( T* fd, void* buf, DWORD len, int flags, V* addr, socklen_t addrlen ) const noexcept {
         
         auto flag = FLAG::IOCP_FLAG_WRTE;
-        auto   io = io_submitter( fd, flag );
-        auto  raw = obj->que.as ( io );
+        auto io   = io_submitter( fd, flag );
+        auto raw  = obj->que.as ( io );
         auto &mem = raw->data.data  [ flag ];
         auto size = min( len, (DWORD) NODEPP_CHUNK_SIZE );
         
@@ -387,14 +389,14 @@ public:
         mem.mode  = FLAG::IOCP_FLAG_USED ;
 
         auto &raw = mem.mem;
-        auto &bu  = mem.buf; 
+        auto &ov  = mem.ov ; ov = {0}  ;
         auto &c   = mem.c  ; c  = 0UL  ;
         auto &f   = mem.f  ; f  = flags;
-        auto &ov  = mem.ov ; bu = { size, raw.get() };
+        auto &bu  = mem.buf; bu = { size, raw.get() };
         auto &hd  = mem.fd ; hd = (HANDLE) fd->get_fd();
 
         memcpy   ( raw.get   (), buf, size );
-        WSASendTo( fd->get_fd(), &bu, 1, &c, f, (SOCKADDR*) &addr, size, &ov, NULL );
+        WSASendTo( fd->get_fd(), &bu, 1, &c, f, addr, addrlen, &ov, NULL );
 
         if( is_blocked(c) ) { return -2; } 
         mem.mode = FLAG::IOCP_FLAG_FREE; return (int) c;
@@ -407,8 +409,8 @@ public:
     int recv( T* fd, void* buf, DWORD len, int flags ) const noexcept {
         
         auto flag = FLAG::IOCP_FLAG_READ;
-        auto   io = io_submitter( fd, flag );
-        auto  raw = obj->que.as ( io );
+        auto io   = io_submitter( fd, flag );
+        auto raw  = obj->que.as ( io );
         auto &mem = raw->data.data  [ flag ];
         auto size = min( len, (DWORD) NODEPP_CHUNK_SIZE );
         
@@ -416,10 +418,10 @@ public:
         mem.mode  = FLAG::IOCP_FLAG_USED ;
 
         auto &raw = mem.mem;
-        auto &bu  = mem.buf;
+        auto &ov  = mem.ov ; ov = {0}  ;
         auto &c   = mem.c  ; c  = 0UL  ;
         auto &f   = mem.f  ; f  = flags;
-        auto &ov  = mem.ov ; bu = { size, raw.get() };
+        auto &bu  = mem.buf; bu = { size, raw.get() };
         auto &hd  = mem.fd ; hd = (HANDLE) fd->get_fd();
 
         WSARecv( fd->get_fd(), &bu, 1, &c, &f, &ov, NULL );
@@ -442,8 +444,8 @@ public:
     int recvfrom( T* fd, void* buf, DWORD len, int flags, V* addr, socklen_t* addrlen ) const noexcept {
         
         auto flag = FLAG::IOCP_FLAG_READ;
-        auto   io = io_submitter( fd, flag );
-        auto  raw = obj->que.as ( io );
+        auto io   = io_submitter( fd, flag );
+        auto raw  = obj->que.as ( io );
         auto &mem = raw->data.data  [ flag ];
         auto size = min( len, (DWORD) NODEPP_CHUNK_SIZE );
         
@@ -451,13 +453,13 @@ public:
         mem.mode  = FLAG::IOCP_FLAG_USED ;
 
         auto &raw = mem.mem;
-        auto &bu  = mem.buf;
+        auto &ov  = mem.ov ; ov = {0}  ;
         auto &c   = mem.c  ; c  = 0UL  ;
         auto &f   = mem.f  ; f  = flags;
-        auto &ov  = mem.ov ; bu = { size, raw.get() };
+        auto &bu  = mem.buf; bu = { size, raw.get() };
         auto &hd  = mem.fd ; hd = (HANDLE) fd->get_fd();
 
-        WSARecvFrom( fd->get_fd(), &bu, 1, &c, &f, (SOCKADDR*) &addr, addrlen, &ov, NULL );
+        WSARecvFrom( fd->get_fd(), &bu, 1, &c, &f, addr, addrlen, &ov, NULL );
 
         if( is_blocked(c) ) { return -2; } memmove( buf, raw.get(), c );
         mem.mode = FLAG::IOCP_FLAG_FREE; return (int) c;

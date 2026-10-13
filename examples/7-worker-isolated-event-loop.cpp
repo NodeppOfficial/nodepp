@@ -22,10 +22,6 @@ void isolated_event_loop( uint cpu_id ){ worker::add([=](){
 
 process::wait(); return -1; }); }
 
-void onMain(){
-
-    for( auto x=os::cpus(); x-->0; ){
-         isolated_event_loop( x );
-    }
-
-}
+void onMain(){ for( auto x=os::cpus(); x-->0; ){
+     isolated_event_loop( x );
+}}

@@ -18,9 +18,9 @@ namespace nodepp { template< ulong HEAP_SIZE=NODEPP_HEAP_SIZE > class allocator_
 private:
 
     using u_8  = unsigned char;
-    using u_16 = uint16_t ;
-    using u_32 = uint32_t ;
-    using u_64 = uint64_t ;
+    using u_16 = uint16_t     ;
+    using u_32 = uint32_t     ;
+    using u_64 = uint64_t     ;
 
 protected:
 
@@ -178,7 +178,7 @@ protected:
         } else { prv=mem; }
         } else { prv=mem; }
 
-            BODY* bd2 = (BODY*)prv;
+            BODY* bd2 = (BODY*) prv;
 
             if( addr->head.size < bd2->size + sizeof(BODY) ){
                 addr->head.size = bd2->size + sizeof(BODY) ;
@@ -261,13 +261,13 @@ struct allocator_fallback_t {
 };
 
 namespace nodepp {
-inline allocator_fallback_t& NODEPP_ALLOC() /*---------*/ {
+allocator_fallback_t& NODEPP_ALLOC() /*---------*/ {
 thread_local static allocator_fallback_t out; return out; }}
 
 #else
 
 namespace nodepp {
-inline allocator_t<NODEPP_HEAP_SIZE>& NODEPP_ALLOC() /*---------*/ {
+allocator_t<NODEPP_HEAP_SIZE>& NODEPP_ALLOC() /*---------*/ {
 thread_local static allocator_t<NODEPP_HEAP_SIZE> out; return out; }}
 
 #endif
@@ -276,28 +276,28 @@ thread_local static allocator_t<NODEPP_HEAP_SIZE> out; return out; }}
 
 #if NODEPP_ALLOW_ALLOCATOR==1
 
-inline void operator delete( void* ptr ) noexcept {
+void operator delete( void* ptr ) noexcept {
 nodepp::NODEPP_ALLOC().free( ptr ); }
 
-inline void* operator new  ( size_t size ) {
+void* operator new  ( size_t size ) {
 return nodepp::NODEPP_ALLOC().malloc( size ); }
 
 /*─······································································─*/
 
-inline void operator delete[]( void* ptr ) noexcept {
+void operator delete[]( void* ptr ) noexcept {
 nodepp::NODEPP_ALLOC().free( ptr ); }
 
-inline void* operator new[]  ( size_t size ) {
+void* operator new[]  ( size_t size ) {
 return nodepp::NODEPP_ALLOC().malloc( size ); }
 
 /*─······································································─*/
 
 #if __cplusplus >= 201402L
 
-inline void operator delete  ( void* ptr, size_t ) noexcept {
+void operator delete  ( void* ptr, size_t ) noexcept {
 nodepp::NODEPP_ALLOC().free( ptr ); }
 
-inline void operator delete[]( void* ptr, size_t ) noexcept {
+void operator delete[]( void* ptr, size_t ) noexcept {
 nodepp::NODEPP_ALLOC().free( ptr ); }
 
 #endif

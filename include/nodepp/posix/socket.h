@@ -367,7 +367,8 @@ public:
     /*─······································································─*/
 
     expected_t<ip_t,except_t> get_sockname() const noexcept {
-        SOCKADDR_ST addr; socklen_t len = sizeof(addr);
+        SOCKADDR_ST addr; socklen_t &len = obj->addrlen;
+        len = sizeof(addr);
 
         if( is_closed() )
           { return except_t( "invalid socket" ); }
@@ -392,7 +393,8 @@ public:
     }
 
     expected_t<ip_t,except_t> get_peername() const noexcept { 
-        SOCKADDR_ST& addr = get_read_address(); socklen_t len = sizeof(addr);
+        SOCKADDR_ST& addr = get_read_address(); socklen_t &len = obj->addrlen;
+        len = sizeof(addr);
 
         if( is_closed() )
           { return except_t( "invalid socket" ); }
@@ -671,7 +673,9 @@ public:
     }
 
     int bind() const noexcept { obj->state |= STATE::FS_STATE_SERVER;
-        return ::bind( obj->fd, (SOCKADDR*) &obj->server_addr, obj->addrlen ) ?-1: 1;
+        SOCKADDR_ST& addr = obj->server_addr; 
+        socklen_t &len = obj->addrlen; len = sizeof(addr);
+        return ::bind( obj->fd, (SOCKADDR*) &addr, len ) ? -1 : 1;
     }
 
     /*─······································································─*/
@@ -717,9 +721,9 @@ public:
         if( process::millis() > get_recv_timeout() || is_closed() )
           { return -1; } if ( sx==0 ) { return 0; }
 
-        SOCKADDR_ST& addr = get_read_address(); socklen_t len = sizeof(addr);
+        SOCKADDR_ST& addr = get_read_address(); socklen_t &len = obj->addrlen;
 
-        auto c = SOCK != SOCK_DGRAM
+        len = sizeof(addr); int c = SOCK != SOCK_DGRAM
         ? NODEPP_URING().recv    ( this, bf, sx, 0 )
         : NODEPP_URING().recvfrom( this, bf, sx, 0, (SOCKADDR*) &addr, &len );
 
@@ -735,9 +739,9 @@ public:
         if( process::millis() > get_send_timeout() || is_closed() )
           { return -1; } if ( sx==0 ) { return 0; } 
 
-        SOCKADDR_ST& addr = get_write_address(); socklen_t len = sizeof(addr);
+        SOCKADDR_ST& addr = get_write_address(); socklen_t &len = obj->addrlen;
 
-        auto c = SOCK != SOCK_DGRAM
+        len = sizeof(addr); int c = SOCK != SOCK_DGRAM
         ? NODEPP_URING().send  ( this, bf, sx, 0 )
         : NODEPP_URING().sendto( this, bf, sx, 0, (SOCKADDR*) &addr, len );
 
@@ -755,9 +759,9 @@ public:
         if( process::millis() > get_recv_timeout() || is_closed() )
           { return -1; } if ( sx==0 ) { return 0; }
 
-        SOCKADDR_ST& addr = get_read_address(); socklen_t len = sizeof(addr);
+        SOCKADDR_ST& addr = get_read_address(); socklen_t &len = obj->addrlen;
 
-        int c = SOCK != SOCK_DGRAM
+        len = sizeof(addr); int c = SOCK != SOCK_DGRAM
         ? ::recv    ( obj->fd, bf, sx, 0 )
         : ::recvfrom( obj->fd, bf, sx, 0, (SOCKADDR*) &addr, &len );
 
@@ -773,9 +777,9 @@ public:
         if( process::millis() > get_send_timeout() || is_closed() )
           { return -1; } if ( sx==0 ) { return 0; } 
 
-        SOCKADDR_ST addr = get_write_address(); socklen_t len = sizeof(addr);
+        SOCKADDR_ST addr = get_write_address(); socklen_t &len = obj->addrlen;
 
-        int c = SOCK != SOCK_DGRAM
+        len = sizeof(addr); int c = SOCK != SOCK_DGRAM
         ? ::send  ( obj->fd, bf, sx, 0 )
         : ::sendto( obj->fd, bf, sx, 0, (SOCKADDR*) &addr, len );
 

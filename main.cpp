@@ -1,24 +1,29 @@
-#define NODEPP_EVENT_SCHEDULER NODEPP_SCHEDULER_IOURING
-#define NODEPP_ALLOW_ALLOCATOR 1
-
 #include <nodepp/nodepp.h>
-#include <nodepp/http.h>
-#include <nodepp/date.h>
+#include <nodepp/worker.h>
+#include <nodepp/timer.h>
+#include <nodepp/udp.h>
+#include <nodepp/fs.h>
 
 using namespace nodepp;
 
-void onMain(){
+void server(){
 
-    auto server = http::server([=]( http_t cli ){ 
+    auto server = udp::server();
 
-    //  console::log( cli.path, cli.get_fd() );
-        
-        cli.write_header( 200, header_t({
-            { "content-type", "text/html" }
-        }));
-        
-        cli.write( date::fulltime() );
-        cli.close();
+    server.onConnect([=]( socket_t cli ){
+
+        cli.onData([=]( string_t data ){
+            cli.set_write_address( cli.get_read_address() );
+            cli.write( "hello world!" );
+            console::log( cli.is_server(), data );
+        });
+
+        cli.onClose([=](){
+            console::log("closed");
+        });
+
+        console::log( "connected" );
+        stream::pipe( cli );
 
     });
 
@@ -26,14 +31,49 @@ void onMain(){
         console::log( ">>", err.what() );
     });
 
-    /*
-    server.listen( "[localhost]", 8000, [=]( socket_t server ){
-        console::log("server started at http://[::1]:8000");
-    });
-    */
-
-    server.listen( "localhost", 8000, [=]( socket_t server ){
-        console::log("server started at http://localhost:8000");
+    server.listen( "localhost", 8000, []( socket_t srv ){
+        console::log("-> udb://localhost:8000");
     });
 
 }
+
+void client(){
+
+    auto client = udp::client();
+
+    client.onConnect([=]( socket_t cli ){
+
+        cli.onData([=]( string_t data ){
+            console::log( cli.is_server(), data );
+        });
+
+        cli.onClose([=](){
+            console::log("closed");
+        });
+
+        stream::pipe( cli );
+        timer ::add ([=](){
+            auto msg = regex::format( "hello world! ${0}", process::now() );
+            return cli.write( msg ) <= 0 ? -1 : 1 ;
+        },1000);
+
+        console::log( "connected" );
+
+    });
+
+    client.onError([=]( except_t err ){
+        console::log( ">>", err.what() );
+    });
+
+    client.connect( "localhost", 8000, []( socket_t cli ){
+        console::log("-> udp://localhost:8000");
+    });
+
+}
+
+void onMain() {
+
+    worker::add([=](){ server(); process::wait(); return -1; });
+    worker::add([=](){ client(); process::wait(); return -1; });
+
+} 

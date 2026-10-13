@@ -60,12 +60,12 @@ void onMain(){
 
     worker::add([=](){
         process::add([=](){ return worker_1(); });
-    process::wait();
-    return -1; });
+        process::wait(); return -1; 
+    });
 
     worker::add([=](){
         process::add([=](){ return worker_2(); });
-    process::wait();
-    return -1; });
+        process::wait(); return -1; 
+    });
 
 }
