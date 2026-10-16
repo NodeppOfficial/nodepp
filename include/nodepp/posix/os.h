@@ -51,6 +51,18 @@ namespace nodepp { namespace os {
     
     /*─······································································─*/
 
+    inline bool is_little_endian(){
+        uchar_16 value = 0x01;
+        return ( (char*)&value )[0] == 0x01;
+    }
+
+    inline bool is_big_endian(){
+        uchar_16 value = 0x01;
+        return ( (char*)&value )[0] == 0x00;
+    }
+    
+    /*─······································································─*/
+
     inline string_t user(){ return ::getlogin(); }
     
     /*─······································································─*/

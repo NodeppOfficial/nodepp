@@ -479,8 +479,10 @@ namespace nodepp { namespace generator { namespace http {
 
                 if( y.null() ){
                     mode.size = encoder::hex::btoa<len_t>( bff.slice_view( 0, x[0] ) );
+                    mode.size = encoder::endian::to_little_endian( mode.size );
                 } else {
                     mode.size = encoder::hex::btoa<len_t>( bff.slice_view( 0, y[0] ) );
+                    mode.size = encoder::endian::to_little_endian( mode.size );
                 }
                 
                 if( mode.size==0 ){ data=0; return -1; }
@@ -598,7 +600,8 @@ namespace nodepp { namespace generator { namespace http {
 
             do { if( borrow.empty() ){
 
-                borrow = encoder::hex::atob( sx ) + "\r\n" + string_t( bf, sx ) + "\r\n"; 
+                auto sy= encoder::endian::to_little_endian( sx );
+                borrow = encoder::hex::atob( sy ) + "\r\n" + string_t( bf, sx ) + "\r\n"; 
                 size   = 0UL; 
 
             }   int c = fd->_write_( borrow.get(), borrow.size(), &size );
@@ -790,19 +793,16 @@ namespace nodepp { namespace generator { namespace ws {
             if( frame.LEN == 126 ){ frame.LEN = 0;
 
                 auto len = sizeof(uchar_16);
-                if ( borrow.size() < size + sizeof(uchar_16) ){ frame = {0}; return false; }
-
-                for( ulong x=0; x<len; x++ ){ 
-                     frame.LEN = ( frame.LEN<<8 ) | (uchar) borrow[x+size]; 
-                }    size += len;
+                auto raw = (uchar_16*)( borrow.get() + size );
+                if ( borrow.size() < size + len ){ frame = {0}; return false; }
+                frame.LEN = encoder::endian::to_big_endian( raw[0] ); size += len;
 
             } elif( frame.LEN == 127 ) { frame.LEN = 0;
 
                 auto len = sizeof(uchar_64);
-                if ( borrow.size() < size + sizeof(uchar_64) ){ frame = {0}; return false; }
-                for( ulong x=0; x<len; x++ ){ 
-                     frame.LEN = ( frame.LEN<<8 ) | (uchar) borrow[x+size]; 
-                }    size += len;
+                auto raw = (uchar_64*)( borrow.get() + size );
+                if ( borrow.size() < size + len ){ frame = {0}; return false; }
+                frame.LEN = encoder::endian::to_big_endian( raw[0] ); size += len;
 
             }}
 
@@ -888,13 +888,21 @@ namespace nodepp { namespace generator { namespace ws {
             if ( sx < 126 ){
                 bfx[idx]|= type::cast<uchar>( sx ); ++idx;
             } elif ( sx < 65536 ){
-                bfx[idx]|= (uchar)(126); ++idx; auto tmp = type::cast<uchar_16>(sx);
-                auto mem = (char*) &tmp; auto len = sizeof(uchar_16);
-                type::copy_reverse( mem, mem + len, bfx.get() + idx ); idx += len;
+                bfx[idx]|= (uchar)(126); ++idx; 
+
+                auto len = sizeof(uchar_16);
+                auto tmp = type::cast<uchar_16>(sx);
+                auto mem = type::cast<uchar_16>( bfx.get() + idx );
+                mem[0] = encoder::endian::to_big_endian( tmp ); idx += len;
+
             } else {
-                bfx[idx]|= (uchar)(127); ++idx; auto tmp = type::cast<uchar_64>(sx);
-                auto mem = (char*) &tmp; auto len = sizeof(uchar_64);
-                type::copy_reverse( mem, mem + len, bfx.get() + idx ); idx += len;
+                bfx[idx]|= (uchar)(127); ++idx;
+
+                auto len = sizeof(uchar_64);
+                auto tmp = type::cast<uchar_64>(sx);
+                auto mem = type::cast<uchar_64>( bfx.get() + idx );
+                mem[0] = encoder::endian::to_big_endian( tmp ); idx += len;
+
             } 
             
             if( mask > 0 ) {

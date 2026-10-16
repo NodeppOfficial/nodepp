@@ -327,6 +327,41 @@ namespace nodepp { namespace encoder { namespace base58 {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+namespace nodepp { namespace encoder { namespace endian {
+
+    inline bool is_little_endian(){
+        uchar_16 value = 0x01;
+        return ( (char*)&value )[0] == 0x01;
+    }
+
+    inline bool is_big_endian(){
+        uchar_16 value = 0x01;
+        return ( (char*)&value )[0] == 0x00;
+    }
+
+    template < class T >
+    typename type::enable_if< type::is_number<T>::value, T >::type
+    flip( const T& value ){
+        T out; auto mem = (char*) &out  ;
+        /*--*/ auto mom = (char*) &value; 
+        type::move_reverse( mom, mom + sizeof(T), mem );
+        return out; 
+    }
+
+    template< class T >
+    typename type::enable_if< type::is_number<T>::value, T >::type
+    to_big_endian( const T& value ){
+    return is_big_endian() ? value : flip(value); }
+
+    template< class T >
+    typename type::enable_if< type::is_number<T>::value, T >::type
+    to_little_endian( const T& value ){
+    return is_little_endian() ? value : flip(value); }
+
+}}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 namespace nodepp { namespace encoder { namespace utf8 {
     inline ptr_t<uchar_16> to_utf16( const ptr_t<uchar_8>& inp ){ return utf::utf8_to_utf16( inp ); }
     inline ptr_t<uchar_32> to_utf32( const ptr_t<uchar_8>& inp ){ return utf::utf8_to_utf32( inp ); }

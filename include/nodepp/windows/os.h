@@ -65,6 +65,18 @@ namespace nodepp { namespace os {
         seed ^= seed >> 0x07;
         seed ^= seed << 0x0b; return seed;
     }
+    
+    /*─······································································─*/
+
+    inline bool is_little_endian(){
+        uchar_16 value = 0x01;
+        return ( (char*)&value )[0] == 0x01;
+    }
+
+    inline bool is_big_endian(){
+        uchar_16 value = 0x01;
+        return ( (char*)&value )[0] == 0x00;
+    }
 
     /*─······································································─*/
 

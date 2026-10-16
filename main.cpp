@@ -1,29 +1,48 @@
 #include <nodepp/nodepp.h>
-#include <nodepp/worker.h>
-#include <nodepp/timer.h>
-#include <nodepp/udp.h>
-#include <nodepp/fs.h>
+#include <nodepp/http.h>
+#include <nodepp/date.h>
 
 using namespace nodepp;
 
-void server(){
+void onMain(){
 
-    auto server = udp::server();
+    auto server = http::server([=]( http_t cli ){ 
 
-    server.onConnect([=]( socket_t cli ){
+        console::log( cli.path, cli.get_fd() );
+        
+        cli.write_header( 200, header_t({
+            { "Content-Type"     , "text/html" },
+            { "Transfer-Encoding", "chunked"   },
+        //  { "Content-Length", string::to_string( file.size() ) }
+        }));
 
-        cli.onData([=]( string_t data ){
-            cli.set_write_address( cli.get_read_address() );
-            cli.write( "hello world!" );
-            console::log( cli.is_server(), data );
-        });
+        if( cli.path != "/" ){ cli.close(); return; }
 
-        cli.onClose([=](){
-            console::log("closed");
-        });
+        cli.write( R"(
+            <!DOCTYPE html> <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Document</title>
+            </head>
+            <body style="transform: scaleY(-1);">
+        )" );
 
-        console::log( "connected" );
-        stream::pipe( cli );
+        process::add( coroutine::add( COROUTINE(){
+        coBegin
+
+            while( true ){
+
+                cli.write( regex::format( NODEPP_STRINGIFY(
+                    <h1 style="transform: scaleY(-1);"> 
+                        Hello World! - ${0} 
+                    </h1>
+                ) , process::now() ) );
+
+            coDelay(1000); }
+
+        coFinish
+        }));
 
     });
 
@@ -31,49 +50,14 @@ void server(){
         console::log( ">>", err.what() );
     });
 
-    server.listen( "localhost", 8000, []( socket_t srv ){
-        console::log("-> udb://localhost:8000");
+    /*
+    server.listen( "[localhost]", 8000, [=]( socket_t server ){
+        console::log("server started at http://[::1]:8000");
+    });
+    */
+
+    server.listen( "localhost", 8000, [=]( socket_t server ){
+        console::log("server started at http://localhost:8000");
     });
 
 }
-
-void client(){
-
-    auto client = udp::client();
-
-    client.onConnect([=]( socket_t cli ){
-
-        cli.onData([=]( string_t data ){
-            console::log( cli.is_server(), data );
-        });
-
-        cli.onClose([=](){
-            console::log("closed");
-        });
-
-        stream::pipe( cli );
-        timer ::add ([=](){
-            auto msg = regex::format( "hello world! ${0}", process::now() );
-            return cli.write( msg ) <= 0 ? -1 : 1 ;
-        },1000);
-
-        console::log( "connected" );
-
-    });
-
-    client.onError([=]( except_t err ){
-        console::log( ">>", err.what() );
-    });
-
-    client.connect( "localhost", 8000, []( socket_t cli ){
-        console::log("-> udp://localhost:8000");
-    });
-
-}
-
-void onMain() {
-
-    worker::add([=](){ server(); process::wait(); return -1; });
-    worker::add([=](){ client(); process::wait(); return -1; });
-
-} 
