@@ -18,7 +18,7 @@ void server(){
             console::log( "server read>>", data );
         });
 
-        cli.onClose([=](){
+        cli.onClose.once([=](){
             console::log("closed");
         });
 
@@ -27,7 +27,6 @@ void server(){
             auto msg = regex::format( "hello world! ${0}", process::now() );
             return cli.write( msg ) <= 0 ? -1 : 1 ;
         },1000);
-
 
     });
 
@@ -53,7 +52,7 @@ void client(){
             console::log( "client read>>", data );
         });
 
-        cli.onClose([=](){
+        cli.onClose.once([=](){
             console::log("closed");
         });
 
@@ -77,12 +76,7 @@ void client(){
 
 void onMain() {
 
-    worker::add( coroutine::add( COROUTINE(){
-    coBegin /*--*/ ; server();
-    process::wait(); coFinish }));
-
-    worker::add( coroutine::add( COROUTINE(){
-    coBegin /*--*/ ; client();
-    process::wait(); coFinish }));
+    worker::add([=](){ server(); process::wait(); return -1; });
+    worker::add([=](){ client(); process::wait(); return -1; });
 
 }

@@ -29,8 +29,8 @@ void server(){
             console::log( data );
         });
 
-        cli.onClose([=](){ 
-            console::log("closed"); 
+        cli.onClose.once([=](){
+            console::log("closed");
         });
 
     });
@@ -57,7 +57,7 @@ void client() {
             console::log( "client read>>", data );
         });
 
-        cli.onClose([=](){
+        cli.onClose.once([=](){
             console::log("closed");
         });
 
@@ -77,12 +77,7 @@ void client() {
 
 void onMain() {
 
-    worker::add( coroutine::add( COROUTINE(){
-    coBegin /*--*/ ; server();
-    process::wait(); coFinish }));
-
-    worker::add( coroutine::add( COROUTINE(){
-    coBegin /*--*/ ; client();
-    process::wait(); coFinish }));
+    worker::add([=](){ server(); process::wait(); return -1; });
+    worker::add([=](){ client(); process::wait(); return -1; });
 
 }

@@ -38,32 +38,33 @@ namespace nodepp { namespace encoder { namespace key {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace encoder { namespace ofuscator { 
+namespace nodepp { namespace encoder { namespace pac { 
 
-    inline uchar_64 atob( void* address, uchar_64 mask ){
+    inline uchar_64 atob( uchar_64 address, uchar_64 mask ){
 
-        void* msk1   = &NODEPP_SHTDWN();
-            
-        uchar_64 raw = ( (uchar_64) address ) & (((uchar_64)-1)>>16);
-        uchar_64 msk = ( (uchar_64) msk1    ) & (((uchar_64)-1)>>16);
-        uchar_64 col =   (uchar_64) address   ^   (uchar_64) mask ;
+        uchar_64 msk = ( (uchar_64) &NODEPP_SHTDWN() );
+        uchar_64 ovf = ( (uchar_64)-1 )>>16;
 
-        uchar_64 sum = ( col^(col>>16)^(col>>32)^(col>>48)) & 0xffff;
-        return ( raw ^ msk ) | ( sum << 48 );
+        uchar_64 raw = ( address ^ msk  ) & ovf;
+        uchar_64 col = ( address ^ mask ) & ovf;
+
+        uchar_64 sum = ( col^(col>>16)^(col>>32)^(col>>48) ) & 0xffff;
+        return raw | ( sum << 48 );
 
     }
 
-    inline void* btoa( uchar_64 address, uchar_64 mask ){
+    inline uchar_64 btoa( uchar_64 address, uchar_64 mask ){
 
-        void* msk1   = &NODEPP_SHTDWN();
+        uchar_64 msk = ( (uchar_64) &NODEPP_SHTDWN() );
+        uchar_64 ovf = ( (uchar_64)-1 )>>16;
 
-        uchar_64 msk = ( (uchar_64)  msk1  )& (((uchar_64)-1)>>16);
-        void*    raw = (void*)((address^msk)& (((uchar_64)-1)>>16) );
-        uchar_64 col = (uchar_64) raw       ^   (uchar_64) mask ;
+        uchar_64 raw = ( address ^ msk  ) & ovf;
+        uchar_64 col = ( raw     ^ mask ) & ovf;
 
-        uchar_64 sum = ( col^(col>>16)^(col>>32)^(col>>48)) & 0xffff;
-        uchar_64 out = ( address >>48) /*----------------*/ & 0xffff;
-        return out==sum ? raw : nullptr ; 
+        uchar_64 sum = ( col^(col>>16)^(col>>32)^(col>>48) ) & 0xffff;
+        uchar_64 out = ( address >>48) /*-----------------*/ & 0xffff;
+
+        return out==sum ? raw : 0ULL; 
 
     }
 

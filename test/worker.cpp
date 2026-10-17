@@ -16,18 +16,18 @@ namespace TEST { namespace WORKER {
 
         TEST_ADD( test, "TEST 1 | async worker testing", [](){
             do{ ptr_t<int> x ( 0UL ); 
-                ptr_t<int> y = new int(3);
+                ptr_t<int> y ( 0UL, 3 );
 
                 worker::add( coroutine::add( COROUTINE(){
                 coBegin
 
-                    while( *y>0 ){ *x += 10; *y-=1; coNext; }
+                    while( y[0]>0 ){ x[0] += 10; y[0]--; coNext; }
                     
                 coFinish
                 }));
 
-                while( *y!=0 ){ process::next(); }
-                if   ( *x != 30 ){ TEST_FAIL ();  }
+                while( y[0]!=0  ){ process::next(); }
+                if   ( x[0]!=30 ){ TEST_FAIL (); }
                                    TEST_DONE ();
 
             } while(0); TEST_FAIL();
@@ -35,7 +35,7 @@ namespace TEST { namespace WORKER {
 
         TEST_ADD( test, "TEST 2 | sync worker testing", [](){
             do{ ptr_t<int> x ( 0UL ); 
-                ptr_t<int> y = new int(3);
+                ptr_t<int> y ( 0UL, 3 );
 
                 worker::await( coroutine::add( COROUTINE(){
                 coBegin

@@ -30,7 +30,7 @@ private:
 protected:
 
     ulong get_next_sec( ulong _pos, const string_t& str ) const noexcept {
-        uchar k=0; while( _pos < str.size() && k < 128 ){
+        uchar k=0; while( _pos < str.size() && k < 0x7F ){
         switch( str[_pos] ){
             case ':': k += 6; break; case ',': k -= 6; break;
             case '{': _pos =get_next_key( _pos, str ); break;
@@ -42,7 +42,7 @@ protected:
     ++_pos; } return _pos; }
 
     ulong get_next_key( ulong _pos, const string_t& str ) const noexcept {
-        bool x=1; uchar k=0; while( _pos < str.size() && k < 128 ){
+        bool x=1; uchar k=0; while( _pos < str.size() && k < 0x7F ){
         switch( str[_pos] ){
             case '[': k += 1; break; case ']': k -= 1; break;
             case '{': k += 3; break; case '}': k -= 3; break;
@@ -63,20 +63,20 @@ protected:
 
         ulong x=0; while( x < data.size() && data[x]==' ' ){ ++x; }
 
-        if  ( data.empty() || data[x] == ',' ) /*---*/ { return nullptr; }
-        elif( data[x] == '"'     ) /*---------------*/ { 
+        if  ( data.empty() || data[x] == ',' ) { return nullptr; }
+        elif( data[x] == '"'     ) /*-------*/ { 
               return data.slice( x+1, get_next_sec( x, data) ); }
-        elif( data[x] == '{'     ) /*---------------*/ { return parse( data ); }
-        elif( data[x] == '['     ) /*---------------*/ { return parse( data ); }
-        elif( data.find("false") ) /*---------------*/ { return (bool) 0; }
-        elif( data.find("true")  ) /*---------------*/ { return (bool) 1; }
-        elif( data.find("null")  ) /*---------------*/ { return nullptr ; }
-        elif( reg[0].test(data)  ) /*---------------*/ { return (string_t) data; }
-        elif( data.find('.')     ) /*---------------*/ {
-            if  ( reg[1].match(data).size()>5 ) /*--*/ { return string::to_double(data); }
-            else /*---------------------------------*/ { return string::to_float (data); }
-        }   elif( reg[2].match(data).size()>9 ) /*--*/ { return string::to_u64   (data); }
-            else /*---------------------------------*/ { return string::to_int   (data); }
+        elif( data[x] == '{'     ) /*-------*/ { return parse( data ); }
+        elif( data[x] == '['     ) /*-------*/ { return parse( data ); }
+        elif( data.find("false") ) /*-------*/ { return (bool) 0; }
+        elif( data.find("true")  ) /*-------*/ { return (bool) 1; }
+        elif( data.find("null")  ) /*-------*/ { return nullptr ; }
+        elif( reg[0].test(data)  ) /*-------*/ { return (string_t) data; }
+        elif( data.find('.')     ) /*-------*/ {
+            if  ( reg[1].match(data).size()>5 ){ return string::to_double(data); }
+            else /*-------------------------*/ { return string::to_float (data); }
+        }   elif( reg[2].match(data).size()>9 ){ return string::to_u64   (data); }
+            else /*-------------------------*/ { return string::to_int   (data); }
 
     }
 
@@ -333,3 +333,5 @@ namespace nodepp { namespace json {
 /*────────────────────────────────────────────────────────────────────────────*/
 
 #endif
+
+/*────────────────────────────────────────────────────────────────────────────*/

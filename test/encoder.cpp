@@ -14,17 +14,17 @@ namespace TEST { namespace ENCODER {
 
         auto test = TEST_CREATE();
 
-        TEST_ADD( test, "TEST 1 | encoder ofuscator", [](){
+        TEST_ADD( test, "TEST 1 | Pointer Authentication Code (PAC)", [](){
 
-            auto clb = function_t<string_t>( [=](){ return "hello world!"; } );
-            auto adr = &clb; auto sign = (uchar_64) rand();
+            auto clb = function_t<string_t>([=](){ return "hello world!"; });
+            auto adr = (uchar_64) &clb; auto sign = (uchar_64) rand();
 
-            auto inp = encoder::ofuscator::atob( (void*) adr, sign );
-            auto out = encoder::ofuscator::btoa( /*---*/ inp, sign );
+            auto inp = encoder::pac::atob( adr, sign );
+            auto out = encoder::pac::btoa( inp, sign );
             auto nlb = (function_t<string_t>*) out;
 
-            if( out == nullptr ) /*------*/ { TEST_FAIL(); }
-            if( (*nlb)() != "hello world!" ){ TEST_FAIL(); }
+            if( !out ) /*-------------*/ { TEST_FAIL(); }
+            if((*nlb)()!="hello world!" ){ TEST_FAIL(); }
 
             TEST_DONE();
 

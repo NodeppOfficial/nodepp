@@ -14,7 +14,6 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#include "any.h"
 #include "mutex.h"
 #include "worker.h"
 
@@ -46,19 +45,20 @@ public:
 
     /*─······································································─*/
 
+    ptr_t<T> read() const noexcept { 
+    ptr_t<T> out; obj->mut.lock([&](){ do {
+        if( obj->queue.empty() ){ break; } 
+        out=obj->queue.data (); obj->queue.clear(); 
+    } while(0); }); return out; }
+
     template< class... V >
     int write( const V&... args ) const noexcept { 
-    int x=0; obj->mut.lock([&](){ iterator::map( [&]( T clb ){
+    int x=0; obj->mut.lock([&](){ iterator::some ([&]( T clb ){ do {
+        
         if( obj->limit>0 && obj->queue.size()>=obj->limit )
-          { return; } obj->queue.push( clb );
-    }, args... ); }); return x; }
-
-    ptr_t<T> read() const noexcept { 
-    ptr_t<T> out( size() ); obj->mut.lock([&](){
-        if( obj->queue.empty() ){ return; } 
-        auto tmp = obj->queue.data();
-        type::move( tmp.begin(), tmp.end(), out.begin() );
-    obj->queue.clear(); }); return out; }
+          { break; } obj->queue.push( clb ); x++;
+    
+    return false; } while(0); return true; }, args... ); }); return x; }
 
 };}
 

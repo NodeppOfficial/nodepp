@@ -78,9 +78,8 @@ protected:
 
         while( off < pattern.size() ){
            if( pattern[off] == '|' ){ out.push(off); off++; }
-           if( pattern[off] == '[' || /*-------------------*/
-               pattern[off] == '{' || /*-------------------*/
-               pattern[off] == '(' // /*-------------------*/
+           if( pattern[off] == '[' || pattern[off]== '{' ||
+               pattern[off] == '(' //
            ) { off = get_next_key( pattern,off ); continue; }
            if( pattern[off] == '\\'){ ++off; } /*-*/ ++off;
         }
@@ -88,7 +87,7 @@ protected:
     out.push( pattern.size() ); return out.data(); }
 
     ulong get_next_key( string_t pattern, ulong off ) const noexcept {
-    uchar k=0; while( off < pattern.size() && k < 128 ){
+    uchar k=0; while( off < pattern.size() && k < 0x7F ){
 
         switch( pattern[off] ){ /**/ case '\\': ++off ; break;
             case '[': k += 1; break; case ']' : k -= 1; break;
@@ -353,9 +352,9 @@ public:
     }
 
     string_t replace( string_t _str, string_t _rep, ulong off=0 ) const noexcept {
-        auto idx = search( _str, off ); /*----------------------*/
-        if( idx.null() /*-*/ ){ return _str; } /*---------------*/
-        if( idx[0] == idx[1] ){ return _str; } /*---------------*/
+        auto idx = search( _str, off );
+        if( idx.null() /*-*/ ){ return _str; }
+        if( idx[0] == idx[1] ){ return _str; }
         _str.splice( idx[0], idx[1] - idx[0], _rep ); return _str;
     }
 
@@ -368,9 +367,9 @@ public:
     }
 
     string_t remove( string_t _str, ulong off=0 ) const noexcept {
-        auto idx = search( _str, off ); /*----------------*/
-        if( idx.null() /*-*/ ){ return _str; }  /*--------*/
-        if( idx[0] == idx[1] ){ return _str; }  /*--------*/
+        auto idx = search( _str, off );
+        if( idx.null() /*-*/ ){ return _str; }
+        if( idx[0] == idx[1] ){ return _str; }
         _str.splice( idx[0], idx[1] - idx[0] ); return _str;
     }
 
@@ -436,7 +435,7 @@ protected:
     return out; }
 
     ulong get_next_key( ulong _pos ) const noexcept {
-    uchar k=0; while( _pos < obj->regex.size() && k < 128 ){
+    uchar k=0; while( _pos < obj->regex.size() && k < 0x7F ){
 
         switch( obj->regex[_pos] ){  case '\\': ++_pos; break;
             case '[': k += 1; break; case ']' : k -= 1; break;
@@ -574,8 +573,8 @@ protected:
         elif( flg == 0x07 &&  b &&  string::is_print( data[pos] ) )       { return true; }
         elif( flg == 0x07 && !b && !string::is_print( data[pos] ) )       { return true; }
         elif( flg == 0x0c )                                               { return true; }
-        elif( flg == 0x0f )                         { return obj->_data[1] == data[pos]; }
-        else{ return data[pos] == flg; } return false;
+        elif( flg == 0x0f ){ return obj->_data[1] == data[pos]; }
+        else               { return data[pos]     == flg;       } return false;
     }
 
     /*─······································································─*/
@@ -639,18 +638,18 @@ protected:
             elif( obj->regex[pos[0]] == '^' ){ obj->_data.clear(); obj->_data.push( (char) 0x02 ); }
             elif( obj->regex[pos[0]] == '.' ){ obj->_data.clear(); obj->_data.push( (char) 0x0c ); }
 
-            elif( obj->regex[pos[0]] == '\\' ){ ++pos[0];
-                                                obj->_data.clear(); obj->_data.push( (char) 0x0f );
-            if  ( obj->regex[pos[0]] == 'b'  ){ obj->_data.clear(); obj->_data.push( (char) 0x03 ); obj->j = true;  }
-            elif( obj->regex[pos[0]] == 'B'  ){ obj->_data.clear(); obj->_data.push( (char) 0x03 ); obj->j = false; }
-            elif( obj->regex[pos[0]] == 'w'  ){ obj->_data.clear(); obj->_data.push( (char) 0x04 ); obj->j = true;  }
-            elif( obj->regex[pos[0]] == 'W'  ){ obj->_data.clear(); obj->_data.push( (char) 0x04 ); obj->j = false; }
-            elif( obj->regex[pos[0]] == 'd'  ){ obj->_data.clear(); obj->_data.push( (char) 0x05 ); obj->j = true;  }
-            elif( obj->regex[pos[0]] == 'D'  ){ obj->_data.clear(); obj->_data.push( (char) 0x05 ); obj->j = false; }
-            elif( obj->regex[pos[0]] == 's'  ){ obj->_data.clear(); obj->_data.push( (char) 0x06 ); obj->j = true;  }
-            elif( obj->regex[pos[0]] == 'S'  ){ obj->_data.clear(); obj->_data.push( (char) 0x06 ); obj->j = false; }
-            elif( obj->regex[pos[0]] == 'n'  ){ obj->_data.clear(); obj->_data.push( (char) 0x07 ); obj->j = true;  }
-            elif( obj->regex[pos[0]] == 'N'  ){ obj->_data.clear(); obj->_data.push( (char) 0x07 ); obj->j = false; }
+            elif( obj->regex[pos[0]] =='\\' ){ ++pos[0];
+                                               obj->_data.clear(); obj->_data.push( (char) 0x0f );
+            if  ( obj->regex[pos[0]] == 'b' ){ obj->_data.clear(); obj->_data.push( (char) 0x03 ); obj->j = true;  }
+            elif( obj->regex[pos[0]] == 'B' ){ obj->_data.clear(); obj->_data.push( (char) 0x03 ); obj->j = false; }
+            elif( obj->regex[pos[0]] == 'w' ){ obj->_data.clear(); obj->_data.push( (char) 0x04 ); obj->j = true;  }
+            elif( obj->regex[pos[0]] == 'W' ){ obj->_data.clear(); obj->_data.push( (char) 0x04 ); obj->j = false; }
+            elif( obj->regex[pos[0]] == 'd' ){ obj->_data.clear(); obj->_data.push( (char) 0x05 ); obj->j = true;  }
+            elif( obj->regex[pos[0]] == 'D' ){ obj->_data.clear(); obj->_data.push( (char) 0x05 ); obj->j = false; }
+            elif( obj->regex[pos[0]] == 's' ){ obj->_data.clear(); obj->_data.push( (char) 0x06 ); obj->j = true;  }
+            elif( obj->regex[pos[0]] == 'S' ){ obj->_data.clear(); obj->_data.push( (char) 0x06 ); obj->j = false; }
+            elif( obj->regex[pos[0]] == 'n' ){ obj->_data.clear(); obj->_data.push( (char) 0x07 ); obj->j = true;  }
+            elif( obj->regex[pos[0]] == 'N' ){ obj->_data.clear(); obj->_data.push( (char) 0x07 ); obj->j = false; }
             else{ obj->_data += string::to_string(obj->regex[pos[0]]); }}
 
             else {

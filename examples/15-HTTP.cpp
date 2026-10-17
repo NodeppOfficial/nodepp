@@ -1,5 +1,6 @@
 #include <nodepp/nodepp.h>
 #include <nodepp/worker.h>
+#include <nodepp/timer.h>
 #include <nodepp/http.h>
 
 using namespace nodepp;
@@ -11,15 +12,23 @@ void server() {
         console::log( cli.path, cli.get_fd() );
         file_t file ( "LICENSE", "r" );
 
-        // file.set_buffer_size( 1024 );
+        cli.set_timeout(0);           // disable timeout
+    //  file.set_buffer_size( 1024 ); // change stream buffer size
         
         cli.write_header( 200, header_t({
             { "Content-Type"   , "text/html" },
             { "Transfer-Encoding", "chunked" },
         //  { "Content-Length", string::to_string( file.size() ) }
         }));
+
+        cli.onData ([=]( string_t data ){
+            console::log( ">>", data );
+        }); stream::pipe( cli );
         
-        stream::pipe( file, cli );
+        timer ::add ([=](){
+            auto msg = regex::format( "hello world! ${0}", process::now() );
+            return cli.write( msg ) <= 0 ? -1 : 1 ;
+        },1000);
 
     });
 
@@ -41,10 +50,15 @@ void client() {
     http::fetch( args )
 
     .then([]( http_t cli ){
-        cli.onClose([](){ console::log("closed"); });
-        cli.onData ([]( string_t chunk ){
+
+        cli.onData ([=]( string_t chunk ){
+            cli.write("<: received");
             console::log( chunk );
-        }); stream::pipe( cli );
+        }); 
+        
+        cli.set_timeout(0); // disable timeout
+        stream::pipe( cli );
+        
     })
 
     .fail([]( except_t err ){
