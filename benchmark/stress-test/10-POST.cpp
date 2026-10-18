@@ -16,7 +16,7 @@ void server() {
         cli.onClose.once([=](){ console::log( "closed from server" ); });
         cli.read_body()
 
-        .then([=]( http_t cli ){
+        .then([=]( string_t body ){
 
             string_t msg = "received";
             
@@ -25,7 +25,7 @@ void server() {
                 { "Content-Length", string::to_string( msg.size() ) }
             }) );
 
-            console::log( "AAA>>", cli.body );
+            console::log( "AAA>>", body );
             cli.write( msg );
 
         })
@@ -59,8 +59,8 @@ void client() {
         cli.onClose.once([=](){ console::log( "closed from client" ); });
         cli.read_body( 1000UL )
 
-        .then([=]( http_t cli ){
-            console::log( "BBB>>", cli.body );
+        .then([=]( string_t body ){
+            console::log( "BBB>>", body );
         });
 
     })

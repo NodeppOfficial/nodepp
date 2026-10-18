@@ -1,47 +1,22 @@
 #include <nodepp/nodepp.h>
-#include <nodepp/worker.h>
-#include <nodepp/channel.h>
+#include <nodepp/map.h>
 
 using namespace nodepp;
 
-channel_t<coroutine_t> ch1, ch2;
-
-int worker_1(){
-coStart
-
-    while( true ){ coDelay(1000); 
-        
-        ch2.write( coroutine_t( COROUTINE(){
-            console::log( "worker1 -> worker2", process::now() );
-        return -1; }) );
-
-    for( auto x: ch1.read() ){ process::add( x ); }}
-
-coStop
-}
-
-int worker_2(){
-coStart
-
-    while( true ){ coDelay(1000); 
-        
-        ch1.write( coroutine_t( COROUTINE(){
-            console::log( "worker2 -> worker1", process::now() );
-        return -1; }) );
-
-    for( auto x: ch2.read() ){ process::add( x ); }}
-
-coStop
-}
-
 void onMain(){
 
-    worker ::add([=](){
-    process::add([=](){ return worker_1(); });
-    process::wait(); return -1; });
+    map_t<string_t,int> counter ({
+        { "var1", 3   },
+        { "var2", 90  },
+        { "var3", 100 },
+        { "var4", 90  },
+    });
 
-    worker ::add([=](){
-    process::add([=](){ return worker_2(); });
-    process::wait(); return -1; });
+    auto raw = array_t( counter.raw().data() ).sort([&]( 
+        pair_t<string_t,int> a,
+        pair_t<string_t,int> b 
+    ){ return a.second >= b.second; });
+
+    for( auto x: raw ){ console::log( x.first, x.second ); }
 
 }
