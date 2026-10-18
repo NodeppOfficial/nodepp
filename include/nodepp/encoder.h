@@ -38,40 +38,6 @@ namespace nodepp { namespace encoder { namespace key {
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace encoder { namespace pac { 
-
-    inline uchar_64 atob( uchar_64 address, uchar_64 mask ){
-
-        uchar_64 msk = ( (uchar_64) &NODEPP_SHTDWN() );
-        uchar_64 ovf = ( (uchar_64)-1 )>>16;
-
-        uchar_64 raw = ( address ^ msk  ) & ovf;
-        uchar_64 col = ( address ^ mask ) & ovf;
-
-        uchar_64 sum = ( col^(col>>16)^(col>>32)^(col>>48) ) & 0xffff;
-        return raw | ( sum << 48 );
-
-    }
-
-    inline uchar_64 btoa( uchar_64 address, uchar_64 mask ){
-
-        uchar_64 msk = ( (uchar_64) &NODEPP_SHTDWN() );
-        uchar_64 ovf = ( (uchar_64)-1 )>>16;
-
-        uchar_64 raw = ( address ^ msk  ) & ovf;
-        uchar_64 col = ( raw     ^ mask ) & ovf;
-
-        uchar_64 sum = ( col^(col>>16)^(col>>32)^(col>>48) ) & 0xffff;
-        uchar_64 out = ( address >>48) /*-----------------*/ & 0xffff;
-
-        return out==sum ? raw : 0ULL; 
-
-    }
-
-}}}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
 namespace nodepp { namespace encoder { namespace hash {
 
     inline uchar_64 get( const string_t& key, int tableSize ) {
@@ -342,11 +308,13 @@ namespace nodepp { namespace encoder { namespace endian {
 
     template < class T >
     typename type::enable_if< type::is_number<T>::value, T >::type
-    flip( const T& value ){
-        T out; auto mem = (char*) &out  ;
-        /*--*/ auto mom = (char*) &value; 
-        type::move_reverse( mom, mom + sizeof(T), mem );
-        return out; 
+    flip( T value ){
+
+        ulong idx = sizeof(T) >> 1; ulong pre = idx;
+        char* mem = (char*) &value;
+
+        while( idx-->0 ){ type::swap( mem[idx], mem[idx+pre] ); }
+        return value; 
     }
 
     template< class T >
@@ -358,6 +326,46 @@ namespace nodepp { namespace encoder { namespace endian {
     typename type::enable_if< type::is_number<T>::value, T >::type
     to_little_endian( const T& value ){
     return is_little_endian() ? value : flip(value); }
+
+}}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace encoder { namespace pac { 
+
+    inline uchar_64 atob( uchar_64 address, uchar_64 mask ){
+
+        uchar_64 pre = ( (uchar_64) &NODEPP_SHTDWN() );
+
+        uchar_64 msk = ( pre  ^ endian::flip(pre ) );
+        uchar_64 slt = ( mask ^ endian::flip(mask) );
+        uchar_64 ovf = ( (uchar_64)-1 )>>16;
+
+        uchar_64 raw = ( address ^ msk ) & ovf;
+        uchar_64 col = ( address ^ slt ) & ovf;
+
+        uchar_64 sum = ( col^(col>>16)^(col>>32)^(col>>48) ) & 0xffff;
+        return raw | ( sum << 48 );
+
+    }
+
+    inline uchar_64 btoa( uchar_64 address, uchar_64 mask ){
+
+        uchar_64 pre = ( (uchar_64) &NODEPP_SHTDWN() );
+
+        uchar_64 msk = ( pre  ^ endian::flip(pre ) );
+        uchar_64 slt = ( mask ^ endian::flip(mask) );
+        uchar_64 ovf = ( (uchar_64)-1 )>>16;
+
+        uchar_64 raw = ( address ^ msk ) & ovf;
+        uchar_64 col = ( raw     ^ slt ) & ovf;
+
+        uchar_64 sum = ( col^(col>>16)^(col>>32)^(col>>48) ) & 0xffff;
+        uchar_64 out = ( address >>48) /*-----------------*/ & 0xffff;
+
+        return out==sum ? raw : 0ULL; 
+
+    }
 
 }}}
 
