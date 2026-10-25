@@ -887,7 +887,7 @@ namespace nodepp { namespace generator { namespace ws {
 
             if ( sx < 126 ){
                 bfx[idx]|= type::cast<uchar>( sx ); ++idx;
-            } elif ( sx < 65536 ){
+            } elif ( sx < ulong( (uchar_16) -1 ) ){
                 bfx[idx]|= (uchar)(126); ++idx; 
 
                 auto len = sizeof(uchar_16);

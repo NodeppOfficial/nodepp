@@ -310,10 +310,14 @@ namespace nodepp { namespace encoder { namespace endian {
     typename type::enable_if< type::is_number<T>::value, T >::type
     flip( T value ){
 
-        ulong idx = sizeof(T) >> 1; ulong pre = idx;
+        ulong idx = sizeof(T) >> 1; 
+        ulong pre = sizeof(T) >> 1;
         char* mem = (char*) &value;
 
-        while( idx-->0 ){ type::swap( mem[idx], mem[idx+pre] ); }
+        while( idx>0 ){ 
+        idx--; type::swap( mem[idx], mem[pre] ); 
+        pre++; } 
+        
         return value; 
     }
 
