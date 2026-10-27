@@ -21,6 +21,9 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#ifdef NODEPP_PTR_ATOMIC_SUPPORTED
+namespace nodepp { template< class...A > using ptr_t = atomic_ptr_t<A...>; }
+#else
 namespace nodepp { template< class T, ulong STACK_SIZE = NODEPP_MAX_SSO_SIZE > class ptr_t {
 private:
 
@@ -29,20 +32,6 @@ private:
 #else 
     static constexpr ulong SSO = 1;
 #endif
-
-#ifdef NODEPP_PTR_ATOMIC_SUPPORTED
-
-    struct NODE_STACK {
-        atomic_t<ulong> count; ulong length; 
-        T* value; uchar flag ; char stack [SSO];
-    };
-
-    struct NODE_HEAP {
-        atomic_t<ulong> count; ulong length; 
-        T* value; uchar flag ; char stack [1];
-    };
-
-#else
 
     struct NODE_STACK {
         ulong  count, length; 
@@ -53,8 +42,6 @@ private:
         ulong  count, length; 
         T* value; uchar flag; char stack[1];
     };
-
-#endif
 
     enum FLAG : uchar {
          PTR_FLAG_UNKNOWN = 0b00000000,
@@ -87,15 +74,8 @@ private:
     inline int _del_( NODE*& address ) const noexcept {
         if( address == nullptr ){ return -1; }
         if( address->count ==0 ){ return -1; }
-
-    #ifdef NODEPP_PTR_ATOMIC_SUPPORTED
-        if( address->count.sub(1) == 1 )
+        if( address->count--==1)
           { _free_(address); delete address; }
-    #else
-        if( address->count  --    == 1 )
-          { _free_(address); delete address; }
-    #endif
-
     address = nullptr; return 1; }
 
     /*─······································································─*/
@@ -184,11 +164,7 @@ private:
 
     inline int _cpy_( NODE* address, NODE*& output ) const noexcept {
         if( _null_( address ) ){ return -1; }
-    #ifdef NODEPP_PTR_ATOMIC_SUPPORTED
-        output = address; address->count.add(1);
-    #else
         output = address; address->count++;
-    #endif        
     return 1; }
 
     inline int _mve_( NODE*& address, NODE*& output ) noexcept {
@@ -390,6 +366,10 @@ public:
     T* operator& () /*--------*/ const noexcept { return  data(); }
 
 };}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+#endif
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

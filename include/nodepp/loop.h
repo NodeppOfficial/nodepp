@@ -141,8 +141,9 @@ public: loop_t() noexcept : obj( new NODE() ) {}
     void clear( ptr_t<task_t> address ) const noexcept {
         if( address.null() ) /*--------------*/ { return; }
         if( address->flag & TASK_STATE::CLOSED ){ return; }
-        if( address->sign != &obj ) /*-------*/ { return; }
-            address->flag = TASK_STATE::CLOSED ;
+        if( encoder::pac::btoa( address->auth , (uchar_64) &obj )>0 ){ 
+            address->flag = TASK_STATE::CLOSED; 
+        }
     }
 
     /*─······································································─*/
@@ -191,9 +192,8 @@ public: loop_t() noexcept : obj( new NODE() ) {}
         obj->queue .push   ({[=](){ return clb(args...); }, tsk });
         obj->normal.unshift( obj->queue.last() ); 
 
-        tsk->addr = obj->queue.first();
+        tsk->auth = encoder::pac::atob( (uchar_64) obj->queue.first(), (uchar_64) &obj );
         tsk->flag = TASK_STATE::OPEN  ;
-        tsk->sign = &obj;
 
     return tsk; }
 
@@ -225,8 +225,9 @@ public: loop_t() noexcept : obj( new NODE() ) {}
     void clear( ptr_t<task_t> address ) const noexcept {
         if( address.null() ) /*--------------*/ { return; }
         if( address->flag & TASK_STATE::CLOSED ){ return; }
-        if( address->sign!= &obj ) /*--------*/ { return; }
-            address->flag = TASK_STATE::CLOSED;
+        if( encoder::pac::btoa( address->auth , (uchar_64) &obj )>0 ){ 
+            address->flag = TASK_STATE::CLOSED; 
+        }
     }
 
     /*─······································································─*/
@@ -294,12 +295,10 @@ public: loop_t() noexcept : obj( new NODE() ) {}
     ptr_t<task_t> tsk( 0UL, task_t() ); 
 
         function_t<int,V...> clb ( cb );
-
         obj->queue.unshift({[=](){ return clb(args...); }, tsk });
 
-        tsk->addr = obj->queue.first();
+        tsk->auth = encoder::pac::atob( (uchar_64) obj->queue.first(), (uchar_64) &obj );
         tsk->flag = TASK_STATE::OPEN  ;
-        tsk->sign = &obj;
 
     return tsk; }
 

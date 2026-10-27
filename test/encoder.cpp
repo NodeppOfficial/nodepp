@@ -32,26 +32,58 @@ namespace TEST { namespace ENCODER {
 
         TEST_ADD( test, "TEST 2 | endian flip", [](){
 
-            uchar_64 x = 0x04030201;
+            uchar_64 x = 0x0000000004030201;
             uchar_64 y = encoder::endian::flip(x);
 
-            if( encoder::endian::is_little_endian() ){
-
-                uchar_64 res = 0x0102030400000000;
-                if( y != res ){ TEST_FAIL(); }
-
-            } else {
-            
-                uchar_64 res = 0x0000000004030201;
-                if( y != res ){ TEST_FAIL(); }
-
-            }
-
-            TEST_DONE();
+            uchar_64 res = 0x0102030400000000;
+            if( y != res ){ TEST_FAIL(); }
+                            TEST_DONE();
 
         });
 
-        TEST_ADD( test, "TEST 3 | encoder XOR", [](){
+        TEST_ADD( test, "TEST 3 | endian little endian", [](){
+
+            uchar_64 x = 0x0000000004030201;
+            uchar_64 y = encoder::endian::to_little_endian(x);
+
+            if( encoder::endian::is_little_endian() ){
+
+                uchar_64 res = 0x0000000004030201;
+                if( y != res ){ TEST_FAIL(); }
+                                TEST_DONE();
+
+            } else {
+
+                uchar_64 res = 0x0102030400000000;
+                if( y != res ){ TEST_FAIL(); }
+                                TEST_DONE();
+
+            }
+
+        });
+
+        TEST_ADD( test, "TEST 4 | endian big endian", [](){
+
+            uchar_64 x = 0x0000000004030201;
+            uchar_64 y = encoder::endian::to_big_endian(x);
+
+            if( encoder::endian::is_big_endian() ){
+
+                uchar_64 res = 0x0000000004030201;
+                if( y != res ){ TEST_FAIL(); }
+                                TEST_DONE();
+
+            } else {
+
+                uchar_64 res = 0x0102030400000000;
+                if( y != res ){ TEST_FAIL(); }
+                                TEST_DONE();
+
+            }
+
+        });
+
+        TEST_ADD( test, "TEST 5 | encoder XOR", [](){
 
             auto x = string_t( "hello world!" );
             auto a = encoder::XOR::atob( x, "secret" );
@@ -61,7 +93,7 @@ namespace TEST { namespace ENCODER {
 
         });
 
-        TEST_ADD( test, "TEST 4 | encoder bytes", [](){
+        TEST_ADD( test, "TEST 6 | encoder bytes", [](){
 
             auto x = (char) 0xFF;
             auto a = encoder::bytes::atob      ( x );
@@ -71,7 +103,7 @@ namespace TEST { namespace ENCODER {
 
         });
 
-        TEST_ADD( test, "TEST 5 | encoder binary", [](){
+        TEST_ADD( test, "TEST 7 | encoder binary", [](){
 
             auto x = (char) 0xFF;
             auto a = encoder::bin::atob      ( x );
@@ -81,7 +113,7 @@ namespace TEST { namespace ENCODER {
 
         });
 
-        TEST_ADD( test, "TEST 6 | encoder hex", [](){
+        TEST_ADD( test, "TEST 8 | encoder hex", [](){
 
             auto x = (char) 0xFF;
             auto a = encoder::hex::atob      ( x );
@@ -92,7 +124,7 @@ namespace TEST { namespace ENCODER {
 
         });
 
-        TEST_ADD( test, "TEST 7 | encoder hex 2", [](){
+        TEST_ADD( test, "TEST 9 | encoder hex 2", [](){
 
             auto x = ptr_t<uchar>({ 0xFF });
             auto a = encoder::hex::atob( x );
@@ -103,7 +135,7 @@ namespace TEST { namespace ENCODER {
 
         });
 
-        TEST_ADD( test, "TEST 8 | base16", [](){
+        TEST_ADD( test, "TEST 10 | base16", [](){
 
             auto x = string_t( "hello world!" );
             auto a = encoder::base16::atob( x );
@@ -113,7 +145,7 @@ namespace TEST { namespace ENCODER {
 
         });
 
-        TEST_ADD( test, "TEST 9 | base58", [](){
+        TEST_ADD( test, "TEST 11 | base58", [](){
 
             auto x = string_t( "hello world!" );
             auto a = encoder::base58::atob( x );
@@ -123,7 +155,7 @@ namespace TEST { namespace ENCODER {
 
         });
 
-        TEST_ADD( test, "TEST 10 | base64", [](){
+        TEST_ADD( test, "TEST 12 | base64", [](){
 
             auto x = string_t( "hello world!" );
             auto a = encoder::base16::atob( x );

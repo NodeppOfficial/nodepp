@@ -158,12 +158,16 @@ public:
 
     void off  ( ptr_t<task_t> address ) const noexcept { clear( address ); }
     void clear( ptr_t<task_t> address ) const noexcept {
+        
         if( address.null() ) /*--------------*/ { return; }
         if( address->flag & TASK_STATE::CLOSED ){ return; }
-        if( address->sign == &obj ){
-            address->flag = TASK_STATE::CLOSED ;
-            remove( address->addr ); 
-        }   obj->ev_queue.off( address );
+        
+        auto ptr = (void*) encoder::pac::btoa( address->auth, (uchar_64) &obj );
+
+        if( ptr ){
+            address->flag = TASK_STATE::CLOSED; remove( ptr ); 
+        } else { obj->ev_queue.off ( address ); }
+
     }
 
     /*─······································································─*/
@@ -190,13 +194,13 @@ public:
 
         ptr_t<task_t> task( 0UL, task_t() );
 
-        task->addr  = obj->iocp.address( inp.get_pd() );
-        task->flag  = TASK_STATE::OPEN; 
-        task->sign  = &obj;
+        task->flag = TASK_STATE::OPEN; 
+        auto  addr = (void*) obj->iocp.address( inp.get_pd() );
+        task->auth = encoder::pac::atob( (uchar_64) addr, (uchar_64) &obj );
 
-        obj->kv_queue.as(task->addr)->data.event.add([=](){ 
+        obj->kv_queue.as( addr )->data.event.add([=](){ 
             return clb( args... )>=0 ? 1 : -1; 
-        }); invoker( task->addr );
+        }); invoker( addr );
 
     return task; }
 

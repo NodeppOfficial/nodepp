@@ -1,47 +1,16 @@
+#define NODEPP_ALLOW_PTR_ATOMIC_COUNTER 1
+
 #include <nodepp/nodepp.h>
-#include <nodepp/worker.h>
-#include <nodepp/channel.h>
 
 using namespace nodepp;
 
-channel_t<coroutine_t> ch1, ch2;
-
-int worker_1(){
-coStart
-
-    while( true ){ coDelay(1000); 
-        
-        ch2.write( coroutine_t( COROUTINE(){
-            console::log( "worker1 -> worker2", process::now() );
-        return -1; }) );
-
-    for( auto x: ch1.read() ){ process::add( x ); }}
-
-coStop
-}
-
-int worker_2(){
-coStart
-
-    while( true ){ coDelay(1000); 
-        
-        ch1.write( coroutine_t( COROUTINE(){
-            console::log( "worker2 -> worker1", process::now() );
-        return -1; }) );
-
-    for( auto x: ch2.read() ){ process::add( x ); }}
-
-coStop
-}
-
 void onMain(){
 
-    worker ::add([=](){
-    process::add([=](){ return worker_1(); });
-    process::wait(); return -1; });
+    ptr_t<string_t> tmp ( 0UL );
+    string_t ppt = "hola mundo";
+    tmp[0] = ppt;
 
-    worker ::add([=](){
-    process::add([=](){ return worker_2(); });
-    process::wait(); return -1; });
+    console::log( ">>", (void*) ppt   .get() );
+    console::log( ">>", (void*) tmp[0].get() );
 
 }

@@ -62,8 +62,8 @@ namespace nodepp { namespace type {
 namespace nodepp { class object_t {
 private:
 
-    using T     = type::pair<string_t,object_t>;
-    using QUEUE = map_t<string_t,object_t>;
+    using T     = pair_t<string_t,object_t>;
+    using QUEUE = map_t<string_t ,object_t>;
     using ARRAY = array_t<object_t>;
 
 protected:
@@ -101,8 +101,6 @@ public:
         elif( get_type_id()     == type::obj_type_id<U>  ::value ){ return true; } 
     return false; }
 
-    template< class U > U as() const { return obj->mem.as<U>(); }
-
     template< class U >
     explicit operator    U() const { return as<U>    (); }
     explicit operator bool() const { return has_value(); }
@@ -110,6 +108,9 @@ public:
     bool has_value() const { return obj->type<0?false:obj->mem.has_value(); }
     uint type_size() const { return obj->type<0?false:obj->mem.type_size(); }
 
+    /*─······································································─*/
+
+    template< class U > U as() const { return obj->mem.as<U>(); }
 
     /*─······································································─*/
 
@@ -175,9 +176,8 @@ public:
             obj->mem.as<QUEUE>().erase(name);
     }
 
-    void erase() { obj = new NODE(); }
-
-    void clear() { obj = new NODE(); }
+    void erase() noexcept { obj = ptr_t<NODE>(0UL); }
+    void clear() noexcept { obj = ptr_t<NODE>(0UL); }
 
 };}
 

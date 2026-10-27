@@ -14,7 +14,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { struct task_t/**/ { uchar flag=0x00; void *addr, *sign; }; }
+namespace nodepp { struct task_t/**/ { uchar flag=0x00; uchar_64 auth; }; }
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

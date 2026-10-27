@@ -65,8 +65,7 @@ public: invoker_t() {}
         que.write( mid, { [=]( const A&... args ){ return clb(args...); }, tsk });
 
         tsk->flag = TASK_STATE::OPEN;
-        tsk->addr = (void*) &que;
-        tsk->sign = (void*) &que;
+        tsk->auth = mid;
         
     return mid; }
 

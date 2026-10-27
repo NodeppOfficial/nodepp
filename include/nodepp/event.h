@@ -48,8 +48,7 @@ public:
 
         obj->que.push({ [=]( A... args ){ return cb(args...); }, task });
         task->flag = TASK_STATE::OPEN;
-        task->addr = obj->que.last() ;
-        task->sign = &obj;
+        task->auth = encoder::pac::atob( (uchar_64) obj->que.last(), (uchar_64) &obj );
 
     return task; }
 
@@ -58,8 +57,7 @@ public:
 
         obj->que.push({ [=]( A... args ){ cb(args...); return -1; }, task });
         task->flag = TASK_STATE::OPEN;
-        task->addr = obj->que.last() ;
-        task->sign = &obj;
+        task->auth = encoder::pac::atob( (uchar_64) obj->que.last(), (uchar_64) &obj );
 
     return task; }
 
@@ -68,23 +66,27 @@ public:
 
         obj->que.push({ [=]( A... args ){ cb(args...); return  1; }, task });
         task->flag = TASK_STATE::OPEN;
-        task->addr = obj->que.last() ;
-        task->sign = &obj;
-
+        task->auth = encoder::pac::atob( (uchar_64) obj->que.last(), (uchar_64) &obj );
+        
     return task; }
 
     /*─······································································─*/
 
     void off  ( ptr_t<task_t> address ) const noexcept { clear( address ); }
     void clear( ptr_t<task_t> address ) const noexcept {
+
         if( address.null() || empty() ) /*---*/ { return; }
         if( address->flag & TASK_STATE::CLOSED ){ return; }
-        if( address->sign != &obj ) /*-------*/ { return; }
-            auto node = obj->que.as( address->addr ); 
-        if( node == nullptr ) /*-------------*/ { return; }
-            address->flag = TASK_STATE::CLOSED;
-        if( is_used() ){ obj->tmp.push ( address->addr ); }
-        else /*-----*/ { obj->que.erase( node ); }
+        
+        auto raw = (void*) encoder::pac::btoa( address->auth, (uchar_64) &obj );
+        auto ptr = obj->que.as( raw ); 
+        if( !ptr ) /*------------------------*/ { return; }
+
+        address->flag = TASK_STATE::CLOSED;
+
+        if( is_used() ){ obj->tmp.push ( raw ); }
+        else /*-----*/ { obj->que.erase( ptr ); }
+
     }
 
     /*─······································································─*/
