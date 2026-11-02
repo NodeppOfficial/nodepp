@@ -172,7 +172,7 @@ public:
     /*─······································································─*/
 
     template< class... T > 
-    http_t( const T&... args ) noexcept : socket_t( args... ), http( new NODE() ) {}
+    http_t( const T&... args ) noexcept : socket_t( args... ), http( 0UL ) {}
 
     /*─······································································─*/
 

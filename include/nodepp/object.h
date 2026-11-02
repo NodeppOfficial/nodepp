@@ -74,18 +74,18 @@ protected:
 
 public:
 
-    object_t( null_t ) : obj( new NODE() ){}
-    object_t()         : obj( new NODE() ){}
+    object_t( null_t ) : obj( 0UL ){}
+    object_t()         : obj( 0UL ){}
 
     template< ulong N >
-    object_t( const T (&arr) [N] ) : obj( new NODE() ) {
+    object_t( const T (&arr) [N] ) : obj( 0UL ) {
         QUEUE  mem; for( ulong x=0; x<N; ++x ) { 
                mem[arr[x].first]= arr[x].second; 
         } obj->mem = mem; obj->type = 20;
     }
 
     template< class U >
-    object_t( const U& value ) : obj( new NODE() ) { do {
+    object_t( const U& value ) : obj( 0UL ) { do {
         if  ( type::is_same<U,ARRAY>::value )
             { obj->type = 21; break; }
         elif( type::is_same<U,QUEUE>::value )

@@ -50,14 +50,14 @@ public:
 
     /*─······································································─*/
 
-    tls_t( NODE_CLB _func, ssl_t* crt=nullptr, agent_t* opt=nullptr ) noexcept : obj( new NODE() )
+    tls_t( NODE_CLB _func, ssl_t* crt=nullptr, agent_t* opt=nullptr ) noexcept : obj( 0UL )
          { obj->agent=opt==nullptr ? agent_t(): *opt; 
            obj->ctx  =crt==nullptr ? ssl_t()  : *crt; 
            obj->func = /*-------------------*/ _func; }
 
    ~tls_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
-    tls_t() noexcept : obj( new NODE() ) {}
+    tls_t() noexcept : obj( 0UL ) {}
 
     /*─······································································─*/
 

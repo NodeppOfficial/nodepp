@@ -134,7 +134,7 @@ protected:
 
 public:
 
-    kernel_t() : obj( new NODE() ) { 
+    kernel_t() : obj( 0UL ) { 
         obj->iocp = NODEPP_IOCP(); obj->iocp.start_device();
         obj->state= KV_STATE_OPEN ; 
     }
@@ -294,7 +294,7 @@ protected:
 
 public:
 
-    kernel_t() noexcept : obj( new NODE() ) {}
+    kernel_t() noexcept : obj( 0UL ) {}
 
 public:
 

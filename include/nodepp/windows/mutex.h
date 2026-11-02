@@ -29,7 +29,7 @@ protected:
 
 public:
 
-    mutex_t() : obj( new NODE() ) {
+    mutex_t() : obj( 0UL ) {
         obj->fd  = CreateMutex( NULL, 0, NULL );
     if( obj->fd == NULL ){ NODEPP_THROW_ERROR("Cant Start Mutex"); }}
     

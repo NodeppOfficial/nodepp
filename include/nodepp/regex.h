@@ -292,11 +292,11 @@ protected:
 
 public:
 
-    regex_t (): obj( new NODE() ){}
+    regex_t (): obj( 0UL ){}
 
    ~regex_t () noexcept { clear_memory(); }
 
-    regex_t ( string_t reg, bool icase=false ): obj( new NODE() )
+    regex_t ( string_t reg, bool icase=false ): obj( 0UL )
     /*---*/ { obj->icase=icase; obj->queue=compile(reg); }
 
     /*─······································································─*/
@@ -689,9 +689,9 @@ public:
 
    ~regex_t () noexcept { clear_memory(); }
 
-    regex_t () noexcept : obj( new NODE() ){}
+    regex_t () noexcept : obj( 0UL ){}
 
-    regex_t ( string_t reg, bool icase=false ): obj( new NODE() )
+    regex_t ( string_t reg, bool icase=false ): obj( 0UL )
             { obj->icase = icase; obj->regex = reg; }
 
     /*─······································································─*/

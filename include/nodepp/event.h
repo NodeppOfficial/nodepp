@@ -35,7 +35,7 @@ protected:
 
 public:
 
-    event_t() noexcept : obj( new NODE() ) {}
+    event_t() noexcept : obj( 0UL ) {}
 
     /*─······································································─*/
 

@@ -27,9 +27,18 @@
 
 namespace nodepp { namespace encoder { namespace key {
 
-    inline string_t generate( const string_t& alph, int x=32 ){ ulong idx=0;
+    inline uchar_64 generate( uchar_64 salt ) {
+    /*---------------*/ uchar_64 mask = (uchar_64)&mask ^ salt;
+    thread_local static uchar_64 seed = (uchar_64)&seed ^ mask;
+        seed ^= seed << 0x11;
+        seed ^= seed >> 0x07;
+        seed ^= seed << 0x0b; return seed;
+    }
+
+    inline string_t generate( const string_t& alph, int x=32 ){
         string_t data ( (ulong)x, '\0' ); for( auto &x: data ){
-        x = alph[rand()%(alph.size())]; ++idx; } return data;
+            x= alph[ generate( (uchar_64) data.get() ) % alph.size() ]; 
+        } return data;
     }
 
     inline string_t generate( int x=32 ) { return generate( NODEPP_BASE64, x ); }

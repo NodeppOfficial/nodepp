@@ -132,7 +132,7 @@ protected:
 
 public:
 
-    kernel_t() : obj( new NODE() ) { 
+    kernel_t() : obj( 0UL ) { 
         obj->uring = NODEPP_URING(); obj->uring.start_device();
         obj->state = KV_STATE_OPEN ; 
     }
@@ -414,7 +414,7 @@ public:
           { return; } /*----*/ obj->state = FLAG::KV_STATE_CLOSED;
     }
 
-    kernel_t() : obj( new NODE() ) {
+    kernel_t() : obj( 0UL ) {
         obj->ed = eventfd( 0, EFD_CLOEXEC | EFD_NONBLOCK );
         obj->pd = epoll_create1( EPOLL_CLOEXEC ); 
 
@@ -746,7 +746,7 @@ public:
           { return; } /*----*/ obj->state = FLAG::KV_STATE_CLOSED;
     }
 
-    kernel_t() : obj( new NODE() ) {
+    kernel_t() : obj( 0UL ) {
         obj->pd = kqueue();
 
     if( obj->pd==-1 )
@@ -937,7 +937,7 @@ protected:
 
 public:
 
-    kernel_t() noexcept : obj( new NODE() ) {}
+    kernel_t() noexcept : obj( 0UL ) {}
 
 public:
 

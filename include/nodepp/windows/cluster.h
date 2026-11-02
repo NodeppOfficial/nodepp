@@ -115,14 +115,14 @@ public:
     event_t<string_t>  onDerr;
 
     cluster_t( const initializer_t<string_t>& args, const initializer_t<string_t>& envs ) 
-    : obj( new NODE() ) { _init_( args, envs ); }
+    : obj( 0UL ) { _init_( args, envs ); }
 
    ~cluster_t() noexcept { if( obj.count()>1 && !is_closed() ){ return; } free(); }
 
-    cluster_t() : obj( new NODE() ){ _init_( nullptr, nullptr ); }
+    cluster_t() : obj( 0UL ){ _init_( nullptr, nullptr ); }
 
     cluster_t( const initializer_t<string_t>& args ) 
-    : obj( new NODE() ) { _init_( args, nullptr ); }
+    : obj( 0UL ) { _init_( args, nullptr ); }
 
     /*─······································································─*/
 

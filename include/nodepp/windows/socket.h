@@ -514,18 +514,18 @@ public:
 
     /*─······································································─*/
 
-    socket_t( SOCKET fd, ulong _size=NODEPP_CHUNK_SIZE ) : obj( new NODE() ) { _socket_::start_device();
+    socket_t( SOCKET fd, ulong _size=NODEPP_CHUNK_SIZE ) : obj( 0UL ) { _socket_::start_device();
         if( fd == NODEPP_INVALID_SOCKET ){ NODEPP_THROW_ERROR("Such Socket has an Invalid fd"); }
         obj->fd = fd; set_nonbloking_mode(); set_buffer_size(_size);
     }
 
    ~socket_t() noexcept { if( obj.count()>1 && !is_closed() ){ return; } free(); }
 
-    socket_t( int AF, int SOCK, int IPPROTO ) noexcept : obj( new NODE() ){
+    socket_t( int AF, int SOCK, int IPPROTO ) noexcept : obj( 0UL ){
               this->AF = AF ; this->SOCK = SOCK ; this->IPPROTO = IPPROTO ;
     }
 
-    socket_t() noexcept : obj( new NODE() ) { _socket_::start_device(); }
+    socket_t() noexcept : obj( 0UL ) { _socket_::start_device(); }
 
     /*─······································································─*/
 

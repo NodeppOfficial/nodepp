@@ -253,7 +253,7 @@ public:
     
     /*─······································································─*/
 
-    dssl_t( const string_t& _key, const string_t& _cert, const string_t& _chain ) : obj( new NODE() ) {
+    dssl_t( const string_t& _key, const string_t& _cert, const string_t& _chain ) : obj( 0UL ) {
     NODEPP_CRYPTO_INITIALIZATOR();
        if(!fs::exists_file(_key) || !fs::exists_file(_cert) || !fs::exists_file(_chain) )
          { NODEPP_THROW_ERROR("such key, cert or chain does not exist"); } 
@@ -265,7 +265,7 @@ public:
     
     /*─······································································─*/
 
-    dssl_t( const string_t& _key, const string_t& _cert ) : obj( new NODE() ) { 
+    dssl_t( const string_t& _key, const string_t& _cert ) : obj( 0UL ) { 
     NODEPP_CRYPTO_INITIALIZATOR();
        if(!fs::exists_file(_key) || !fs::exists_file(_cert) )
          { NODEPP_THROW_ERROR("such key or cert does not exist"); }
@@ -275,7 +275,7 @@ public:
 
     /*─····························································─·········─*/
 
-    dssl_t( dssl_t xtc, int /*unused*/ ) : obj( new NODE() ) { 
+    dssl_t( dssl_t xtc, int /*unused*/ ) : obj( 0UL ) { 
     NODEPP_CRYPTO_INITIALIZATOR();
 
        if( xtc.obj->ctx == nullptr )
@@ -297,7 +297,7 @@ public:
 
     /*─······································································─*/
 
-    dssl_t() : obj( new NODE() ) { NODEPP_CRYPTO_INITIALIZATOR();
+    dssl_t() : obj( 0UL ) { NODEPP_CRYPTO_INITIALIZATOR();
     thread_local static ptr_t< X509_t > cert; if( cert.null() ){
         cert= type::bind( X509_t() ); 
         cert->generate( "Node", "Node", "Node" );

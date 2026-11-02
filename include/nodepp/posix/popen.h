@@ -101,26 +101,26 @@ public:
     event_t<string_t>  onDerr;
 
     popen_t( const string_t& path, const initializer_t<string_t>& args, const initializer_t<string_t>& envs )
-    : obj( new NODE() ) { if( path.empty() ){ NODEPP_THROW_ERROR("invalid command"); }
+    : obj( 0UL ) { if( path.empty() ){ NODEPP_THROW_ERROR("invalid command"); }
         array_t<const char*> arg; array_t<const char*> env;
         for( auto x : args ) { arg.push( x.get() ); } /*---------------------*/
         for( auto x : envs ) { env.push( x.get() ); } _init_( path, arg, env );
     }
 
     popen_t( const string_t& path ) 
-    : obj( new NODE() ) { if( path.empty() ){ NODEPP_THROW_ERROR("invalid command"); }
+    : obj( 0UL ) { if( path.empty() ){ NODEPP_THROW_ERROR("invalid command"); }
         array_t<const char*> arg; array_t<const char*> env; auto cmd = regex::match_all( path, "[^ ]+" );
         for( auto x: cmd ){ arg.push( x.get() ); } _init_( cmd[0], arg, env ); /*----------------------*/
     }
 
     popen_t( const string_t& path, const initializer_t<string_t>& args ) 
-    : obj( new NODE() ) { if ( path.empty() ){ NODEPP_THROW_ERROR("invalid command"); }
+    : obj( 0UL ) { if ( path.empty() ){ NODEPP_THROW_ERROR("invalid command"); }
         array_t<const char*> arg; array_t<const char*> env;
         for( auto x : args ) { arg.push( x.get() ); }
         _init_( path, arg, env ); /*---------------*/
     }
 
-    popen_t() noexcept : obj( new NODE() ) {}
+    popen_t() noexcept : obj( 0UL ) {}
 
    ~popen_t() noexcept { if( obj.count()>1 && !is_closed() ){ return; } free(); }
 

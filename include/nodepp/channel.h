@@ -29,7 +29,7 @@ private:
 
 public:
 
-    channel_t( ulong limit=0 ) noexcept : obj( new NODE() ) { obj->limit=limit; }
+    channel_t( ulong limit=0 ) noexcept : obj( 0UL ) { obj->limit=limit; }
 
     /*─······································································─*/
 

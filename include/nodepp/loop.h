@@ -133,7 +133,7 @@ protected:
 
     }
 
-public: loop_t() noexcept : obj( new NODE() ) {}
+public: loop_t() noexcept : obj( 0UL ) {}
 
     /*─······································································─*/
 
@@ -217,7 +217,7 @@ protected:
         queue_t<NODE_PAIR> queue ;
     };  ptr_t<NODE> obj;
 
-public: loop_t() noexcept : obj( new NODE() ) {}
+public: loop_t() noexcept : obj( 0UL ) {}
 
     /*─······································································─*/
 

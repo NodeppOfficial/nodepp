@@ -303,7 +303,7 @@ namespace nodepp { namespace path {
 
     template< class T, ulong N >
     string_t join( const string_t (&value)[N] ){
-      return array_t<string_t>( N, value ).join("/");
+      return string::join( ptr_t<string_t>( N, value ), "/" );
     }
 
     template< class T, class... V >

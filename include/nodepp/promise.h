@@ -58,7 +58,7 @@ protected:
 
 public:
 
-    promise_t( const NODE_CLB& cb ) noexcept: obj( new NODE() ) {
+    promise_t( const NODE_CLB& cb ) noexcept: obj( 0UL ) {
         obj->state|= PROMISE_STATE::PENDING ;
         auto self  = type::bind( this );
     process::add([=](){ cb([=]( T value ){
@@ -75,7 +75,7 @@ public:
         self->obj->value = value; self->emit();
     }); return -1; }); }
 
-    promise_t() noexcept : obj( new NODE() ) {}
+    promise_t() noexcept : obj( 0UL ) {}
 
    ~promise_t() noexcept { if( obj.count()>1 ){ return; } emit(); }
 

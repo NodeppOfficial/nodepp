@@ -108,18 +108,18 @@ public:
     event_t<string_t>  onDerr;
 
     cluster_t( const initializer_t<string_t>& args, const initializer_t<string_t>& envs )
-    : obj( new NODE() ) {
+    : obj( 0UL ) {
         array_t<const char*> arg; array_t<const char*> env;
         for( auto x : args ) { arg.push( x.get() ); } /*---------------*/
         for( auto x : envs ) { env.push( x.get() ); } _init_( arg, env );
     }
 
-    cluster_t( const initializer_t<string_t>& args ) : obj( new NODE() ){
+    cluster_t( const initializer_t<string_t>& args ) : obj( 0UL ){
         array_t<const char*> arg; array_t<const char*> env; /*---------*/
         for( auto x : args ) { arg.push( x.get() ); } _init_( arg, env );
     }
 
-    cluster_t() : obj( new NODE() ) {
+    cluster_t() : obj( 0UL ) {
         array_t<const char*> arg; array_t<const char*> env; 
         _init_( arg, env ); /*---------------------------*/
     }

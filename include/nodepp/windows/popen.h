@@ -107,18 +107,18 @@ public:
     event_t<string_t>  onDerr;
 
     popen_t( const string_t& path, const initializer_t<string_t>& args, const initializer_t<string_t>& envs )
-    : obj( new NODE() ) { _init_( path, args, envs ); }
+    : obj( 0UL ) { _init_( path, args, envs ); }
 
     popen_t( const string_t& path, const initializer_t<string_t>& args )
-    : obj( new NODE() ) { _init_( path, args, nullptr ); }
+    : obj( 0UL ) { _init_( path, args, nullptr ); }
 
     popen_t( const string_t& path ) 
-    : obj( new NODE() ) { auto cmd = regex::match_all( path, "[^ ]+" );
+    : obj( 0UL ) { auto cmd = regex::match_all( path, "[^ ]+" );
         if ( cmd.empty() ){ NODEPP_THROW_ERROR("invalid command"); }
         _init_( cmd[0], cmd.slice(1), nullptr );
     }
 
-    popen_t() noexcept : obj( new NODE() ) {}
+    popen_t() noexcept : obj( 0UL ) {}
 
    ~popen_t() noexcept { if( obj.count()>1 && !is_closed() ){ return; } free(); }
 

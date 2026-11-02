@@ -27,7 +27,7 @@ protected:
 
 public:
 
-    listener_t() noexcept : obj( new NODE() ) {}
+    listener_t() noexcept : obj( 0UL ) {}
 
     /*─······································································─*/
 

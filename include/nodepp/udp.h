@@ -48,12 +48,12 @@ public:
 
     /*─······································································─*/
 
-    udp_t( NODE_CLB _func, agent_t* opt=nullptr ) noexcept : obj( new NODE() )
+    udp_t( NODE_CLB _func, agent_t* opt=nullptr ) noexcept : obj( 0UL )
          { obj->func=_func; obj->agent=opt==nullptr ? agent_t() : *opt; }
 
    ~udp_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
-    udp_t() noexcept : obj( new NODE() ) {}
+    udp_t() noexcept : obj( 0UL ) {}
 
     /*─······································································─*/
 

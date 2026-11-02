@@ -88,7 +88,7 @@ protected:
 public:
 
     template< class T >
-    hash_t( const T& type, ulong length ) : obj( new NODE() ) { 
+    hash_t( const T& type, ulong length ) : obj( 0UL ) { 
     NODEPP_CRYPTO_INITIALIZATOR();
          
         obj->bff   = ptr_t<uchar>( length );
@@ -144,7 +144,7 @@ protected:
 public:
 
     template< class T >
-    hmac_t( const string_t& key, const T& type, ulong length ) : obj( new NODE() ) { 
+    hmac_t( const string_t& key, const T& type, ulong length ) : obj( 0UL ) { 
     NODEPP_CRYPTO_INITIALIZATOR();
 
         if( key.empty() ){ NODEPP_THROW_ERROR("can't initializate hmac_t"); }
@@ -205,7 +205,7 @@ public:
     event_t<>         onClose;
     event_t<string_t> onData;
 
-    xor_t( const string_t& key ) : obj( new NODE() ) {
+    xor_t( const string_t& key ) : obj( 0UL ) {
     NODEPP_CRYPTO_INITIALIZATOR();
     
         if( key.empty() ){ NODEPP_THROW_ERROR("can't initializate xor_t"); }
@@ -217,7 +217,7 @@ public:
         obj->ctx = ptr_t<CTX> ({ item1 });
     }
 
-    xor_t() noexcept : obj( new NODE() ) {
+    xor_t() noexcept : obj( 0UL ) {
         NODEPP_CRYPTO_INITIALIZATOR(); obj->state = 0; 
     }
     
@@ -287,11 +287,11 @@ public:
     event_t<string_t> onData;
     event_t<>         onClose;
 
-    encrypt_t( const string_t& iv, const string_t& key, const EVP_CIPHER* type ) : obj( new NODE() ) { 
+    encrypt_t( const string_t& iv, const string_t& key, const EVP_CIPHER* type ) : obj( 0UL ) { 
         NODEPP_CRYPTO_INITIALIZATOR(); _init_( type, key, iv ); 
     }
 
-    encrypt_t( const string_t& key, const EVP_CIPHER* type ) : obj( new NODE() ) {     
+    encrypt_t( const string_t& key, const EVP_CIPHER* type ) : obj( 0UL ) {     
         NODEPP_CRYPTO_INITIALIZATOR(); _init_( type, key, nullptr ); 
     }
 
@@ -366,11 +366,11 @@ public:
     event_t<string_t> onData;
     event_t<>         onClose;
 
-    decrypt_t( const string_t& iv, const string_t& key, const EVP_CIPHER* type ) : obj( new NODE() ) { 
+    decrypt_t( const string_t& iv, const string_t& key, const EVP_CIPHER* type ) : obj( 0UL ) { 
         NODEPP_CRYPTO_INITIALIZATOR(); _init_( type, key, iv ); 
     }
 
-    decrypt_t( const string_t& key, const EVP_CIPHER* type ) : obj( new NODE() ) { 
+    decrypt_t( const string_t& key, const EVP_CIPHER* type ) : obj( 0UL ) { 
         NODEPP_CRYPTO_INITIALIZATOR(); _init_( type, key, nullptr ); 
     }
 
@@ -417,7 +417,7 @@ protected:
 public:
   
    ~base58_encoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
-    base58_encoder_t() : obj( new NODE() ) { obj->state = 1; }
+    base58_encoder_t() : obj( 0UL ) { obj->state = 1; }
 
     string_t get() const noexcept { if( obj->state == 0 ){ return nullptr; }
         auto raw = string::join( obj->bff, "" );
@@ -450,7 +450,7 @@ protected:
 public:
 
    ~base58_decoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
-    base58_decoder_t() : obj( new NODE() ) { obj->state = 1; }
+    base58_decoder_t() : obj( 0UL ) { obj->state = 1; }
 
     void update( const string_t& msg ) const noexcept { 
          if( obj->state!=1 ){ return; } obj->bff.push( msg );
@@ -498,7 +498,7 @@ public:
 
    ~base64_encoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
-    base64_encoder_t() noexcept : obj( new NODE() ) {
+    base64_encoder_t() noexcept : obj( 0UL ) {
     NODEPP_CRYPTO_INITIALIZATOR();
 
         obj->state = 1; obj->bff = ptr_t<char>( NODEPP_CHUNK_SIZE, '\0' );
@@ -589,7 +589,7 @@ public:
 
    ~base64_decoder_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
-    base64_decoder_t() noexcept : obj( new NODE() ) {
+    base64_decoder_t() noexcept : obj( 0UL ) {
     NODEPP_CRYPTO_INITIALIZATOR();
         obj->state = 1; obj->bff = ptr_t<char>( NODEPP_CHUNK_SIZE, '\0' );
 
@@ -668,7 +668,7 @@ protected:
 
 public:
 
-    X509_t( int curve_nid = NID_X9_62_prime256v1 ) : obj( new NODE() ) {
+    X509_t( int curve_nid = NID_X9_62_prime256v1 ) : obj( 0UL ) {
     NODEPP_CRYPTO_INITIALIZATOR();
         
         obj->ctx = X509_new(); obj->name= X509_NAME_new();  
@@ -778,7 +778,7 @@ protected:
     
 public:
 
-    rsa_t() : obj( new NODE() ) {
+    rsa_t() : obj( 0UL ) {
     NODEPP_CRYPTO_INITIALIZATOR();
         obj->rsa = RSA_new(); obj->num = BN_new (); obj->state = 1;
         if( !obj->num || !obj->rsa ){ NODEPP_THROW_ERROR("creating rsa object"); }
@@ -903,7 +903,7 @@ protected:
 public:
 
     template< class T >
-    ec_t( const string_t& key, const T& type ) noexcept :obj( new NODE() ) {
+    ec_t( const string_t& key, const T& type ) noexcept :obj( 0UL ) {
     NODEPP_CRYPTO_INITIALIZATOR();
 
         if( key.empty() ){ NODEPP_THROW_ERROR("can't initializate ec_t"); }
@@ -922,7 +922,7 @@ public:
     }
 
     template< class T >
-    ec_t( const T& type ) noexcept : obj( new NODE() ) { 
+    ec_t( const T& type ) noexcept : obj( 0UL ) { 
     NODEPP_CRYPTO_INITIALIZATOR();
 
         obj->state = 1;
@@ -982,7 +982,7 @@ protected:
 
 public:
 
-    dh_t() : obj( new NODE() ) {
+    dh_t() : obj( 0UL ) {
     NODEPP_CRYPTO_INITIALIZATOR();
         obj->dh = DH_new(); obj->k = BN_new(); obj->state = 1;
         if( !obj->dh || !obj->k ){ NODEPP_THROW_ERROR( "creating new dh" ); }
@@ -1056,7 +1056,7 @@ protected:
     
 public:
 
-    dsa_t(): obj( new NODE() ) {
+    dsa_t(): obj( 0UL ) {
     NODEPP_CRYPTO_INITIALIZATOR();
         obj->state = 1; obj->dsa = DSA_new(); 
     }

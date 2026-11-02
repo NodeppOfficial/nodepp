@@ -4,6 +4,7 @@
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20WASM-blue)](https://github.com/NodeppOfficial/nodepp)
 [![Build Status](https://github.com/NodeppOfficial/nodepp/actions/workflows/main.yml/badge.svg)](https://github.com/NodeppOfficial/nodepp/actions)
 [![Valgrind Memory Test](https://img.shields.io/badge/memory-zero_leaks-green)](https://github.com/NodeppOfficial/nodepp/blob/main/benchmark/valgrind_benchmark/readme.md)
+[![XERJ Corpus Hub contributor](https://hub.xerj.org/contributors/EDBCREPO/badge.svg)](https://hub.xerj.org/contributors/EDBCREPO)
 
 Nodepp is the end of excuses. For too long, developers have settled for **fragmented glue-ware** or managed runtimes that treat hardware resources like garbage. Nodepp is a vertically-integrated C++ framework that proves you don't need a massive Virtual Machine or a bloated Garbage Collector to write high-level async code.
 

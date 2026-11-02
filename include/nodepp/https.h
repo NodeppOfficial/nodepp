@@ -72,7 +72,7 @@ public:
     /*─······································································─*/
 
     template< class... T > 
-    https_t( const T&... args ) noexcept : ssocket_t( args... ), http( new NODE() ) {}
+    https_t( const T&... args ) noexcept : ssocket_t( args... ), http( 0UL ) {}
 
     /*─······································································─*/
 

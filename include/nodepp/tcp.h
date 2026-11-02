@@ -48,12 +48,12 @@ public:
 
     /*─······································································─*/
 
-    tcp_t( NODE_CLB _func, agent_t* opt=nullptr ) noexcept : obj( new NODE() )
+    tcp_t( NODE_CLB _func, agent_t* opt=nullptr ) noexcept : obj( 0UL )
          { obj->func=_func; obj->agent=opt==nullptr ? agent_t() : *opt; }
 
    ~tcp_t() noexcept { if( obj.count() > 1 ){ return; } free(); }
 
-    tcp_t() noexcept : obj( new NODE() ) {}
+    tcp_t() noexcept : obj( 0UL ) {}
 
     /*─······································································─*/
 

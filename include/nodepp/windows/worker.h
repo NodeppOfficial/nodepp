@@ -68,7 +68,7 @@ protected:
 public:
 
     template< class T, class... V >
-    worker_t( T cb, const V&... arg ) noexcept : obj( new NODE() ){
+    worker_t( T cb, const V&... arg ) noexcept : obj( 0UL ){
         auto clb = function_t<int,V...>(cb);
         obj->cb  = function_t<int>([=](){ return clb(arg...); });
     if( emit()==-1 ){ free(); }; }

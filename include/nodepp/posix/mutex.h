@@ -28,7 +28,7 @@ protected:
 
 public:
 
-    mutex_t() : obj( new NODE() ) {
+    mutex_t() : obj( 0UL ) {
         if( pthread_mutex_init(&obj->fd,NULL)!=0 )
           { NODEPP_THROW_ERROR("Cant Start Mutex");  }
     }

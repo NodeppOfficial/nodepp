@@ -30,8 +30,8 @@ protected:
 public:
 
     template< class V >
-    coroutine_arg_t( const V& callback ) noexcept : obj( new NODE() ) { obj->callback = callback; }
-    coroutine_arg_t() /*--------------*/ noexcept : obj( new NODE() ) {}
+    coroutine_arg_t( const V& callback ) noexcept : obj( 0UL ) { obj->callback = callback; }
+    coroutine_arg_t() /*--------------*/ noexcept : obj( 0UL ) {}
 
     /*─······································································─*/
 

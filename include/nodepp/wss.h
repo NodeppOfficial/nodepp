@@ -33,7 +33,7 @@ protected:
 public:
 
     template< class... T >
-    wss_t( const T&... args ) noexcept : ssocket_t( args... ), ws( new NODE() ){}
+    wss_t( const T&... args ) noexcept : ssocket_t( args... ), ws( 0UL ){}
 
     /*─······································································─*/
 
