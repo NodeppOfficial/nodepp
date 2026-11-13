@@ -59,7 +59,11 @@ namespace nodepp { namespace os {
 
     inline int call( string_t cmd ){ return ::system( cmd.get() ); }
 
-    inline uchar_64 rand() { return encoder::key::generate( (uchar_64) &NODEPP_SHTDWN() ); }
+    inline uchar_64 rand() { 
+        /*-----------*/ uchar_64 msk = encoder::random::generate( process::now() );
+    thread_local static uchar_64 out = (uchar_64) &NODEPP_LOCAL_SHTDWN();
+        out = encoder::random::generate(out^ msk); return out; 
+    }
     
     /*─······································································─*/
 

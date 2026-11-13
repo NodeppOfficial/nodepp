@@ -13,14 +13,14 @@ using namespace nodepp;
 
 void resolve(){
 
-    promise_t<null_t,except_t> ([=](
-        res_t<null_t> res, rej_t<except_t> rej
+    promise_t<any_t,except_t> ([=](
+        res_t<any_t> res, rej_t<except_t> rej
     ){
 
         process::add( coroutine::add( COROUTINE(){
         coBegin
 
-            coDelay( 10 ); res( nullptr );
+            coDelay( 10 ); res( 0x00 );
             resolve(); // <- this must create a memory leak | bug fixed :)
 
         coFinish
@@ -28,13 +28,8 @@ void resolve(){
 
     })
 
-    .then([=]( null_t ){
-        console::log( "done" );
-    })
-
-    .fail([=]( except_t ){
-        console::log( "error" );
-    });
+    .then([=]( any_t    ){ console::log( "done"  ); })
+    .fail([=]( except_t ){ console::log( "error" ); });
     
 }
 

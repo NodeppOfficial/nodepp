@@ -114,6 +114,24 @@ namespace TEST { namespace JSON {
             } while(0); TEST_FAIL();
         });
 
+        TEST_ADD( test, "TEST 8 | json slice view naming", [](){
+            do {
+
+                string_t raw = "hello world!";
+                string_t name= raw.slice_view( 0, 5 );
+
+                object_t json ({
+                    { "var1", 10 },
+                    { "var2", 20 },
+                    {  name , 30 },
+                });
+
+            if ( json.has( "hello world!" ) ){ break; }
+
+                        TEST_DONE();
+            } while(0); TEST_FAIL();
+        });
+
         test.onClose.once([=](){
             console::log("\nRESULT | total:", *totl, "| passed:", *done, "| error:", *err, "| skipped:", *skp );
         });

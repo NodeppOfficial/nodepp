@@ -18,6 +18,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <cstdio>
+#include <cmath>
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -38,7 +39,6 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#include "coroutine.h"
 #include "string.h"
 #include "array.h"
 
@@ -52,6 +52,7 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+#include "coroutine.h"
 #include "loop.h"
 #include "signal.h"
 #include "except.h"

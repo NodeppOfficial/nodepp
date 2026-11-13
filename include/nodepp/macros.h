@@ -96,8 +96,7 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-#define coDelay(VALUE)           do { _time_=nodepp::process::millis()+VALUE; while( nodepp::process::millis()<_time_ ){ coErrno(VALUE,__LINE__,1); }} while(0);
-#define coUDelay(VALUE)          do { _time_=nodepp::process::micros()+VALUE; while( nodepp::process::micros()<_time_ ){ /*--------------*/ coNext; }} while(0);
+#define coDelay(VALUE)           do { _time_=nodepp::process::now()+VALUE; while( nodepp::process::now()<_time_ ){ coErrno(VALUE,__LINE__,1); }} while(0);
 #define coErrno(DELAY,STATE,OUT) do { coSet( STATE ); nodepp::coroutine::getno( OUT,coGet,DELAY ); return OUT; case STATE:; } while(0);
 
 #define coGoto(VALUE)            do { coSet( VALUE ); nodepp::coroutine::getno(1,coGet); return 1; } while(0);
@@ -115,6 +114,7 @@ template< class T > T clamp( const T& val, const T& _min, const T& _max ){ retur
 #define coSet(VALUE) _state_ = VALUE
 #define coGet        _state_
 #define coFinish     coStop
+#define coAgain      coGoto(0); coStop
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
@@ -159,11 +159,11 @@ return 0; } void NODEPP_BEGIN
 #define NODEPP_CHUNK_SIZE       CHUNK_KB(64)
 #define NODEPP_MAX_PATH_SIZE    CHUNK_KB(1)
 #define NODEPP_MAX_SSO_SIZE     16
-#define NODEPP_UNBFF_SIZE       CHUNK_KB(4)
 #define NODEPP_HASH_TABLE_SIZE  (uchar_16) -1
 #define NODEPP_MAX_SOCKET       nodepp::os::get_soft_fileno()
 #define NODEPP_ARCH_SIZE        sizeof(void*)*8
 #define NODEPP_MAX_BATCH_SIZE   16
+#define NODEPP_UNBFF_SIZE       CHUNK_KB(4)
 #define NODEPP_HEAP_SIZE        CHUNK_KB(64)
 
 /*────────────────────────────────────────────────────────────────────────────*/
@@ -313,22 +313,22 @@ using wchar   = /*----*/ wchar_t ;
 using len_t   = /*----*/ uint64_t;
 using off_t   = /*----*/ int64_t ;
 
-using int_8   = /*----*/ char    ;
+using int_8   = /*----*/ int8_t  ;
 using int_16  = /*----*/ int16_t ;
 using int_32  = /*----*/ int32_t ;
 using int_64  = /*----*/ int64_t ;
 
-using uint_8  = unsigned char    ;
+using uint_8  = /*----*/ uint8_t ;
 using uint_16 = /*----*/ uint16_t;
 using uint_32 = /*----*/ uint32_t;
 using uint_64 = /*----*/ uint64_t;
 
-using char_8  = /*----*/ char    ;
+using char_8  = /*----*/ int8_t  ;
 using char_16 = /*----*/ int16_t ;
 using char_32 = /*----*/ int32_t ;
 using char_64 = /*----*/ int64_t ;
 
-using uchar_8 = unsigned char    ;
+using uchar_8 = /*----*/ uint8_t ;
 using uchar_16= /*----*/ uint16_t;
 using uchar_32= /*----*/ uint32_t;
 using uchar_64= /*----*/ uint64_t;

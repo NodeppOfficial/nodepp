@@ -17,10 +17,10 @@
 namespace nodepp { template< ulong HEAP_SIZE=NODEPP_HEAP_SIZE > class allocator_t {
 private:
 
-    using u_8  = unsigned char;
-    using u_16 = uint16_t     ;
-    using u_32 = uint32_t     ;
-    using u_64 = uint64_t     ;
+    using u_8  = uint8_t ;
+    using u_16 = uint16_t;
+    using u_32 = uint32_t;
+    using u_64 = uint64_t;
 
 protected:
 
@@ -138,11 +138,11 @@ protected:
 
     /*─······································································─*/
 
-    int _del_mem_( void*& addr ) noexcept { do {
-    if( addr == nullptr ){ break; }
+    int _del_mem_( void*& raw ) noexcept { do {
+    if( raw == nullptr ){ break; }
         
-        u_8 * mem = (u_8 *) addr - sizeof(BODY);
-        BODY* body= (BODY*) mem  ;
+        u_8 * mem = (u_8 *) raw - sizeof(BODY);
+        BODY* body= (BODY*) mem ;
 
         if( body->mode == FLAG::ALLOC_FLAG_USED ||
             body->mode == FLAG::ALLOC_FLAG_FREE ){ 
@@ -152,7 +152,7 @@ protected:
         if( body->mode == FLAG::ALLOC_FLAG_SOLO ){
             body->mode =  FLAG::ALLOC_FLAG_FREE ; 
             ::free( mem ); return 1;
-        }   ::free( mem ); return 0; 
+        }   ::free( raw ); return 0; 
 
     } while(0); return -1; }
 
@@ -261,13 +261,13 @@ struct allocator_fallback_t {
 };
 
 namespace nodepp {
-allocator_fallback_t& NODEPP_ALLOC() /*---------*/ {
+inline allocator_fallback_t& NODEPP_ALLOC() /*---------*/ {
 thread_local static allocator_fallback_t out; return out; }}
 
 #else
 
 namespace nodepp {
-allocator_t<NODEPP_HEAP_SIZE>& NODEPP_ALLOC() /*---------*/ {
+inline allocator_t<NODEPP_HEAP_SIZE>& NODEPP_ALLOC() /*---------*/ {
 thread_local static allocator_t<NODEPP_HEAP_SIZE> out; return out; }}
 
 #endif

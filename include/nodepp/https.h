@@ -165,11 +165,11 @@ public:
         
         queue_t<string_t> out; set_send_mode( nullptr );
 
-        out.push( string::format( "%s %s %s" , method.get(), path.get(), version.get() ) );
+        out.push( string::join( " " , method, path, version ) );
 
         auto x = headers.raw().first(); while( x!=nullptr ){ 
         auto y = x->next; auto &z = x->data;
-               out.push( string::format( "%s: %s", z.first.to_capital_case().get(), z.second.get() ) );
+               out.push( string::join( ": ", z.first.to_capital_case(), z.second ) );
         x=y; } out.push( "\r\n" ); write( string::join( out, "\r\n" ) );
         
         if( method=="HEAD" ){ close(); return; } set_send_mode( headers );
@@ -182,11 +182,11 @@ public:
         
         queue_t<string_t> out; set_send_mode( nullptr );
 
-        out.push( string::format( "%s %u %s", version.get(), status, HTTP_NODEPP::_get_http_status(status).get() ) );
+        out.push( string::join( " ", version, status, HTTP_NODEPP::_get_http_status(status) ) );
 
         auto x = headers.raw().first(); while( x!=nullptr ){ 
         auto y = x->next; auto &z = x->data;
-               out.push( string::format( "%s: %s", z.first.to_capital_case().get(), z.second.get() ) );
+               out.push( string::join( ": ", z.first.to_capital_case(), z.second ) );
         x=y; } out.push( "\r\n" ); write( string::join( out, "\r\n" ) );
         
         if( method=="HEAD" ){ close(); return; } set_send_mode( headers );
@@ -199,14 +199,14 @@ public:
         
         queue_t<string_t> out; set_send_mode( nullptr );
 
-        out.push( string::format( "%s %s %s", fetch.method.get(), path.get(), fetch.version.get() ) );
+        out.push( string::join( " ", fetch.method, path, fetch.version ) );
         if( !fetch.body.empty() ){ 
              fetch.headers["Content-Length"] = string::to_string( fetch.body.size() );
         }
 
         auto x = fetch.headers.raw().first(); while( x!=nullptr ){ 
         auto y = x->next; auto &z = x->data;
-               out.push( string::format( "%s: %s", z.first.to_capital_case().get(), z.second.get() ) );
+               out.push( string::join( ": ", z.first.to_capital_case(), z.second ) );
         x=y; } out.push( "\r\n" + fetch.body ); 
 
         write( string::join( out, "\r\n" ) );

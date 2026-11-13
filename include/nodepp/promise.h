@@ -65,14 +65,14 @@ public:
     if( self->obj->state & PROMISE_STATE::CLOSED ){ return; }
         self->obj->state = PROMISE_STATE::FINISHED;
         self->obj->state|= PROMISE_STATE::RESOLVED;
-        self->obj->state|= PROMISE_STATE::CLOSED  ;
-        self->obj->value = value; self->emit();
+    //  self->obj->state|= PROMISE_STATE::CLOSED  ;
+        self->obj->value = value; self->emit(); self->free();
     },[=]( V value ){
     if( self->obj->state & PROMISE_STATE::CLOSED ){ return; }
         self->obj->state = PROMISE_STATE::FINISHED;
         self->obj->state|= PROMISE_STATE::REJECTED;
-        self->obj->state|= PROMISE_STATE::CLOSED  ;
-        self->obj->value = value; self->emit();
+    //  self->obj->state|= PROMISE_STATE::CLOSED  ;
+        self->obj->value = value; self->emit(); self->free();
     }); return -1; }); }
 
     promise_t() noexcept : obj( 0UL ) {}
@@ -106,6 +106,15 @@ public:
 
     /*─······································································─*/
 
+    void free() const noexcept {
+    if( obj->state & PROMISE_STATE::CLOSED ){ return; }
+        obj->fin_clb .emit(); obj->rej_clb.clear(); 
+        obj->res_clb.clear(); obj->fin_clb.clear();
+        obj->state|= PROMISE_STATE::CLOSED;
+    }
+
+    /*─······································································─*/
+
     int emit() const noexcept { do {
 
         if( obj->state==PROMISE_STATE::UNDEFINED ){ break; }
@@ -113,12 +122,10 @@ public:
  
         if( is_resolved() ){
             obj->res_clb.emit( obj->value.template as<T>() );
-            obj->fin_clb.emit();
         return 1; }
 
         if( is_rejected() ){
             obj->rej_clb.emit( obj->value.template as<V>() );
-            obj->fin_clb.emit();
         return 1; }
 
     } while(0); return -1; }
