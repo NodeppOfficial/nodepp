@@ -41,9 +41,9 @@ protected:
 
         while( !self->is_closed( ) ){
         if   ( self->obj->cb()==-1 ){ break; }
-            auto info = coroutine::getno();
-            auto time = info.delay;
-        process::delay( time==0 ? 1 :time ); }
+            auto time = coroutine::getno().delay;
+            auto delay= time==0 ? 1 : time;
+        process::delay( time ); process::next(); }
 
     self->free(); return 0; }
 
@@ -77,7 +77,7 @@ public:
 
    ~worker_t() noexcept { if( obj.count()>1 ){ return; } free(); }
 
-    worker_t() noexcept : obj( new NODE ) {}
+    worker_t() noexcept : obj( 0UL ) {}
 
     void free() const noexcept {
         if( obj->state == 0x00 ) /*---------*/ { return; }

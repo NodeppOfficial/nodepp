@@ -367,18 +367,17 @@ namespace nodepp { namespace type {
         }  
     return 0; }
 
+    /*─······································································─*/
+    
     template < class A, class B >
     void fill( A src_first, A src_last, B value ) {
-        while( src_first != src_last ) {
-           *src_first = value; ++src_first;
-        }
+        while( src_first != src_last ){ *src_first = value; ++src_first; }
     }
 
     template<typename T> 
-    void swap( T& a, T& b ) noexcept { 
-        T t = move(a); a = move(b); 
-          b = move(t);
-    }
+    void swap( T& a, T& b ) noexcept { T t = move(a); a = move(b); b = move(t); }
+
+    /*─······································································─*/
     
     template < class A >
     typename type::enable_if< type::is_number<typename type::remove_pointer<A>::type>::value, void >::type
@@ -403,6 +402,8 @@ namespace nodepp { namespace type {
           ++dst_first;
         }
     }
+
+    /*─······································································─*/
     
     template < class A >
     typename type::enable_if< type::is_number<typename type::remove_pointer<A>::type>::value, void >::type

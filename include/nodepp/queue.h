@@ -350,25 +350,15 @@ public:
 
     /*─······································································─*/
 
-    void swap( NODE* n, NODE* x ) const noexcept {
-        if( !is_valid(x) ){ x = obj->lst; }
-        if( !is_valid(n) ){ n = obj->lst; } if( x==n ) { return; }
+    void swap( NODE* n, NODE* x ) const noexcept { if( x!=n ){
 
-        if( obj->fst ==x ){ obj->fst = n; } elif ( obj->fst ==n ){ obj->fst = x; }
-        if( obj->lst ==x ){ obj->lst = n; } elif ( obj->lst ==n ){ obj->lst = x; }
+        auto prv = n->next;
+        auto nxt = x->next;
 
-        type::swap( x->next, n->next );
-        type::swap( x->prev, n->prev );
+        move( prv, x );
+        move( nxt, n );
 
-        if( n->prev!= nullptr ){ n->prev->next = n; }
-        if( n->next!= nullptr ){ n->next->prev = n; }
-        if( x->prev!= nullptr ){ x->prev->next = x; }
-        if( x->next!= nullptr ){ x->next->prev = x; }
-
-        if( x->next==x ){ x->next = n; } elif ( n->next==n ){ n->next=x; }
-        if( x->prev==x ){ x->prev = n; } elif ( n->prev==n ){ n->prev=x; }
-
-    }
+    }}
 
     void move( NODE* n, NODE* x ) const noexcept {
         if( !is_valid(x) ) /*-----*/ { return; }
@@ -442,7 +432,7 @@ public:
         while( n != nullptr && y--!=0 ){ n=n->next; } return n;
     }
 
-    NODE* get( void* x ) const noexcept {
+    NODE* get_node( void* x ) const noexcept {
         if( empty() )/*----*/{ return nullptr; }
         auto n = first(); while( n != nullptr ){
         if ( n == x ) { break; } n  = n->next; } return n;

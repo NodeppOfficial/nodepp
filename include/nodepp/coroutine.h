@@ -39,13 +39,21 @@ public:
 
     uchar_64 get_state() const noexcept { return obj->state; }
 
+    uchar_64 get_delay() const noexcept {
+        if( obj->time>0 && obj->time>process::now() )
+          { return obj->time - process::now(); }
+            return 0ULL;
+    }
+
     /*─······································································─*/
 
     int operator()( const A&... args ) const {
+        if( get_delay()>0 ){ return 1; }
         return obj->callback( obj->state, obj->time, args... );
     }
     
     int emit( const A&... args ) const {
+        if( get_delay()>0 ){ return 1; }
         return obj->callback( obj->state, obj->time, args... );
     }
 
@@ -53,7 +61,7 @@ public:
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp    { using coroutine_t = coroutine_arg_t</*----*/>; 
+namespace nodepp    { using coroutine_t = coroutine_arg_t<>; 
 struct co_state_t   { uchar     flag =0; uchar_64  delay =0; int state=0; };
 struct generator_t  { uchar_64 _time_=0; uchar_64 _state_=0; };
 namespace coroutine { enum STATE : uchar {
@@ -87,7 +95,7 @@ namespace nodepp { namespace coroutine {
     
     out = tmp; tmp = co_state_t {};
 
-    tmp.state=_state_; if( time>0 ){ 
+    tmp.state=_state_ ; if( time>0 ){ 
         tmp.delay=time; /*------------*/
         tmp.flag =STATE::CO_STATE_DELAY; goto DONE; 
     } switch(state) {

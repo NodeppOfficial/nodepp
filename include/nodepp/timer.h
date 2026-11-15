@@ -34,38 +34,7 @@ namespace nodepp { namespace timer {
     ptr_t<task_t> interval ( const V& cb, ulong time, const T&... args ){
         auto clb = function_t<void,T...>( cb );
         return process::add( coroutine::add( COROUTINE(){
-        coBegin coDelay( time ); clb(args...); coGoto(0); coFinish
-    })); }
-    
-    /*─······································································─*/
-
-    inline void clear( ptr_t<task_t> address ){ process::clear( address ); }
-    
-}}
-
-/*────────────────────────────────────────────────────────────────────────────*/
-
-namespace nodepp { namespace utimer {
-    
-    template< class V, class... T >
-    ptr_t<task_t> add ( const V& cb, ulong time, const T&... args ){
-        auto clb = function_t<int,T...>( cb );
-        return process::add( coroutine::add( COROUTINE(){
-        coBegin coUDelay( time ); coSet(0); return clb(args...); coFinish
-    })); }
-    
-    template< class V, class... T >
-    ptr_t<task_t> timeout ( const V& cb, ulong time, const T&... args ){
-        auto clb = function_t<void,T...>( cb );
-        return process::add( coroutine::add( COROUTINE(){
-        coBegin coUDelay( time ); clb(args...); coFinish
-    })); }
-    
-    template< class V, class... T >
-    ptr_t<task_t> interval ( const V& cb, ulong time, const T&... args ){
-        auto clb = function_t<void,T...>( cb );
-        return process::add( coroutine::add( COROUTINE(){
-        coBegin coUDelay( time ); clb(args...); coGoto(0); coFinish
+        coBegin coDelay( time ); clb(args...); coAgain
     })); }
     
     /*─······································································─*/

@@ -146,7 +146,7 @@ public: json_t() noexcept {}
             out.push('{');
 
             for( auto &item: obj.as<QUEUE>().data() ){
-                 out += regex::format("\"${0}\":",item.first.get());
+                 out += regex::format("\"${0}\":",item.first);
                  out += format( item.second ); out.push(',');
             }if( out[ out.size()-1 ] == ',' ){ out.pop(); }
 
@@ -194,7 +194,7 @@ public: json_t() noexcept {}
 
             case 0xFA10: do { out.push('[');
             for( auto &x: obj.as<array_t<string_t>>() )
-               { out += regex::format("\"${0}\",", x.get() ); }
+               { out += regex::format("\"${0}\",", x ); }
             if ( out[ out.size()-1 ] == ',' ){ out.pop(); }
             out.push(']'); } while(0); break;
 
@@ -226,7 +226,7 @@ public: json_t() noexcept {}
 
             case 0xF610: do { out.push('[');
             for( auto &x: obj.as<ptr_t<string_t>>() )
-               { out += regex::format("\"${0}\",", x.get() ); }
+               { out += regex::format("\"${0}\",", x ); }
             if ( out[ out.size()-1 ] == ',' ){ out.pop(); }
             out.push(']'); } while(0); break;
 
@@ -258,7 +258,7 @@ public: json_t() noexcept {}
 
             case 0xF810: do { out.push('[');
             obj.as<queue_t<string_t>>().map([&]( string_t x )
-               { out += regex::format("\"${0}\",", x.get() ); });
+               { out += regex::format("\"${0}\",", x ); });
             if ( out[ out.size()-1 ] == ',' ){ out.pop(); }
             out.push(']'); } while(0); break;
 

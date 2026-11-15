@@ -114,6 +114,72 @@ namespace TEST { namespace JSON {
             } while(0); TEST_FAIL();
         });
 
+        TEST_ADD( test, "TEST 8 | json slice view naming", [](){
+            do {
+
+                string_t raw = "hello world!";
+                string_t name= raw.slice_view( 0, 5 );
+
+                object_t json ({
+                    { "var1", 10 },
+                    { "var2", 20 },
+                    {  name , 30 },
+                });
+
+            if ( json.has( "hello world!" ) ){ break; }
+
+                        TEST_DONE();
+            } while(0); TEST_FAIL();
+        });
+
+        TEST_ADD( test, "TEST 9 | json chaining", [](){
+            do {
+
+                object_t obj1 ({ { "var1", "hello world 1" } });
+                object_t obj2 ({ { "var2", "hello world 2" } });
+                object_t obj3 ({ { "var3", "hello world 3" } });
+
+                object_t obj;
+
+                obj["arr"] = array_t<object_t>({ obj1, obj2, obj3 });
+                obj["obj"] = obj1;
+                obj["obj"]["obj"] = obj2;
+                obj["obj"]["obj"]["obj"] = obj3;
+
+                auto x = obj["obj"]["obj"]["obj"]["var3"].as<string_t>();
+                auto y = obj["arr"][2]["var3"]           .as<string_t>();
+
+                if ( x!=y ){ break; }
+
+                        TEST_DONE();
+            } while(0); TEST_FAIL();
+        });
+
+        TEST_ADD( test, "TEST 9 | json propagation (on the fly)", [](){
+            do {
+
+                object_t obj1 ({ { "var1", "hello world 1" } });
+                object_t obj2 ({ { "var2", "hello world 2" } });
+                object_t obj3 ({ { "var3", "hello world 3" } });
+
+                object_t obj;
+
+                obj["arr"] = array_t<object_t>({ obj1, obj2, obj3 });
+                obj["obj"] = obj1;
+                obj["obj"]["obj"] = obj2;
+                obj["obj"]["obj"]["obj"] = obj3;
+
+                obj3["var3"] = 1024;
+
+                auto x = obj["obj"]["obj"]["obj"]["var3"].as<int>();
+                auto y = obj["arr"][2]["var3"]           .as<int>();
+
+                if ( x!=y && x==1024 ){ break; }
+
+                        TEST_DONE();
+            } while(0); TEST_FAIL();
+        });
+
         test.onClose.once([=](){
             console::log("\nRESULT | total:", *totl, "| passed:", *done, "| error:", *err, "| skipped:", *skp );
         });

@@ -16,17 +16,17 @@
 
 namespace nodepp {
 
-template <typename... Types> class tuple_t {};
+    template <typename... Types> class tuple_t {};
 
-template <typename Head, typename... Tail>
-class tuple_t<Head, Tail...> : public tuple_t<Tail...> {
-public: tuple_t() noexcept {} ~tuple_t() noexcept {}
-    tuple_t( const Head& head, const Tail&... tail ) noexcept : tuple_t<Tail...>(tail...), head_(0UL,head) {}
-    tuple_t<Tail...> tail() const noexcept { return *this; }
-    Head& head() const noexcept { return *head_; }
-private:
-    ptr_t<Head> head_;
-};
+    template <typename Head, typename... Tail>
+    class tuple_t<Head, Tail...> : public tuple_t<Tail...> {
+    public: tuple_t() noexcept {} ~tuple_t() noexcept {}
+        tuple_t( const Head& head, const Tail&... tail ) noexcept : tuple_t<Tail...>(tail...), head_(0UL,head) {}
+        tuple_t<Tail...> tail() const noexcept { return *this; }
+        Head& head() const noexcept { return *head_; }
+    private:
+        ptr_t<Head> head_;
+    };
 
 }
 
@@ -57,7 +57,7 @@ namespace nodepp { namespace tuple {
     /*─······································································─*/
 
     template <ulong Index, typename... Types>
-    typename tuple_element<Index, Types...>::type get(const tuple_t<Types...>& tuple){
+    typename tuple_element<Index, Types...>::type& get(const tuple_t<Types...>& tuple){
         static_assert( Index < sizeof...(Types), "Index out of bounds in tuple get" );
         return get_helper<Index, Types...>::get(tuple);
     }

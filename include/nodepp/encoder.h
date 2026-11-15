@@ -25,19 +25,24 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
-namespace nodepp { namespace encoder { namespace key {
+namespace nodepp { namespace encoder { namespace random {
 
-    inline uchar_64 generate( uchar_64 salt ) {
-    /*---------------*/ uchar_64 mask = (uchar_64)&mask ^ salt;
-    thread_local static uchar_64 seed = (uchar_64)&seed ^ mask;
+    inline uchar_64 generate( uchar_64 seed ) {
         seed ^= seed << 0x11;
         seed ^= seed >> 0x07;
         seed ^= seed << 0x0b; return seed;
     }
 
+}}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace encoder { namespace key {
+
     inline string_t generate( const string_t& alph, int x=32 ){
-        string_t data ( (ulong)x, '\0' ); for( auto &x: data ){
-            x= alph[ generate( (uchar_64) data.get() ) % alph.size() ]; 
+    thread_local static uchar_64 y = (uchar_64) &NODEPP_SHTDWN();
+        string_t data( (ulong)x, '\0' ); for( auto &x: data ){
+             y=random::generate(y); x=alph[y%alph.size()]; 
         } return data;
     }
 
@@ -50,14 +55,14 @@ namespace nodepp { namespace encoder { namespace key {
 namespace nodepp { namespace encoder { namespace hash {
 
     inline uchar_64 get( const string_t& key, int tableSize ) {
-        ulong hash = 0x1505; forEach( x, key ){
-              hash = ((hash << 5) + hash) + x;
-        }     return hash % tableSize;
+        uchar_64 hash = 0x1505; forEach( x, key ){
+                 hash = ((hash << 5) + hash) + x;
+        } return hash % tableSize;
     }
 
-    inline uchar_64 get( int key, int tableSize ){ return key % tableSize; }
+    inline uchar_64 get( uchar_64 key, int tableSize ){ return key % tableSize; }
 
-    inline uchar_64 get( const string_t& key )   { return get( key, NODEPP_HASH_TABLE_SIZE ); }
+    inline uchar_64 get( const string_t& key ){ return get( key, NODEPP_HASH_TABLE_SIZE ); }
 
 }}}
 
@@ -66,19 +71,13 @@ namespace nodepp { namespace encoder { namespace hash {
 namespace nodepp { namespace encoder { namespace XOR {
 
     inline string_t atob( const string_t& data, const string_t& key ){
-        auto  tmp= data.copy();
-        ulong pos= 0; forEach( x, tmp ) {
-            x = x^ key[pos]; ++pos;
-            pos %= key.size();
+        auto tmp = data.copy(); ulong pos= 0; forEach( x, tmp ) {
+            x = x^ key[pos]; ++pos; pos %= key.size();
         }   return tmp;
     }
 
-    inline string_t btoa( const string_t& data, const string_t& key ){
-        auto  tmp= data.copy();
-        ulong pos= 0; forEach( x, tmp ) {
-            x = x^ key[pos]; ++pos;
-            pos %= key.size();
-        }   return tmp;
+    inline string_t btoa( const string_t& data, const string_t& key ){ 
+        return atob( data, key ); 
     }
 
 }}}
