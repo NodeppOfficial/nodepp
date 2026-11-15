@@ -432,12 +432,6 @@ public:
         while( n != nullptr && y--!=0 ){ n=n->next; } return n;
     }
 
-    NODE* get_node( void* x ) const noexcept {
-        if( empty() )/*----*/{ return nullptr; }
-        auto n = first(); while( n != nullptr ){
-        if ( n == x ) { break; } n  = n->next; } return n;
-    }
-
     NODE* as( void* x ) const noexcept {
         if ( x == nullptr ){ return nullptr; }
         auto y = type::cast<NODE>(x);
