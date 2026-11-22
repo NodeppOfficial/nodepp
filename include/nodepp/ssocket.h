@@ -27,15 +27,15 @@ public: ptr_t<ssl_t> ssl;
     
     /*─······································································─*/
 
-    ssocket_t( socket_t cli ) noexcept : socket_t( cli ), ssl( new ssl_t() ){}
-
     ssocket_t( ssl_t ssl, int df, ulong size=NODEPP_CHUNK_SIZE ) noexcept :
     socket_t ( df, size ), ssl( new ssl_t( ssl, df ) ) {}
 
-    ssocket_t( int AF, int SOCK, int IPPROTO ) noexcept : 
-    socket_t ( AF, SOCK, IPPROTO ) , ssl( new ssl_t() ){}
+    ssocket_t( socket_t cli ) noexcept : socket_t( cli ), ssl( 0UL ){}
 
-    ssocket_t() noexcept : socket_t(), ssl( new ssl_t() ) {}
+    ssocket_t( int AF, int SOCK, int IPPROTO ) noexcept : 
+    socket_t ( AF, SOCK, IPPROTO ) , ssl( 0UL ){}
+
+    ssocket_t() noexcept : socket_t(), ssl( 0UL ) {}
 
     /*─······································································─*/
 

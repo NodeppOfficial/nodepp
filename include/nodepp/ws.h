@@ -33,7 +33,7 @@ protected:
 public:
 
     template< class... T >
-    ws_t( const T&... args ) noexcept : socket_t( args... ), ws( 0UL ){}
+    ws_t( T... args ) noexcept : socket_t( args... ), ws( 0UL ){}
 
     /*─······································································─*/
 
@@ -68,13 +68,23 @@ public:
 
 namespace nodepp { namespace ws {
 
+    inline expected_t<ws_t,except_t> bind( http_t& raw ){
+        if( generator::ws::bind( raw )>0 ){
+            ws_t cli = socket_t( raw ); 
+            stream::pipe /*-*/ ( cli );
+            cli.set_frame_mask( false ); return cli;
+        }   return except_t( "not WS handshake" );
+    }
+
+    /*─······································································─*/
+
     inline tcp_t server( const tcp_t& skt ){ 
     skt.onSocket([=]( ptr_t<tcp_t> self, socket_t raw ){
 
         http_t hrv = raw;
         ws_t   cli = raw; cli.set_frame_mask( false );
 
-        if( !generator::ws::server( hrv ) )
+        if( generator::ws::server( hrv )==-1 )
           { self->onConnect.skip(); return; }
 
         process::add([=](){ 
@@ -102,7 +112,7 @@ namespace nodepp { namespace ws {
         http_t hrv = raw;
         ws_t   cli = raw; cli.set_frame_mask( true );
 
-        if( !generator::ws::client( hrv, uri ) )
+        if( generator::ws::client( hrv, uri )==-1 )
           { self->onConnect.skip(); return; }
 
         process::add([=](){ 

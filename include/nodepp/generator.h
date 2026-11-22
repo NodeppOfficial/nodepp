@@ -687,34 +687,38 @@ namespace nodepp { namespace generator { namespace ws {
 
     /*─······································································─*/
 
-    template< class T > bool server( T& cli ) { do {
-        auto data = cli.read(); int c=0; 
-        cli.set_borrow( data );
+    template< class T > int bind( T& cli ) {
+    if( cli.headers.has("Sec-Websocket-Key") ){
 
-        while((c=cli.read_header())==1 ){
-        if   ( cli.is_waiting() ){ process::next(); }}
-        
-        if( c!=0 ) /*----------------*/ { break; }
-        if( cli.headers.has("Sec-Websocket-Key") ){
+        string_t sec = cli.headers["Sec-Websocket-Key"];
+            auto sha = crypto::hash::SHA1(); sha.update( sec+ NODEPP_WS_SECRET );
+        string_t enc = encoder::base64::atob( encoder::base16::btoa(sha.get()) );
 
-            string_t sec = cli.headers["Sec-Websocket-Key"];
-                auto sha = crypto::hash::SHA1(); sha.update( sec + NODEPP_WS_SECRET );
-            string_t enc = encoder::base64::atob( encoder::base16::btoa(sha.get()) );
+        cli.write_header( 101, header_t({
+            { "Sec-Websocket-Accept", enc },
+            { "Connection", "upgrade"     },
+            { "Upgrade"   , "websocket"   }
+        }) );
 
-            cli.write_header( 101, header_t({
-                { "Sec-Websocket-Accept", enc },
-                { "Connection", "upgrade"     },
-                { "Upgrade"   , "websocket"   }
-            }) );
-
-            cli.stop(); return true;
-        }   cli.set_borrow( data );
-
-    } while(0); return false; }
+    return 1; } return -1; }
 
     /*─······································································─*/
 
-    template< class T > bool client( T& cli, const string_t& url ) { do {
+    template< class T > int server( T& cli ) { do {
+        int c=0; auto data = cli.read(); cli.set_borrow( data );
+
+        while(( c=cli.read_header() )==1){
+        if( cli.is_waiting() ){ process::next(); }}
+        
+        if( c!=0 ) /*----------------*/ { break; }
+        if( bind(cli)>0 ){ cli.stop(); return 1; }
+        cli.set_borrow( data );
+
+    } while(0); return -1; }
+
+    /*─······································································─*/
+
+    template< class T > int client( T& cli, const string_t& url ) { do {
         string_t hsh = encoder::key::generate("abcdefghiABCDEFGHI0123456789",22);
         string_t key = string::format("%s==",hsh.data());
 
@@ -732,12 +736,12 @@ namespace nodepp { namespace generator { namespace ws {
         if   ( cli.is_waiting() ){ process::next(); }}
 
         if( c != 0 ){
-            cli.onError.emit("Could not connect to server");
+            cli.onError.emit("Can't connect to WS Server");
             cli.close(); break;
         }
 
         if( cli.status != 101 ){
-            cli.onError.emit(string::format("Can't connect to WS Server -> status %d",cli.status));
+            cli.onError.emit("Can't connect to WS Server");
             cli.close(); break;
         }
 
@@ -750,11 +754,11 @@ namespace nodepp { namespace generator { namespace ws {
             if( dta != enc ){
                 cli.onError.emit("secret key does not match"); 
                 cli.close(); break;
-            }   cli.stop (); return true;
+            }   cli.stop (); return 1;
 
         }
 
-    } while(0); return false; }
+    } while(0); return -1; }
 
     /*─······································································─*/
 
@@ -770,11 +774,11 @@ namespace nodepp { namespace generator { namespace ws {
 
     protected:
 
-        bool read_ws_frame( const string_t& borrow, ulong& size ) { 
+        int read_ws_frame( const string_t& borrow, ulong& size ) { 
 
             frame={0}; size=0;
 
-            if ( borrow.size() < 2 ){ return false; } do { 
+            if ( borrow.size() < 2 ){ return -1; } do { 
 
                 auto y = borrow[size]; size++;
                 frame.FIN = ( y & 0x80 ) !=0 ;
@@ -794,25 +798,25 @@ namespace nodepp { namespace generator { namespace ws {
 
                 auto len = sizeof(uchar_16);
                 auto raw = (uchar_16*)( borrow.get() + size );
-                if ( borrow.size() < size + len ){ frame = {0}; return false; }
+                if ( borrow.size() < size + len ){ frame = {0}; return -1; }
                 frame.LEN = encoder::endian::to_big_endian( raw[0] ); size += len;
 
             } elif( frame.LEN == 127 ) { frame.LEN = 0;
 
                 auto len = sizeof(uchar_64);
                 auto raw = (uchar_64*)( borrow.get() + size );
-                if ( borrow.size() < size + len ){ frame = {0}; return false; }
+                if ( borrow.size() < size + len ){ frame = {0}; return -1; }
                 frame.LEN = encoder::endian::to_big_endian( raw[0] ); size += len;
 
             }}
 
             if( frame.MSK == 1 ){
-            if( borrow.size() < size + sizeof(uchar_32) ){ frame = {0}; return false; }
+            if( borrow.size() < size + sizeof(uchar_32) ){ frame = {0}; return -1; }
                 uchar_32* mem = (uchar_32*)( borrow.get()+ size );
                 frame.KEY = type::cast<uchar_32>( *mem ) ; size += sizeof(uchar_32); 
             }
 
-        return true; }
+        return 1; }
         
         string_t pong_frame() const noexcept { return ptr_t<char>({ 0x8A, 0x00 }); }
         string_t ping_frame() const noexcept { return ptr_t<char>({ 0x89, 0x00 }); }
@@ -826,7 +830,7 @@ namespace nodepp { namespace generator { namespace ws {
         auto &bff = borrow;
 
         do{ if( !bff.empty() ){ if( frame.LEN ==0 ){
-            if( !read_ws_frame( bff, size ) ){ break; }
+            if( read_ws_frame( bff, size )==-1 ){ break; }
 
             bff.ptr().slice( size, (ulong) -1 ); key = 0;
 

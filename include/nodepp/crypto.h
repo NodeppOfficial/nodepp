@@ -1231,61 +1231,61 @@ namespace nodepp { namespace crypto { namespace hmac {
 namespace nodepp { namespace crypto { namespace encrypt {
 
     class RSA : public rsa_t { public: template< class... T > 
-          RSA ( const T&... args ) : rsa_t( args... ) {}
+          RSA ( T... args ) : rsa_t( args... ) {}
     };
 
     /*─······································································─*/
     
     class XOR : public xor_t { public: template< class... T >
-          XOR ( const T&... args ) : xor_t( args... ) {}
+          XOR ( T... args ) : xor_t( args... ) {}
     };
 
     /*─······································································─*/
     
     class DES_CBC : public encrypt_t { public: template< class... T >
-          DES_CBC ( const T&... args ) : encrypt_t( args..., EVP_des_ede_cbc() ) {}
+          DES_CBC ( T... args ) : encrypt_t( args..., EVP_des_ede_cbc() ) {}
     };
     
     class DES_ECB : public encrypt_t { public: template< class... T >
-          DES_ECB ( const T&... args ) : encrypt_t( args..., EVP_des_ede_ecb() ) {}
+          DES_ECB ( T... args ) : encrypt_t( args..., EVP_des_ede_ecb() ) {}
     };
 
     /*─······································································─*/
     
     class AES_128_CBC : public encrypt_t { public: template< class... T >
-          AES_128_CBC( const T&... args ) : encrypt_t( args..., EVP_aes_128_cbc() ) {}
+          AES_128_CBC( T... args ) : encrypt_t( args..., EVP_aes_128_cbc() ) {}
     };
     
     class AES_192_CBC : public encrypt_t { public: template< class... T >
-          AES_192_CBC( const T&... args ) : encrypt_t( args..., EVP_aes_192_cbc() ) {}
+          AES_192_CBC( T... args ) : encrypt_t( args..., EVP_aes_192_cbc() ) {}
     };
     
     class AES_256_CBC : public encrypt_t { public: template< class... T >
-          AES_256_CBC( const T&... args ) : encrypt_t( args..., EVP_aes_256_cbc() ) {}
+          AES_256_CBC( T... args ) : encrypt_t( args..., EVP_aes_256_cbc() ) {}
     };
 
     /*─······································································─*/
     
     class AES_128_ECB : public encrypt_t { public: template< class... T >
-          AES_128_ECB( const T&... args ) : encrypt_t( args..., EVP_aes_128_ecb() ) {}
+          AES_128_ECB( T... args ) : encrypt_t( args..., EVP_aes_128_ecb() ) {}
     };
     
     class AES_192_ECB : public encrypt_t { public: template< class... T >
-          AES_192_ECB( const T&... args ) : encrypt_t( args..., EVP_aes_192_ecb() ) {}
+          AES_192_ECB( T... args ) : encrypt_t( args..., EVP_aes_192_ecb() ) {}
     };
     
     class AES_256_ECB : public encrypt_t { public: template< class... T >
-          AES_256_ECB( const T&... args ) : encrypt_t( args..., EVP_aes_256_ecb() ) {}
+          AES_256_ECB( T... args ) : encrypt_t( args..., EVP_aes_256_ecb() ) {}
     };
 
     /*─······································································─*/
     
     class TRIPLE_DES_CBC : public encrypt_t { public: template< class... T >
-          TRIPLE_DES_CBC ( const T&... args ) : encrypt_t( args..., EVP_des_ede3_cbc() ) {}
+          TRIPLE_DES_CBC ( T... args ) : encrypt_t( args..., EVP_des_ede3_cbc() ) {}
     };
     
     class TRIPLE_DES_ECB : public encrypt_t { public: template< class... T >
-          TRIPLE_DES_ECB ( const T&... args ) : encrypt_t( args..., EVP_des_ede3_ecb() ) {}
+          TRIPLE_DES_ECB ( T... args ) : encrypt_t( args..., EVP_des_ede3_ecb() ) {}
     };
 
 }}}
@@ -1295,61 +1295,61 @@ namespace nodepp { namespace crypto { namespace encrypt {
 namespace nodepp { namespace crypto { namespace decrypt {
 
     class RSA : public rsa_t { public: template< class... T > 
-          RSA ( const T&... args ) : rsa_t( args... ) {}
+          RSA ( T... args ) : rsa_t( args... ) {}
     };
 
     /*─······································································─*/
     
     class XOR : public xor_t { public: template< class... T >
-          XOR ( const T&... args ) : xor_t( args... ) {}
+          XOR ( T... args ) : xor_t( args... ) {}
     };
 
     /*─······································································─*/
     
     class DES_CBC : public decrypt_t { public: template< class... T >
-          DES_CBC ( const T&... args ) : decrypt_t( args..., EVP_des_ede_cbc() ) {}
+          DES_CBC ( T... args ) : decrypt_t( args..., EVP_des_ede_cbc() ) {}
     };
     
     class DES_ECB : public decrypt_t { public: template< class... T >
-          DES_ECB ( const T&... args ) : decrypt_t( args..., EVP_des_ede_ecb() ) {}
+          DES_ECB ( T... args ) : decrypt_t( args..., EVP_des_ede_ecb() ) {}
     };
 
     /*─······································································─*/
     
     class AES_128_CBC : public decrypt_t { public: template< class... T >
-          AES_128_CBC( const T&... args ) : decrypt_t( args..., EVP_aes_128_cbc() ) {}
+          AES_128_CBC( T... args ) : decrypt_t( args..., EVP_aes_128_cbc() ) {}
     };
     
     class AES_192_CBC : public decrypt_t { public: template< class... T >
-          AES_192_CBC( const T&... args ) : decrypt_t( args..., EVP_aes_192_cbc() ) {}
+          AES_192_CBC( T... args ) : decrypt_t( args..., EVP_aes_192_cbc() ) {}
     };
     
     class AES_256_CBC : public decrypt_t { public: template< class... T >
-          AES_256_CBC( const T&... args ) : decrypt_t( args..., EVP_aes_256_cbc() ) {}
+          AES_256_CBC( T... args ) : decrypt_t( args..., EVP_aes_256_cbc() ) {}
     };
 
     /*─······································································─*/
     
     class AES_128_ECB : public decrypt_t { public: template< class... T >
-          AES_128_ECB( const T&... args ) : decrypt_t( args..., EVP_aes_128_ecb() ) {}
+          AES_128_ECB( T... args ) : decrypt_t( args..., EVP_aes_128_ecb() ) {}
     };
     
     class AES_192_ECB : public decrypt_t { public: template< class... T >
-          AES_192_ECB( const T&... args ) : decrypt_t( args..., EVP_aes_192_ecb() ) {}
+          AES_192_ECB( T... args ) : decrypt_t( args..., EVP_aes_192_ecb() ) {}
     };
     
     class AES_256_ECB : public decrypt_t { public: template< class... T >
-          AES_256_ECB( const T&... args ) : decrypt_t( args..., EVP_aes_256_ecb() ) {}
+          AES_256_ECB( T... args ) : decrypt_t( args..., EVP_aes_256_ecb() ) {}
     };
 
     /*─······································································─*/
     
     class TRIPLE_DES_CBC : public decrypt_t { public: template< class... T >
-          TRIPLE_DES_CBC ( const T&... args ) : decrypt_t( args..., EVP_des_ede3_cbc() ) {}
+          TRIPLE_DES_CBC ( T... args ) : decrypt_t( args..., EVP_des_ede3_cbc() ) {}
     };
     
     class TRIPLE_DES_ECB : public decrypt_t { public: template< class... T >
-          TRIPLE_DES_ECB ( const T&... args ) : decrypt_t( args..., EVP_des_ede3_ecb() ) {}
+          TRIPLE_DES_ECB ( T... args ) : decrypt_t( args..., EVP_des_ede3_ecb() ) {}
     };
 
 }}}
@@ -1387,41 +1387,41 @@ namespace nodepp { namespace crypto { namespace decoder {
 namespace nodepp { namespace crypto { namespace curve { //openssl ecparam -list_curves
     
     class PRIME256V1: public ec_t { public: template< class... T >
-          PRIME256V1( const T&... args ) noexcept : ec_t( args..., NID_X9_62_prime256v1 ) {}
+          PRIME256V1( T... args ) noexcept : ec_t( args..., NID_X9_62_prime256v1 ) {}
     };
     
     class PRIME192V1 : public ec_t { public: template< class... T >
-          PRIME192V1( const T&... args ) noexcept : ec_t( args..., NID_X9_62_prime192v1 ) {}
+          PRIME192V1( T... args ) noexcept : ec_t( args..., NID_X9_62_prime192v1 ) {}
     };
 
     /*─······································································─*/
     
     class SECP128R1 : public ec_t { public: template< class... T >
-          SECP128R1( const T&... args ) noexcept : ec_t( args..., NID_secp128r1 ) {}
+          SECP128R1( T... args ) noexcept : ec_t( args..., NID_secp128r1 ) {}
     };
     
     class SECP128R2 : public ec_t { public: template< class... T >
-          SECP128R2( const T&... args ) noexcept : ec_t( args..., NID_secp128r2 ) {}
+          SECP128R2( T... args ) noexcept : ec_t( args..., NID_secp128r2 ) {}
     };
 
     /*─······································································─*/
     
     class SECP160R1 : public ec_t { public: template< class... T >
-          SECP160R1( const T&... args ) noexcept : ec_t( args..., NID_secp160r1 ) {}
+          SECP160R1( T... args ) noexcept : ec_t( args..., NID_secp160r1 ) {}
     };
     
     class SECP160R2 : public ec_t { public: template< class... T >
-          SECP160R2( const T&... args ) noexcept : ec_t( args..., NID_secp160r2 ) {}
+          SECP160R2( T... args ) noexcept : ec_t( args..., NID_secp160r2 ) {}
     };
     
     class SECP160K1 : public ec_t { public: template< class... T >
-          SECP160K1( const T&... args ) noexcept : ec_t( args..., NID_secp160k1 ) {}
+          SECP160K1( T... args ) noexcept : ec_t( args..., NID_secp160k1 ) {}
     };
 
     /*─······································································─*/
     
     class SECP256K1 : public ec_t { public: template< class... T >
-          SECP256K1( const T&... args ) noexcept : ec_t( args..., NID_secp256k1 ) {}
+          SECP256K1( T... args ) noexcept : ec_t( args..., NID_secp256k1 ) {}
     };
 
 }}}
@@ -1431,11 +1431,11 @@ namespace nodepp { namespace crypto { namespace curve { //openssl ecparam -list_
 namespace nodepp { namespace crypto { namespace sign {
     
     class DSA : public dsa_t { public: template< class... T >
-          DSA ( const T&... args ) : dsa_t ( args... ) {}
+          DSA ( T... args ) : dsa_t ( args... ) {}
     };
     
     class DH : public dh_t { public: template< class... T >
-          DH ( const T&... args ) : dh_t ( args... ) {}
+          DH ( T... args ) : dh_t ( args... ) {}
     };
 
 }}}  
@@ -1445,7 +1445,7 @@ namespace nodepp { namespace crypto { namespace sign {
 namespace nodepp { namespace crypto { namespace certificate {
 
     class X509 : public X509_t { public: template< class... T > 
-          X509 ( const T&... args ) : X509_t ( args... ) {}
+          X509 ( T... args ) : X509_t ( args... ) {}
     };
 
 }}}

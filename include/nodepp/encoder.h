@@ -200,7 +200,8 @@ namespace nodepp { namespace encoder { namespace base64 {
         queue_t<char> out; int pos1 = 0, pos2 = -6;
 
         for  ( uchar c: inp ) {
-               pos1= ( pos1 << 8 ) + c; pos2 += 8;
+               pos1  = ( pos1 << 8 ) + c; 
+               pos2 += 8;
         while( pos2 >= 0 ) {
                out.push(NODEPP_BASE64[(pos1>>pos2)&0x3F]);
                pos2 -= 6;
@@ -217,9 +218,9 @@ namespace nodepp { namespace encoder { namespace base64 {
         queue_t<char> out; int pos1=0, pos2=-8; 
         int T[256]; type::fill( T, T+256, -1 );
 
-        for( int i=0; i<64; ++i ){ T[NODEPP_BASE64[i]]=i; }
-        for( uchar c: in ) { if ( T[c]==-1 ){ break; }
-             pos1 = ( pos1 << 6 )+T[c] ; pos2 += 6;
+        for( int i=0;i<64;++i ){ T[NODEPP_BASE64[i&0x3F]&0xFF]=i; }
+        for( uchar c: in ){ if(  T[c&0xFF]==-1 ){ break; }
+             pos1 = ( pos1<<6 )+ T[c&0xFF] ; pos2 += 6;
         if ( pos2 >= 0 ) {
              out.push(char((pos1>>pos2)&0xFF));
              pos2 -= 8;
@@ -269,19 +270,19 @@ namespace nodepp { namespace encoder { namespace base58 {
 
         if ( message.empty() ){ return nullptr; } 
         int T[256]; type::fill( T, T+256, -1 );
-        for( int i=0; i<58; i++ ){ T[ (uchar) NODEPP_BASE58[i] ] = i; }
+        for( int i=0; i<58; i++ ){ T[uchar(NODEPP_BASE58[i])&0xFF ] = i; }
         
         array_t<uchar> nmb;
         queue_t<char>  out, zrs;
 
-        for( auto &x: nmb ){ if( x != NODEPP_BASE58[0] ){ break; }
+        for( auto &x: nmb ){ if( x!=NODEPP_BASE58[0] ){ break; }
             zrs.push( 0x00 ); nmb.shift();
         }
         
         for( ulong x=zrs.size(); x<message.size(); x++ ){
-        if ( T[message[x]] < 0 ){ continue; } 
+        if ( T[message[x]&0xFF]<0 ){ continue; } 
 
-            uchar_32 borrow = T[message[x]];
+            uchar_32 borrow = T[message[x]&0xFF];
 
             for( auto &x: nmb ){
                  uchar_32 current = ( x * 58 ) + borrow;
