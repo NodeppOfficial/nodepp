@@ -49,7 +49,8 @@ public: handler_t() : mask( (uchar_64) this ) {}
         if  ( que.empty() )/**/{ return -1; }
         auto  ptr = que.as( btoa( address ) );
         if  ( ptr == nullptr ) { return -1; }
-        ptr->data = ptr_t<T>( 0UL, T(value) );
+        if  (!ptr->data.null()){ ptr->data[0]= value; }
+        else /*--------------*/{ ptr->data   = ptr_t<T>( 0UL, T(value) ); }
     return 1; }
 
     ptr_t<T> read( uchar_64 address ) const noexcept {
