@@ -73,15 +73,12 @@ protected:
     /*─······································································─*/
 
     template< class T >
-    typename type::enable_if< type::is_integral< typename type::remove_const< typename type::remove_reference<T>::type >::type >::value, uchar_64 >::type
-    get_key( T& id ) const noexcept { return (uchar_64) id; }
+    typename type::enable_if< !type::is_integral< typename type::remove_const< typename type::remove_reference<T>::type >::type >::value, uchar_64 >::type
+    get_key( T& id ) const noexcept { return encoder::hash::get( id, SIZE ); }
 
     template< class T >
-    typename type::enable_if< !type::is_integral< typename type::remove_const< typename type::remove_reference<T>::type >::type >::value, uchar_64 >::type
-    get_key( T& id ) const noexcept {
-        auto   key = string::to_string ( id );
-        return encoder::hash::get( key,SIZE );
-    }
+    typename type::enable_if< type::is_integral< typename type::remove_const< typename type::remove_reference<T>::type >::type >::value, uchar_64 >::type
+    get_key( T& id ) const noexcept { return uchar_64( id ); }
 
     /*─······································································─*/
 

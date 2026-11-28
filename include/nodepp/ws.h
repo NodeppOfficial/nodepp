@@ -26,7 +26,7 @@ namespace nodepp { class ws_t : public socket_t {
 protected:
 
     struct NODE {
-        generator::ws::read  read ; uchar_32 mask;
+        generator::ws::read  read ;
         generator::ws::write write;
     };  ptr_t<NODE> ws;
 
@@ -79,20 +79,17 @@ namespace nodepp { namespace ws {
     /*─······································································─*/
 
     inline tcp_t server( const tcp_t& skt ){ 
-    skt.onSocket([=]( ptr_t<tcp_t> self, socket_t raw ){
+    skt.onSocket([=]( ptr_t<tcp_t> self, ws_t cli ){
 
-        http_t hrv = raw;
-        ws_t   cli = raw; cli.set_frame_mask( false );
+        http_t raw = cli; cli.set_frame_mask( false );
+        if( generator::ws::server( raw )>0 ){ 
 
-        if( generator::ws::server( hrv )==-1 )
-          { self->onConnect.skip(); return; }
-
-        process::add([=](){ 
             cli.set_timeout(0); cli.resume();
             self->onConnect.resume( );
             self->onConnect.emit(cli);
             stream::pipe /*--*/ (cli);
-        return -1; });
+
+        }   self->onConnect.skip();
 
     }); return skt; }
 
@@ -107,20 +104,17 @@ namespace nodepp { namespace ws {
 
     inline tcp_t client( const string_t& uri, agent_t* opt=nullptr ){
         auto skt = tcp::client( opt ); 
-    skt.onSocket.once([=]( ptr_t<tcp_t> self, socket_t raw ){
+    skt.onSocket.once([=]( ptr_t<tcp_t> self, ws_t cli ){
 
-        http_t hrv = raw;
-        ws_t   cli = raw; cli.set_frame_mask( true );
+        http_t raw = cli; cli.set_frame_mask( true );
+        if( generator::ws::client( raw, uri )>0 ){
 
-        if( generator::ws::client( hrv, uri )==-1 )
-          { self->onConnect.skip(); return; }
-
-        process::add([=](){ 
             cli.set_timeout(0); cli.resume();
             self->onConnect.resume( );
             self->onConnect.emit(cli);
             stream::pipe /*--*/ (cli);
-        return -1; });
+            
+        }   self->onConnect.skip();
 
     }); skt.connect( url::rawname(uri), url::port(uri) ); return skt; }
 

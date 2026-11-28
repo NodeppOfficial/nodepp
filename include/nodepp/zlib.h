@@ -68,9 +68,7 @@ protected:
 public:
 
     event_t<except_t>  onError;
-    event_t<>          onDrain;
     event_t<>          onClose;
-    event_t<>          onOpen;
     event_t<string_t>  onData;
     
     /*─······································································─*/
@@ -85,12 +83,11 @@ public:
 
     /*─······································································─*/
     
-    void free() const noexcept {
-        if( is_closed() ){ return; } 
-        obj->state &=~ STATE_ZLIB_OPEN;
-        onDrain.emit (); onClose.emit ();
-        onDrain.clear(); onClose.clear();
-    }
+    void free() const noexcept { if( !is_closed() ){
+        obj->state &=~ STATE::STATE_ZLIB_OPEN;
+        onClose.emit (); onData .clear(); 
+        onError.clear(); onClose.clear();
+    }}
     
     /*─······································································─*/
 
@@ -104,58 +101,126 @@ public:
         if( is_closed() || data.size() == 0 || is_deflate() ){ return nullptr; }
 
         if( !is_inflate() ){ if( inflateInit2( &obj->fd, obj->type ) != Z_OK ){ 
-            onError.emit( "Failed to initialize zlib for decompression." ); close(); return nullptr;
-        }   onOpen .emit(); obj->state |= STATE::STATE_ZLIB_INFLATE; } string_t output; ulong size =0;
+            onError.emit( "Failed to initialize zlib for decompression." ); 
+            close(); return nullptr;
+        }   obj->state |= STATE::STATE_ZLIB_INFLATE; } 
         
-            obj->fd.avail_in = data.size();
-            obj->fd.avail_out= obj->bff.size();
-            obj->fd.next_in  = (Bytef*)data.get();
-            obj->fd.next_out = (Bytef*)obj->bff.get();
-        
-            auto x = ::inflate( &obj->fd, mode );
+        obj->fd.next_in  = (Bytef*)data.get();
+        obj->fd.avail_in = data.size();
 
-            if(( size=obj->bff.size()-obj->fd.avail_out )>0 ){
+        string_t output; int x; do {
+
+            obj->fd.next_out  = (Bytef*)obj->bff.get();
+            obj->fd.avail_out = obj->bff.size();
+
+            x = ::inflate( &obj->fd, mode );
+
+            ulong size = obj->bff.size() - obj->fd.avail_out;
+
+            if( size > 0 ){
                 auto raw = string_t( obj->bff.get(), size );
-            if( onData.empty() ){ output += raw; } else {
-                onData.emit( raw );
-            }}
+            if( onData.empty() ){ output += raw; } else { onData.emit( raw ); }}
 
-            if( x == Z_STREAM_END ){ return output; } elif( x < 0 ) {
-                onError.emit( except_t( "Compression failed:", obj->fd.msg ) );
-                close(); return nullptr;
-            }
+            if( x < 0 ) {
+                onError.emit( except_t( "Decompression failed:", obj->fd.msg ) );
+            close(); break; }
 
-        return output;
+            if( obj->fd.avail_in==0 && obj->fd.avail_out>0 ){ break; }
+
+        } while( true ); return output;
         
     }
+    
+    /*─······································································─*/
+
+    string_t end_inflate() const noexcept {
+        if( is_closed() || !is_inflate() ){ return nullptr; }
+
+        string_t output; int x; do {
+
+            obj->fd.next_out  = (Bytef*)obj->bff.get();
+            obj->fd.avail_out = obj->bff.size();
+            obj->fd.next_in   = Z_NULL;
+            obj->fd.avail_in  = 0;
+
+            x = ::inflate( &obj->fd, Z_FINISH );
+
+            ulong size = obj->bff.size() - obj->fd.avail_out;
+
+            if( size > 0 ){
+                auto raw = string_t( obj->bff.get(), size );
+            if( onData.empty() ){ output += raw; } else { onData.emit( raw ); }}
+
+            if( x < 0 ) {
+                onError.emit( except_t( "Decompression failed:", obj->fd.msg ) );
+            close(); break; }
+
+        } while( x == Z_OK ); return output;
+
+    }
+    
+    /*─······································································─*/
 
     string_t update_deflate( string_t data, int mode=Z_PARTIAL_FLUSH ) const noexcept { 
         if( is_closed() || data.size() == 0 || is_inflate() ){ return nullptr; }
         
         if( !is_deflate() ){ if( deflateInit2( &obj->fd, Z_DEFAULT_COMPRESSION, Z_DEFLATED, obj->type, 8, Z_DEFAULT_STRATEGY ) != Z_OK ){ 
-            onError.emit( "Failed to initialize zlib for compression." ); close(); return nullptr;
-        }   onOpen .emit(); obj->state |= STATE::STATE_ZLIB_DEFLATE; } string_t output; ulong size =0;
-
-            obj->fd.avail_in = data.size();
-            obj->fd.avail_out= obj->bff.size();
-            obj->fd.next_in  = (Bytef*)data.get();
-            obj->fd.next_out = (Bytef*)obj->bff.get();
+            onError.emit( "Failed to initialize zlib for compression." ); 
+            close(); return nullptr;
+        }   obj->state |= STATE::STATE_ZLIB_DEFLATE; } 
         
-            auto x = ::deflate( &obj->fd, mode );
+        obj->fd.next_in  = (Bytef*)data.get();
+        obj->fd.avail_in = data.size();
+        
+        string_t output; int x; do {
 
-            if(( size=obj->bff.size()-obj->fd.avail_out )>0 ){
+            obj->fd.next_out  = (Bytef*)obj->bff.get();
+            obj->fd.avail_out = obj->bff.size();
+
+            x = ::deflate( &obj->fd, mode );
+
+            ulong size = obj->bff.size() - obj->fd.avail_out;
+            
+            if( size > 0 ){
                 auto raw = string_t( obj->bff.get(), size );
-            if( onData.empty() ){ output += raw; } else {
-                onData.emit( raw );
-            }}
+            if( onData.empty() ){ output += raw; } else { onData.emit( raw ); }}
 
-            if( x == Z_STREAM_END ){ return output; } elif( x < 0 ) {
+            if( x < 0 ) {
                 onError.emit( except_t( "Compression failed:", obj->fd.msg ) );
-                close(); return nullptr;
-            }
+            close(); break; }
 
-        return output;
-        
+            if( obj->fd.avail_in==0 && obj->fd.avail_out>0 ){ break; }
+
+        } while( true ); return output;
+     
+    }
+
+    /*─······································································─*/
+
+    string_t end_deflate() const noexcept {
+        if( is_closed() || !is_deflate() ){ return nullptr; }
+
+        string_t output; int x; do {
+
+            obj->fd.next_out  = (Bytef*)obj->bff.get();
+            obj->fd.avail_out = obj->bff.size();
+            obj->fd.next_in   = Z_NULL;
+            obj->fd.avail_in  = 0;
+
+            x = ::deflate( &obj->fd, Z_FINISH );
+
+            ulong size = obj->bff.size() - obj->fd.avail_out;
+
+            if( size > 0 ){
+                auto raw = string_t( obj->bff.get(), size );
+            if( onData.empty() ){ output += raw; } else { onData.emit( raw ); }}
+
+            if( x < 0 ) {
+                onError.emit( except_t( "Compression failed:", obj->fd.msg ) );
+            close(); break; }
+
+        } while( x == Z_OK ); return output;
+
     }
 
 };}

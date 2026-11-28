@@ -90,11 +90,11 @@ protected:
 
     /*─······································································─*/
 
-    bool is_blocked( int& c ) const noexcept {
-    if ( c >= 0 ){ return 0; } auto error = os::error(); return (
+    bool is_blocked( int *c, int error ) const noexcept { 
+    if ( c[0] > 0 ){ return 0; } return (
          error == EWOULDBLOCK || error == EINPROGRESS ||
-         error == EALREADY    || error == EAGAIN
-    );}
+         error == EALREADY    || error == EAGAIN      
+    ); }
 
     /*─······································································─*/
 
@@ -309,7 +309,7 @@ public:
     virtual int __read( char* bf, const ulong& sx ) const noexcept {
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
         int  c = ::read( obj->fd, bf, sx );
-        auto b = is_blocked( c );
+        auto b = is_blocked( &c, errno );
 
         obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
                          obj->state &~STATE::FS_STATE_WAITING;
@@ -320,7 +320,7 @@ public:
     virtual int __write( char* bf, const ulong& sx ) const noexcept {
         if( is_closed() ){ return -1; } if( sx==0 ){ return 0; }
         int  c = ::write( obj->fd, bf, sx );
-        auto b = is_blocked( c );
+        auto b = is_blocked( &c, errno );
 
         obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
                          obj->state &~STATE::FS_STATE_WAITING;

@@ -374,7 +374,11 @@ namespace nodepp { namespace generator { namespace zlib {
                 borrow = zlb.update_inflate(_read.data);
             coWait( _write( &out, borrow )==1 ); if( _write.state<=0 ){ break; }
                 inp.onData.emit( borrow );
-            }   
+            } if( _write.state>0 ) {
+                borrow = zlb.end_inflate();
+            coWait( _write( &out, borrow )==1 ); if( _write.state<=0 ){ break; }
+                inp.onData.emit( borrow );
+            }
             
             inp.close(); out.close();
 
@@ -389,7 +393,10 @@ namespace nodepp { namespace generator { namespace zlib {
             coWait( _read(&inp)==1 ); if( _read.state<=0 ){ break; }
                 borrow = zlb.update_inflate( _read.data );
                 inp.onData.emit( borrow );
-            }   
+            } do {
+                borrow = zlb.end_inflate();
+                inp.onData.emit( borrow );
+            } while(0); 
             
             inp.close();
 
@@ -416,7 +423,11 @@ namespace nodepp { namespace generator { namespace zlib {
                 borrow = zlb.update_deflate(_read.data);
             coWait( _write( &out, borrow )==1 ); if( _write.state<=0 ){ break; }
                 inp.onData.emit( borrow );
-            }   
+            } if( _write.state>0 ) {
+                borrow = zlb.end_deflate();
+            coWait( _write( &out, borrow )==1 ); if( _write.state<=0 ){ break; }
+                inp.onData.emit( borrow );
+            }
             
             inp.close(); out.close();
         
@@ -431,7 +442,10 @@ namespace nodepp { namespace generator { namespace zlib {
             coWait( _read(&inp)==1 ); if( _read.state<=0 ){ break; }
                 borrow = zlb.update_deflate(_read.data);
                 inp.onData.emit( borrow );
-            }   
+            } do {
+                borrow = zlb.end_deflate();
+                inp.onData.emit( borrow );
+            } while(0); 
             
             inp.close();
 
@@ -512,7 +526,6 @@ namespace nodepp { namespace generator { namespace http {
         int stream_http_stream( T* fd, char* bf, ulong sx, V& mode ){
             
             if( mode.size == 0 ){ data=0; return -1; }
-
             if( borrow.empty() ){
 
                 int c = fd->__read( bf, min( mode.size, (len_t)sx ) );
@@ -740,7 +753,7 @@ namespace nodepp { namespace generator { namespace ws {
             cli.close(); break;
         }
 
-        if( cli.status != 101 ){
+        if( cli.status!= 101 ){
             cli.onError.emit("Can't connect to WS Server");
             cli.close(); break;
         }
@@ -920,30 +933,27 @@ namespace nodepp { namespace generator { namespace ws {
 
         template< class T > 
         coEmit( T* fd, char* bf, const ulong& sx ) {
+        do { if( borrow.empty() ){ size = 0UL; 
 
-            do { if( borrow.empty() ){ size = 0UL; 
+            mask   = fd->get_frame_mask(); ulong sy = write_ws_frame( bf, sx, 0, mask );
+            borrow = string_t( bfx.get(), sy ) + string_t( bf, sx );
 
-                mask   = fd->get_frame_mask(); ulong sy = write_ws_frame( bf, sx, 0, mask );
-                borrow = string_t( bfx.get(), sy ) + string_t( bf, sx );
+            if ( mask > 0 ){ ulong sz=0; auto key = (char*) &mask;
+            for( auto &y: borrow.slice_view( sy ) ){
+                 /**/ y^= key[sz]; sz = ( sz+1 ) % sizeof(uchar_32);
+            }  }
 
-                if ( mask > 0 ){ ulong sz=0; char* key = (char*) &mask;
-                for( auto &y: borrow.slice_view( sy ) ){
-                     /**/ y^= key[sz]; sz = ( sz+1 ) % sizeof(uchar_32);
-                }  }
+        }   int c = fd->_write_( borrow.get(), borrow.size(), &size );
 
-            }   int c = fd->_write_( borrow.get(), borrow.size(), &size );
-
-                if( c==-2 ){ break ; }
-                
-                if( borrow.size ()==size ){ 
-                    borrow.clear();
-                    data = sx; return -1;
-                }
+            if( c==-2 ){ break ; }
             
-                        data = 0; return -1;
-            } while(0); data = 0; return  1;
-
-        }
+            if( borrow.size ()==size ){ 
+                borrow.clear();
+                data = sx; return -1;
+            }
+        
+                    data = 0; return -1;
+        } while(0); data = 0; return  1; }
 
     };
 

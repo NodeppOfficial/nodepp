@@ -71,8 +71,6 @@ protected:
         if( reset ){ obj->timeout = (uchar_32)-1; }
     return obj->timeout; }
 
-    /*─······································································─*/
-
     uchar_32 get_delay_ms() const noexcept {
         ulong tasks= obj->ev_queue.size();
         if(!obj->kv_queue.empty() && tasks==0 ){ 
@@ -80,14 +78,16 @@ protected:
         if( obj.count()> 1 && tasks==0 ){ return -1; }
     return get_timeout(); }
 
+    /*─······································································─*/
+
     void invoker( void* address ) const noexcept {
     if( address == nullptr ){ do {
 
         auto x = obj->kv_queue.get();
 
-        if( x == nullptr ) /*----*/ { /*------*/ return; }
-        if( x->data.event.empty()  ){ remove(x); return; }
+        if( x == nullptr ) /*----------------*/ { break; }
         if( x->data.flag & FLAG::KV_STATE_USED ){ break; }
+        if( x->data.event.empty()  ){ remove(x); return; }
         if( x->data.callback()==-1 ){ remove(x); return; } 
             
             x->data.flag|= FLAG::KV_STATE_USED;
@@ -100,22 +100,22 @@ protected:
 
         if( x == nullptr ) /*----------------*/ { return; }
         if( x->data.flag & FLAG::KV_STATE_USED ){ return; }
-            x->data.flag|= FLAG::KV_STATE_USED;
+            x->data.flag|= FLAG::KV_STATE_USED ;
 
-        auto self = type::bind( this );
+        auto self = type::bind( this ); loop_add([=](){
         
-        loop_add( coroutine::add( COROUTINE(){
-        coBegin
-        
-            do{ if( !self->obj->kv_queue.is_valid(x) ){ return -1; }
-                x->data.event.emit(); switch( x->data.callback() ) {
-                case -1: self->remove(x); /*--------------*/ return -1; break;
-                case  0: x->data.flag&=~FLAG::KV_STATE_USED; return -1; break;
-                case  1: /*-------------------------------*/ return  1; break; 
-            }} while(0);
+            if( self->obj->kv_queue.is_valid(x) ){ do {
+            if( x->data.event.empty() ){ break; }
+                x->data.event.emit (); 
+                
+                switch( x->data.callback() ) {
+                    case  0: x->data.flag&=~FLAG::KV_STATE_USED; return -1; break;
+                    case  1: /*-------------------------------*/ return  1; break; 
+                } 
+            
+            } while(0); self->remove(x); } return -1;
 
-        coFinish
-        })); 
+        }); 
     
     } while(0); }}
 
@@ -139,7 +139,7 @@ public:
 
    ~kernel_t() noexcept { 
         if( obj.count() > 1 || obj->state & FLAG::KV_STATE_CLOSED )
-          { return; } /*----*/ obj->state = FLAG::KV_STATE_CLOSED;
+          { return; } /*----*/ obj->state = FLAG::KV_STATE_CLOSED ;
     }
 
 public:
@@ -182,9 +182,9 @@ public:
             len_t time = timeout==0 ? 0 : process::now() + timeout;
             
             kv.callback = [=](){
+                if( inp.is_closed () ){ return -1; } 
                 if( time!=0 && time<process::now() )
                   { inp.close     () ;  return -1; }
-                if( inp.is_closed () ){ return -1; } 
                 if( inp.is_waiting() ){ return  0; }
             return 1; };
 
@@ -292,10 +292,7 @@ protected:
 
         EPOLLFD event;
 
-        event.events   = id->data.flag & FLAG::KV_STATE_READ 
-                       ? EPOLLIN : EPOLLOUT ;
-        event.events  |= id->data.flag & FLAG::KV_STATE_EDGE
-                       ? EPOLLET : 0x00 ;
+        event.events   = EPOLLIN | EPOLLOUT | EPOLLET;
         event.data.fd  = id->data.fd;
         event.data.ptr = id;
 
@@ -360,9 +357,9 @@ protected:
 
         auto x = obj->kv_queue.get();
 
-        if( x == nullptr ) /*----*/ { /*------*/ return; }
-        if( x->data.event.empty()  ){ remove(x); return; }
+        if( x == nullptr ) /*---------------*/ { return; }
         if( x->data.flag & FLAG::KV_STATE_USED ){ break; }
+        if( x->data.event.empty()  ){ remove(x); return; }
         if( x->data.callback()==-1 ){ remove(x); return; }
             
             x->data.flag|= FLAG::KV_STATE_USED;
@@ -373,24 +370,24 @@ protected:
 
         auto x = obj->kv_queue.as( address );
 
-        if( x == nullptr ) /*----*/ { /*-------*/ return; }
+        if( x == nullptr ) /*----------------*/ { return; }
         if( x->data.flag & FLAG::KV_STATE_USED ){ return; }
-            x->data.flag|= FLAG::KV_STATE_USED;
+            x->data.flag|= FLAG::KV_STATE_USED ;
 
-        auto self = type::bind( this );
+        auto self = type::bind( this ); loop_add([=](){
         
-        loop_add( coroutine::add( COROUTINE(){
-        coBegin
-        
-            do{ if( !self->obj->kv_queue.is_valid(x) ){ return -1; }
-                x->data.event.emit(); switch( x->data.callback() ) {
-                case -1: self->remove(x); /*--------------*/ return -1; break;
-                case  0: x->data.flag&=~FLAG::KV_STATE_USED; return -1; break;
-                case  1: /*-------------------------------*/ return  1; break; 
-            }} while(0);
+            if( self->obj->kv_queue.is_valid(x) ){ do {
+            if( x->data.event.empty() ){ break; }
+                x->data.event.emit (); 
+                
+                switch( x->data.callback() ) {
+                    case  0: x->data.flag&=~FLAG::KV_STATE_USED; return -1; break;
+                    case  1: /*-------------------------------*/ return  1; break; 
+                } 
+            
+            } while(0); self->remove(x); } return -1;
 
-        coFinish
-        })); 
+        });
     
     } while(0); }}
 
@@ -402,7 +399,7 @@ protected:
 
         loop_t  /*-----*/ ev_queue;
         queue_t<kevent_t> kv_queue;
-        uchar_32 /*----*/ timeout ; ptr_t<EPOLLFD> ev;
+        uchar_32 /*----*/ timeout ;
 
        ~NODE(){ ::close( ed ); ::close( pd ); }
     };  ptr_t<NODE> obj;
@@ -411,7 +408,7 @@ public:
 
    ~kernel_t() noexcept { 
         if( obj.count() > 1 || obj->state & FLAG::KV_STATE_CLOSED )
-          { return; } /*----*/ obj->state = FLAG::KV_STATE_CLOSED;
+          { return; } /*----*/ obj->state = FLAG::KV_STATE_CLOSED ;
     }
 
     kernel_t() : obj( 0UL ) {
@@ -419,18 +416,15 @@ public:
         obj->pd = epoll_create1( EPOLL_CLOEXEC ); 
 
     if( obj->pd==-1 || obj->ed==-1 )
-      { NODEPP_THROW_ERROR("Can't Initialize kernel_t"); }
-        obj->ev.resize( NODEPP_MAX_BATCH_SIZE );
-
+      { NODEPP_THROW_ERROR("Can't Initialize kernel_t"); } 
+      
         EPOLLFD event;
         event.data.fd  = obj->ed; 
-        event.data.ptr = nullptr; 
         event.events   = EPOLLIN;
+        event.data.ptr = nullptr; 
 
     if( epoll_ctl( obj->pd, EPOLL_CTL_ADD, obj->ed, &event )==-1 )
       { NODEPP_THROW_ERROR("Can't Initialize kernel_t"); }
-      
-        obj->state = KV_STATE_OPEN;
 
     }
 
@@ -474,9 +468,9 @@ public:
             len_t time = timeout==0 ? 0 : process::now() + timeout;
             
             kv.callback = [=](){
+                if( inp.is_closed () ){ return -1; } 
                 if( time!=0 && time<process::now() )
                   { inp.close     () ;  return -1; }
-                if( inp.is_closed () ){ return -1; } 
                 if( inp.is_waiting() ){ return  0; }
             return 1; };
 
@@ -531,37 +525,17 @@ public:
         if( obj->ev_queue.next()==1 ){ return 1; } 
         set_timeout(obj->ev_queue.get_delay());
 
-        obj->state |=  FLAG::KV_STATE_SLEEP;
+        obj->state |= FLAG::KV_STATE_SLEEP;
+        EPOLLFD ev [NODEPP_MAX_BATCH_SIZE];
+        auto idx    = epoll_wait( obj->pd, ev, NODEPP_MAX_BATCH_SIZE, get_delay_ms() );
+        obj->state &=~FLAG::KV_STATE_SLEEP;
 
-    #if defined( SYS_epoll_pwait2 )
+        while( idx-->0 ){ auto &x = ev[ idx ];
 
-        auto idx =  ( obj->state & FLAG::KV_STATE_FALLBACK )==0 ? 
-        epoll_pwait2( obj->pd, &obj->ev, obj->ev.size(),&get_delay_tm(), nullptr ) :
-        epoll_wait  ( obj->pd, &obj->ev, obj->ev.size(), get_delay_ms()) /*-----*/ ;
-        
-        if( idx==-1 && errno==ENOSYS ) { obj->state |= FLAG::KV_STATE_FALLBACK; }
-
-    #else
-        auto idx =  obj->idx=epoll_wait( obj->pd, &obj->ev, obj->ev.size(), get_delay_ms() );
-    #endif
-
-        obj->state &=~ FLAG::KV_STATE_SLEEP;
-
-        while( idx > 0 ){ 
-            
-            idx--; auto &x = obj->ev[ idx ];
-
-            if( x.data.ptr == nullptr ) { uchar_64 value = 0;
-            if( ::read( obj->ed, &value, sizeof(uchar_64)) ){ /*unused*/ }
-                invoker( nullptr ); continue; 
-            }
-
-            /*
-            if( x.events& ( EPOLLERR | EPOLLHUP ) &&
-              ( x.events& ( EPOLLOUT | EPOLLIN ))==0
-            ) { remove( x.data.ptr ); continue; }
-            */
-            
+            if( x.data.ptr == nullptr ){ uchar_64 value = 0;
+            if( ::read( obj->ed, &value, sizeof(uchar_64)) )
+              { /*unused*/ } continue; } 
+              
             invoker( x.data.ptr );
 
         }   
@@ -620,12 +594,8 @@ protected:
         KPOLLFD event;
 
         int fd = id->data.fd;
-        int fl = id->data.flag & FLAG::KV_STATE_READ 
-               ? EVFILT_READ   : EVFILT_WRITE;
-
-        int fc = EV_ADD | EV_ENABLE;
-            fc|= id->data.flag & FLAG::KV_STATE_EDGE
-               ? EV_CLEAR      : 0x00 ;
+        int fl = EVFILT_READ | EVFILT_WRITE;
+        int fc = EV_ADD | EV_ENABLE | EV_CLEAR;
 
         EV_SET( &event, fd, fl, fc, 0, 0, (void*) id );
 
@@ -638,8 +608,7 @@ protected:
         auto kv = obj->kv_queue.as( ptr );
         if ( kv== nullptr ){ return -1; }
 
-        auto fl = kv->data.flag & FLAG::KV_STATE_READ 
-                ? EVFILT_READ   : EVFILT_WRITE;
+        auto fl = EVFILT_READ | EVFILT_WRITE;
         auto fd = kv->data.fd;
 
         KPOLLFD event ;
@@ -693,9 +662,9 @@ protected:
 
         auto x = obj->kv_queue.get();
 
-        if( x == nullptr ) /*----*/ { /*------*/ return; }
-        if( x->data.event.empty()  ){ remove(x); return; }
+        if( x == nullptr ) /*----------------*/ { break; }
         if( x->data.flag & FLAG::KV_STATE_USED ){ break; }
+        if( x->data.event.empty()  ){ remove(x); return; }
         if( x->data.callback()==-1 ){ remove(x); return; }
             
             x->data.flag|= FLAG::KV_STATE_USED;
@@ -706,24 +675,24 @@ protected:
 
         auto x = obj->kv_queue.as( address );
 
-        if( x == nullptr ) /*----*/ { /*-------*/ return; }
+        if( x == nullptr ) /*----------------*/ { return; }
         if( x->data.flag & FLAG::KV_STATE_USED ){ return; }
-            x->data.flag|= FLAG::KV_STATE_USED;
+            x->data.flag|= FLAG::KV_STATE_USED ;
 
-        auto self = type::bind( this );
+        auto self = type::bind( this ); loop_add([=](){
         
-        loop_add( coroutine::add( COROUTINE(){
-        coBegin
-        
-            do{ if( !self->obj->kv_queue.is_valid(x) ){ return -1; }
-                x->data.event.emit(); switch( x->data.callback() ) {
-                case -1: self->remove(x); /*--------------*/ return -1; break;
-                case  0: x->data.flag&=~FLAG::KV_STATE_USED; return -1; break;
-                case  1: /*-------------------------------*/ return  1; break; 
-            }} while(0);
+            if( self->obj->kv_queue.is_valid(x) ){ do {
+            if( x->data.event.empty() ){ break; }
+                x->data.event.emit (); 
+                
+                switch( x->data.callback() ) {
+                    case  0: x->data.flag&=~FLAG::KV_STATE_USED; return -1; break;
+                    case  1: /*-------------------------------*/ return  1; break; 
+                } 
+            
+            } while(0); self->remove(x); } return -1;
 
-        coFinish
-        })); 
+        }); 
     
     } while(0); }}
 
@@ -734,7 +703,7 @@ protected:
         int pd=-1; /**/ uchar state;
         loop_t   /*----*/ ev_queue ;
         queue_t<kevent_t> kv_queue ;
-        uchar_32 /*----*/ timeout  ; ptr_t<KPOLLFD> ev;
+        uchar_32 /*----*/ timeout  ;
 
        ~NODE(){ close( pd ); }
     };  ptr_t<NODE> obj;
@@ -751,15 +720,12 @@ public:
 
     if( obj->pd==-1 )
       { NODEPP_THROW_ERROR("Can't Initialize kernel_t"); }
-        obj->ev.resize( NODEPP_MAX_BATCH_SIZE );
 
         KPOLLFD ev;
         EV_SET( &ev, 0, EVFILT_USER, EV_ADD, 0, 0, nullptr );
         
     if( kevent( obj->pd, &ev, 1, NULL, 0, NULL ) == -1 )
       { NODEPP_THROW_ERROR("Can't Initialize kernel_t"); }
-
-        obj->state = FLAG::KV_STATE_OPEN;
 
     }
 
@@ -803,9 +769,9 @@ public:
             len_t time = timeout==0 ? 0 : process::now() + timeout;
             
             kv.callback = [=](){
+                if( inp.is_closed () ){ return -1; } 
                 if( time!=0 && time<process::now() )
                   { inp.close     () ;  return -1; }
-                if( inp.is_closed () ){ return -1; } 
                 if( inp.is_waiting() ){ return  0; }
             return 1; };
 
@@ -865,24 +831,12 @@ public:
         set_timeout(obj->ev_queue.get_delay());
 
         obj->state|=  FLAG::KV_STATE_SLEEP;
-        auto idx   = kevent( obj->pd, NULL, 0, &obj->ev, obj->ev.size(), &get_delay_tm() );
+        KPOLLFD ev [NODEPP_MAX_BATCH_SIZE];
+        auto idx   = kevent( obj->pd, NULL, 0, ev, NODEPP_MAX_BATCH_SIZE, &get_delay_tm() );
         obj->state&=~ FLAG::KV_STATE_SLEEP;
 
-        while( idx > 0 ){ 
-            
-            idx--; auto &x = obj->ev[ idx ];
-            if( x.filter==EVFILT_USER 
-            ) { invoker( nullptr ); continue; }
-
-            /*
-            if( x.flags & ( EV_ERROR    | EV_EOF       ) &&
-              ( x.filter& ( EVFILT_WRITE| EVFILT_READ ))==0
-            ) { remove( x.udata ); continue; }
-            */
-
-            invoker( x.udata ); 
-        
-        }
+        while( idx-->0 ){ auto &x = ev[ idx ];
+        if   ( x.filter!=EVFILT_USER ){ invoker( x.udata ); }}
         
     clear_timeout(); return 1; }
 

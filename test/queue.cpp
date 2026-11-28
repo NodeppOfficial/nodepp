@@ -153,6 +153,27 @@ namespace TEST { namespace QUEUE {
             } while(0); TEST_FAIL();
         });
 
+        TEST_ADD( test, "TEST 14 | queue move sorting", [](){
+            do { 
+                
+                queue_t<int>   bse ({ 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 });
+                queue_t<int>   que ({ 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 });
+                queue_t<void*> mem;
+
+                auto x = que.last(); while( x!=nullptr ){
+                    mem.push( (void*) x ); 
+                x = x->prev; }
+
+                auto y = mem.last(); while( y!=nullptr ){
+                    que.move( que.get( os::rand() ), que.as( y->data ) );
+                y = y->prev; }
+
+                if ( string::join(que)==string::join(bse) ){ break; }
+
+                        TEST_DONE();
+            } while(0); TEST_FAIL();
+        });
+
         test.onClose.once([=](){
             console::log("\nRESULT | total:", *totl, "| passed:", *done, "| error:", *err, "| skipped:", *skp );
         });

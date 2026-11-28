@@ -87,9 +87,9 @@ protected:
 
         auto x = obj->kv_queue.get();
 
-        if( x == nullptr ) /*----*/ { /*------*/ return; }
-        if( x->data.event.empty()  ){ remove(x); return; }
+        if( x == nullptr ) /*----------------*/ { break; }
         if( x->data.flag & FLAG::KV_STATE_USED ){ break; }
+        if( x->data.event.empty()  ){ remove(x); return; }
         if( x->data.callback()==-1 ){ remove(x); return; }
             
             x->data.flag|= FLAG::KV_STATE_USED;
@@ -102,22 +102,22 @@ protected:
 
         if( x == nullptr ) /*----------------*/ { return; }
         if( x->data.flag & FLAG::KV_STATE_USED ){ return; }
-            x->data.flag|= FLAG::KV_STATE_USED;
+            x->data.flag|= FLAG::KV_STATE_USED ;
 
-        auto self = type::bind( this );
+        auto self = type::bind( this ); loop_add([=](){
         
-        loop_add( coroutine::add( COROUTINE(){
-        coBegin
-        
-            do{ if( !self->obj->kv_queue.is_valid(x) ){ return -1; }
-                x->data.event.emit(); switch( x->data.callback() ) {
-                case -1: self->remove(x); /*--------------*/ return -1; break;
-                case  0: x->data.flag&=~FLAG::KV_STATE_USED; return -1; break;
-                case  1: /*-------------------------------*/ return  1; break; 
-            }} while(0);
+            if( self->obj->kv_queue.is_valid(x) ){ do {
+            if( x->data.event.empty() ){ break; }
+                x->data.event.emit (); 
+                
+                switch( x->data.callback() ) {
+                    case  0: x->data.flag&=~FLAG::KV_STATE_USED; return -1; break;
+                    case  1: /*-------------------------------*/ return  1; break; 
+                } 
+            
+            } while(0); self->remove(x); } return -1;
 
-        coFinish
-        })); 
+        }); 
     
     } while(0); }}
 
@@ -184,9 +184,9 @@ public:
             len_t time = timeout==0 ? 0 : process::now() + timeout;
             
             kv.callback = [=](){
+                if( inp.is_closed () ){ return -1; } 
                 if( time!=0 && time<process::now() )
                   { inp.close     () ;  return -1; }
-                if( inp.is_closed () ){ return -1; } 
                 if( inp.is_waiting() ){ return  0; }
             return 1; };
 
@@ -287,14 +287,17 @@ protected:
 protected:
 
     struct NODE {
-        uchar    state   ;
+        uchar    state   ; iocp_t iocp;
         uchar_32 timeout ;
         loop_t   ev_queue;
     };  ptr_t<NODE> obj;
 
 public:
 
-    kernel_t() noexcept : obj( 0UL ) {}
+    kernel_t() noexcept : obj( 0UL ) {
+        obj->iocp= NODEPP_IOCP(); 
+        obj->iocp.start_device();
+    }
 
 public:
 
@@ -318,7 +321,7 @@ public:
 
     ulong  get_delay() const noexcept { return get_delay_ms(); }
 
-    int /*---*/ wake() const noexcept { return -1; }
+    int /*---*/ wake() const noexcept { return obj->iocp.wake(); }
 
     /*─······································································─*/
 
@@ -355,7 +358,7 @@ public:
         obj->state |=  FLAG::KV_STATE_SLEEP;
 
         set_timeout(obj->ev_queue.get_delay());
-        process::delay( get_delay_ms() );
+        obj->iocp.next( get_delay_ms() );
         clear_timeout();
 
         obj->state &=~ FLAG::KV_STATE_SLEEP;

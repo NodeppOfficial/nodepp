@@ -33,7 +33,7 @@ namespace nodepp { namespace process {
     int call( const T&... args ){ return NODEPP_INVOKE().emit( args... ); }
 
     template< class... T >
-    uint64_t invoke( const T&... args ){ return NODEPP_INVOKE().add( args... ); }
+    uchar_64 invoke( const T&... args ){ return NODEPP_INVOKE().add( args... ); }
     
     /*─······································································─*/
 

@@ -51,8 +51,8 @@
 #define NODEPP_SCHEDULER_IOURING 4
 #define NODEPP_SCHEDULER_IOCP    3
 #define NODEPP_SCHEDULER_KQUEUE  2 
-#define NODEPP_SCHEDULER_LITE    1
-#define NODEPP_SCHEDULER_EPOLL   0
+#define NODEPP_SCHEDULER_EPOLL   1
+#define NODEPP_SCHEDULER_LITE    0
 
 /*────────────────────────────────────────────────────────────────────────────*/
 

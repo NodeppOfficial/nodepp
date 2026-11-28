@@ -142,12 +142,12 @@ protected:
 
     /*─······································································─*/
 
-    bool is_blocked( int& c ) const noexcept {
-    if ( c >= 0 ){ return 0; } auto error = os::error();
-    if ( error == EISCONN ){ c=0; return 0; } return (
+    bool is_blocked( int *c, int error ) const noexcept {
+    if ( c[0] > 0 ) /*----------*/ { return 0; }
+    if ( error == EISCONN ){ c[0]=0; return 0; } return (
          error == EWOULDBLOCK || error == EINPROGRESS ||
-         error == EALREADY    || error == EAGAIN      ||
-         error == ECONNRESET  || errno == EMFILE
+         error == EALREADY    || error == EAGAIN      || 
+         error == ECONNRESET
     );}
 
     /*─······································································─*/
@@ -638,7 +638,7 @@ public:
     int _connect() const noexcept {
         if( process::millis() > get_conn_timeout() || is_server() ){ return -1; }
         auto c=::connect( obj->fd, (SOCKADDR*) &obj->server_addr, obj->addrlen );
-        auto b=is_blocked( c ); 
+        auto b= is_blocked( &c, errno ); 
 
         obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
                          obj->state &~STATE::FS_STATE_WAITING;
@@ -648,7 +648,7 @@ public:
 
     int _accept() const noexcept { if( !is_server() ){ return -1; }
         auto c=::accept( obj->fd, (SOCKADDR*) &obj->server_addr, &obj->addrlen );
-        auto b=is_blocked( c ); 
+        auto b= is_blocked( &c, errno ); 
 
         obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
                          obj->state &~STATE::FS_STATE_WAITING;
@@ -765,7 +765,7 @@ public:
         ? ::recv    ( obj->fd, bf, sx, 0 )
         : ::recvfrom( obj->fd, bf, sx, 0, (SOCKADDR*) &addr, &len );
 
-        auto b = is_blocked( c );
+        auto b= is_blocked( &c, errno ); 
 
         obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
                          obj->state &~STATE::FS_STATE_WAITING;
@@ -783,7 +783,7 @@ public:
         ? ::send  ( obj->fd, bf, sx, 0 )
         : ::sendto( obj->fd, bf, sx, 0, (SOCKADDR*) &addr, len );
 
-        auto b = is_blocked( c );
+        auto b= is_blocked( &c, errno ); 
 
         obj->state = b ? obj->state | STATE::FS_STATE_WAITING:
                          obj->state &~STATE::FS_STATE_WAITING;

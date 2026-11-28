@@ -203,9 +203,9 @@ public:
 
     bool is_valid( void* raw ) const noexcept { 
     auto item = (NODE*) raw;
-        if( empty() || item==nullptr ){ return false; }
-        if( item->sign != &obj ) /**/ { return false; }
-        /*---------------------------*/ return true ;
+        if( empty() || raw==nullptr ){ return false; }
+        if( item->sign != &obj )/*-*/{ return false; }
+        /*--------------------------*/ return true ;
     }
 
     queue_t copy() const noexcept { queue_t n_buffer;
@@ -350,40 +350,44 @@ public:
 
     /*─······································································─*/
 
-    void swap( NODE* n, NODE* x ) const noexcept { if( x!=n ){
+    void swap( NODE* a, NODE* b ) const noexcept { 
 
-        auto prv = n->next;
-        auto nxt = x->next;
+        if( !is_valid(a) || 
+            !is_valid(b) || a==b
+        ) { return; }
 
-        move( prv, x );
-        move( nxt, n );
+        auto prv = a->next;
+        auto nxt = b->next;
 
-    }}
+        move( b, prv );
+        move( a, nxt );
 
-    void move( NODE* n, NODE* x ) const noexcept {
-        if( !is_valid(x) ) /*-----*/ { return; }
-        if(  is_valid(n) ){ if(n==x) { return; }
+    }
 
-            if( obj->fst==x ) /**/ { obj->fst /**/ = x->next; }
-            if( obj->lst==x ) /**/ { obj->lst /**/ = x->prev; }
-            if( x->prev!= nullptr ){ x->prev->next = x->next; }
-            if( x->next!= nullptr ){ x->next->prev = x->prev; }
+    void move( NODE* a, NODE* b ) const noexcept {
+        if( !is_valid(a) || a==b ){ return; }
+        if(  is_valid(b) ){
+
+            if( obj->fst==a ) /**/ { obj->fst /**/ = a->next; }
+            if( obj->lst==a ) /**/ { obj->lst /**/ = a->prev; }
+            if( a->prev!= nullptr ){ a->prev->next = a->next; }
+            if( a->next!= nullptr ){ a->next->prev = a->prev; }
             
-            x->prev = n->prev; 
-            x->next = n      ;
+            a->prev = b->prev; 
+            a->next = b      ;
 
-            if( n->prev != nullptr ){ n->prev->next = x; } n->prev = x;
-            if( obj->fst == n )/*-*/{ obj->fst      = x; }
+            if( b->prev != nullptr ){ b->prev->next = a; } b->prev = a;
+            if( obj->fst == b )/*-*/{ obj->fst      = a; }
 
-        } elif( obj->lst != x ) {
+        } else {
 
-            if( x->next!= nullptr ){ x->next->prev = x->prev; }
-            if( x->prev!= nullptr ){ x->prev->next = x->next; }
-            if( obj->fst == x )/**/{ obj->fst      = x->next; }
+            if( a->next!= nullptr ){ a->next->prev = a->prev; }
+            if( a->prev!= nullptr ){ a->prev->next = a->next; }
+            if( obj->fst == a )/**/{ obj->fst      = a->next; }
             
-            x->prev = obj->lst; 
-            x->next = nullptr ;
-            x->prev->next = x ; obj->lst= x; 
+            a->prev = obj->lst; 
+            a->next = nullptr ;
+            a->prev->next = a ; obj->lst= a; 
 
         }
     }
@@ -393,7 +397,7 @@ public:
     void erase( ulong begin, ulong end ) const noexcept {
         auto r = get_slice_range( begin, end ); /*---------*/
            if( r.null() ) { return; } auto x = r[2];
-        while( x--!=0 ){ erase(r[0]);}
+        while( x-->0 ){ erase(r[0]);}
     }
 
     void erase( ulong begin ) const noexcept {
@@ -427,9 +431,9 @@ public:
     }
 
     NODE* get( ulong x ) const noexcept {
-        if( empty() ){ return nullptr; }
+        if( empty() ){ return nullptr; } 
         ulong y = x % size(); auto n = first();
-        while( n != nullptr && y--!=0 ){ n=n->next; } return n;
+        while( n != nullptr && y-->0 ){ n=n->next; } return n;
     }
 
     NODE* as( void* x ) const noexcept {
